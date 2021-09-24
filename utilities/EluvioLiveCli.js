@@ -42,10 +42,39 @@ const CmfNftTemplateAddNftContract = async ({argv}) => {
 	contractUri: "",
 	proxyAddress: ""
   })
+
+}
+
+const CmdNftBalanceOf = async ({argv}) => {
+
+  console.log("NFT - call", argv.addr, argv.owner);
+
+  await Init();
+
+  var res = await elvlv.NftBalanceOf({
+	addr: argv.addr,
+	ownerAddr: argv.owner
+  })
+
+  console.log(res);
+}
+
+const CmdNftShow = async ({argv}) => {
+
+  console.log("NFT - show", argv.addr);
+
+  await Init();
+
+  var res = await elvlv.NftShow({
+	addr: argv.addr,
+  })
+
+  console.log(res);
 }
 
 
 yargs(hideBin(process.argv))
+
   .command('nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr]',
 		   'Add a new or existing NFT contract to an NFT Template object', (yargs) => {
 			 yargs
@@ -55,7 +84,7 @@ yargs(hideBin(process.argv))
 			   })
 			   .positional('object', {
 				 describe: 'NFT Template object ID',
-				 type:' string'
+				 type: 'string'
 			   })
 			   .positional('tenant', {
 				 describe: "Tenant ID",
@@ -67,7 +96,7 @@ yargs(hideBin(process.argv))
 			   })
 			   .option('cap', {
 				 describe: "NFT total supply cap",
-				 type: 'int'
+				 type: 'number'
 			   })
 			   .option('name', {
 				 describe: "NFT collection name",
@@ -86,6 +115,37 @@ yargs(hideBin(process.argv))
 			 CmfNftTemplateAddNftContract({argv});
 
 		   })
+
+  .command('nft_balance_of <addr> <owner>',
+		   'Call NFT ownerOf - determine if this is an owner', (yargs) => {
+			 yargs
+			   .positional('addr', {
+				 describe: 'NFT address (hex)',
+				 type: 'string'
+			   })
+			   .positional('owner', {
+				 describe: 'Owner address to check (hex)',
+				 type: 'string'
+			   })
+		   }, (argv) => {
+
+			 CmdNftBalanceOf({argv});
+
+		   })
+
+  .command('nft_show <addr>',
+		   'Show info on this NFT', (yargs) => {
+			 yargs
+			   .positional('addr', {
+				 describe: 'NFT address (hex)',
+				 type: 'string'
+			   })
+		   }, (argv) => {
+
+			 CmdNftShow({argv});
+
+		   })
+
   .help()
   .demandCommand(1)
   .argv

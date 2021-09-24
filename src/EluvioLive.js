@@ -1,7 +1,7 @@
 const { ElvClient } = require("elv-client-js")
 const Utils = require("elv-client-js/src/Utils.js")
 
-
+const Ethers = require("ethers");
 const fs = require('fs');
 const path = require('path');
 
@@ -118,6 +118,75 @@ class EluvioLive {
     });
 
     console.log(res);
+  }
+
+  /**
+   *
+   */
+  async NftBalanceOf({addr, ownerAddr}) {
+
+    const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "balanceOf",
+      methodArgs: [
+		ownerAddr
+      ],
+      formatArguments: true
+    });
+
+	return res;
+  }
+
+  /**
+   * Show info about this NFT
+   */
+  async NftShow({addr, ownerAddr}) {
+
+    const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
+	var nftInfo = {};
+    nftInfo.name = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "name",
+      formatArguments: true
+    });
+    nftInfo.symbol = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "symbol",
+      formatArguments: true
+    });
+    nftInfo.totalSupply = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "totalSupply",
+      formatArguments: true
+    });
+
+	nftInfo.tokens = [];
+	var max = 0 + Number(nftInfo.totalSupply);
+	for (var i = 0; i < max; i ++) {
+	  nftInfo.tokens[i] = {};
+      nftInfo.tokens[i].tokenId = nftInfo.totalSupply = await this.client.CallContractMethod({
+		contractAddress: addr,
+		abi: JSON.parse(abi),
+		methodName: "tokenByIndex",
+		methodArgs: [i],
+		formatArguments: true
+      });
+      nftInfo.tokens[i].owner = nftInfo.totalSupply = await this.client.CallContractMethod({
+		contractAddress: addr,
+		abi: JSON.parse(abi),
+		methodName: "ownerOf",
+		methodArgs: [nftInfo.tokens[i].tokenId],
+		formatArguments: true
+      });
+	}
+
+	return nftInfo;
   }
 
   /**
