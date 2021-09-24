@@ -147,5 +147,6 @@ yargs(hideBin(process.argv))
 		   })
 
   .help()
+  .scriptName('elv-live')
   .demandCommand(1)
   .argv
