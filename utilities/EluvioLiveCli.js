@@ -3,6 +3,7 @@ const { EluvioLive } = require("../src/EluvioLive.js")
 
 const yargs = require('yargs/yargs')
 const { hideBin } = require('yargs/helpers')
+const yaml = require('js-yaml');
 
 const networks = {
   "main": "https://main.net955305.contentfabric.io",
@@ -70,6 +71,23 @@ const CmdNftShow = async ({argv}) => {
   })
 
   console.log(res);
+}
+
+const CmdTenantShow = async ({argv}) => {
+
+  console.log("Tenant - show", argv.tenant);
+
+  await Init();
+
+  var res = await elvlv.TenantShow({
+	tenantId: argv.tenant,
+	libraryId: argv.library,
+	objectId: argv.object,
+	marketplaceId: argv.marketplace,
+	eventId: argv.event
+  })
+
+  console.log(yaml.dump(res));
 }
 
 
@@ -146,7 +164,37 @@ yargs(hideBin(process.argv))
 
 		   })
 
+  .command('tenant_show <tenant> <library> <object> [event] [marketplace]',
+		   'Show info on this tenant', (yargs) => {
+			 yargs
+			   .positional('tenant', {
+				 describe: 'Tenant ID',
+				 type: 'string'
+			   })
+			   .positional('library', {
+				 describe: 'Tenant-level EluvioLive library',
+				 type: 'string'
+			   })
+			   .positional('object', {
+				 describe: 'Tenant-level EluvioLive object ID',
+				 type: 'string'
+			   })
+			   .option('event', {
+				 describe: 'Event ID',
+				 type: 'string'
+			   })
+			   .option('marketplace', {
+				 describe: 'Marketplace ID',
+				 type: 'string'
+			   })
+		   }, (argv) => {
+
+			 CmdTenantShow({argv});
+
+		   })
+
   .help()
-  .scriptName('elv-live')
+  .usage('EluvioLive CLI\n\nUsage: elv-live <command>')
+  .scriptName('')
   .demandCommand(1)
   .argv

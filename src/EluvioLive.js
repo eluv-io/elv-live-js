@@ -40,6 +40,62 @@ class EluvioLive {
   }
 
   /**
+   * Show info about this NFT
+   */
+  async TenantShow({tenantId, libraryId, objectId, eventId, marketplaceId}) {
+
+	const abiNft = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
+	const abiTenant = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/BaseTenantSpace.abi");
+
+	var tenantInfo = {};
+
+	console.log("Read EluvioLive tenant metadata");
+	var m = await this.client.ContentObjectMetadata({
+	  libraryId,
+	  objectId,
+	  metadataSubtree: "/public/asset_metadata",
+	  select: "",
+	  resolveLinks: true,
+	  resolveIncludeSource: true,
+	  resolveIgnoreError: true,
+	  linkDepthLimit: 5
+	});
+
+	tenantInfo.marketplaces = {};
+	for (var key in m.marketplaces) {
+	  tenantInfo.marketplaces[key] = {};
+	  tenantInfo.marketplaces[key].items = {}
+	  for (var i in m.marketplaces[key].info.items) {
+
+		const item = m.marketplaces[key].info.items[i];
+
+		tenantInfo.marketplaces[key].items[i] = {};
+		tenantInfo.marketplaces[key].items[i].name = item.name;
+		tenantInfo.marketplaces[key].items[i].description = item.description;
+		tenantInfo.marketplaces[key].items[i].mint_cauth = item.nft_template.mint.cauth_id;
+		tenantInfo.marketplaces[key].items[i].nft_addr = item.nft_template.nft.address;
+		tenantInfo.marketplaces[key].items[i].nft_template = item.nft_template["."].source;
+
+		tenantInfo.marketplaces[key].items[i].sku = item.sku;
+
+	  }
+	}
+
+	tenantInfo.sites = {};
+
+	return tenantInfo;
+  }
+
+  /**
+   * Show info about this NFT Template
+   */
+  async NftTemplateShow({object}) {
+
+	// TODO
+
+  }
+
+  /**
    * TODO
    */
   async ListEvents({}) {
