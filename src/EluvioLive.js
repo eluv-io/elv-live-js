@@ -29,7 +29,7 @@ class EluvioLive {
 
   async Init() {
 	this.client = await ElvClient.FromConfigurationUrl({
-        configUrl: this.configUrl
+      configUrl: this.configUrl
     });
 	let wallet = this.client.GenerateWallet();
     let signer = wallet.AddAccount({
@@ -145,7 +145,7 @@ class EluvioLive {
    */
   async NftShow({addr, ownerAddr}) {
 
-    const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
+	const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
 	var nftInfo = {};
     nftInfo.name = await this.client.CallContractMethod({
       contractAddress: addr,
@@ -159,25 +159,26 @@ class EluvioLive {
       methodName: "symbol",
       formatArguments: true
     });
-    nftInfo.totalSupply = await this.client.CallContractMethod({
+    const totalSupply = await this.client.CallContractMethod({
       contractAddress: addr,
       abi: JSON.parse(abi),
       methodName: "totalSupply",
       formatArguments: true
     });
+	nftInfo.totalSupply = Number(totalSupply);
 
 	nftInfo.tokens = [];
-	var max = 0 + Number(nftInfo.totalSupply);
-	for (var i = 0; i < max; i ++) {
+
+	for (var i = 0; i < nftInfo.totalSupply; i ++) {
 	  nftInfo.tokens[i] = {};
-      nftInfo.tokens[i].tokenId = nftInfo.totalSupply = await this.client.CallContractMethod({
+      nftInfo.tokens[i].tokenId = await this.client.CallContractMethod({
 		contractAddress: addr,
 		abi: JSON.parse(abi),
 		methodName: "tokenByIndex",
 		methodArgs: [i],
 		formatArguments: true
       });
-      nftInfo.tokens[i].owner = nftInfo.totalSupply = await this.client.CallContractMethod({
+      nftInfo.tokens[i].owner = await this.client.CallContractMethod({
 		contractAddress: addr,
 		abi: JSON.parse(abi),
 		methodName: "ownerOf",
