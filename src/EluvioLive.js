@@ -41,15 +41,17 @@ class EluvioLive {
 
   /**
    * Show info about this NFT
+   *
+   * cauth - warn if any NFTs have a different cauth ID
+   * mintHelper - warn if any NFTs don't have this as minter
    */
-  async TenantShow({tenantId, libraryId, objectId, eventId, marketplaceId}) {
+  async TenantShow({tenantId, libraryId, objectId, eventId, marketplaceId, cauth, mintHelper}) {
 
 	const abiNft = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
 	const abiTenant = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/BaseTenantSpace.abi");
 
 	var tenantInfo = {};
 
-	console.log("Read EluvioLive tenant metadata");
 	var m = await this.client.ContentObjectMetadata({
 	  libraryId,
 	  objectId,
@@ -62,34 +64,108 @@ class EluvioLive {
 	});
 
 	tenantInfo.marketplaces = {};
+	var warns = [];
+
 	for (var key in m.marketplaces) {
 	  tenantInfo.marketplaces[key] = {};
-	  tenantInfo.marketplaces[key].items = {}
+	  tenantInfo.marketplaces[key].items = {};
 	  for (var i in m.marketplaces[key].info.items) {
 
 		const item = m.marketplaces[key].info.items[i];
 
-		tenantInfo.marketplaces[key].items[i] = {};
-		tenantInfo.marketplaces[key].items[i].name = item.name;
-		tenantInfo.marketplaces[key].items[i].description = item.description;
-		tenantInfo.marketplaces[key].items[i].mint_cauth = item.nft_template.mint.cauth_id;
-		tenantInfo.marketplaces[key].items[i].nft_addr = item.nft_template.nft.address;
-		tenantInfo.marketplaces[key].items[i].nft_template = item.nft_template["."].source;
+		const sku = item.sku;
 
-		tenantInfo.marketplaces[key].items[i].sku = item.sku;
+		tenantInfo.marketplaces[key].items[sku] = {};
+		tenantInfo.marketplaces[key].items[sku].name = item.name;
+		tenantInfo.marketplaces[key].items[sku].description = item.description;
+		tenantInfo.marketplaces[key].items[sku].mint_cauth = item.nft_template.mint.cauth_id;
+		tenantInfo.marketplaces[key].items[sku].nft_addr = item.nft_template.nft.address;
+		tenantInfo.marketplaces[key].items[sku].templateTotalSupply = item.nft_template.nft.total_supply;
+		tenantInfo.marketplaces[key].items[sku].nft_template = item.nft_template["."].source;
 
+		if (cauth && cauth != item.nft_template.mint.cauth_id) {
+		  warns.push("Wrong cauth_id sku: " + sku);
+		}
+
+		if (item.nft_template.nft.address === "") {
+		  warns.push("No NFT address sku: " + sku);
+		} else {
+		  // Check NFT contract parameters
+		  const nftInfo = await this.NftShow({addr: item.nft_template.nft.address, mintHelper});
+		  tenantInfo.marketplaces[key].items[sku].nftCap = nftInfo.cap;
+		  tenantInfo.marketplaces[key].items[sku].nftTotalSupply = nftInfo.totalSupply;
+		  tenantInfo.marketplaces[key].items[sku].nftName = nftInfo.name;
+		  if (nftInfo.cap != item.nft_template.nft.total_supply) {
+			warns.push("NFT cap mismatch sku: " + sku);
+		  }
+		  if (nftInfo.warns.length > 0) {
+			warns.push(...nftInfo.warns);
+		  }
+		}
 	  }
 	}
 
 	tenantInfo.sites = {};
+	tenantInfo.warns = warns;
 
 	return tenantInfo;
+
   }
 
   /**
-   * Show info about this NFT Template
+   * Show info about this Event
    */
-  async NftTemplateShow({object}) {
+  async SiteShow({libraryId, objectId}) {
+
+	var siteInfo = {};
+
+	var m = await this.client.ContentObjectMetadata({
+	  libraryId,
+	  objectId,
+	  metadataSubtree: "/public/asset_metadata",
+	  select: "",
+	  resolveLinks: true,
+	  resolveIncludeSource: true,
+	  resolveIgnoreError: true,
+	  linkDepthLimit: 5
+	});
+
+	siteInfo.drops = [];
+	for (var key in m.info.drops) {
+	  const drop = m.info.drops[key];
+	  siteInfo.drops[key] = {};
+
+	  siteInfo.drops[key].event_header = drop.event_header;
+	  siteInfo.drops[key].start_date = drop.start_date;
+	  siteInfo.drops[key].end_date = drop.end_date;
+
+	  siteInfo.drops[key].stages = {};
+	  siteInfo.drops[key].stages["preroll"] = {};
+	  siteInfo.drops[key].stages["preroll"].start_date = drop.event_state_preroll.start_date;
+
+	  siteInfo.drops[key].stages["main"] = {};
+	  siteInfo.drops[key].stages["main"].start_date = drop.event_state_main.start_date;
+
+	  siteInfo.drops[key].stages["vote_end"] = {};
+	  siteInfo.drops[key].stages["vote_end"].start_date = drop.event_state_post_vote.start_date;
+
+	  siteInfo.drops[key].stages["mint_start"] = {};
+	  siteInfo.drops[key].stages["mint_start"].start_date = drop.event_state_mint_start.start_date;
+
+	  siteInfo.drops[key].nfts = {};
+	  for (var i in drop.nfts) {
+		const nft = drop.nfts[i];
+		siteInfo.drops[key].nfts[nft.sku] = nft.label;
+	  }
+	}
+
+	return siteInfo;
+  }
+
+  /**
+   * Set start dates
+   */
+  async SiteSetDropDates({object, uuid, start, endVote, startMint,  end}) {
 
 	// TODO
 
@@ -198,8 +274,10 @@ class EluvioLive {
 
   /**
    * Show info about this NFT
+   *
+   * mintHelper - warn if this is not a minter for the NFT contract
    */
-  async NftShow({addr, ownerAddr}) {
+  async NftShow({addr, mintHelper}) {
 
 	const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
 	var nftInfo = {};
@@ -223,6 +301,28 @@ class EluvioLive {
     });
 	nftInfo.totalSupply = Number(totalSupply);
 
+    const cap = await this.client.CallContractMethod({
+	  contractAddress: addr,
+	  abi: JSON.parse(abi),
+	  methodName: "cap",
+	  formatArguments: true
+    });
+	nftInfo.cap = Number(cap);
+
+	var warns = [];
+	if (mintHelper) {
+	  const isMinter = await this.client.CallContractMethod({
+		contractAddress: addr,
+		abi: JSON.parse(abi),
+		methodName: "isMinter",
+		methodArgs: [mintHelper],
+		formatArguments: true
+	  });
+	  if (!isMinter) {
+		warns.push("Minter not set up addr: " + addr);
+	  }
+	}
+
 	nftInfo.tokens = [];
 
 	for (var i = 0; i < nftInfo.totalSupply; i ++) {
@@ -243,6 +343,7 @@ class EluvioLive {
       });
 	}
 
+	nftInfo.warns = warns;
 	return nftInfo;
   }
 

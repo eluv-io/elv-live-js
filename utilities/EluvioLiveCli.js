@@ -57,7 +57,7 @@ const CmdNftBalanceOf = async ({argv}) => {
 	ownerAddr: argv.owner
   })
 
-  console.log(res);
+  console.log(yaml.dump(res));
 }
 
 const CmdNftShow = async ({argv}) => {
@@ -68,9 +68,10 @@ const CmdNftShow = async ({argv}) => {
 
   var res = await elvlv.NftShow({
 	addr: argv.addr,
+	mintHelper: argv.check_minter
   })
 
-  console.log(res);
+  console.log(yaml.dump(res));
 }
 
 const CmdTenantShow = async ({argv}) => {
@@ -84,7 +85,23 @@ const CmdTenantShow = async ({argv}) => {
 	libraryId: argv.library,
 	objectId: argv.object,
 	marketplaceId: argv.marketplace,
-	eventId: argv.event
+	eventId: argv.event,
+	cauth: argv.check_cauth,
+	mintHelper: argv.check_minter
+  })
+
+  console.log(yaml.dump(res));
+}
+
+const CmdSiteShow = async ({argv}) => {
+
+  console.log("Site - show", argv.object);
+
+  await Init();
+
+  var res = await elvlv.SiteShow({
+	libraryId: argv.library,
+	objectId: argv.object,
   })
 
   console.log(yaml.dump(res));
@@ -158,6 +175,11 @@ yargs(hideBin(process.argv))
 				 describe: 'NFT address (hex)',
 				 type: 'string'
 			   })
+			   .option('check_minter', {
+				 describe: 'Check that all NFTs use this mint helper',
+				 type: 'string'
+			   })
+
 		   }, (argv) => {
 
 			 CmdNftShow({argv});
@@ -187,9 +209,35 @@ yargs(hideBin(process.argv))
 				 describe: 'Marketplace ID',
 				 type: 'string'
 			   })
+			   .option('check_cauth', {
+				 describe: 'Check that all NFTs use this cauth ID',
+				 type: 'string'
+			   })
+			   .option('check_minter', {
+				 describe: 'Check that all NFTs use this mint helper',
+				 type: 'string'
+			   })
+
 		   }, (argv) => {
 
 			 CmdTenantShow({argv});
+
+		   })
+
+  .command('site_show <library> <object>',
+		   'Show info on this site/event', (yargs) => {
+			 yargs
+			   .positional('library', {
+				 describe: 'Site library',
+				 type: 'string'
+			   })
+			   .positional('object', {
+				 describe: 'Site object ID',
+				 type: 'string'
+			   })
+		   }, (argv) => {
+
+			 CmdSiteShow({argv});
 
 		   })
 
