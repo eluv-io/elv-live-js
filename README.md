@@ -13,7 +13,7 @@ npm install
 Then:
 
 ``` bash
-./eluvio-live --help
+./elv-live --help
 ```
 
 # Usage Examples
@@ -37,5 +37,5 @@ Show tenant-level marketplace information (including validation):
 Set up an NFT contract and associate it with an NFT Template object:
 
 ```
-node utilities/EluvioLiveCli.js  nft_add_contract  ilib3ErteXJcCoTapj2ZhEvMKWau6jET iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP itenYQbgk66W1BFEqWr95xPmHZEjmdF --minthelper 0x59e79eFE007F5208857a646Db5cBddA82261Ca81 --cap 100 --name "TEST NFT SERIES A" --symbol "TESTA"
+./elv-live nft_add_contract  ilib3ErteXJcCoTapj2ZhEvMKWau6jET iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP itenYQbgk66W1BFEqWr95xPmHZEjmdF --minthelper 0x59e79eFE007F5208857a646Db5cBddA82261Ca81 --cap 100 --name "TEST NFT SERIES A" --symbol "TESTA"
 ```
