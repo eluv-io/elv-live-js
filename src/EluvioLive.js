@@ -5,14 +5,22 @@ const Ethers = require("ethers");
 const fs = require('fs');
 const path = require('path');
 
+/**
+ * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
+ * It provides a consumer-facing marketplace for digital content: live performances,
+ * digital collectibles, etc.
+ *
+ * This SDK provides tools for working with EluvioLive APIs and services.
+ */
 class EluvioLive {
 
   /**
    * Instantiate the EluvioLive SDK
    *
    * @namedParams
+   * @param {string} configUrl - The Content Fabric configuration URL
+   * @param {string} mainObjectId - The top-level Eluvio Live object ID
    * @param {string} tenantObjectId - The ID of the tenant specific EluvioLive object (optional)
-   *
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
   constructor({
@@ -40,10 +48,18 @@ class EluvioLive {
   }
 
   /**
-   * Show info about this NFT
+   * Show info about this tenant.
+   * Currently only listing NFT marketplaces.
    *
-   * cauth - warn if any NFTs have a different cauth ID
-   * mintHelper - warn if any NFTs don't have this as minter
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} libraryId - The 'properties' library ID
+   * @param {string} objectId - The ID of the tenant specific EluvioLive object
+   * @param {string} eventId - The specific event to list (optional)
+   * @param {string} marketplaceId - The specific marketplace to list (optional)
+   * @cauth {string} cauth - Warn if any NFTs have a different cauth ID (optional)
+   * @cauth {string} mintHelper - Warn if any NFTs don't have this as minter
+   * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
   async TenantShow({tenantId, libraryId, objectId, eventId, marketplaceId, cauth, mintHelper}) {
 
@@ -113,7 +129,37 @@ class EluvioLive {
   }
 
   /**
-   * Show info about this Event
+   * Add an NFT contract to the tenant's 'nft_templates' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} nftAddr = The address of the NFT contract (hex format)
+   */
+  async TenantAddNft({tenantId, nftAddr}) {
+
+    const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/BaseTenantSpace.abi");
+
+	const addr = Utils.HashToAddress(tenantId);
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "addGroup",
+      methodArgs: [
+        "tenant_nfts",
+		nftAddr
+      ],
+      formatArguments: true
+    });
+  }
+
+  /**
+   * Show info about this site (event)
+   *
+   * @namedParams
+   * @param {string} libraryId - The 'properties' library ID
+   * @param {string} objectId - The ID of the site object
+   * @return {Promise<Object>} - An object containing site info, including 'warnings'
    */
   async SiteShow({libraryId, objectId}) {
 
@@ -166,7 +212,19 @@ class EluvioLive {
   }
 
   /**
-   * Set start dates
+   * Set start dates for a drop event (all stages)
+   *
+   * @namedParams
+   * @param {string} libraryId - The 'properties' library ID
+   * @param {string} objectId - The ID of the site object
+   * @param {string} uuid - UUID of the drop (a site may contain multiple)
+   * @param {string} start - the start date of the event
+   * @param {string} end - the end date of the event (optional)
+   * @param {string} endVote - the start date of the post vote stage (optional)
+   * @param {string} startMint - the start date of the mint stage (optional)
+   * @param {boolean} newUuid - create a new UUID for the drop (optional)
+   * @param {string} update - Tenant-level EluvioLive object ID, to update
+   * @return {Promise<Object>} - An object containing new drop info
    */
   async SiteSetDrop({libraryId, objectId, uuid, start, end, endVote, startMint, newUuid, update}) {
 
@@ -265,19 +323,22 @@ class EluvioLive {
   }
 
   /**
-   * TODO
-   */
-  async ListEvents({}) {
-  }
-
-  /**
-   *
    * Create a new NFT contract (ElvTradable, ERC-721-based) and set it up for this tenant
    * - create a new contract
    * - add minter
    * - add NFT address to tenant 'tenant_nfts' group
    *
    * TODO: preflight - ensure signer is a tenant admin
+   *
+   * @namedParams
+   * @param {string} tenantId - The tenant ID
+   * @param {string} mintHelperAddr - Address of the mint helper (hex format)
+   * @param {string} collectionName - Short name for the ERC-721 contract
+   * @param {string} collectionSymbol - Short string for the ERC-721 contract
+   * @param {string} contractUri - URI for the ERC-721 contract
+   * @param {string} proxyAddress - Proxy address for the ERC721 contract
+   * @param {string} totalSupply - the mint cap for this template (should be called 'cap')
+   * @return {Promise<Object>} - New contract address
    */
   async CreateNftContract({
 	tenantId,
@@ -286,7 +347,7 @@ class EluvioLive {
 	collectionSymbol,
 	contractUri,
 	proxyAddress,
-  	totalSupply
+  	totalSupply /* PENDING: should be 'cap' */
   }) {
 
 	const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
@@ -346,7 +407,12 @@ class EluvioLive {
   }
 
   /**
+   * Get the NFT balance for a given user address
    *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {string} ownerAddr - A user address to check the balance of
+   * @return {Promise<Object>} - Number of tokens owned
    */
   async NftBalanceOf({addr, ownerAddr}) {
 
@@ -368,7 +434,10 @@ class EluvioLive {
   /**
    * Show info about this NFT
    *
-   * mintHelper - warn if this is not a minter for the NFT contract
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {string} mintHelper - Warn if this is not a minter for the NFT contract
+   * @return {Promise<Object>} - An object containing NFT info, including 'warnings'
    */
   async NftShow({addr, mintHelper}) {
 
@@ -441,7 +510,11 @@ class EluvioLive {
   }
 
   /**
+   * Add a minter to this NFT
    *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {string} mintHelperAddr - The address of the minter
    */
   async NftAddMinter({addr, mintHelperAddr}) {
 
@@ -459,28 +532,20 @@ class EluvioLive {
     });
   }
 
-  async TenantAddNft({tenantId, nftAddr}) {
-
-    const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/BaseTenantSpace.abi");
-
-	const addr = Utils.HashToAddress(tenantId);
-
-    var res = await this.client.CallContractMethodAndWait({
-      contractAddress: addr,
-      abi: JSON.parse(abi),
-      methodName: "addGroup",
-      methodArgs: [
-        "tenant_nfts",
-		nftAddr
-      ],
-      formatArguments: true
-    });
-  }
-
-
   /**
    * Create a new NFT contract and set it in the NFT Template object's metadata.
    *
+   * @namedParams
+   * @param {string} libraryId - The 'properties' library ID
+   * @param {string} objectId - The ID of the NFT Template
+   * @param {string} nftAddr - The NFT contract address (optional; by default create one)
+   * @param {string} mintHelperAddr - The address of the minter
+   * @param {string} collectionName - Short name for the ERC-721 contract
+   * @param {string} collectionSymbol - Short string for the ERC-721 contract
+   * @param {string} contractUri - URI for the ERC-721 contract
+   * @param {string} proxyAddress - Proxy address for the ERC721 contract
+   * @param {string} totalSupply - the mint cap for this template (should be called 'cap')
+   * @return {Promise<Object>} - An object containing info about the new NFT
    */
   async NftTemplateAddNftContract({
 	libraryId,

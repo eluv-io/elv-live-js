@@ -293,7 +293,7 @@ yargs(hideBin(process.argv))
 			   })
 			   .option('new_uuid', {
 				 describe: 'Assign a new UUID',
-				 type: 'bool'
+				 type: 'boolean'
 			   })
 			   .option('update', {
 				 describe: 'Tenant-level EluvioLive object to update',
