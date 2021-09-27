@@ -107,6 +107,25 @@ const CmdSiteShow = async ({argv}) => {
   console.log(yaml.dump(res));
 }
 
+const CmdSiteSetDrop = async ({argv}) => {
+
+  console.log("Site - set drop", argv.object, argv.uuid);
+
+  await Init();
+
+  var res = await elvlv.SiteSetDrop({
+	libraryId: argv.library,
+	objectId: argv.object,
+	uuid: argv.uuid,
+	start: argv.start_date,
+	end: argv.end_date,
+	newUuid: argv.new_uuid,
+	update: argv.update
+  })
+
+  console.log(yaml.dump(res));
+}
+
 
 yargs(hideBin(process.argv))
 
@@ -238,6 +257,52 @@ yargs(hideBin(process.argv))
 		   }, (argv) => {
 
 			 CmdSiteShow({argv});
+
+		   })
+
+  .command('site_set_drop <library> <object> <uuid> <start_date> [end_date] [new_uuid]',
+		   'Set drop dates for a site/event', (yargs) => {
+			 yargs
+			   .positional('library', {
+				 describe: 'Site library',
+				 type: 'string'
+			   })
+			   .positional('object', {
+				 describe: 'Site object ID',
+				 type: 'string'
+			   })
+			   .positional('uuid', {
+				 describe: 'Drop UUID',
+				 type: 'string'
+			   })
+			   .positional('start_date', {
+				 describe: 'Event start date (ISO format)',
+				 type: 'string'
+			   })
+			   .option('end_date', {
+				 describe: 'Event end date (ISO format)',
+				 type: 'string'
+			   })
+			   .option('end_vote', {
+				 describe: 'Event vote end date (ISO foramt)',
+				 type: 'string'
+			   })
+			   .option('start_mint', {
+				 describe: 'Event start mint date (ISO format)',
+				 type: 'string'
+			   })
+			   .option('new_uuid', {
+				 describe: 'Assign a new UUID',
+				 type: 'bool'
+			   })
+			   .option('update', {
+				 describe: 'Tenant-level EluvioLive object to update',
+				 type: 'string'
+			   })
+
+		   }, (argv) => {
+
+			 CmdSiteSetDrop({argv});
 
 		   })
 

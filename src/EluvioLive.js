@@ -130,32 +130,35 @@ class EluvioLive {
 	  linkDepthLimit: 5
 	});
 
-	siteInfo.drops = [];
+	siteInfo.drops = {};
 	for (var key in m.info.drops) {
 	  const drop = m.info.drops[key];
-	  siteInfo.drops[key] = {};
+	  const uuid = drop.uuid;
 
-	  siteInfo.drops[key].event_header = drop.event_header;
-	  siteInfo.drops[key].start_date = drop.start_date;
-	  siteInfo.drops[key].end_date = drop.end_date;
+	  siteInfo.drops[uuid] = {};
 
-	  siteInfo.drops[key].stages = {};
-	  siteInfo.drops[key].stages["preroll"] = {};
-	  siteInfo.drops[key].stages["preroll"].start_date = drop.event_state_preroll.start_date;
+	  siteInfo.drops[uuid].event_header = drop.event_header;
 
-	  siteInfo.drops[key].stages["main"] = {};
-	  siteInfo.drops[key].stages["main"].start_date = drop.event_state_main.start_date;
+	  siteInfo.drops[uuid].start_date = drop.start_date;
+	  siteInfo.drops[uuid].end_date = drop.end_date;
 
-	  siteInfo.drops[key].stages["vote_end"] = {};
-	  siteInfo.drops[key].stages["vote_end"].start_date = drop.event_state_post_vote.start_date;
+	  siteInfo.drops[uuid].stages = {};
+	  siteInfo.drops[uuid].stages["preroll"] = {};
+	  siteInfo.drops[uuid].stages["preroll"].start_date = drop.event_state_preroll.start_date;
 
-	  siteInfo.drops[key].stages["mint_start"] = {};
-	  siteInfo.drops[key].stages["mint_start"].start_date = drop.event_state_mint_start.start_date;
+	  siteInfo.drops[uuid].stages["main"] = {};
+	  siteInfo.drops[uuid].stages["main"].start_date = drop.event_state_main.start_date;
 
-	  siteInfo.drops[key].nfts = {};
+	  siteInfo.drops[uuid].stages["vote_end"] = {};
+	  siteInfo.drops[uuid].stages["vote_end"].start_date = drop.event_state_post_vote.start_date;
+
+	  siteInfo.drops[uuid].stages["mint_start"] = {};
+	  siteInfo.drops[uuid].stages["mint_start"].start_date = drop.event_state_mint_start.start_date;
+
+	  siteInfo.drops[uuid].nfts = {};
 	  for (var i in drop.nfts) {
 		const nft = drop.nfts[i];
-		siteInfo.drops[key].nfts[nft.sku] = nft.label;
+		siteInfo.drops[uuid].nfts[nft.sku] = nft.label;
 	  }
 	}
 
@@ -165,10 +168,100 @@ class EluvioLive {
   /**
    * Set start dates
    */
-  async SiteSetDropDates({object, uuid, start, endVote, startMint,  end}) {
+  async SiteSetDrop({libraryId, objectId, uuid, start, end, endVote, startMint, newUuid, update}) {
 
-	// TODO
+	// If stages are not specified use 2min for each
+	const startMsec = Date.parse(start);
+	if (!endVote || endVote == "") {
+	  endVote = new Date(startMsec + 2*60*1000);
+	}
+	if (!startMint || startMint == "") {
+	  startMint = new Date(startMsec + 4*60*1000);
+	}
+	if (!end || end == "") {
+	  end = new Date(startMsec + 6*60*1000);
+	}
 
+	var dropInfo = {};
+
+	var m = await this.client.ContentObjectMetadata({
+	  libraryId,
+	  objectId,
+	  metadataSubtree: "/public/asset_metadata",
+	  resolveLinks: true,
+	  resolveIncludeSource: true,
+	  resolveIgnoreError: true,
+	  linkDepthLimit: 5
+	});
+
+	var found = false;
+	for (var key in m.info.drops) {
+	  const drop = m.info.drops[key];
+	  const dropUuid = drop.uuid;
+
+	  if (dropUuid.slice(0, 22) == uuid) {
+		console.log("Found drop uuid: ", uuid);
+		found = true;
+
+		drop.start_date = start;
+		drop.end_date = end;
+		drop.event_state_preroll.start_date = "";
+		drop.event_state_main.start_date = start;
+		drop.event_state_post_vote.start_date = endVote;
+		drop.event_state_mint_start.start_date = startMint;
+
+		dropInfo.start = start;
+		dropInfo.end = end;
+		dropInfo.endVote = endVote;
+		dropInfo.startMint = startMint;
+
+		if (newUuid) {
+		  drop.uuid = uuid.slice(0, 22) + (startMsec / 1000);
+		}
+		dropInfo.uuid = drop.uuid;
+
+		// Set new metadata
+		m.info.drops[key] = drop;
+
+		var e = await this.client.EditContentObject({
+		  libraryId,
+		  objectId
+		});
+
+		await this.client.ReplaceMetadata({
+		  libraryId,
+		  objectId,
+		  writeToken: e.write_token,
+		  metadataSubtree: "/public/asset_metadata",
+		  metadata: m
+		});
+
+		var f = await this.client.FinalizeContentObject({
+		  libraryId,
+		  objectId,
+		  writeToken: e.write_token,
+		  commitMessage: "Set drop start " + uuid + " " + start
+		});
+
+		dropInfo.hash = f.hash;
+		console.log("Finalized: ", f);
+
+		if (update != "") {
+		  await this.client.UpdateContentObjectGraph({
+			libraryId,
+			objectId: update
+		  });
+		  console.log("Update ", update);
+		}
+		break;
+	  }
+	}
+
+	if (!found) {
+	  console.log("Drop not found - uuid: ", uuid);
+	}
+
+	return dropInfo;
   }
 
   /**
