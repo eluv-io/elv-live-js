@@ -63,8 +63,8 @@ class EluvioLive {
    */
   async TenantShow({tenantId, libraryId, objectId, eventId, marketplaceId, cauth, mintHelper}) {
 
-	const abiNft = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
-	const abiTenant = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/BaseTenantSpace.abi");
+	const abiNft = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
+	const abiTenant = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
 
 	var tenantInfo = {};
 
@@ -90,6 +90,11 @@ class EluvioLive {
 		const item = m.marketplaces[key].info.items[i];
 
 		const sku = item.sku;
+
+		if (item.nft_template == "") {
+		  warns.push("No NFT Template sku: " + sku);
+		  continue;
+		}
 
 		tenantInfo.marketplaces[key].items[sku] = {};
 		tenantInfo.marketplaces[key].items[sku].name = item.name;
@@ -137,7 +142,7 @@ class EluvioLive {
    */
   async TenantAddNft({tenantId, nftAddr}) {
 
-    const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/BaseTenantSpace.abi");
+    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
 
 	const addr = Utils.HashToAddress(tenantId);
 
@@ -246,10 +251,7 @@ class EluvioLive {
 	  libraryId,
 	  objectId,
 	  metadataSubtree: "/public/asset_metadata",
-	  resolveLinks: true,
-	  resolveIncludeSource: true,
-	  resolveIgnoreError: true,
-	  linkDepthLimit: 5
+	  resolveLinks: false
 	});
 
 	var found = false;
@@ -259,6 +261,7 @@ class EluvioLive {
 
 	  if (dropUuid.slice(0, 22) == uuid) {
 		console.log("Found drop uuid: ", uuid);
+		console.log(drop);
 		found = true;
 
 		drop.start_date = start;
@@ -281,35 +284,41 @@ class EluvioLive {
 		// Set new metadata
 		m.info.drops[key] = drop;
 
-		var e = await this.client.EditContentObject({
-		  libraryId,
-		  objectId
-		});
-
-		await this.client.ReplaceMetadata({
-		  libraryId,
-		  objectId,
-		  writeToken: e.write_token,
-		  metadataSubtree: "/public/asset_metadata",
-		  metadata: m
-		});
-
-		var f = await this.client.FinalizeContentObject({
-		  libraryId,
-		  objectId,
-		  writeToken: e.write_token,
-		  commitMessage: "Set drop start " + uuid + " " + start
-		});
-
-		dropInfo.hash = f.hash;
-		console.log("Finalized: ", f);
-
-		if (update != "") {
-		  await this.client.UpdateContentObjectGraph({
+		const dryRun = false;
+		if (!dryRun) {
+		  var e = await this.client.EditContentObject({
 			libraryId,
-			objectId: update
+			objectId
 		  });
-		  console.log("Update ", update);
+
+		  await this.client.ReplaceMetadata({
+			libraryId,
+			objectId,
+			writeToken: e.write_token,
+			metadataSubtree: "/public/asset_metadata",
+			metadata: m
+		  });
+
+		  var f = await this.client.FinalizeContentObject({
+			libraryId,
+			objectId,
+			writeToken: e.write_token,
+			commitMessage: "Set drop start " + uuid + " " + start
+		  });
+
+		  dropInfo.hash = f.hash;
+		  console.log("Finalized: ", f);
+
+		  if (update != "") {
+			await this.client.UpdateContentObjectGraph({
+			  libraryId,
+			  objectId: update
+			});
+			console.log("Update ", update);
+		  }
+		} else {
+		  console.log("New drop:", drop);
+		  console.log("New metadata:", m);
 		}
 		break;
 	  }
@@ -343,6 +352,7 @@ class EluvioLive {
   async CreateNftContract({
 	tenantId,
 	mintHelperAddr,
+	minterAddr,
 	collectionName,
 	collectionSymbol,
 	contractUri,
@@ -350,8 +360,8 @@ class EluvioLive {
   	totalSupply /* PENDING: should be 'cap' */
   }) {
 
-	const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
-	const bytecode = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.bin"));
+	const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
+	const bytecode = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.bin"));
 
 	var c = await this.client.DeployContract({
 	  abi: JSON.parse(abistr),
@@ -362,14 +372,18 @@ class EluvioLive {
 		contractUri || "",
 		proxyAddress || "0x0000000000000000000000000000000000000000",
 		0,
-		totalSupply
+		totalSupply,
+		604800 /* PENDING: config */
 	  ]
 	});
 
 	console.log("NFT contract address:", c.contractAddress);
 
-	await this.NftAddMinter({addr: c.contractAddress, mintHelperAddr});
-	console.log("- minter added", mintHelperAddr);
+	await this.NftAddMinter({addr: c.contractAddress, minterAddr:mintHelperAddr});
+	console.log("- mint helper added", mintHelperAddr);
+
+	await this.NftAddMinter({addr: c.contractAddress, minterAddr: minterAddr});
+	console.log("- minter added", minterAddr);
 
 	await this.TenantAddNft({tenantId, nftAddr: c.contractAddress});
 	console.log("- tenant_nfts added", tenantId);
@@ -380,15 +394,10 @@ class EluvioLive {
   /**
    *  WIP
    */
+/*
   async ContractCallMintHelper(client) {
 
-    const addrHelper = "0xf194bBC68369Fb140330570D822071f2A6949A77";
-    const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTokenHelper.abi");
-
-    const nft1 = "0xAB27731bb16C0B2cBCdaDD62Fb17e7b09CD387f3"; // beachball
-    const user1 = "0xb6de95156c47bfe7f9414420e6e59b25f871f102"; // serban+elvmw@eluv.io
-
-    const nft2 = "0xfC4C73C2b44dcF9e21cdc40a3e135a0e160a44c4";
+    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTokenHelper.abi"));
 
     var res = await client.CallContractMethodAndWait({
       contractAddress: addrHelper,
@@ -405,6 +414,7 @@ class EluvioLive {
 
     console.log(res);
   }
+*/
 
   /**
    * Get the NFT balance for a given user address
@@ -416,8 +426,7 @@ class EluvioLive {
    */
   async NftBalanceOf({addr, ownerAddr}) {
 
-    const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
-
+    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
     var res = await this.client.CallContractMethod({
       contractAddress: addr,
       abi: JSON.parse(abi),
@@ -441,7 +450,7 @@ class EluvioLive {
    */
   async NftShow({addr, mintHelper}) {
 
-	const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
+	const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
 	var nftInfo = {};
     nftInfo.name = await this.client.CallContractMethod({
       contractAddress: addr,
@@ -487,22 +496,25 @@ class EluvioLive {
 
 	nftInfo.tokens = [];
 
-	for (var i = 0; i < nftInfo.totalSupply; i ++) {
-	  nftInfo.tokens[i] = {};
-      nftInfo.tokens[i].tokenId = await this.client.CallContractMethod({
-		contractAddress: addr,
-		abi: JSON.parse(abi),
-		methodName: "tokenByIndex",
-		methodArgs: [i],
-		formatArguments: true
-      });
-      nftInfo.tokens[i].owner = await this.client.CallContractMethod({
-		contractAddress: addr,
-		abi: JSON.parse(abi),
-		methodName: "ownerOf",
-		methodArgs: [nftInfo.tokens[i].tokenId],
-		formatArguments: true
-      });
+	var showOwners = false; /* PENDING: config */
+	if (showOwners) {
+	  for (var i = 0; i < nftInfo.totalSupply; i ++) {
+		nftInfo.tokens[i] = {};
+		nftInfo.tokens[i].tokenId = await this.client.CallContractMethod({
+		  contractAddress: addr,
+		  abi: JSON.parse(abi),
+		  methodName: "tokenByIndex",
+		  methodArgs: [i],
+		  formatArguments: true
+		});
+		nftInfo.tokens[i].owner = await this.client.CallContractMethod({
+		  contractAddress: addr,
+		  abi: JSON.parse(abi),
+		  methodName: "ownerOf",
+		  methodArgs: [nftInfo.tokens[i].tokenId],
+		  formatArguments: true
+		});
+	  }
 	}
 
 	nftInfo.warns = warns;
@@ -514,19 +526,19 @@ class EluvioLive {
    *
    * @namedParams
    * @param {string} addr - The NFT contract address
-   * @param {string} mintHelperAddr - The address of the minter
+   * @param {string} mintAddr - The address of the minter (key or helper contract)
    */
-  async NftAddMinter({addr, mintHelperAddr}) {
+  async NftAddMinter({addr, minterAddr}) {
 
-	console.log("Add minter", addr, mintHelperAddr);
-    const abi = fs.readFileSync("/Users/serban/ELV/CODE/contracts/dist/ElvTradable.abi");
+	console.log("Add minter", addr, minterAddr);
+    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
 
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: addr,
       abi: JSON.parse(abi),
       methodName: "addMinter",
       methodArgs: [
-        mintHelperAddr
+        minterAddr
       ],
       formatArguments: true
     });
@@ -536,10 +548,11 @@ class EluvioLive {
    * Create a new NFT contract and set it in the NFT Template object's metadata.
    *
    * @namedParams
-   * @param {string} libraryId - The 'properties' library ID
+   * @param {string} libraryIgd - The 'properties' library ID
    * @param {string} objectId - The ID of the NFT Template
    * @param {string} nftAddr - The NFT contract address (optional; by default create one)
-   * @param {string} mintHelperAddr - The address of the minter
+   * @param {string} mintHelperAddr - The address of the mint helper contract (for batch mint)
+   * @param {string} minterAddr - The address of the minter
    * @param {string} collectionName - Short name for the ERC-721 contract
    * @param {string} collectionSymbol - Short string for the ERC-721 contract
    * @param {string} contractUri - URI for the ERC-721 contract
@@ -553,6 +566,7 @@ class EluvioLive {
 	nftAddr,
 	tenantId,
 	mintHelperAddr,
+	minterAddr,
 	collectionName,
 	collectionSymbol,
 	contractUri,
@@ -566,6 +580,7 @@ class EluvioLive {
 	  nftAddr = await this.CreateNftContract({
 		tenantId,
 		mintHelperAddr,
+		minterAddr,
 		totalSupply,
 		collectionName,
 		collectionSymbol,
@@ -578,7 +593,8 @@ class EluvioLive {
 	console.log("Update object metadata");
 	var m = await this.client.ContentObjectMetadata({
 	  libraryId,
-	  objectId
+	  objectId,
+	  resolveLinks: false
 	});
 
 	m.permissioned.mint_private.address = nftAddr;

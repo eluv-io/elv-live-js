@@ -17,7 +17,7 @@ var elvlv;
 const Init = async () => {
 
   elvlv = new EluvioLive({
-	configUrl: networks.demov3,
+	configUrl: networks.main,
 	mainObjectId: "iq__2gkNh8CCZqFFnoRpEUmz7P3PaBQG"
   });
   await elvlv.Init();
@@ -27,7 +27,7 @@ const Init = async () => {
 const CmfNftTemplateAddNftContract = async ({argv}) => {
 
   console.log("NFT Template - set contract",
-			  argv.library, argv.object, argv.tenant, argv.minthelper, argv.cap, argv.name, argv.symbol,
+			  argv.library, argv.object, argv.tenant, argv.minthelper, argv.minter, argv.cap, argv.name, argv.symbol,
 			  argv.nftAddress)
   await Init();
 
@@ -37,6 +37,7 @@ const CmfNftTemplateAddNftContract = async ({argv}) => {
 	//nftAddr,
 	tenantId: argv.tenant,
 	mintHelperAddr: argv.minthelper, //"0x59e79eFE007F5208857a646Db5cBddA82261Ca81",
+	minterAddr: argv.minter,
 	totalSupply: argv.cap,
 	collectionName: argv.name,
 	collectionSymbol: argv.symbol,
@@ -119,6 +120,8 @@ const CmdSiteSetDrop = async ({argv}) => {
 	uuid: argv.uuid,
 	start: argv.start_date,
 	end: argv.end_date,
+	endVote: argv.end_vote,
+	startMint: argv.start_mint,
 	newUuid: argv.new_uuid,
 	update: argv.update
   })
@@ -146,6 +149,10 @@ yargs(hideBin(process.argv))
 			   })
 			   .option('minthelper', {
 				 describe: "Mint helper address (hex)",
+				 type: 'string'
+			   })
+			   .option('minter', {
+				 describe: "Minter address (hex)",
 				 type: 'string'
 			   })
 			   .option('cap', {
@@ -260,7 +267,7 @@ yargs(hideBin(process.argv))
 
 		   })
 
-  .command('site_set_drop <library> <object> <uuid> <start_date> [end_date] [new_uuid]',
+  .command('site_set_drop <library> <object> <uuid> <start_date> [options]',
 		   'Set drop dates for a site/event', (yargs) => {
 			 yargs
 			   .positional('library', {
