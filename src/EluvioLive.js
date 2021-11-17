@@ -1,5 +1,6 @@
 const { ElvClient } = require("elv-client-js")
 const Utils = require("elv-client-js/src/Utils.js")
+const { Config } = require("./Config.js")
 
 const Ethers = require("ethers");
 const fs = require('fs');
@@ -72,10 +73,9 @@ class EluvioLive {
 	  libraryId,
 	  objectId,
 	  metadataSubtree: "/public/asset_metadata",
-	  select: "",
 	  resolveLinks: true,
 	  resolveIncludeSource: true,
-	  resolveIgnoreError: true,
+	  resolveIgnoreErrors: true,
 	  linkDepthLimit: 5
 	});
 
@@ -131,6 +131,62 @@ class EluvioLive {
 
 	return tenantInfo;
 
+  }
+
+  /**
+   * Get a list of the NFTs of this tenant owned by 'ownerAddr'
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} libraryId - The 'properties' library ID
+   * @param {string} objectId - The ID of the tenant specific EluvioLive object
+   * @param {string} addr - The NFT contract address
+   * @param {string} ownerAddr - A user address to check the balance of
+   * @return {Promise<Object>} - Number of tokens owned
+   */
+  async TenantBalanceOf({tenantId, libraryId, objectId, ownerAddr}) {
+
+	const abiNft = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
+	const abiTenant = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
+
+	var nftInfo = {};
+
+	var m = await this.client.ContentObjectMetadata({
+	  libraryId,
+	  objectId,
+	  metadataSubtree: "/public/asset_metadata",
+	  select: "",
+	  resolveLinks: true,
+	  resolveIncludeSource: true,
+	  resolveIgnoreError: true,
+	  linkDepthLimit: 5
+	});
+
+	nftInfo.marketplaces = {};
+	var warns = [];
+
+	for (var key in m.marketplaces) {
+	  nftInfo.marketplaces[key] = {};
+	  nftInfo.marketplaces[key].nfts = {};
+	  for (var i in m.marketplaces[key].info.items) {
+
+		const item = m.marketplaces[key].info.items[i];
+
+		const sku = item.sku;
+
+		if (item.nft_template == "") {
+		  warns.push("No NFT Template sku: " + sku);
+		  continue;
+		}
+
+		const nftAddr = item.nft_template.nft.address;
+
+	  }
+	}
+
+	nftInfo.warns = warns;
+
+	return nftInfo;
   }
 
   /**
@@ -270,6 +326,7 @@ class EluvioLive {
 		drop.event_state_main.start_date = start;
 		drop.event_state_post_vote.start_date = endVote;
 		drop.event_state_mint_start.start_date = startMint;
+		drop.event_state_event_end.start_date = end;
 
 		dropInfo.start = start;
 		dropInfo.end = end;
@@ -309,7 +366,7 @@ class EluvioLive {
 		  dropInfo.hash = f.hash;
 		  console.log("Finalized: ", f);
 
-		  if (update != "") {
+		  if (update != null && update != "") {
 			await this.client.UpdateContentObjectGraph({
 			  libraryId,
 			  objectId: update
@@ -625,6 +682,133 @@ class EluvioLive {
 	return nftAddr;
   }
 
+  /**
+   * Make the public/nft section based on asset metadata
+   *
+   * @namedParams
+   * @param {Object} assetMetadata - The NFT Template asset metadata
+   * @return {Promise<Object>} - The public/nft JSON
+   */
+  async NftMake({
+	assetMetadata,
+	hash
+  }) {
+
+	const m = assetMetadata;
+	var pnft = {};
+
+	pnft.name = m.nft.name;
+	pnft.display_name = m.nft.display_name;
+	pnft.description = m.nft.description;
+	pnft.edition_name = m.nft.edition_name;
+	pnft.rich_text = m.nft.rich_text;
+
+	pnft.address = m.nft.address;
+	pnft.total_supply = m.nft.total_supply;
+	pnft.template_id = m.nft.template_id;
+
+	pnft.copyright = m.nft.copyright;
+	pnft.created_at = m.nft.created_at;
+	pnft.creator = m.nft.creator;
+
+	pnft.embed_url = m.nft.embed_url;
+	pnft.external_url = m.nft.external_url;
+	pnft.youtube_url = m.nft.marketplace_attributes.opensea.youtube_url;
+	pnft.image = m.nft.image;
+	pnft.playable = m.nft.playable;
+
+	pnft.attributes = [
+      {
+		trait_type: "Creator",
+		value: "Eluvio NFT Central"
+      },
+      {
+		trait_type: "Total Minted Supply",
+		value: m.nft.total_supply
+      },
+      {
+		trait_type: "Content Fabric Hash",
+		value: hash
+      }
+	];
+
+	return pnft;
+  }
+
+  /**
+   * Set the public/nft section based on asset metadata
+   *
+   * @namedParams
+   * @param {string} hash - The NFT Template hash or id
+   * @return {Promise<Object>} - The public/nft JSON
+   */
+  async NftBuild({
+	libraryId,
+	objectId
+  }) {
+
+	var hash = await this.client.LatestVersionHash({
+	  objectId
+	});
+
+	var m = await this.client.ContentObjectMetadata({
+	  libraryId,
+	  objectId,
+	  metadataSubtree: "public/asset_metadata",
+	  resolveLinks: false
+	});
+
+	var pnft = await this.NftMake({assetMetadata: m, hash});
+	console.log(pnft);
+
+	var e = await this.client.EditContentObject({
+	  libraryId,
+	  objectId
+	});
+
+	await this.client.ReplaceMetadata({
+	  libraryId,
+	  objectId,
+	  writeToken: e.write_token,
+	  metadataSubtree: "public/nft",
+	  metadata: pnft
+	});
+
+	var f = await this.client.FinalizeContentObject({
+	  libraryId,
+	  objectId,
+	  writeToken: e.write_token,
+	  commitMessage: "Set NFT public/nft"
+	});
+
+	const nftPath = "/meta/public/nft";
+	const tokenUri = Config.networks[Config.net] + "/s/" + Config.net + "/q/" + f.hash + nftPath;
+
+	console.log("Token URI: ", tokenUri);
+
+	// Set the token URI - edit the object one more time
+	var e = await this.client.EditContentObject({
+	  libraryId,
+	  objectId
+	});
+
+	await this.client.ReplaceMetadata({
+	  libraryId,
+	  objectId,
+	  writeToken: e.write_token,
+	  metadataSubtree: "public/asset_metadata/nft/token_uri",
+	  metadata: tokenUri
+	});
+
+	var f2 = await this.client.FinalizeContentObject({
+	  libraryId,
+	  objectId,
+	  writeToken: e.write_token,
+	  commitMessage: "Set NFT token URI"
+	});
+
+	return f2;
+  }
 }
 
 exports.EluvioLive = EluvioLive;

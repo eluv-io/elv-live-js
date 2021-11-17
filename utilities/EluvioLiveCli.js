@@ -1,24 +1,20 @@
 const { ElvClient } = require("elv-client-js")
 const { EluvioLive } = require("../src/EluvioLive.js")
+const { Config } = require("../src/Config.js")
 
 const yargs = require('yargs/yargs')
 const { hideBin } = require('yargs/helpers')
 const yaml = require('js-yaml');
 
-const networks = {
-  "main": "https://main.net955305.contentfabric.io",
-  "demo": "https://demov3.net955210.contentfabric.io",
-  "demov3": "https://demov3.net955210.contentfabric.io",
-  "test": "https://test.net955203.contentfabric.io"
-};
-
 var elvlv;
 
 const Init = async () => {
 
+  console.log("Network: " + Config.net);
+
   elvlv = new EluvioLive({
-	configUrl: networks.main,
-	mainObjectId: "iq__2gkNh8CCZqFFnoRpEUmz7P3PaBQG"
+	configUrl: Config.networks[Config.net],
+	mainObjectId: Config.mainObjects[Config.net]
   });
   await elvlv.Init();
 
@@ -75,6 +71,20 @@ const CmdNftShow = async ({argv}) => {
   console.log(yaml.dump(res));
 }
 
+const CmdNftBuild = async ({argv}) => {
+
+  console.log("NFT - build public/nft", argv.object);
+
+  await Init();
+
+  var res = await elvlv.NftBuild({
+	libraryId: argv.library,
+	objectId: argv.object
+  })
+
+  console.log(yaml.dump(res));
+}
+
 const CmdTenantShow = async ({argv}) => {
 
   console.log("Tenant - show", argv.tenant);
@@ -110,7 +120,7 @@ const CmdSiteShow = async ({argv}) => {
 
 const CmdSiteSetDrop = async ({argv}) => {
 
-  console.log("Site - set drop", argv.object, argv.uuid);
+  console.log("Site - set drop", argv.object, argv.uuid, "update", argv.update);
 
   await Init();
 
@@ -129,6 +139,21 @@ const CmdSiteSetDrop = async ({argv}) => {
   console.log(yaml.dump(res));
 }
 
+const CmdTenantBalanceOf = async ({argv}) => {
+
+  console.log("Tenant - balanceOf", argv.tenant, argv.ownerAddr);
+
+  await Init();
+
+  var res = await elvlv.TenantShow({
+	tenantId: argv.tenant,
+	libraryId: argv.library,
+	objectId: argv.object,
+	ownerAddr: argv.owner
+  })
+
+  console.log(yaml.dump(res));
+}
 
 yargs(hideBin(process.argv))
 
@@ -199,16 +224,31 @@ yargs(hideBin(process.argv))
 			 yargs
 			   .positional('addr', {
 				 describe: 'NFT address (hex)',
-				 type: 'string'
+                 type: 'string'
+               })
+               .option('check_minter', {
+                 describe: 'Check that all NFTs use this mint helper',
 			   })
-			   .option('check_minter', {
-				 describe: 'Check that all NFTs use this mint helper',
-				 type: 'string'
-			   })
-
 		   }, (argv) => {
 
 			 CmdNftShow({argv});
+
+		   })
+
+  .command('nft_build <library> <object>',
+		   'Build the public/nft section based on asset metadata', (yargs) => {
+			 yargs
+			   .positional('library', {
+				 describe: 'Content library',
+				 type: 'string'
+			   })
+			   .positional('object', {
+				 describe: 'Content object hash (hq__) or id (iq__)',
+				 type: 'string'
+			   })
+		   }, (argv) => {
+
+			 CmdNftBuild({argv});
 
 		   })
 
@@ -249,6 +289,32 @@ yargs(hideBin(process.argv))
 			 CmdTenantShow({argv});
 
 		   })
+
+  .command('tenant_balance_of <tenant> <library> <object> <owner>',
+		   'Show NFTs owned by this owner in this tenant', (yargs) => {
+			 yargs
+			   .positional('tenant', {
+				 describe: 'Tenant ID',
+				 type: 'string'
+			   })
+			   .positional('library', {
+				 describe: 'Tenant-level EluvioLive library',
+				 type: 'string'
+			   })
+			   .positional('object', {
+				 describe: 'Tenant-level EluvioLive object ID',
+				 type: 'string'
+			   })
+			   .option('owner', {
+				 describe: 'Owner address (hex)',
+				 type: 'string'
+			   })
+		   }, (argv) => {
+
+			 CmdTenantBalanceOf({argv});
+
+		   })
+
 
   .command('site_show <library> <object>',
 		   'Show info on this site/event', (yargs) => {

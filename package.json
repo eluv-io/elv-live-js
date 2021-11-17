@@ -1,6 +1,6 @@
 {
   "name": "elv-live-js",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Eluvio Live SDK and Tools",
   "main": "EluvioLive.js",
   "scripts": {
