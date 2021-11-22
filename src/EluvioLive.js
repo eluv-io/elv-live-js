@@ -114,10 +114,18 @@ class EluvioLive {
 		  // Check NFT contract parameters
 		  const nftInfo = await this.NftShow({addr: item.nft_template.nft.address, mintHelper});
 		  tenantInfo.marketplaces[key].items[sku].nftCap = nftInfo.cap;
+		  tenantInfo.marketplaces[key].items[sku].nftMinted = nftInfo.minted;
 		  tenantInfo.marketplaces[key].items[sku].nftTotalSupply = nftInfo.totalSupply;
 		  tenantInfo.marketplaces[key].items[sku].nftName = nftInfo.name;
+		  tenantInfo.marketplaces[key].items[sku].proxy = nftInfo.owner;
+		  tenantInfo.marketplaces[key].items[sku].proxy = nftInfo.proxy;
+		  tenantInfo.marketplaces[key].items[sku].firstTokenUri = nftInfo.firstTokenUri;
+		  tenantInfo.marketplaces[key].items[sku].defHoldSecs = nftInfo.defHoldSecs;
 		  if (nftInfo.cap != item.nft_template.nft.total_supply) {
 			warns.push("NFT cap mismatch sku: " + sku);
+		  }
+		  if (nftInfo.proxyInfo != null && (nftInfo.owner != nftInfo.proxyInfo.owner)) {
+			warns.push("NFT owner not proxy owner: " + sku);
 		  }
 		  if (nftInfo.warns.length > 0) {
 			warns.push(...nftInfo.warns);
@@ -403,7 +411,8 @@ class EluvioLive {
    * @param {string} collectionSymbol - Short string for the ERC-721 contract
    * @param {string} contractUri - URI for the ERC-721 contract
    * @param {string} proxyAddress - Proxy address for the ERC721 contract
-   * @param {string} totalSupply - the mint cap for this template (should be called 'cap')
+   * @param {number} totalSupply - the mint cap for this template (should be called 'cap')
+   * @param {number} hold - the hold period (seconds)
    * @return {Promise<Object>} - New contract address
    */
   async CreateNftContract({
@@ -414,11 +423,21 @@ class EluvioLive {
 	collectionSymbol,
 	contractUri,
 	proxyAddress,
-  	totalSupply /* PENDING: should be 'cap' */
+	totalSupply, /* PENDING: should be 'cap' */
+	hold
   }) {
 
 	const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
 	const bytecode = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.bin"));
+
+	if (proxyAddress == null || proxyAddress == "") {
+	  proxyAddress = await this.CreateNftTransferProxy({});
+	}
+	console.log("TransferProxy addr:", proxyAddress);
+
+	if (hold == null || hold == 0) {
+	  hold = 604800;
+	}
 
 	var c = await this.client.DeployContract({
 	  abi: JSON.parse(abistr),
@@ -427,10 +446,10 @@ class EluvioLive {
 		collectionName,
 		collectionSymbol,
 		contractUri || "",
-		proxyAddress || "0x0000000000000000000000000000000000000000",
+		proxyAddress,
 		0,
-		totalSupply,
-		604800 /* PENDING: config */
+		totalSupply, /* this is the 'cap' */
+		hold
 	  ]
 	});
 
@@ -447,6 +466,53 @@ class EluvioLive {
 
 	return c.contractAddress;
   }
+
+  /**
+   * Create a new NFT TransferProxy contract
+   *
+   * @namedParams
+   * @return {Promise<Object>} - New contract address
+   */
+  async CreateNftTransferProxy({}) {
+
+	const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi"));
+	const bytecode = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.bin"));
+
+	var c = await this.client.DeployContract({
+	  abi: JSON.parse(abistr),
+	  bytecode: bytecode.toString('utf8').replace('\n', ''),
+	  constructorArgs: [
+	  ]
+	});
+
+	console.log("NFT TransferProxy address:", c.contractAddress);
+
+	return c.contractAddress;
+  }
+
+  /**
+   * Show NFT Transfer Proxy info
+   *
+   * @namedParams
+   * @param {string} addr - The NFT Transfer Proxy contract address
+   * @return {Promise<Object>} - New contract address
+   */
+  async ShowNftTransferProxy({addr}) {
+
+	const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi"));
+
+	var info = {};
+
+    info.owner = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abistr),
+      methodName: "owner",
+      formatArguments: true
+    });
+
+	return info;
+  }
+
 
   /**
    *  WIP
@@ -483,7 +549,7 @@ class EluvioLive {
    */
   async NftBalanceOf({addr, ownerAddr}) {
 
-    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
+    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
     var res = await this.client.CallContractMethod({
       contractAddress: addr,
       abi: JSON.parse(abi),
@@ -494,7 +560,72 @@ class EluvioLive {
       formatArguments: true
     });
 
+	// List all tokens
+	for (var i = 0; i < res; i ++) {
+	  var tokenId = await this.client.CallContractMethod({
+		contractAddress: addr,
+		abi: JSON.parse(abi),
+		methodName: "balanceOf",
+		methodArgs: [
+		  ownerAddr,
+		  i
+		],
+		formatArguments: true
+      });
+	  console.log("i: ", i, tokenId);
+
+	}
 	return res;
+  }
+
+  /**
+   * Show info on one token in the NFT contract
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {integer} tokenId - The token ID
+   * @return {Promise<Object>} - An object containing token info, including 'warnings'
+   */
+  async NftShowToken({addr, tokenId}) {
+
+	const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
+
+	var tokenInfo = {};
+	tokenInfo.warns = [];
+	tokenInfo.tokenId = tokenId.toString();
+
+	tokenInfo.owner = await this.client.CallContractMethod({
+	  contractAddress: addr,
+	  abi: JSON.parse(abi),
+	  methodName: "ownerOf",
+	  methodArgs: [tokenId],
+	  formatArguments: true
+	});
+
+	tokenInfo.tokenURI = await this.client.CallContractMethod({
+	  contractAddress: addr,
+	  abi: JSON.parse(abi),
+	  methodName: "tokenURI",
+	  methodArgs: [tokenId],
+	  formatArguments: true
+	});
+
+	try {
+	  const holdSecs = await this.client.CallContractMethod({
+		contractAddress: addr,
+		abi: JSON.parse(abi),
+		methodName: "_allTokensHolds",
+		methodArgs: [tokenId],
+		formatArguments: true
+	  });
+	  tokenInfo.holdSecs = holdSecs.toString();
+	  tokenInfo.holdEnd = new Date(tokenInfo.holdSecs * 1000);
+
+	} catch(e) {
+	  tokenInfo.warns.push("Failed to get token hold: " + addr);
+	}
+
+	return tokenInfo;
   }
 
   /**
@@ -507,12 +638,20 @@ class EluvioLive {
    */
   async NftShow({addr, mintHelper}) {
 
-	const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
+	const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
 	var nftInfo = {};
+	var warns = [];
+
     nftInfo.name = await this.client.CallContractMethod({
       contractAddress: addr,
       abi: JSON.parse(abi),
       methodName: "name",
+      formatArguments: true
+    });
+    nftInfo.owner = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "owner",
       formatArguments: true
     });
     nftInfo.symbol = await this.client.CallContractMethod({
@@ -528,7 +667,13 @@ class EluvioLive {
       formatArguments: true
     });
 	nftInfo.totalSupply = Number(totalSupply);
-
+    const minted = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "minted",
+      formatArguments: true
+    });
+	nftInfo.minted = Number(minted);
     const cap = await this.client.CallContractMethod({
 	  contractAddress: addr,
 	  abi: JSON.parse(abi),
@@ -537,7 +682,20 @@ class EluvioLive {
     });
 	nftInfo.cap = Number(cap);
 
-	var warns = [];
+	const proxy = await this.client.CallContractMethod({
+	  contractAddress: addr,
+	  abi: JSON.parse(abi),
+	  methodName: "proxyRegistryAddress",
+	  formatArguments: true
+    });
+	nftInfo.proxy = proxy;
+
+	if (proxy == "0x0000000000000000000000000000000000000000") {
+	  warns.push("No proxy: " + addr);
+	} else {
+	  nftInfo.proxyInfo = await this.ShowNftTransferProxy({addr: proxy});
+	}
+
 	if (mintHelper) {
 	  const isMinter = await this.client.CallContractMethod({
 		contractAddress: addr,
@@ -551,26 +709,62 @@ class EluvioLive {
 	  }
 	}
 
+	try {
+	  const defHoldSecs = await this.client.CallContractMethod({
+		contractAddress: addr,
+		abi: JSON.parse(abi),
+		methodName: "defHoldSecs",
+		formatArguments: true
+	  });
+	  nftInfo.defHoldSecs = defHoldSecs.toString();
+	} catch(e) {
+	  nftInfo.defHoldSecs = "not supported";
+	  warns.push("Bad local tradable hold: " + addr);
+	}
+
 	nftInfo.tokens = [];
 
-	var showOwners = false; /* PENDING: config */
+	var showOwners = true;
+	var maxShowOwners = 2;
+	var maxWarnsTokenUri = 1;
+
 	if (showOwners) {
-	  for (var i = 0; i < nftInfo.totalSupply; i ++) {
+	  for (var i = 0; i < maxShowOwners && i < nftInfo.totalSupply; i ++) {
+
 		nftInfo.tokens[i] = {};
-		nftInfo.tokens[i].tokenId = await this.client.CallContractMethod({
-		  contractAddress: addr,
-		  abi: JSON.parse(abi),
-		  methodName: "tokenByIndex",
-		  methodArgs: [i],
-		  formatArguments: true
-		});
-		nftInfo.tokens[i].owner = await this.client.CallContractMethod({
-		  contractAddress: addr,
-		  abi: JSON.parse(abi),
-		  methodName: "ownerOf",
-		  methodArgs: [nftInfo.tokens[i].tokenId],
-		  formatArguments: true
-		});
+
+		var tokenId;
+		try {
+		  tokenId = await this.client.CallContractMethod({
+			contractAddress: addr,
+			abi: JSON.parse(abi),
+			methodName: "tokenByIndex",
+			methodArgs: [i],
+			formatArguments: true
+		  });
+		  nftInfo.tokens[i].tokenId = tokenId.toString();
+		} catch(e) {
+		  warns.push("Failed to get token ID (index: " + i + "): " + addr);
+		  continue;
+		}
+
+		var tokenInfo = await this.NftShowToken({addr, tokenId});
+
+		if (tokenInfo.warns.length > 0) {
+		  warns.push(...tokenInfo.warns);
+		}
+
+		nftInfo.tokens[i] = tokenInfo;
+
+		if (i == 0) {
+		  nftInfo.firstTokenUri = nftInfo.tokens[i].tokenURI;
+		}
+		if ((maxWarnsTokenUri --) > 0 &&
+			(!nftInfo.tokens[i].tokenURI.startsWith(Config.consts[Config.net].tokenUriStart) ||
+			 !nftInfo.tokens[i].tokenURI.endsWith(Config.consts[Config.net].tokenUriEnd))) {
+		  warns.push("Bad tokenURI: " + addr);
+		}
+
 	  }
 	}
 
@@ -612,6 +806,7 @@ class EluvioLive {
    * @param {string} minterAddr - The address of the minter
    * @param {string} collectionName - Short name for the ERC-721 contract
    * @param {string} collectionSymbol - Short string for the ERC-721 contract
+   * @param {string} hold - Hold period in seconds
    * @param {string} contractUri - URI for the ERC-721 contract
    * @param {string} proxyAddress - Proxy address for the ERC721 contract
    * @param {string} totalSupply - the mint cap for this template (should be called 'cap')
@@ -626,6 +821,7 @@ class EluvioLive {
 	minterAddr,
 	collectionName,
 	collectionSymbol,
+	hold,
 	contractUri,
 	proxyAddress,
   	totalSupply
@@ -641,6 +837,7 @@ class EluvioLive {
 		totalSupply,
 		collectionName,
 		collectionSymbol,
+		hold,
 		contractUri,
 		proxyAddress
 	  });
@@ -809,6 +1006,74 @@ class EluvioLive {
 
 	return f2;
   }
+
+  /**
+   * Transfer an NFT as a proxy owner.
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {string} fromAddr - The current owner of the token
+   * @param {string} toAddr - A user address to tranfer to
+   * @param {integer} tokenId - The token ID
+   * @return {Promise<Object>} - ?
+   */
+  async NftProxyTransferFrom({addr, tokenId, fromAddr, toAddr}) {
+
+	console.log("NFT Transfer", "from: ", fromAddr);
+    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
+	const pxabi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi"));
+
+    var ownerOf = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "ownerOf",
+      methodArgs: [tokenId],
+      formatArguments: true
+    });
+
+	if (ownerOf.toLowerCase() != fromAddr.toLowerCase()) {
+	  console.log("Not owner", "(owner: " + ownerOf + ")");
+	  return;
+	}
+
+	const proxy = await this.client.CallContractMethod({
+	  contractAddress: addr,
+	  abi: JSON.parse(abi),
+	  methodName: "proxyRegistryAddress",
+	  formatArguments: true
+    });
+
+	if (proxy == "0x0000000000000000000000000000000000000000") {
+	  console.log("NFT has no proxy");
+	  return;
+	}
+	console.log("Proxy: ", proxy);
+
+	var proxyInfo = await this.ShowNftTransferProxy({addr: proxy});
+	if (proxyInfo.owner != this.client.signer.address) {
+	  console.log("Bad key - not proxy owner (should be: " + proxyInfo.owner + ")");
+	  return;
+	}
+
+	console.log("Executing proxyTransferFrom");
+	var res = await this.client.CallContractMethod({
+      contractAddress: proxy,
+      abi: JSON.parse(pxabi),
+      methodName: "proxyTransferFrom",
+      methodArgs: [
+		addr,
+		fromAddr,
+		toAddr,
+		tokenId
+      ],
+      formatArguments: true
+    });
+
+	return res;
+  }
+
+
 }
+
 
 exports.EluvioLive = EluvioLive;

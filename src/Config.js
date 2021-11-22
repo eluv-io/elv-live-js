@@ -1,5 +1,5 @@
 
-const net = "main";
+const net = "main"; // Set to "main" or "demov3"
 
 const networks = {
   "main": "https://main.net955305.contentfabric.io",
@@ -13,4 +13,15 @@ const mainObjects = {
 	"demov3": "iq__2gkNh8CCZqFFnoRpEUmz7P3PaBQG"
 };
 
-exports.Config = {net, networks, mainObjects};
+const consts = {
+  main: {
+	tokenUriStart: "https://main.net955305.contentfabric.io/s/main/q/",
+	tokenUriEnd: "/meta/public/nft"
+  },
+  demov3: {
+	tokenUriStart: "https://demov3.net955210.contentfabric.io/s/demov3/q/",
+	tokenUriEnd: "/meta/public/nft"
+  }
+}
+
+exports.Config = {net, networks, mainObjects, consts};

@@ -37,6 +37,7 @@ const CmfNftTemplateAddNftContract = async ({argv}) => {
 	totalSupply: argv.cap,
 	collectionName: argv.name,
 	collectionSymbol: argv.symbol,
+	hold: argv.hold,
 	contractUri: "",
 	proxyAddress: ""
   })
@@ -80,6 +81,22 @@ const CmdNftBuild = async ({argv}) => {
   var res = await elvlv.NftBuild({
 	libraryId: argv.library,
 	objectId: argv.object
+  })
+
+  console.log(yaml.dump(res));
+}
+
+const CmdNftProxyTransfer = async ({argv}) => {
+
+  console.log("NFT - transer as proxy owner", argv.addr, argv.from_addr, argv.to_addr);
+
+  await Init();
+
+  var res = await elvlv.NftProxyTransferFrom({
+	addr: argv.addr,
+	tokenId: argv.token_id,
+	fromAddr: argv.from_addr,
+	toAddr: argv.to_addr
   })
 
   console.log(yaml.dump(res));
@@ -157,7 +174,7 @@ const CmdTenantBalanceOf = async ({argv}) => {
 
 yargs(hideBin(process.argv))
 
-  .command('nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr]',
+  .command('nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]',
 		   'Add a new or existing NFT contract to an NFT Template object', (yargs) => {
 			 yargs
 			   .positional('library', {
@@ -196,6 +213,10 @@ yargs(hideBin(process.argv))
 				 describe: "NFT contract address (will not create a new one)",
 				 type: 'string'
 			   })
+			   .option('hold', {
+				 describe: "Hold period in seconds (default 7 days)",
+				 type: 'number'
+			   })
 		   }, (argv) => {
 
 			 CmfNftTemplateAddNftContract({argv});
@@ -232,6 +253,31 @@ yargs(hideBin(process.argv))
 		   }, (argv) => {
 
 			 CmdNftShow({argv});
+
+		   })
+
+  .command('nft_proxy_transfer <addr> <token_id> <from_addr> <to_addr>',
+		   'Tranfer NFT as a proxy owner', (yargs) => {
+			 yargs
+			   .positional('addr', {
+				 describe: 'NFT address (hex)',
+                 type: 'string'
+               })
+			   .positional('token_id', {
+				 describe: 'NFT address (hex)',
+                 type: 'integer'
+               })
+			   .positional('from_addr', {
+				 describe: 'Address to transfer from (hex)',
+                 type: 'string'
+               })
+			   .positional('to_addr', {
+				 describe: 'Address to transfer to (hex)',
+                 type: 'string'
+               })
+		   }, (argv) => {
+
+			 CmdNftProxyTransfer({argv});
 
 		   })
 
