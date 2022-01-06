@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/eluv-io/elv-live-js#readme",
   "dependencies": {
+    "big-number": "^2.0.0",
     "elv-client-js": "git+https://github.com/eluv-io/elv-client-js.git#develop",
     "fraction.js": "^4.1.1",
     "got": "^11.8.2",

@@ -44,6 +44,19 @@ const CmfNftTemplateAddNftContract = async ({argv}) => {
 
 }
 
+const CmfNftAddMintHelper = async ({argv}) => {
+
+  console.log("NFT - add mint helper",
+			  argv.addr, argv.minter)
+  await Init();
+
+  var c = await elvlv.NftAddMinter({
+	addr: argv.addr,
+	minterAddr: argv.minter
+  })
+
+}
+
 const CmdNftBalanceOf = async ({argv}) => {
 
   console.log("NFT - call", argv.addr, argv.owner);
@@ -60,13 +73,14 @@ const CmdNftBalanceOf = async ({argv}) => {
 
 const CmdNftShow = async ({argv}) => {
 
-  console.log("NFT - show", argv.addr);
+  console.log("NFT - show", argv.addr, argv.show_owners);
 
   await Init();
 
   var res = await elvlv.NftShow({
 	addr: argv.addr,
-	mintHelper: argv.check_minter
+	mintHelper: argv.check_minter,
+	showOwners: argv.show_owners
   })
 
   console.log(yaml.dump(res));
@@ -81,6 +95,20 @@ const CmdNftBuild = async ({argv}) => {
   var res = await elvlv.NftBuild({
 	libraryId: argv.library,
 	objectId: argv.object
+  })
+
+  console.log(yaml.dump(res));
+}
+
+const CmdNftLookup = async ({argv}) => {
+
+  console.log("NFT - lookup", argv.addr, argv.token_id);
+
+  await Init();
+
+  var res = await elvlv.NftLookup({
+	addr: argv.addr,
+	tokenId: argv.token_id
   })
 
   console.log(yaml.dump(res));
@@ -223,6 +251,24 @@ yargs(hideBin(process.argv))
 
 		   })
 
+  .command('nft_add_minter <addr> <minter>',
+		   'Add a new or existing NFT contract to an NFT Template object', (yargs) => {
+			 yargs
+			   .positional('addr', {
+				 describe: 'NFT address (hex)',
+				 type: 'string'
+			   })
+			   .option('minter', {
+				 describe: "Minter or mint helper address (hex)",
+				 type: 'string'
+			   })
+		   }, (argv) => {
+
+			 CmfNftAddMintHelper({argv});
+
+		   })
+
+
   .command('nft_balance_of <addr> <owner>',
 		   'Call NFT ownerOf - determine if this is an owner', (yargs) => {
 			 yargs
@@ -249,6 +295,10 @@ yargs(hideBin(process.argv))
                })
                .option('check_minter', {
                  describe: 'Check that all NFTs use this mint helper',
+			   })
+               .option('show_owners', {
+				 describe: 'Show up to these many owners (default 0)',
+				 type: 'integer'
 			   })
 		   }, (argv) => {
 
@@ -295,6 +345,23 @@ yargs(hideBin(process.argv))
 		   }, (argv) => {
 
 			 CmdNftBuild({argv});
+
+		   })
+
+  .command('nft_lookup <addr> <token_id>',
+		   'Decode and look up a local NFT by external token ID', (yargs) => {
+			 yargs
+			   .positional('addr', {
+				 describe: 'Local NFT contract address',
+				 type: 'string'
+			   })
+			   .positional('token_id', {
+				 describe: 'External token ID',
+				 type: 'string' // BigNumber as string
+			   })
+		   }, (argv) => {
+
+			 CmdNftLookup({argv});
 
 		   })
 

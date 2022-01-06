@@ -5,6 +5,8 @@ const { Config } = require("./Config.js")
 const Ethers = require("ethers");
 const fs = require('fs');
 const path = require('path');
+const BigNumber = require('big-number');
+
 
 /**
  * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
@@ -297,16 +299,18 @@ class EluvioLive {
    */
   async SiteSetDrop({libraryId, objectId, uuid, start, end, endVote, startMint, newUuid, update}) {
 
+	const defaultStageDurationMin = 2;
+
 	// If stages are not specified use 2min for each
 	const startMsec = Date.parse(start);
 	if (!endVote || endVote == "") {
-	  endVote = new Date(startMsec + 2*60*1000);
+	  endVote = new Date(startMsec + defaultStageDurationMin*60*1000);
 	}
 	if (!startMint || startMint == "") {
-	  startMint = new Date(startMsec + 4*60*1000);
+	  startMint = new Date(startMsec + 2*defaultStageDurationMin*60*1000);
 	}
 	if (!end || end == "") {
-	  end = new Date(startMsec + 6*60*1000);
+	  end = new Date(startMsec + 3*defaultStageDurationMin*60*1000);
 	}
 
 	var dropInfo = {};
@@ -565,14 +569,31 @@ class EluvioLive {
 	  var tokenId = await this.client.CallContractMethod({
 		contractAddress: addr,
 		abi: JSON.parse(abi),
-		methodName: "balanceOf",
+		methodName: "tokenOfOwnerByIndex",
 		methodArgs: [
 		  ownerAddr,
 		  i
 		],
 		formatArguments: true
       });
-	  console.log("i: ", i, tokenId);
+	  console.log("i: ", i, tokenId.toString());
+
+	  var holdSecs = -1;
+	  var holdEnd;
+	  try {
+		holdSecs = await this.client.CallContractMethod({
+		  contractAddress: addr,
+		  abi: JSON.parse(abi),
+		  methodName: "_allTokensHolds",
+		  methodArgs: [tokenId],
+		  formatArguments: true
+		});
+		holdEnd = new Date(holdSecs * 1000);
+
+	  } catch(e) {
+	  }
+
+	  console.log(i, tokenId.toString(), "hold: ", holdSecs.toString(), holdEnd);
 
 	}
 	return res;
@@ -601,6 +622,20 @@ class EluvioLive {
 	  methodArgs: [tokenId],
 	  formatArguments: true
 	});
+
+	try {
+	  const ordinal = await this.client.CallContractMethod({
+		contractAddress: addr,
+		abi: JSON.parse(abi),
+		methodName: "ordinalOfToken",
+		methodArgs: [tokenId],
+		formatArguments: true
+	  });
+	tokenInfo.ordinal = ordinal.toString();
+	} catch (e) {
+	  tokenInfo.ordinal = -1;
+	  tokenInfo.warns.push("Failed to get ordinal: " + addr);
+	}
 
 	tokenInfo.tokenURI = await this.client.CallContractMethod({
 	  contractAddress: addr,
@@ -636,7 +671,7 @@ class EluvioLive {
    * @param {string} mintHelper - Warn if this is not a minter for the NFT contract
    * @return {Promise<Object>} - An object containing NFT info, including 'warnings'
    */
-  async NftShow({addr, mintHelper}) {
+  async NftShow({addr, mintHelper, showOwners}) {
 
 	const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
 	var nftInfo = {};
@@ -667,13 +702,18 @@ class EluvioLive {
       formatArguments: true
     });
 	nftInfo.totalSupply = Number(totalSupply);
-    const minted = await this.client.CallContractMethod({
-      contractAddress: addr,
-      abi: JSON.parse(abi),
-      methodName: "minted",
-      formatArguments: true
-    });
-	nftInfo.minted = Number(minted);
+
+    try {
+      const minted = await this.client.CallContractMethod({
+		contractAddress: addr,
+		abi: JSON.parse(abi),
+		methodName: "minted",
+		formatArguments: true
+      });
+      nftInfo.minted = Number(minted);
+    } catch(e) {
+	  nftInfo.minted = -1; // Older contract
+    }
     const cap = await this.client.CallContractMethod({
 	  contractAddress: addr,
 	  abi: JSON.parse(abi),
@@ -724,11 +764,11 @@ class EluvioLive {
 
 	nftInfo.tokens = [];
 
-	var showOwners = true;
-	var maxShowOwners = 2;
 	var maxWarnsTokenUri = 1;
 
-	if (showOwners) {
+	if (showOwners && showOwners > 0) {
+	  var maxShowOwners = showOwners;
+
 	  for (var i = 0; i < maxShowOwners && i < nftInfo.totalSupply; i ++) {
 
 		nftInfo.tokens[i] = {};
@@ -881,6 +921,8 @@ class EluvioLive {
 
   /**
    * Make the public/nft section based on asset metadata
+   * Prerequisites:
+   * - NFT contract set
    *
    * @namedParams
    * @param {Object} assetMetadata - The NFT Template asset metadata
@@ -894,9 +936,14 @@ class EluvioLive {
 	const m = assetMetadata;
 	var pnft = {};
 
+	/* Add this to description */
+	const addtlInfo = `
+
+Lookup NFT: https://wallet.contentfabric.io/lookup/`;
+
 	pnft.name = m.nft.name;
 	pnft.display_name = m.nft.display_name;
-	pnft.description = m.nft.description;
+	pnft.description = m.nft.description; // + addtlInfo;
 	pnft.edition_name = m.nft.edition_name;
 	pnft.rich_text = m.nft.rich_text;
 
@@ -914,6 +961,8 @@ class EluvioLive {
 	pnft.image = m.nft.image;
 	pnft.playable = m.nft.playable;
 
+	// pnft.addtl_info = addtlInfo;
+
 	pnft.attributes = [
       {
 		trait_type: "Creator",
@@ -921,7 +970,7 @@ class EluvioLive {
       },
       {
 		trait_type: "Total Minted Supply",
-		value: m.nft.total_supply
+		value: m.nft.total_supply.toString()
       },
       {
 		trait_type: "Content Fabric Hash",
@@ -1005,6 +1054,26 @@ class EluvioLive {
 	});
 
 	return f2;
+  }
+
+  /**
+   * Set the public/nft section based on asset metadata
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   * @return {Promise<Object>} - NFT info JSON
+   */
+  async NftLookup({
+	addr,
+	tokenId
+  }) {
+
+	console.log("tokenId", tokenId);
+
+	var x = new BigNumber(tokenId, 10);
+	console.log(x.toString(16));
+
   }
 
   /**
