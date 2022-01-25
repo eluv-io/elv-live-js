@@ -7,10 +7,21 @@ class Shuffler {
     /**
      * Shuffle an array using the Durstenfeld algorithm
      * @param a - An array of strings
+     * @param sort - First sort alphabetically if true, so the input order does not matter
      * @param seed - The order will always be the same for the given string; nil for a random seed
      * @returns {*} - The same array object, after shuffling
      */
-    static shuffle(a, seed) {
+    static shuffle(a, sort, seed) {
+        if (sort) a.sort()
+
+        let last = ""
+        for (let i in a) {
+            if (a[i] === "") throw "empty string not allowed"
+            // Duplicate check only works if sorted
+            if (last === a[i]) throw "duplicate lines found: " + last
+            last = a[i]
+        }
+
         let rng = seedrandom(seed);
         for (let i = a.length - 1; i > 0; i--) {
             let j = Math.floor(rng() * (i + 1))
@@ -33,7 +44,7 @@ class Shuffler {
             crlfDelay: Infinity
         })
         for await (const line of rl) {
-            a.push(line)
+            if (line.length > 0) a.push(line)
         }
         return a
     }
@@ -62,14 +73,15 @@ class Shuffler {
 
     /**
      * Shuffle the lines in a file, print the result, and write it back out
-     * to the result of shuffledPath
+     * to the result of shuffledPath()
      * @param f - The file path
-     * @param seed - The order will always be the same for the given string; nil for a random seed
+     * @param sort - see shuffle()
+     * @param seed - see shuffle()
      * @returns {Promise<*[]>} - The shuffled lines in an array
      */
-    static async shuffleFile(f, seed) {
+    static async shuffleFile(f, sort, seed) {
         let a = await Shuffler.readFileToArray(f)
-        Shuffler.shuffle(a, seed)
+        Shuffler.shuffle(a, sort, seed)
         Shuffler.writeArrayToFile(Shuffler.shuffledPath(f), a)
         return a
     }

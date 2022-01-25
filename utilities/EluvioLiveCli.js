@@ -7,7 +7,6 @@ const yargs = require('yargs/yargs')
 const { hideBin } = require('yargs/helpers')
 const yaml = require('js-yaml');
 
-
 var elvlv;
 
 const Init = async () => {
