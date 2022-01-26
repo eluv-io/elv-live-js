@@ -506,7 +506,7 @@ yargs(hideBin(process.argv))
 					type: 'string'
 				})
 				.option('seed', {
-					describe: 'Determines the order',
+					describe: 'Determines the order. If no seed is provided, the shuffler uses a random one.',
 					type: 'string'
 				})
 		}, (argv) => {
