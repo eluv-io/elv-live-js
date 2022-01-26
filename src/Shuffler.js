@@ -18,7 +18,7 @@ class Shuffler {
         for (let i in a) {
             if (a[i] === "") throw "empty string not allowed"
             // Duplicate check only works if sorted
-            if (last === a[i]) throw "duplicate lines found: " + last
+            //if (last === a[i]) throw "duplicate lines found: " + last
             last = a[i]
         }
 
