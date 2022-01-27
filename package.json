@@ -4,7 +4,8 @@
   "description": "Eluvio Live SDK and Tools",
   "main": "EluvioLive.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "test-one": "jest -t \"shuffle directory\""
   },
   "repository": {
     "type": "git",
