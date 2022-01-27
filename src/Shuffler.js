@@ -9,16 +9,18 @@ class Shuffler {
      * @param a - An array of strings
      * @param sort - First sort alphabetically if true, so the input order does not matter
      * @param seed - The order will always be the same for the given string; nil for a random seed
+     * @param check_dupes - Abort if duplicate is found
      * @returns {*} - The same array object, after shuffling
      */
-    static shuffle(a, sort, seed) {
+    static shuffle(a, sort, seed, check_dupes) {
+        if (check_dupes && !sort) throw "duplicate check requires sorting"
+
         if (sort) a.sort()
 
         let last = ""
         for (let i in a) {
             if (a[i] === "") throw "empty string not allowed"
-            // Duplicate check only works if sorted
-            //if (last === a[i]) throw "duplicate lines found: " + last
+            if (check_dupes && last === a[i]) throw "duplicate lines found: " + last
             last = a[i]
         }
 
@@ -77,11 +79,12 @@ class Shuffler {
      * @param f - The file path
      * @param sort - see shuffle()
      * @param seed - see shuffle()
+     * @param check_dupes see shuffle()
      * @returns {Promise<*[]>} - The shuffled lines in an array
      */
-    static async shuffleFile(f, sort, seed) {
+    static async shuffleFile(f, sort, seed, check_dupes) {
         let a = await Shuffler.readFileToArray(f)
-        Shuffler.shuffle(a, sort, seed)
+        Shuffler.shuffle(a, sort, seed, check_dupes)
         Shuffler.writeArrayToFile(Shuffler.shuffledPath(f), a)
         return a
     }

@@ -1,20 +1,10 @@
 const {Shuffler} = require("./Shuffler")
+const th = require("../test/TestHelpers");
 
-const crypto = require("crypto")
 const fs = require("fs")
-const os = require("os")
-const path = require("path")
-
-function writeTestFile() {
-    let d = "1\n2\n3\n4\n\n5\n" // Test with extra newline
-    let f = path.join(os.tmpdir(), crypto.randomUUID())
-    console.log("writing test file", f)
-    fs.writeFileSync(f, d)
-    return f
-}
 
 test("read file", async () => {
-    let f = writeTestFile()
+    let f = th.writeTestFile()
     let a = await Shuffler.readFileToArray(f)
     expect(a).toEqual(["1", "2", "3", "4", "5"])
     fs.rmSync(f)
@@ -38,11 +28,15 @@ test("shuffle sort", () => {
     expect(a).toEqual(["3", "1", "5", "4", "2"])
 })
 
-test.skip("shuffle duplicate", () => {
-    let c = ["1", "2", "3", "4", "5", "3"]
+test("shuffle duplicate", () => {
+    let a = ["1", "2", "3", "4", "5", "3"]
     expect(() => {
-        Shuffler.shuffle(c, true, "lukeisbad")
+        Shuffler.shuffle(a, true, "lukeisbad", true)
     }).toThrow()
+
+    let b = ["1", "2", "3", "4", "5", "3"]
+    Shuffler.shuffle(b, true, "lukeisbad", false)
+    expect(b).toEqual(["5", "1", "3", "2", "4", "3"])
 })
 
 test("shuffle empty", () => {
@@ -83,8 +77,8 @@ test("shuffle 10000 times", () => {
 })
 
 test("shuffle file", async () => {
-    let f = writeTestFile()
-    let a = await Shuffler.shuffleFile(f, true, "lukeisbad")
+    let f = th.writeTestFile()
+    let a = await Shuffler.shuffleFile(f, true, "lukeisbad", false)
     expect(a).toEqual(["3", "1", "5", "4", "2"])
 
     let fo = Shuffler.shuffledPath(f)

@@ -7,6 +7,9 @@ const yargs = require('yargs/yargs')
 const { hideBin } = require('yargs/helpers')
 const yaml = require('js-yaml');
 
+const fs = require("fs")
+const path = require("path")
+
 var elvlv;
 
 const Init = async () => {
@@ -202,8 +205,34 @@ const CmdTenantBalanceOf = async ({argv}) => {
 }
 
 const CmdShuffle = async ({argv}) => {
-	let a = await Shuffler.shuffleFile(argv.file, true, argv.seed)
-	console.log(a)
+	try {
+		let files = [argv.file]
+		let isDir = fs.lstatSync(argv.file).isDirectory()
+		if (isDir) {
+			files = fs.readdirSync(argv.file)
+			files.forEach((f, i) => {
+				files[i] = path.join(argv.file, f)
+			})
+		}
+
+		for (let f of files) {
+			console.log("\n" + Shuffler.shuffledPath(f) + ":")
+
+			let a = await Shuffler.shuffleFile(
+				f, true, argv.seed, argv.check_dupes)
+
+			if (argv.print_js) {
+				console.log(a)
+			} else {
+				a.forEach((line) => {
+					console.log(line)
+				})
+			}
+		}
+		console.log("")
+	} catch (e) {
+		console.error("ERROR:", e)
+	}
 }
 
 yargs(hideBin(process.argv))
@@ -502,12 +531,20 @@ yargs(hideBin(process.argv))
 		'Sort each line deterministically based on the seed', (yargs) => {
 			yargs
 				.positional('file', {
-					describe: 'File path',
+					describe: 'File or directory path',
 					type: 'string'
 				})
 				.option('seed', {
 					describe: 'Determines the order. If no seed is provided, the shuffler uses a random one.',
 					type: 'string'
+				})
+				.option('check_dupes', {
+					describe: 'Abort if duplicate is found',
+					type: 'boolean'
+				})
+				.option('print_js', {
+					describe: 'Print result as an array in JavaScript',
+					type: 'boolean'
 				})
 		}, (argv) => {
 			CmdShuffle({argv});
@@ -518,3 +555,6 @@ yargs(hideBin(process.argv))
   .scriptName('')
   .demandCommand(1)
   .argv
+
+// For unit testing
+exports.CmdShuffle = CmdShuffle
