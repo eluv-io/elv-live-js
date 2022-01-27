@@ -202,7 +202,7 @@ const CmdTenantBalanceOf = async ({argv}) => {
 }
 
 const CmdShuffle = async ({argv}) => {
-	let a = await Shuffler.shuffleFile(argv.file, argv.seed)
+	let a = await Shuffler.shuffleFile(argv.file, true, argv.seed)
 	console.log(a)
 }
 
