@@ -1,6 +1,7 @@
 const { ElvClient } = require("elv-client-js")
 const { EluvioLive } = require("../src/EluvioLive.js")
 const { Config } = require("../src/Config.js")
+const {Shuffler} = require("../src/Shuffler")
 
 const yargs = require('yargs/yargs')
 const { hideBin } = require('yargs/helpers')
@@ -198,6 +199,11 @@ const CmdTenantBalanceOf = async ({argv}) => {
   })
 
   console.log(yaml.dump(res));
+}
+
+const CmdShuffle = async ({argv}) => {
+	let a = await Shuffler.shuffleFile(argv.file, argv.seed)
+	console.log(a)
 }
 
 yargs(hideBin(process.argv))
@@ -491,6 +497,21 @@ yargs(hideBin(process.argv))
 			 CmdSiteSetDrop({argv});
 
 		   })
+
+	.command('shuffle <file> [options]',
+		'Sort each line deterministically based on the seed', (yargs) => {
+			yargs
+				.positional('file', {
+					describe: 'File path',
+					type: 'string'
+				})
+				.option('seed', {
+					describe: 'Determines the order. If no seed is provided, the shuffler uses a random one.',
+					type: 'string'
+				})
+		}, (argv) => {
+			CmdShuffle({argv});
+		})
 
   .help()
   .usage('EluvioLive CLI\n\nUsage: elv-live <command>')
