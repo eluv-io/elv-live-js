@@ -187,11 +187,11 @@ const CmdSiteSetDrop = async ({argv}) => {
 
 const CmdTenantBalanceOf = async ({argv}) => {
 
-  console.log("Tenant - balanceOf", argv.tenant, argv.ownerAddr);
+  console.log("Tenant - balanceOf", argv.tenant, argv.owner);
 
   await Init();
 
-  var res = await elvlv.TenantShow({
+  var res = await elvlv.TenantBalanceOf({
 	tenantId: argv.tenant,
 	libraryId: argv.library,
 	objectId: argv.object,
@@ -395,7 +395,7 @@ yargs(hideBin(process.argv))
 				 type: 'string'
 			   })
 			   .option('check_cauth', {
-				 describe: 'Check that all NFTs use this cauth ID',
+				 describe: 'Check that all NFTs use this minter address in ikms format',
 				 type: 'string'
 			   })
 			   .option('check_minter', {

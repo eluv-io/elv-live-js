@@ -123,6 +123,7 @@ class EluvioLive {
 		  tenantInfo.marketplaces[key].items[sku].proxy = nftInfo.proxy;
 		  tenantInfo.marketplaces[key].items[sku].firstTokenUri = nftInfo.firstTokenUri;
 		  tenantInfo.marketplaces[key].items[sku].defHoldSecs = nftInfo.defHoldSecs;
+
 		  if (nftInfo.cap != item.nft_template.nft.total_supply) {
 			warns.push("NFT cap mismatch sku: " + sku);
 		  }
@@ -165,7 +166,7 @@ class EluvioLive {
 	  libraryId,
 	  objectId,
 	  metadataSubtree: "/public/asset_metadata",
-	  select: "",
+	  select: "marketplaces",
 	  resolveLinks: true,
 	  resolveIncludeSource: true,
 	  resolveIgnoreError: true,
@@ -191,6 +192,10 @@ class EluvioLive {
 
 		const nftAddr = item.nft_template.nft.address;
 
+		const b = await this.NftBalanceOf({addr: nftAddr, ownerAddr});
+		if (Object.keys(b).length > 0) {
+		  nftInfo.marketplaces[key].nfts[nftAddr] = b;
+		}
 	  }
 	}
 
@@ -553,6 +558,7 @@ class EluvioLive {
    */
   async NftBalanceOf({addr, ownerAddr}) {
 
+	var balance = {};
     const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
     var res = await this.client.CallContractMethod({
       contractAddress: addr,
@@ -576,7 +582,6 @@ class EluvioLive {
 		],
 		formatArguments: true
       });
-	  console.log("i: ", i, tokenId.toString());
 
 	  var holdSecs = -1;
 	  var holdEnd;
@@ -593,10 +598,9 @@ class EluvioLive {
 	  } catch(e) {
 	  }
 
-	  console.log(i, tokenId.toString(), "hold: ", holdSecs.toString(), holdEnd);
-
+	  balance[tokenId.toString()] = {hold: holdSecs.toString(), holdEnd: holdEnd};
 	}
-	return res;
+	return balance;
   }
 
   /**
