@@ -24,6 +24,7 @@
   "dependencies": {
     "big-number": "^2.0.0",
     "elv-client-js": "git+https://github.com/eluv-io/elv-client-js.git#develop",
+    "ethers": "^5.5.4",
     "fraction.js": "^4.1.1",
     "got": "^11.8.2",
     "js-yaml": "^3.14.1",
