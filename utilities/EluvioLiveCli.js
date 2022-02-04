@@ -187,13 +187,14 @@ const CmdSiteSetDrop = async ({argv}) => {
 
 const CmdTenantBalanceOf = async ({argv}) => {
 
-  console.log("Tenant - balance of", argv.tenant, argv.owner);
+  console.log("Tenant - balance of", argv.tenant, argv.owner, argv.max_results);
 
   await Init();
 
   var res = await elvlv.TenantBalanceOf({
 		tenantId: argv.tenant,
-		ownerAddr: argv.owner
+		ownerAddr: argv.owner,
+		maxNumber: argv.max_results
   })
 
   console.log(yaml.dump(res));

@@ -223,7 +223,8 @@ class EluvioLive {
 		var nftInfo = {};
 		nftInfo.nfts = {};
 
-		for(var i = 0; i < maxNumber; i++){
+		var num = 0;
+		for(var i = 0; i < Number.MAX_SAFE_INTEGER && num < maxNumber; i++){
 			var ordinal = BigNumber(i).toString(16);
 			try {
 				var nftAddr = await this.client.CallContractMethod({
@@ -244,9 +245,11 @@ class EluvioLive {
 				}
 				const nft = await this.NftShow({addr: nftAddr});
 				
-				nftInfo.nfts[nftAddr] = nft
+				nftInfo.nfts[nftAddr] = nft;
+				num++;
 			}catch(e){
 				//We don't know the length so just stop on error and return
+				console.log(e);
 				break;
 			}
 		}
