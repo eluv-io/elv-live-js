@@ -186,11 +186,14 @@ class EluvioLive {
 			}
 
 			const nftAddr = item.nft_template.nft.address;
-			const info = await this.NftBalanceOf({addr:nftAddr, ownerAddr})
+			const info = await this.NftBalanceOf({addr:nftAddr, ownerAddr});
+
+			if(info.isZero()){
+				continue;
+			}
 			const nft = await this.NftShow({addr: nftAddr});
 			
 			nftInfo.marketplaces[key].nfts[nftAddr] = nft
-
 			}
 		}
 
@@ -209,36 +212,44 @@ class EluvioLive {
    * @param {string} ownerAddr - A user address to check the balance of
    * @return {Promise<Object>} - Number of tokens owned
    */
-	 async TenantBalanceOf({tenantId, ownerAddr}) {
-
+	 async TenantBalanceOf({tenantId, ownerAddr, maxNumber=Number.MAX_SAFE_INTEGER}) {
+		if(maxNumber < 1){
+			maxNumber = Number.MAX_SAFE_INTEGER
+		}
 		const abiTenant = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
 		const tenantAddr = Utils.HashToAddress(tenantId);
-		console.log("tenantAddr ",tenantAddr);
-
 		var arg = 'tenant_nfts';
-		console.log('arg',arg);
+
 		var nftInfo = {};
+		nftInfo.nfts = {};
 
-		//TODO:
-		//Cycle through each ordinal and save the nft address until it gives an error.
-		//We don't have a length.
+		for(var i = 0; i < maxNumber; i++){
+			var ordinal = BigNumber(i).toString(16);
+			try {
+				var nftAddr = await this.client.CallContractMethod({
+					contractAddress: tenantAddr,
+					abi: JSON.parse(abiTenant),
+					methodName: "groupsMapping",
+					methodArgs: [
+						arg,
+						ordinal
+					],
+					formatArguments: true
+				});
 
-		var ordinal = BigNumber(0).toString(16);
-		console.log('ordinal',ordinal);
-		//FIXME:
-		//This call gives 'invalid hash' error
-    var res = await this.client.CallContractMethodAndWait({
-      contractAddress: tenantAddr,
-			abi: JSON.parse(abiTenant),
-			methodName: "groupsMapping",
-			methodArgs: [
-        arg,
-				ordinal
-      ],
-			formatArguments: true
-    });
+				const info = await this.NftBalanceOf({addr:nftAddr, ownerAddr});
 
-		console.log("groupingsMap ", res);
+				if(info.isZero()){
+					continue;
+				}
+				const nft = await this.NftShow({addr: nftAddr});
+				
+				nftInfo.nfts[nftAddr] = nft
+			}catch(e){
+				//We don't know the length so just stop on error and return
+				break;
+			}
+		}
 
 		return nftInfo;
 	}

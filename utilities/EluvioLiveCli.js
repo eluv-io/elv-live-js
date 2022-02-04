@@ -192,8 +192,8 @@ const CmdTenantBalanceOf = async ({argv}) => {
   await Init();
 
   var res = await elvlv.TenantBalanceOf({
-	tenantId: argv.tenant,
-	ownerAddr: argv.owner
+		tenantId: argv.tenant,
+		ownerAddr: argv.owner
   })
 
   console.log(yaml.dump(res));
@@ -425,20 +425,12 @@ yargs(hideBin(process.argv))
 		   'Show NFTs owned by this owner in this tenant', (yargs) => {
 			 yargs
 			   .positional('tenant', {
-				 describe: 'Tenant ID',
-				 type: 'string'
+						describe: 'Tenant ID',
+						type: 'string'
 			   })
-			   .positional('library', {
-				 describe: 'Tenant-level EluvioLive library',
-				 type: 'string'
-			   })
-			   .positional('object', {
-				 describe: 'Tenant-level EluvioLive object ID',
-				 type: 'string'
-			   })
-			   .option('owner', {
-				 describe: 'Owner address (hex)',
-				 type: 'string'
+			   .positional('owner', {
+						describe: 'Owner address (hex)',
+						type: 'string'
 			   })
 		   }, (argv) => {
 
@@ -447,16 +439,20 @@ yargs(hideBin(process.argv))
 		   })
 
 	.command('fabric_tenant_balance_of <object> <owner>',
-		   'Show NFTs owned by this owner in this tenant', (yargs) => {
-			 yargs
-			   .positional('object', {
-				 describe: 'Tenant-level EluvioLive object ID',
-				 type: 'string'
-			   })
-			   .option('owner', {
-				 describe: 'Owner address (hex)',
-				 type: 'string'
-			   })
+		  'Show NFTs owned by this owner in this tenant', (yargs) => {
+			yargs
+				.positional('object', {
+					describe: 'Tenant-level EluvioLive object ID',
+					type: 'string'
+				})
+				.positional('owner', {
+					describe: 'Owner address (hex)',
+					type: 'string'
+				})
+				.option('max_results', {
+					describe: 'Show up to these many results (default 0)',
+					type: 'integer'
+				})
 		   }, (argv) => {
 
 			 CmdFabricTenantBalanceOf({argv});
