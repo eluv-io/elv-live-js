@@ -4,7 +4,9 @@
   "description": "Eluvio Live SDK and Tools",
   "main": "EluvioLive.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "lint": "./node_modules/.bin/eslint \"src/*.js\" \"utilities/*.js\" --fix",
+    "lint-docs": "./node_modules/.bin/eslint \"vendor/elv-jsdoc-template/tmpl/*.tmpl\" \"vendor/elv-jsdoc-template/**/*.js\" --fix"
   },
   "repository": {
     "type": "git",

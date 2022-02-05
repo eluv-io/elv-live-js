@@ -1,0 +1,60 @@
+{
+  "env": {
+    "browser": true,
+    "commonjs": true,
+    "es6": true
+  },
+  "extends": "eslint:recommended",
+  "parserOptions": {
+    "ecmaVersion": 2018
+  },
+  "plugins": ["html"],
+  "settings": {
+    "html/html-extensions": [".tmpl"],
+    "html/xml-extensions": [".tmpl"],
+    "html/indent": "+2",
+    "html/report-bad-indent": "error"
+  },
+  "rules": {
+    "indent": [
+      "error",
+      2,
+      {
+        "SwitchCase": 1,
+        "ignoredNodes": ["TemplateLiteral"]
+      }
+    ],
+    "keyword-spacing": [
+      "warn", {
+        "before": true,
+        "after": true,
+        "overrides": {
+          "if": { "after": false },
+          "for": { "after": false },
+          "switch": { "after": false },
+          "while": { "after": false },
+          "catch": { "after": false }
+        }
+      }],
+    "linebreak-style": [
+      "error",
+      "unix"
+    ],
+    "no-undef": "off",
+    "no-case-declarations": "off",
+    "quotes": [
+      "error",
+      "double"
+    ],
+    "semi": [
+      "error",
+      "always"
+    ]
+  },
+  "overrides": [{
+    "files": [ "test/**/*.js"],
+    "rules": {
+      "no-console": "off"
+    }
+  }]
+}

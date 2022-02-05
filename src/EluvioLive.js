@@ -1,11 +1,11 @@
-const { ElvClient } = require("elv-client-js")
-const Utils = require("elv-client-js/src/Utils.js")
-const { Config } = require("./Config.js")
+const { ElvClient } = require("elv-client-js");
+const Utils = require("elv-client-js/src/Utils.js");
+const { Config } = require("./Config.js");
 
 const Ethers = require("ethers");
-const fs = require('fs');
-const path = require('path');
-const BigNumber = require('big-number');
+const fs = require("fs");
+const path = require("path");
+const BigNumber = require("big-number");
 
 
 /**
@@ -27,27 +27,27 @@ class EluvioLive {
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
   constructor({
-	configUrl,
-	mainObjectId,
-	tenantObjectId
+    configUrl,
+    mainObjectId,
+    tenantObjectId
   }) {
 
     this.configUrl = configUrl || ElvClient.main;
-	this.mainObjectId = mainObjectId;
+    this.mainObjectId = mainObjectId;
 
     this.debug = false;
   }
 
   async Init() {
-	this.client = await ElvClient.FromConfigurationUrl({
+    this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl
     });
-	let wallet = this.client.GenerateWallet();
+    let wallet = this.client.GenerateWallet();
     let signer = wallet.AddAccount({
       privateKey: process.env.PRIVATE_KEY
     });
     this.client.SetSigner({signer});
-	this.client.ToggleLogging(false);
+    this.client.ToggleLogging(false);
   }
 
   /**
@@ -66,12 +66,12 @@ class EluvioLive {
    */
   async TenantShow({tenantId, libraryId, objectId, eventId, marketplaceId, cauth, mintHelper}) {
 
-	const abiNft = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
-	const abiTenant = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
+    const abiNft = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
+    const abiTenant = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
 
-	var tenantInfo = {};
+    var tenantInfo = {};
 
-	var m = await this.client.ContentObjectMetadata({
+    var m = await this.client.ContentObjectMetadata({
 	  libraryId,
 	  objectId,
 	  metadataSubtree: "/public/asset_metadata",
@@ -79,40 +79,40 @@ class EluvioLive {
 	  resolveIncludeSource: true,
 	  resolveIgnoreErrors: true,
 	  linkDepthLimit: 5
-	});
+    });
 
-	tenantInfo.marketplaces = {};
-	var warns = [];
+    tenantInfo.marketplaces = {};
+    var warns = [];
 
-	for (var key in m.marketplaces) {
+    for(var key in m.marketplaces) {
 	  tenantInfo.marketplaces[key] = {};
 	  tenantInfo.marketplaces[key].items = {};
-	  for (var i in m.marketplaces[key].info.items) {
+	  for(var i in m.marketplaces[key].info.items) {
 
-		const item = m.marketplaces[key].info.items[i];
+        const item = m.marketplaces[key].info.items[i];
 
-		const sku = item.sku;
+        const sku = item.sku;
 
-		if (item.nft_template == "") {
+        if(item.nft_template == "") {
 		  warns.push("No NFT Template sku: " + sku);
 		  continue;
-		}
+        }
 
-		tenantInfo.marketplaces[key].items[sku] = {};
-		tenantInfo.marketplaces[key].items[sku].name = item.name;
-		tenantInfo.marketplaces[key].items[sku].description = item.description;
-		tenantInfo.marketplaces[key].items[sku].mint_cauth = item.nft_template.mint.cauth_id;
-		tenantInfo.marketplaces[key].items[sku].nft_addr = item.nft_template.nft.address;
-		tenantInfo.marketplaces[key].items[sku].templateTotalSupply = item.nft_template.nft.total_supply;
-		tenantInfo.marketplaces[key].items[sku].nft_template = item.nft_template["."].source;
+        tenantInfo.marketplaces[key].items[sku] = {};
+        tenantInfo.marketplaces[key].items[sku].name = item.name;
+        tenantInfo.marketplaces[key].items[sku].description = item.description;
+        tenantInfo.marketplaces[key].items[sku].mint_cauth = item.nft_template.mint.cauth_id;
+        tenantInfo.marketplaces[key].items[sku].nft_addr = item.nft_template.nft.address;
+        tenantInfo.marketplaces[key].items[sku].templateTotalSupply = item.nft_template.nft.total_supply;
+        tenantInfo.marketplaces[key].items[sku].nft_template = item.nft_template["."].source;
 
-		if (cauth && cauth != item.nft_template.mint.cauth_id) {
+        if(cauth && cauth != item.nft_template.mint.cauth_id) {
 		  warns.push("Wrong cauth_id sku: " + sku);
-		}
+        }
 
-		if (item.nft_template.nft.address === "") {
+        if(item.nft_template.nft.address === "") {
 		  warns.push("No NFT address sku: " + sku);
-		} else {
+        } else {
 		  // Check NFT contract parameters
 		  const nftInfo = await this.NftShow({addr: item.nft_template.nft.address, mintHelper});
 		  tenantInfo.marketplaces[key].items[sku].nftCap = nftInfo.cap;
@@ -124,23 +124,23 @@ class EluvioLive {
 		  tenantInfo.marketplaces[key].items[sku].firstTokenUri = nftInfo.firstTokenUri;
 		  tenantInfo.marketplaces[key].items[sku].defHoldSecs = nftInfo.defHoldSecs;
 
-		  if (nftInfo.cap != item.nft_template.nft.total_supply) {
-			warns.push("NFT cap mismatch sku: " + sku);
+		  if(nftInfo.cap != item.nft_template.nft.total_supply) {
+            warns.push("NFT cap mismatch sku: " + sku);
 		  }
-		  if (nftInfo.proxyInfo != null && (nftInfo.owner != nftInfo.proxyInfo.owner)) {
-			warns.push("NFT owner not proxy owner: " + sku);
+		  if(nftInfo.proxyInfo != null && (nftInfo.owner != nftInfo.proxyInfo.owner)) {
+            warns.push("NFT owner not proxy owner: " + sku);
 		  }
-		  if (nftInfo.warns.length > 0) {
-			warns.push(...nftInfo.warns);
+		  if(nftInfo.warns.length > 0) {
+            warns.push(...nftInfo.warns);
 		  }
-		}
+        }
 	  }
-	}
+    }
 
-	tenantInfo.sites = {};
-	tenantInfo.warns = warns;
+    tenantInfo.sites = {};
+    tenantInfo.warns = warns;
 
-	return tenantInfo;
+    return tenantInfo;
 
   }
 
@@ -157,12 +157,12 @@ class EluvioLive {
    */
   async TenantBalanceOf({tenantId, libraryId, objectId, ownerAddr}) {
 
-	const abiNft = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
-	const abiTenant = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
+    const abiNft = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
+    const abiTenant = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
 
-	var nftInfo = {};
+    var nftInfo = {};
 
-	var m = await this.client.ContentObjectMetadata({
+    var m = await this.client.ContentObjectMetadata({
 	  libraryId,
 	  objectId,
 	  metadataSubtree: "/public/asset_metadata",
@@ -171,37 +171,37 @@ class EluvioLive {
 	  resolveIncludeSource: true,
 	  resolveIgnoreError: true,
 	  linkDepthLimit: 5
-	});
+    });
 
-	nftInfo.marketplaces = {};
-	var warns = [];
+    nftInfo.marketplaces = {};
+    var warns = [];
 
-	for (var key in m.marketplaces) {
+    for(var key in m.marketplaces) {
 	  nftInfo.marketplaces[key] = {};
 	  nftInfo.marketplaces[key].nfts = {};
-	  for (var i in m.marketplaces[key].info.items) {
+	  for(var i in m.marketplaces[key].info.items) {
 
-		const item = m.marketplaces[key].info.items[i];
+        const item = m.marketplaces[key].info.items[i];
 
-		const sku = item.sku;
+        const sku = item.sku;
 
-		if (item.nft_template == "") {
+        if(item.nft_template == "") {
 		  warns.push("No NFT Template sku: " + sku);
 		  continue;
-		}
+        }
 
-		const nftAddr = item.nft_template.nft.address;
+        const nftAddr = item.nft_template.nft.address;
 
-		const b = await this.NftBalanceOf({addr: nftAddr, ownerAddr});
-		if (Object.keys(b).length > 0) {
+        const b = await this.NftBalanceOf({addr: nftAddr, ownerAddr});
+        if(Object.keys(b).length > 0) {
 		  nftInfo.marketplaces[key].nfts[nftAddr] = b;
-		}
+        }
 	  }
-	}
+    }
 
-	nftInfo.warns = warns;
+    nftInfo.warns = warns;
 
-	return nftInfo;
+    return nftInfo;
   }
 
   /**
@@ -215,7 +215,7 @@ class EluvioLive {
 
     const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
 
-	const addr = Utils.HashToAddress(tenantId);
+    const addr = Utils.HashToAddress(tenantId);
 
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: addr,
@@ -223,7 +223,7 @@ class EluvioLive {
       methodName: "addGroup",
       methodArgs: [
         "tenant_nfts",
-		nftAddr
+        nftAddr
       ],
       formatArguments: true
     });
@@ -239,9 +239,9 @@ class EluvioLive {
    */
   async SiteShow({libraryId, objectId}) {
 
-	var siteInfo = {};
+    var siteInfo = {};
 
-	var m = await this.client.ContentObjectMetadata({
+    var m = await this.client.ContentObjectMetadata({
 	  libraryId,
 	  objectId,
 	  metadataSubtree: "/public/asset_metadata",
@@ -250,10 +250,10 @@ class EluvioLive {
 	  resolveIncludeSource: true,
 	  resolveIgnoreError: true,
 	  linkDepthLimit: 5
-	});
+    });
 
-	siteInfo.drops = {};
-	for (var key in m.info.drops) {
+    siteInfo.drops = {};
+    for(var key in m.info.drops) {
 	  const drop = m.info.drops[key];
 	  const uuid = drop.uuid;
 
@@ -278,13 +278,13 @@ class EluvioLive {
 	  siteInfo.drops[uuid].stages["mint_start"].start_date = drop.event_state_mint_start.start_date;
 
 	  siteInfo.drops[uuid].nfts = {};
-	  for (var i in drop.nfts) {
-		const nft = drop.nfts[i];
-		siteInfo.drops[uuid].nfts[nft.sku] = nft.label;
+	  for(var i in drop.nfts) {
+        const nft = drop.nfts[i];
+        siteInfo.drops[uuid].nfts[nft.sku] = nft.label;
 	  }
-	}
+    }
 
-	return siteInfo;
+    return siteInfo;
   }
 
   /**
@@ -304,105 +304,105 @@ class EluvioLive {
    */
   async SiteSetDrop({libraryId, objectId, uuid, start, end, endVote, startMint, newUuid, update}) {
 
-	const defaultStageDurationMin = 2;
+    const defaultStageDurationMin = 2;
 
-	// If stages are not specified use 2min for each
-	const startMsec = Date.parse(start);
-	if (!endVote || endVote == "") {
+    // If stages are not specified use 2min for each
+    const startMsec = Date.parse(start);
+    if(!endVote || endVote == "") {
 	  endVote = new Date(startMsec + defaultStageDurationMin*60*1000);
-	}
-	if (!startMint || startMint == "") {
+    }
+    if(!startMint || startMint == "") {
 	  startMint = new Date(startMsec + 2*defaultStageDurationMin*60*1000);
-	}
-	if (!end || end == "") {
+    }
+    if(!end || end == "") {
 	  end = new Date(startMsec + 3*defaultStageDurationMin*60*1000);
-	}
+    }
 
-	var dropInfo = {};
+    var dropInfo = {};
 
-	var m = await this.client.ContentObjectMetadata({
+    var m = await this.client.ContentObjectMetadata({
 	  libraryId,
 	  objectId,
 	  metadataSubtree: "/public/asset_metadata",
 	  resolveLinks: false
-	});
+    });
 
-	var found = false;
-	for (var key in m.info.drops) {
+    var found = false;
+    for(var key in m.info.drops) {
 	  const drop = m.info.drops[key];
 	  const dropUuid = drop.uuid;
 
-	  if (dropUuid.slice(0, 22) == uuid) {
-		console.log("Found drop uuid: ", uuid);
-		console.log(drop);
-		found = true;
+	  if(dropUuid.slice(0, 22) == uuid) {
+        console.log("Found drop uuid: ", uuid);
+        console.log(drop);
+        found = true;
 
-		drop.start_date = start;
-		drop.end_date = end;
-		drop.event_state_preroll.start_date = "";
-		drop.event_state_main.start_date = start;
-		drop.event_state_post_vote.start_date = endVote;
-		drop.event_state_mint_start.start_date = startMint;
-		drop.event_state_event_end.start_date = end;
+        drop.start_date = start;
+        drop.end_date = end;
+        drop.event_state_preroll.start_date = "";
+        drop.event_state_main.start_date = start;
+        drop.event_state_post_vote.start_date = endVote;
+        drop.event_state_mint_start.start_date = startMint;
+        drop.event_state_event_end.start_date = end;
 
-		dropInfo.start = start;
-		dropInfo.end = end;
-		dropInfo.endVote = endVote;
-		dropInfo.startMint = startMint;
+        dropInfo.start = start;
+        dropInfo.end = end;
+        dropInfo.endVote = endVote;
+        dropInfo.startMint = startMint;
 
-		if (newUuid) {
+        if(newUuid) {
 		  drop.uuid = uuid.slice(0, 22) + (startMsec / 1000);
-		}
-		dropInfo.uuid = drop.uuid;
+        }
+        dropInfo.uuid = drop.uuid;
 
-		// Set new metadata
-		m.info.drops[key] = drop;
+        // Set new metadata
+        m.info.drops[key] = drop;
 
-		const dryRun = false;
-		if (!dryRun) {
+        const dryRun = false;
+        if(!dryRun) {
 		  var e = await this.client.EditContentObject({
-			libraryId,
-			objectId
+            libraryId,
+            objectId
 		  });
 
 		  await this.client.ReplaceMetadata({
-			libraryId,
-			objectId,
-			writeToken: e.write_token,
-			metadataSubtree: "/public/asset_metadata",
-			metadata: m
+            libraryId,
+            objectId,
+            writeToken: e.write_token,
+            metadataSubtree: "/public/asset_metadata",
+            metadata: m
 		  });
 
 		  var f = await this.client.FinalizeContentObject({
-			libraryId,
-			objectId,
-			writeToken: e.write_token,
-			commitMessage: "Set drop start " + uuid + " " + start
+            libraryId,
+            objectId,
+            writeToken: e.write_token,
+            commitMessage: "Set drop start " + uuid + " " + start
 		  });
 
 		  dropInfo.hash = f.hash;
 		  console.log("Finalized: ", f);
 
-		  if (update != null && update != "") {
-			await this.client.UpdateContentObjectGraph({
+		  if(update != null && update != "") {
+            await this.client.UpdateContentObjectGraph({
 			  libraryId,
 			  objectId: update
-			});
-			console.log("Update ", update);
+            });
+            console.log("Update ", update);
 		  }
-		} else {
+        } else {
 		  console.log("New drop:", drop);
 		  console.log("New metadata:", m);
-		}
-		break;
+        }
+        break;
 	  }
-	}
+    }
 
-	if (!found) {
+    if(!found) {
 	  console.log("Drop not found - uuid: ", uuid);
-	}
+    }
 
-	return dropInfo;
+    return dropInfo;
   }
 
   /**
@@ -425,55 +425,55 @@ class EluvioLive {
    * @return {Promise<Object>} - New contract address
    */
   async CreateNftContract({
-	tenantId,
-	mintHelperAddr,
-	minterAddr,
-	collectionName,
-	collectionSymbol,
-	contractUri,
-	proxyAddress,
-	totalSupply, /* PENDING: should be 'cap' */
-	hold
+    tenantId,
+    mintHelperAddr,
+    minterAddr,
+    collectionName,
+    collectionSymbol,
+    contractUri,
+    proxyAddress,
+    totalSupply, /* PENDING: should be 'cap' */
+    hold
   }) {
 
-	const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
-	const bytecode = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.bin"));
+    const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
+    const bytecode = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.bin"));
 
-	if (proxyAddress == null || proxyAddress == "") {
+    if(proxyAddress == null || proxyAddress == "") {
 	  proxyAddress = await this.CreateNftTransferProxy({});
-	}
-	console.log("TransferProxy addr:", proxyAddress);
+    }
+    console.log("TransferProxy addr:", proxyAddress);
 
-	if (hold == null || hold == 0) {
+    if(hold == null || hold == 0) {
 	  hold = 604800;
-	}
+    }
 
-	var c = await this.client.DeployContract({
+    var c = await this.client.DeployContract({
 	  abi: JSON.parse(abistr),
-	  bytecode: bytecode.toString('utf8').replace('\n', ''),
+	  bytecode: bytecode.toString("utf8").replace("\n", ""),
 	  constructorArgs: [
-		collectionName,
-		collectionSymbol,
-		contractUri || "",
-		proxyAddress,
-		0,
-		totalSupply, /* this is the 'cap' */
-		hold
+        collectionName,
+        collectionSymbol,
+        contractUri || "",
+        proxyAddress,
+        0,
+        totalSupply, /* this is the 'cap' */
+        hold
 	  ]
-	});
+    });
 
-	console.log("NFT contract address:", c.contractAddress);
+    console.log("NFT contract address:", c.contractAddress);
 
-	await this.NftAddMinter({addr: c.contractAddress, minterAddr:mintHelperAddr});
-	console.log("- mint helper added", mintHelperAddr);
+    await this.NftAddMinter({addr: c.contractAddress, minterAddr:mintHelperAddr});
+    console.log("- mint helper added", mintHelperAddr);
 
-	await this.NftAddMinter({addr: c.contractAddress, minterAddr: minterAddr});
-	console.log("- minter added", minterAddr);
+    await this.NftAddMinter({addr: c.contractAddress, minterAddr: minterAddr});
+    console.log("- minter added", minterAddr);
 
-	await this.TenantAddNft({tenantId, nftAddr: c.contractAddress});
-	console.log("- tenant_nfts added", tenantId);
+    await this.TenantAddNft({tenantId, nftAddr: c.contractAddress});
+    console.log("- tenant_nfts added", tenantId);
 
-	return c.contractAddress;
+    return c.contractAddress;
   }
 
   /**
@@ -487,10 +487,10 @@ class EluvioLive {
    */
   async NftSetTransferProxy({addr, proxyAddr}) {
 
-	if (proxyAddr == null || proxyAddr.length() == 0) {
+    if(proxyAddr == null || proxyAddr.length() == 0) {
 	  console.log("Create TransferProxy");
 	  proxyAddr = await this.CreateNftTransferProxy({});
-	}
+    }
 
     const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
     var res = await this.client.CallContractMethod({
@@ -498,14 +498,14 @@ class EluvioLive {
       abi: JSON.parse(abi),
       methodName: "setProxyRegistryAddress",
       methodArgs: [
-		proxyAddr
+        proxyAddr
       ],
       formatArguments: true
     });
 
-	console.log("NFT: ", addr, "TransferProxy: ", proxyAddr);
+    console.log("NFT: ", addr, "TransferProxy: ", proxyAddr);
 
-	return proxyAddr;
+    return proxyAddr;
   }
 
   /**
@@ -516,19 +516,19 @@ class EluvioLive {
    */
   async CreateNftTransferProxy({}) {
 
-	const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi"));
-	const bytecode = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.bin"));
+    const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi"));
+    const bytecode = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.bin"));
 
-	var c = await this.client.DeployContract({
+    var c = await this.client.DeployContract({
 	  abi: JSON.parse(abistr),
-	  bytecode: bytecode.toString('utf8').replace('\n', ''),
+	  bytecode: bytecode.toString("utf8").replace("\n", ""),
 	  constructorArgs: [
 	  ]
-	});
+    });
 
-	console.log("NFT TransferProxy address:", c.contractAddress);
+    console.log("NFT TransferProxy address:", c.contractAddress);
 
-	return c.contractAddress;
+    return c.contractAddress;
   }
 
   /**
@@ -540,9 +540,9 @@ class EluvioLive {
    */
   async ShowNftTransferProxy({addr}) {
 
-	const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi"));
+    const abistr = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi"));
 
-	var info = {};
+    var info = {};
 
     info.owner = await this.client.CallContractMethod({
       contractAddress: addr,
@@ -551,14 +551,14 @@ class EluvioLive {
       formatArguments: true
     });
 
-	return info;
+    return info;
   }
 
 
   /**
    *  WIP
    */
-/*
+  /*
   async ContractCallMintHelper(client) {
 
     const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTokenHelper.abi"));
@@ -590,49 +590,49 @@ class EluvioLive {
    */
   async NftBalanceOf({addr, ownerAddr}) {
 
-	var balance = {};
+    var balance = {};
     const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
     var res = await this.client.CallContractMethod({
       contractAddress: addr,
       abi: JSON.parse(abi),
       methodName: "balanceOf",
       methodArgs: [
-		ownerAddr
+        ownerAddr
       ],
       formatArguments: true
     });
 
-	// List all tokens
-	for (var i = 0; i < res; i ++) {
+    // List all tokens
+    for(var i = 0; i < res; i ++) {
 	  var tokenId = await this.client.CallContractMethod({
-		contractAddress: addr,
-		abi: JSON.parse(abi),
-		methodName: "tokenOfOwnerByIndex",
-		methodArgs: [
+        contractAddress: addr,
+        abi: JSON.parse(abi),
+        methodName: "tokenOfOwnerByIndex",
+        methodArgs: [
 		  ownerAddr,
 		  i
-		],
-		formatArguments: true
+        ],
+        formatArguments: true
       });
 
 	  var holdSecs = -1;
 	  var holdEnd;
 	  try {
-		holdSecs = await this.client.CallContractMethod({
+        holdSecs = await this.client.CallContractMethod({
 		  contractAddress: addr,
 		  abi: JSON.parse(abi),
 		  methodName: "_allTokensHolds",
 		  methodArgs: [tokenId],
 		  formatArguments: true
-		});
-		holdEnd = new Date(holdSecs * 1000);
+        });
+        holdEnd = new Date(holdSecs * 1000);
 
 	  } catch(e) {
 	  }
 
 	  balance[tokenId.toString()] = {hold: holdSecs.toString(), holdEnd: holdEnd};
-	}
-	return balance;
+    }
+    return balance;
   }
 
   /**
@@ -645,58 +645,58 @@ class EluvioLive {
    */
   async NftShowToken({addr, tokenId}) {
 
-	const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
+    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
 
-	var tokenInfo = {};
-	tokenInfo.warns = [];
-	tokenInfo.tokenId = tokenId.toString();
+    var tokenInfo = {};
+    tokenInfo.warns = [];
+    tokenInfo.tokenId = tokenId.toString();
 
-	tokenInfo.owner = await this.client.CallContractMethod({
+    tokenInfo.owner = await this.client.CallContractMethod({
 	  contractAddress: addr,
 	  abi: JSON.parse(abi),
 	  methodName: "ownerOf",
 	  methodArgs: [tokenId],
 	  formatArguments: true
-	});
+    });
 
-	try {
+    try {
 	  const ordinal = await this.client.CallContractMethod({
-		contractAddress: addr,
-		abi: JSON.parse(abi),
-		methodName: "ordinalOfToken",
-		methodArgs: [tokenId],
-		formatArguments: true
+        contractAddress: addr,
+        abi: JSON.parse(abi),
+        methodName: "ordinalOfToken",
+        methodArgs: [tokenId],
+        formatArguments: true
 	  });
-	tokenInfo.ordinal = ordinal.toString();
-	} catch (e) {
+      tokenInfo.ordinal = ordinal.toString();
+    } catch(e) {
 	  tokenInfo.ordinal = -1;
 	  tokenInfo.warns.push("Failed to get ordinal: " + addr);
-	}
+    }
 
-	tokenInfo.tokenURI = await this.client.CallContractMethod({
+    tokenInfo.tokenURI = await this.client.CallContractMethod({
 	  contractAddress: addr,
 	  abi: JSON.parse(abi),
 	  methodName: "tokenURI",
 	  methodArgs: [tokenId],
 	  formatArguments: true
-	});
+    });
 
-	try {
+    try {
 	  const holdSecs = await this.client.CallContractMethod({
-		contractAddress: addr,
-		abi: JSON.parse(abi),
-		methodName: "_allTokensHolds",
-		methodArgs: [tokenId],
-		formatArguments: true
+        contractAddress: addr,
+        abi: JSON.parse(abi),
+        methodName: "_allTokensHolds",
+        methodArgs: [tokenId],
+        formatArguments: true
 	  });
 	  tokenInfo.holdSecs = holdSecs.toString();
 	  tokenInfo.holdEnd = new Date(tokenInfo.holdSecs * 1000);
 
-	} catch(e) {
+    } catch(e) {
 	  tokenInfo.warns.push("Failed to get token hold: " + addr);
-	}
+    }
 
-	return tokenInfo;
+    return tokenInfo;
   }
 
   /**
@@ -709,9 +709,9 @@ class EluvioLive {
    */
   async NftShow({addr, mintHelper, showOwners}) {
 
-	const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
-	var nftInfo = {};
-	var warns = [];
+    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
+    var nftInfo = {};
+    var warns = [];
 
     nftInfo.name = await this.client.CallContractMethod({
       contractAddress: addr,
@@ -737,14 +737,14 @@ class EluvioLive {
       methodName: "totalSupply",
       formatArguments: true
     });
-	nftInfo.totalSupply = Number(totalSupply);
+    nftInfo.totalSupply = Number(totalSupply);
 
     try {
       const minted = await this.client.CallContractMethod({
-		contractAddress: addr,
-		abi: JSON.parse(abi),
-		methodName: "minted",
-		formatArguments: true
+        contractAddress: addr,
+        abi: JSON.parse(abi),
+        methodName: "minted",
+        formatArguments: true
       });
       nftInfo.minted = Number(minted);
     } catch(e) {
@@ -756,96 +756,96 @@ class EluvioLive {
 	  methodName: "cap",
 	  formatArguments: true
     });
-	nftInfo.cap = Number(cap);
+    nftInfo.cap = Number(cap);
 
-	const proxy = await this.client.CallContractMethod({
+    const proxy = await this.client.CallContractMethod({
 	  contractAddress: addr,
 	  abi: JSON.parse(abi),
 	  methodName: "proxyRegistryAddress",
 	  formatArguments: true
     });
-	nftInfo.proxy = proxy;
+    nftInfo.proxy = proxy;
 
-	if (proxy == "0x0000000000000000000000000000000000000000") {
+    if(proxy == "0x0000000000000000000000000000000000000000") {
 	  warns.push("No proxy: " + addr);
-	} else {
+    } else {
 	  nftInfo.proxyInfo = await this.ShowNftTransferProxy({addr: proxy});
-	}
+    }
 
-	if (mintHelper) {
+    if(mintHelper) {
 	  const isMinter = await this.client.CallContractMethod({
-		contractAddress: addr,
-		abi: JSON.parse(abi),
-		methodName: "isMinter",
-		methodArgs: [mintHelper],
-		formatArguments: true
+        contractAddress: addr,
+        abi: JSON.parse(abi),
+        methodName: "isMinter",
+        methodArgs: [mintHelper],
+        formatArguments: true
 	  });
-	  if (!isMinter) {
-		warns.push("Minter not set up addr: " + addr);
+	  if(!isMinter) {
+        warns.push("Minter not set up addr: " + addr);
 	  }
-	}
+    }
 
-	try {
+    try {
 	  const defHoldSecs = await this.client.CallContractMethod({
-		contractAddress: addr,
-		abi: JSON.parse(abi),
-		methodName: "defHoldSecs",
-		formatArguments: true
+        contractAddress: addr,
+        abi: JSON.parse(abi),
+        methodName: "defHoldSecs",
+        formatArguments: true
 	  });
 	  nftInfo.defHoldSecs = defHoldSecs.toString();
-	} catch(e) {
+    } catch(e) {
 	  nftInfo.defHoldSecs = "not supported";
 	  warns.push("Bad local tradable hold: " + addr);
-	}
+    }
 
-	nftInfo.tokens = [];
+    nftInfo.tokens = [];
 
-	var maxWarnsTokenUri = 1;
+    var maxWarnsTokenUri = 1;
 
-	if (showOwners && showOwners > 0) {
+    if(showOwners && showOwners > 0) {
 	  var maxShowOwners = showOwners;
 
-	  for (var i = 0; i < maxShowOwners && i < nftInfo.totalSupply; i ++) {
+	  for(var i = 0; i < maxShowOwners && i < nftInfo.totalSupply; i ++) {
 
-		nftInfo.tokens[i] = {};
+        nftInfo.tokens[i] = {};
 
-		var tokenId;
-		try {
+        var tokenId;
+        try {
 		  tokenId = await this.client.CallContractMethod({
-			contractAddress: addr,
-			abi: JSON.parse(abi),
-			methodName: "tokenByIndex",
-			methodArgs: [i],
-			formatArguments: true
+            contractAddress: addr,
+            abi: JSON.parse(abi),
+            methodName: "tokenByIndex",
+            methodArgs: [i],
+            formatArguments: true
 		  });
 		  nftInfo.tokens[i].tokenId = tokenId.toString();
-		} catch(e) {
+        } catch(e) {
 		  warns.push("Failed to get token ID (index: " + i + "): " + addr);
 		  continue;
-		}
+        }
 
-		var tokenInfo = await this.NftShowToken({addr, tokenId});
+        var tokenInfo = await this.NftShowToken({addr, tokenId});
 
-		if (tokenInfo.warns.length > 0) {
+        if(tokenInfo.warns.length > 0) {
 		  warns.push(...tokenInfo.warns);
-		}
+        }
 
-		nftInfo.tokens[i] = tokenInfo;
+        nftInfo.tokens[i] = tokenInfo;
 
-		if (i == 0) {
+        if(i == 0) {
 		  nftInfo.firstTokenUri = nftInfo.tokens[i].tokenURI;
-		}
-		if ((maxWarnsTokenUri --) > 0 &&
+        }
+        if((maxWarnsTokenUri --) > 0 &&
 			(!nftInfo.tokens[i].tokenURI.startsWith(Config.consts[Config.net].tokenUriStart) ||
 			 !nftInfo.tokens[i].tokenURI.endsWith(Config.consts[Config.net].tokenUriEnd))) {
 		  warns.push("Bad tokenURI: " + addr);
-		}
+        }
 
 	  }
-	}
+    }
 
-	nftInfo.warns = warns;
-	return nftInfo;
+    nftInfo.warns = warns;
+    return nftInfo;
   }
 
   /**
@@ -857,7 +857,7 @@ class EluvioLive {
    */
   async NftAddMinter({addr, minterAddr}) {
 
-	console.log("Add minter", addr, minterAddr);
+    console.log("Add minter", addr, minterAddr);
     const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
 
     var res = await this.client.CallContractMethodAndWait({
@@ -889,70 +889,70 @@ class EluvioLive {
    * @return {Promise<Object>} - An object containing info about the new NFT
    */
   async NftTemplateAddNftContract({
-	libraryId,
-	objectId,
-	nftAddr,
-	tenantId,
-	mintHelperAddr,
-	minterAddr,
-	collectionName,
-	collectionSymbol,
-	hold,
-	contractUri,
-	proxyAddress,
+    libraryId,
+    objectId,
+    nftAddr,
+    tenantId,
+    mintHelperAddr,
+    minterAddr,
+    collectionName,
+    collectionSymbol,
+    hold,
+    contractUri,
+    proxyAddress,
   	totalSupply
   }) {
 
-	console.log("Create NFT contract");
+    console.log("Create NFT contract");
 
-	if (nftAddr == null) {
+    if(nftAddr == null) {
 	  nftAddr = await this.CreateNftContract({
-		tenantId,
-		mintHelperAddr,
-		minterAddr,
-		totalSupply,
-		collectionName,
-		collectionSymbol,
-		hold,
-		contractUri,
-		proxyAddress
+        tenantId,
+        mintHelperAddr,
+        minterAddr,
+        totalSupply,
+        collectionName,
+        collectionSymbol,
+        hold,
+        contractUri,
+        proxyAddress
 	  });
-	};
+    }
 
-	// Update object metadata
-	console.log("Update object metadata");
-	var m = await this.client.ContentObjectMetadata({
+    // Update object metadata
+    console.log("Update object metadata");
+    var m = await this.client.ContentObjectMetadata({
 	  libraryId,
 	  objectId,
 	  resolveLinks: false
-	});
+    });
 
-	m.permissioned.mint_private.address = nftAddr;
-	m.public.asset_metadata.nft.address = nftAddr;
-	m.public.asset_metadata.nft.total_supply = totalSupply;
+    m.permissioned.mint_private.address = nftAddr;
+    m.public.asset_metadata.nft.address = nftAddr;
+    m.public.asset_metadata.nft.total_supply = totalSupply;
 
-	var e = await this.client.EditContentObject({
+    var e = await this.client.EditContentObject({
 	  libraryId,
 	  objectId
-	});
+    });
 
-	await this.client.ReplaceMetadata({
+    await this.client.ReplaceMetadata({
 	  libraryId,
 	  objectId,
 	  writeToken: e.write_token,
 	  metadata: m
-	});
+    });
 
-	var f = await this.client.FinalizeContentObject({
+    var f = await this.client.FinalizeContentObject({
 	  libraryId,
 	  objectId,
 	  writeToken: e.write_token,
 	  commitMessage: "Set NFT contract address " + nftAddr
-	});
+    });
 
-	console.log("Finalized", f);
+    console.log("Finalized", f);
 
-	return nftAddr;
+    return nftAddr;
   }
 
   /**
@@ -965,56 +965,56 @@ class EluvioLive {
    * @return {Promise<Object>} - The public/nft JSON
    */
   async NftMake({
-	assetMetadata,
-	hash
+    assetMetadata,
+    hash
   }) {
 
-	const m = assetMetadata;
-	var pnft = {};
+    const m = assetMetadata;
+    var pnft = {};
 
-	/* Add this to description */
-	const addtlInfo = `
+    /* Add this to description */
+    const addtlInfo = `
 
 Lookup NFT: https://wallet.contentfabric.io/lookup/`;
 
-	pnft.name = m.nft.name;
-	pnft.display_name = m.nft.display_name;
-	pnft.description = m.nft.description; // + addtlInfo;
-	pnft.edition_name = m.nft.edition_name;
-	pnft.rich_text = m.nft.rich_text;
+    pnft.name = m.nft.name;
+    pnft.display_name = m.nft.display_name;
+    pnft.description = m.nft.description; // + addtlInfo;
+    pnft.edition_name = m.nft.edition_name;
+    pnft.rich_text = m.nft.rich_text;
 
-	pnft.address = m.nft.address;
-	pnft.total_supply = m.nft.total_supply;
-	pnft.template_id = m.nft.template_id;
+    pnft.address = m.nft.address;
+    pnft.total_supply = m.nft.total_supply;
+    pnft.template_id = m.nft.template_id;
 
-	pnft.copyright = m.nft.copyright;
-	pnft.created_at = m.nft.created_at;
-	pnft.creator = m.nft.creator;
+    pnft.copyright = m.nft.copyright;
+    pnft.created_at = m.nft.created_at;
+    pnft.creator = m.nft.creator;
 
-	pnft.embed_url = m.nft.embed_url;
-	pnft.external_url = m.nft.external_url;
-	pnft.youtube_url = m.nft.marketplace_attributes.opensea.youtube_url;
-	pnft.image = m.nft.image;
-	pnft.playable = m.nft.playable;
+    pnft.embed_url = m.nft.embed_url;
+    pnft.external_url = m.nft.external_url;
+    pnft.youtube_url = m.nft.marketplace_attributes.opensea.youtube_url;
+    pnft.image = m.nft.image;
+    pnft.playable = m.nft.playable;
 
-	// pnft.addtl_info = addtlInfo;
+    // pnft.addtl_info = addtlInfo;
 
-	pnft.attributes = [
+    pnft.attributes = [
       {
-		trait_type: "Creator",
-		value: "Eluvio NFT Central"
+        trait_type: "Creator",
+        value: "Eluvio NFT Central"
       },
       {
-		trait_type: "Total Minted Supply",
-		value: m.nft.total_supply.toString()
+        trait_type: "Total Minted Supply",
+        value: m.nft.total_supply.toString()
       },
       {
-		trait_type: "Content Fabric Hash",
-		value: hash
+        trait_type: "Content Fabric Hash",
+        value: hash
       }
-	];
+    ];
 
-	return pnft;
+    return pnft;
   }
 
   /**
@@ -1025,71 +1025,71 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
    * @return {Promise<Object>} - The public/nft JSON
    */
   async NftBuild({
-	libraryId,
-	objectId
+    libraryId,
+    objectId
   }) {
 
-	var hash = await this.client.LatestVersionHash({
+    var hash = await this.client.LatestVersionHash({
 	  objectId
-	});
+    });
 
-	var m = await this.client.ContentObjectMetadata({
+    var m = await this.client.ContentObjectMetadata({
 	  libraryId,
 	  objectId,
 	  metadataSubtree: "public/asset_metadata",
 	  resolveLinks: false
-	});
+    });
 
-	var pnft = await this.NftMake({assetMetadata: m, hash});
-	console.log(pnft);
+    var pnft = await this.NftMake({assetMetadata: m, hash});
+    console.log(pnft);
 
-	var e = await this.client.EditContentObject({
+    var e = await this.client.EditContentObject({
 	  libraryId,
 	  objectId
-	});
+    });
 
-	await this.client.ReplaceMetadata({
+    await this.client.ReplaceMetadata({
 	  libraryId,
 	  objectId,
 	  writeToken: e.write_token,
 	  metadataSubtree: "public/nft",
 	  metadata: pnft
-	});
+    });
 
-	var f = await this.client.FinalizeContentObject({
+    var f = await this.client.FinalizeContentObject({
 	  libraryId,
 	  objectId,
 	  writeToken: e.write_token,
 	  commitMessage: "Set NFT public/nft"
-	});
+    });
 
-	const nftPath = "/meta/public/nft";
-	const tokenUri = Config.networks[Config.net] + "/s/" + Config.net + "/q/" + f.hash + nftPath;
+    const nftPath = "/meta/public/nft";
+    const tokenUri = Config.networks[Config.net] + "/s/" + Config.net + "/q/" + f.hash + nftPath;
 
-	console.log("Token URI: ", tokenUri);
+    console.log("Token URI: ", tokenUri);
 
-	// Set the token URI - edit the object one more time
-	var e = await this.client.EditContentObject({
+    // Set the token URI - edit the object one more time
+    var e = await this.client.EditContentObject({
 	  libraryId,
 	  objectId
-	});
+    });
 
-	await this.client.ReplaceMetadata({
+    await this.client.ReplaceMetadata({
 	  libraryId,
 	  objectId,
 	  writeToken: e.write_token,
 	  metadataSubtree: "public/asset_metadata/nft/token_uri",
 	  metadata: tokenUri
-	});
+    });
 
-	var f2 = await this.client.FinalizeContentObject({
+    var f2 = await this.client.FinalizeContentObject({
 	  libraryId,
 	  objectId,
 	  writeToken: e.write_token,
 	  commitMessage: "Set NFT token URI"
-	});
+    });
 
-	return f2;
+    return f2;
   }
 
   /**
@@ -1101,14 +1101,14 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
    * @return {Promise<Object>} - NFT info JSON
    */
   async NftLookup({
-	addr,
-	tokenId
+    addr,
+    tokenId
   }) {
 
-	console.log("tokenId", tokenId);
+    console.log("tokenId", tokenId);
 
-	var x = new BigNumber(tokenId, 10);
-	console.log(x.toString(16));
+    var x = new BigNumber(tokenId, 10);
+    console.log(x.toString(16));
 
   }
 
@@ -1124,9 +1124,9 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
    */
   async NftProxyTransferFrom({addr, tokenId, fromAddr, toAddr}) {
 
-	console.log("NFT Transfer", "from: ", fromAddr);
+    console.log("NFT Transfer", "from: ", fromAddr);
     const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
-	const pxabi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi"));
+    const pxabi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi"));
 
     var ownerOf = await this.client.CallContractMethod({
       contractAddress: addr,
@@ -1136,46 +1136,46 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       formatArguments: true
     });
 
-	if (ownerOf.toLowerCase() != fromAddr.toLowerCase()) {
+    if(ownerOf.toLowerCase() != fromAddr.toLowerCase()) {
 	  console.log("Not owner", "(owner: " + ownerOf + ")");
 	  return;
-	}
+    }
 
-	const proxy = await this.client.CallContractMethod({
+    const proxy = await this.client.CallContractMethod({
 	  contractAddress: addr,
 	  abi: JSON.parse(abi),
 	  methodName: "proxyRegistryAddress",
 	  formatArguments: true
     });
 
-	if (proxy == "0x0000000000000000000000000000000000000000") {
+    if(proxy == "0x0000000000000000000000000000000000000000") {
 	  console.log("NFT has no proxy");
 	  return;
-	}
-	console.log("Proxy: ", proxy);
+    }
+    console.log("Proxy: ", proxy);
 
-	var proxyInfo = await this.ShowNftTransferProxy({addr: proxy});
-	if (proxyInfo.owner != this.client.signer.address) {
+    var proxyInfo = await this.ShowNftTransferProxy({addr: proxy});
+    if(proxyInfo.owner != this.client.signer.address) {
 	  console.log("Bad key - not proxy owner (should be: " + proxyInfo.owner + ")");
 	  return;
-	}
+    }
 
-	console.log("Executing proxyTransferFrom");
-	var res = await this.client.CallContractMethod({
+    console.log("Executing proxyTransferFrom");
+    var res = await this.client.CallContractMethod({
       contractAddress: proxy,
       abi: JSON.parse(pxabi),
       methodName: "proxyTransferFrom",
       methodArgs: [
-		addr,
-		fromAddr,
-		toAddr,
-		tokenId
+        addr,
+        fromAddr,
+        toAddr,
+        tokenId
       ],
       formatArguments: true
     });
 
-	res.wait(1);
-	return res;
+    res.wait(1);
+    return res;
   }
 
 
