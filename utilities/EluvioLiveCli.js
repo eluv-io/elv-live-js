@@ -58,6 +58,19 @@ const CmfNftAddMintHelper = async ({argv}) => {
 
 }
 
+const CmfNftSetProxy = async ({argv}) => {
+
+  console.log("NFT - set proxy",
+			  argv.addr, argv.proxy_addr)
+  await Init();
+
+  var c = await elvlv.NftSetTransferProxy({
+	addr: argv.addr,
+	proxyAddr: argv.proxy_addr
+  })
+
+}
+
 const CmdNftBalanceOf = async ({argv}) => {
 
   console.log("NFT - call", argv.addr, argv.owner);
@@ -271,6 +284,23 @@ yargs(hideBin(process.argv))
 		   }, (argv) => {
 
 			 CmfNftAddMintHelper({argv});
+
+		   })
+
+  .command('nft_set_proxy <addr> [proxy_addr]',
+		   'Set a proxy on an NFT contract', (yargs) => {
+			 yargs
+			   .positional('addr', {
+				 describe: 'NFT address (hex)',
+				 type: 'string'
+			   })
+			   .option('proxy_addr', {
+				 describe: "Proxy contract address (hex)",
+				 type: 'string'
+			   })
+		   }, (argv) => {
+
+			 CmfNftSetProxy({argv});
 
 		   })
 

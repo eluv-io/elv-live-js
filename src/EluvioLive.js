@@ -205,7 +205,7 @@ class EluvioLive {
   }
 
   /**
-   * Add an NFT contract to the tenant's 'nft_templates' group
+   * Add an NFT contract to the tenant's 'tenant_nfts' group
    *
    * @namedParams
    * @param {string} tenantId - The ID of the tenant (iten***)
@@ -474,6 +474,38 @@ class EluvioLive {
 	console.log("- tenant_nfts added", tenantId);
 
 	return c.contractAddress;
+  }
+
+  /**
+   * Set a TransferProxy for this NFT contract.  If no proxy address is specified, create a new one.
+   * Must be run as the NFT contract owner.
+   *
+   * @namedParams
+   * @param {string} addr - The NFT Transfer Proxy contract address
+   * @param {string} proxyAddress - The address of the proxy contract (optional)
+   * @return {Promise<Object>} - New contract address
+   */
+  async NftSetTransferProxy({addr, proxyAddr}) {
+
+	if (proxyAddr == null || proxyAddr.length() == 0) {
+	  console.log("Create TransferProxy");
+	  proxyAddr = await this.CreateNftTransferProxy({});
+	}
+
+    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
+    var res = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "setProxyRegistryAddress",
+      methodArgs: [
+		proxyAddr
+      ],
+      formatArguments: true
+    });
+
+	console.log("NFT: ", addr, "TransferProxy: ", proxyAddr);
+
+	return proxyAddr;
   }
 
   /**
@@ -1142,6 +1174,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       formatArguments: true
     });
 
+	res.wait(1);
 	return res;
   }
 
