@@ -61,6 +61,20 @@ const CmfNftAddMintHelper = async ({argv}) => {
 
 }
 
+const CmfNftSetProxy = async ({argv}) => {
+
+  console.log("NFT - set proxy",
+			  argv.addr, argv.proxy_addr)
+  await Init();
+
+  var p = await elvlv.NftSetTransferProxy({
+	addr: argv.addr,
+	proxyAddr: argv.proxy_addr
+  })
+  console.log("Proxy: ", p);
+
+}
+
 const CmdNftBalanceOf = async ({argv}) => {
 
   console.log("NFT - call", argv.addr, argv.owner);
@@ -316,6 +330,23 @@ yargs(hideBin(process.argv))
 
 		   })
 
+  .command('nft_set_proxy <addr> [proxy_addr]',
+		   'Set a proxy on an NFT contract', (yargs) => {
+			 yargs
+			   .positional('addr', {
+				 describe: 'NFT address (hex)',
+				 type: 'string'
+			   })
+			   .option('proxy_addr', {
+				 describe: "Proxy contract address (hex)",
+				 type: 'string'
+			   })
+		   }, (argv) => {
+
+			 CmfNftSetProxy({argv});
+
+		   })
+
 
   .command('nft_balance_of <addr> <owner>',
 		   'Call NFT ownerOf - determine if this is an owner', (yargs) => {
@@ -437,7 +468,7 @@ yargs(hideBin(process.argv))
 				 type: 'string'
 			   })
 			   .option('check_cauth', {
-				 describe: 'Check that all NFTs use this cauth ID',
+				 describe: 'Check that all NFTs use this minter address in ikms format',
 				 type: 'string'
 			   })
 			   .option('check_minter', {

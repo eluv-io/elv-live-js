@@ -123,6 +123,7 @@ class EluvioLive {
 		  tenantInfo.marketplaces[key].items[sku].proxy = nftInfo.proxy;
 		  tenantInfo.marketplaces[key].items[sku].firstTokenUri = nftInfo.firstTokenUri;
 		  tenantInfo.marketplaces[key].items[sku].defHoldSecs = nftInfo.defHoldSecs;
+
 		  if (nftInfo.cap != item.nft_template.nft.total_supply) {
 			warns.push("NFT cap mismatch sku: " + sku);
 		  }
@@ -259,7 +260,7 @@ class EluvioLive {
 
 
   /**
-   * Add an NFT contract to the tenant's 'nft_templates' group
+   * Add an NFT contract to the tenant's 'tenant_nfts' group
    *
    * @namedParams
    * @param {string} tenantId - The ID of the tenant (iten***)
@@ -531,6 +532,35 @@ class EluvioLive {
   }
 
   /**
+   * Set a TransferProxy for this NFT contract.  If no proxy address is specified, create a new one.
+   * Must be run as the NFT contract owner.
+   *
+   * @namedParams
+   * @param {string} addr - The NFT Transfer Proxy contract address
+   * @param {string} proxyAddress - The address of the proxy contract (optional)
+   * @return {Promise<Object>} - New contract address
+   */
+  async NftSetTransferProxy({addr, proxyAddr}) {
+
+	if (proxyAddr == null || proxyAddr.length() == 0) {
+	  proxyAddr = await this.CreateNftTransferProxy({});
+	}
+
+    const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
+    var res = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "setProxyRegistryAddress",
+      methodArgs: [
+		proxyAddr
+      ],
+      formatArguments: true
+    });
+
+	return proxyAddr;
+  }
+
+  /**
    * Create a new NFT TransferProxy contract
    *
    * @namedParams
@@ -547,8 +577,6 @@ class EluvioLive {
 	  constructorArgs: [
 	  ]
 	});
-
-	console.log("NFT TransferProxy address:", c.contractAddress);
 
 	return c.contractAddress;
   }
@@ -612,6 +640,7 @@ class EluvioLive {
    */
   async NftBalanceOf({addr, ownerAddr}) {
 
+	var balance = [];
     const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
     var res = await this.client.CallContractMethod({
       contractAddress: addr,
@@ -635,27 +664,8 @@ class EluvioLive {
 		],
 		formatArguments: true
       });
-	  //console.log("i: ", i, tokenId.toString());
-
-	  var holdSecs = -1;
-	  var holdEnd;
-	  try {
-		holdSecs = await this.client.CallContractMethod({
-		  contractAddress: addr,
-		  abi: JSON.parse(abi),
-		  methodName: "_allTokensHolds",
-		  methodArgs: [tokenId],
-		  formatArguments: true
-		});
-		holdEnd = new Date(holdSecs * 1000);
-
-	  } catch(e) {
-	  }
-
-	  //console.log(i, tokenId.toString(), "hold: ", holdSecs.toString(), holdEnd);
-
-	}
-	return res;
+	balance[i] = {tokenId: tokenId.toString(), hold: holdSecs.toString(), holdEnd: holdEnd};
+	return balance;
   }
 
   /**
@@ -1197,6 +1207,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       formatArguments: true
     });
 
+	res.wait(1);
 	return res;
   }
 
