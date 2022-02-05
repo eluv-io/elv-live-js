@@ -245,7 +245,7 @@ class EluvioLive {
 					continue;
 				}
 				const nft = await this.NftShow({addr: nftAddr});
-				
+
 				nftInfo.nfts[nftAddr] = nft;
 				num++;
 			}catch(e){
@@ -664,7 +664,25 @@ class EluvioLive {
 		],
 		formatArguments: true
       });
-	balance[i] = {tokenId: tokenId.toString(), hold: holdSecs.toString(), holdEnd: holdEnd};
+
+	  var holdSecs = -1;
+	  var holdEnd;
+	  try {
+		holdSecs = await this.client.CallContractMethod({
+		  contractAddress: addr,
+		  abi: JSON.parse(abi),
+		  methodName: "_allTokensHolds",
+		  methodArgs: [tokenId],
+		  formatArguments: true
+		});
+		holdEnd = new Date(holdSecs * 1000);
+
+	  } catch(e) {
+	  }
+
+	  balance[i] = {tokenId: tokenId.toString(), hold: holdSecs.toString(), holdEnd: holdEnd};
+	}
+
 	return balance;
   }
 
