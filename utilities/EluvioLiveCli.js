@@ -190,18 +190,31 @@ const CmdSiteSetDrop = async ({argv}) => {
 
 const CmdTenantBalanceOf = async ({argv}) => {
 
-  console.log("Tenant - balanceOf", argv.tenant, argv.ownerAddr);
+  console.log("Tenant - balance of", argv.tenant, argv.owner, argv.max_results);
 
   await Init();
 
-  var res = await elvlv.TenantShow({
-	tenantId: argv.tenant,
-	libraryId: argv.library,
-	objectId: argv.object,
-	ownerAddr: argv.owner
+  var res = await elvlv.TenantBalanceOf({
+		tenantId: argv.tenant,
+		ownerAddr: argv.owner,
+		maxNumber: argv.max_results
   })
 
   console.log(yaml.dump(res));
+}
+
+const CmdFabricTenantBalanceOf = async ({argv}) => {
+
+	console.log("Fabric Tenant - balance of", argv.object, argv.owner);
+  
+	await Init();
+  
+	var res = await elvlv.FabricTenantBalanceOf({
+	  objectId: argv.object,
+	  ownerAddr: argv.owner
+	})
+  
+	console.log(yaml.dump(res));
 }
 
 const CmdShuffle = async ({argv}) => {
@@ -438,24 +451,16 @@ yargs(hideBin(process.argv))
 
 		   })
 
-  .command('tenant_balance_of <tenant> <library> <object> <owner>',
+  .command('tenant_balance_of <tenant> <owner>',
 		   'Show NFTs owned by this owner in this tenant', (yargs) => {
 			 yargs
 			   .positional('tenant', {
-				 describe: 'Tenant ID',
-				 type: 'string'
+						describe: 'Tenant ID',
+						type: 'string'
 			   })
-			   .positional('library', {
-				 describe: 'Tenant-level EluvioLive library',
-				 type: 'string'
-			   })
-			   .positional('object', {
-				 describe: 'Tenant-level EluvioLive object ID',
-				 type: 'string'
-			   })
-			   .option('owner', {
-				 describe: 'Owner address (hex)',
-				 type: 'string'
+			   .positional('owner', {
+						describe: 'Owner address (hex)',
+						type: 'string'
 			   })
 		   }, (argv) => {
 
@@ -463,6 +468,26 @@ yargs(hideBin(process.argv))
 
 		   })
 
+	.command('fabric_tenant_balance_of <object> <owner>',
+		  'Show NFTs owned by this owner in this tenant', (yargs) => {
+			yargs
+				.positional('object', {
+					describe: 'Tenant-level EluvioLive object ID',
+					type: 'string'
+				})
+				.positional('owner', {
+					describe: 'Owner address (hex)',
+					type: 'string'
+				})
+				.option('max_results', {
+					describe: 'Show up to these many results (default 0)',
+					type: 'integer'
+				})
+		   }, (argv) => {
+
+			 CmdFabricTenantBalanceOf({argv});
+
+	})
 
   .command('site_show <library> <object>',
 		   'Show info on this site/event', (yargs) => {

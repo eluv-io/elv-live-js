@@ -147,57 +147,116 @@ class EluvioLive {
    * Get a list of the NFTs of this tenant owned by 'ownerAddr'
    *
    * @namedParams
-   * @param {string} tenantId - The ID of the tenant (iten***)
-   * @param {string} libraryId - The 'properties' library ID
    * @param {string} objectId - The ID of the tenant specific EluvioLive object
-   * @param {string} addr - The NFT contract address
    * @param {string} ownerAddr - A user address to check the balance of
    * @return {Promise<Object>} - Number of tokens owned
    */
-  async TenantBalanceOf({tenantId, libraryId, objectId, ownerAddr}) {
+  async FabricTenantBalanceOf({objectId, ownerAddr}) {
+		var nftInfo = {};
 
-	const abiNft = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradable.abi"));
-	const abiTenant = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
+		const libraryId = await this.client.ContentObjectLibraryId({
+			objectId
+		});
 
-	var nftInfo = {};
+		var m = await this.client.ContentObjectMetadata({
+			libraryId,
+			objectId,
+			metadataSubtree: "/public/asset_metadata",
+			resolveLinks: true,
+			resolveIncludeSource: true,
+			resolveIgnoreErrors: true,
+			linkDepthLimit: 5
+		});
 
-	var m = await this.client.ContentObjectMetadata({
-	  libraryId,
-	  objectId,
-	  metadataSubtree: "/public/asset_metadata",
-	  select: "",
-	  resolveLinks: true,
-	  resolveIncludeSource: true,
-	  resolveIgnoreError: true,
-	  linkDepthLimit: 5
-	});
+		nftInfo.marketplaces = {};
+		var warns = [];
 
-	nftInfo.marketplaces = {};
-	var warns = [];
+		for (var key in m.marketplaces) {
+			nftInfo.marketplaces[key] = {};
+			nftInfo.marketplaces[key].nfts = {};
+			for (var i in m.marketplaces[key].info.items) {
 
-	for (var key in m.marketplaces) {
-	  nftInfo.marketplaces[key] = {};
-	  nftInfo.marketplaces[key].nfts = {};
-	  for (var i in m.marketplaces[key].info.items) {
+			const item = m.marketplaces[key].info.items[i];
 
-		const item = m.marketplaces[key].info.items[i];
+			const sku = item.sku;
 
-		const sku = item.sku;
+			if (item.nft_template == "") {
+				warns.push("No NFT Template sku: " + sku);
+				continue;
+			}
 
-		if (item.nft_template == "") {
-		  warns.push("No NFT Template sku: " + sku);
-		  continue;
+			const nftAddr = item.nft_template.nft.address;
+			const info = await this.NftBalanceOf({addr:nftAddr, ownerAddr});
+
+			if(info.isZero()){
+				continue;
+			}
+			const nft = await this.NftShow({addr: nftAddr});
+			
+			nftInfo.marketplaces[key].nfts[nftAddr] = nft
+			}
 		}
 
-		const nftAddr = item.nft_template.nft.address;
+		nftInfo.warns = warns;
 
-	  }
+		return nftInfo;
 	}
 
-	nftInfo.warns = warns;
 
-	return nftInfo;
-  }
+	//WIP
+  /**
+   * Get a list of the NFTs of this tenant owned by 'ownerAddr'
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} ownerAddr - A user address to check the balance of
+   * @return {Promise<Object>} - Number of tokens owned
+   */
+	 async TenantBalanceOf({tenantId, ownerAddr, maxNumber=Number.MAX_SAFE_INTEGER}) {
+		if(maxNumber < 1){
+			maxNumber = Number.MAX_SAFE_INTEGER
+		}
+		const abiTenant = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
+		const tenantAddr = Utils.HashToAddress(tenantId);
+		var arg = 'tenant_nfts';
+
+		var nftInfo = {};
+		nftInfo.nfts = {};
+
+		var num = 0;
+		for(var i = 0; i < Number.MAX_SAFE_INTEGER && num < maxNumber; i++){
+			var ordinal = BigNumber(i).toString(16);
+			try {
+				var nftAddr = await this.client.CallContractMethod({
+					contractAddress: tenantAddr,
+					abi: JSON.parse(abiTenant),
+					methodName: "groupsMapping",
+					methodArgs: [
+						arg,
+						ordinal
+					],
+					formatArguments: true
+				});
+
+				const info = await this.NftBalanceOf({addr:nftAddr, ownerAddr});
+
+				if(info.isZero()){
+					continue;
+				}
+				const nft = await this.NftShow({addr: nftAddr});
+				
+				nftInfo.nfts[nftAddr] = nft;
+				num++;
+			}catch(e){
+				//We don't know the length so just stop on error and return
+				console.log(e);
+				break;
+			}
+		}
+
+		return nftInfo;
+	}
+
 
   /**
    * Add an NFT contract to the tenant's 'nft_templates' group
@@ -210,7 +269,7 @@ class EluvioLive {
 
     const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi"));
 
-	const addr = Utils.HashToAddress(tenantId);
+		const addr = Utils.HashToAddress(tenantId);
 
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: addr,
@@ -218,7 +277,7 @@ class EluvioLive {
       methodName: "addGroup",
       methodArgs: [
         "tenant_nfts",
-		nftAddr
+				nftAddr
       ],
       formatArguments: true
     });
@@ -576,7 +635,7 @@ class EluvioLive {
 		],
 		formatArguments: true
       });
-	  console.log("i: ", i, tokenId.toString());
+	  //console.log("i: ", i, tokenId.toString());
 
 	  var holdSecs = -1;
 	  var holdEnd;
@@ -593,7 +652,7 @@ class EluvioLive {
 	  } catch(e) {
 	  }
 
-	  console.log(i, tokenId.toString(), "hold: ", holdSecs.toString(), holdEnd);
+	  //console.log(i, tokenId.toString(), "hold: ", holdSecs.toString(), holdEnd);
 
 	}
 	return res;
