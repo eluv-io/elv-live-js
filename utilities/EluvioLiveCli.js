@@ -7,6 +7,9 @@ const yargs = require('yargs/yargs')
 const { hideBin } = require('yargs/helpers')
 const yaml = require('js-yaml');
 
+const fs = require("fs")
+const path = require("path")
+
 var elvlv;
 
 const Init = async () => {
@@ -201,23 +204,62 @@ const CmdSiteSetDrop = async ({argv}) => {
 
 const CmdTenantBalanceOf = async ({argv}) => {
 
-  console.log("Tenant - balanceOf", argv.tenant, argv.owner);
+  console.log("Tenant - balance of", argv.tenant, argv.owner, argv.max_results);
 
   await Init();
 
   var res = await elvlv.TenantBalanceOf({
-	tenantId: argv.tenant,
-	libraryId: argv.library,
-	objectId: argv.object,
-	ownerAddr: argv.owner
+		tenantId: argv.tenant,
+		ownerAddr: argv.owner,
+		maxNumber: argv.max_results
   })
 
   console.log(yaml.dump(res));
 }
 
+const CmdFabricTenantBalanceOf = async ({argv}) => {
+
+	console.log("Fabric Tenant - balance of", argv.object, argv.owner);
+  
+	await Init();
+  
+	var res = await elvlv.FabricTenantBalanceOf({
+	  objectId: argv.object,
+	  ownerAddr: argv.owner
+	})
+  
+	console.log(yaml.dump(res));
+}
+
 const CmdShuffle = async ({argv}) => {
-	let a = await Shuffler.shuffleFile(argv.file, true, argv.seed)
-	console.log(a)
+	try {
+		let files = [argv.file]
+		let isDir = fs.lstatSync(argv.file).isDirectory()
+		if (isDir) {
+			files = fs.readdirSync(argv.file)
+			files.forEach((f, i) => {
+				files[i] = path.join(argv.file, f)
+			})
+		}
+
+		for (let f of files) {
+			console.log("\n" + Shuffler.shuffledPath(f) + ":")
+
+			let a = await Shuffler.shuffleFile(
+				f, true, argv.seed, argv.check_dupes)
+
+			if (argv.print_js) {
+				console.log(a)
+			} else {
+				a.forEach((line) => {
+					console.log(line)
+				})
+			}
+		}
+		console.log("")
+	} catch (e) {
+		console.error("ERROR:", e)
+	}
 }
 
 yargs(hideBin(process.argv))
@@ -440,24 +482,16 @@ yargs(hideBin(process.argv))
 
 		   })
 
-  .command('tenant_balance_of <tenant> <library> <object> <owner>',
+  .command('tenant_balance_of <tenant> <owner>',
 		   'Show NFTs owned by this owner in this tenant', (yargs) => {
 			 yargs
 			   .positional('tenant', {
-				 describe: 'Tenant ID',
-				 type: 'string'
+						describe: 'Tenant ID',
+						type: 'string'
 			   })
-			   .positional('library', {
-				 describe: 'Tenant-level EluvioLive library',
-				 type: 'string'
-			   })
-			   .positional('object', {
-				 describe: 'Tenant-level EluvioLive object ID',
-				 type: 'string'
-			   })
-			   .option('owner', {
-				 describe: 'Owner address (hex)',
-				 type: 'string'
+			   .positional('owner', {
+						describe: 'Owner address (hex)',
+						type: 'string'
 			   })
 		   }, (argv) => {
 
@@ -465,6 +499,26 @@ yargs(hideBin(process.argv))
 
 		   })
 
+	.command('fabric_tenant_balance_of <object> <owner>',
+		  'Show NFTs owned by this owner in this tenant', (yargs) => {
+			yargs
+				.positional('object', {
+					describe: 'Tenant-level EluvioLive object ID',
+					type: 'string'
+				})
+				.positional('owner', {
+					describe: 'Owner address (hex)',
+					type: 'string'
+				})
+				.option('max_results', {
+					describe: 'Show up to these many results (default 0)',
+					type: 'integer'
+				})
+		   }, (argv) => {
+
+			 CmdFabricTenantBalanceOf({argv});
+
+	})
 
   .command('site_show <library> <object>',
 		   'Show info on this site/event', (yargs) => {
@@ -533,12 +587,20 @@ yargs(hideBin(process.argv))
 		'Sort each line deterministically based on the seed', (yargs) => {
 			yargs
 				.positional('file', {
-					describe: 'File path',
+					describe: 'File or directory path',
 					type: 'string'
 				})
 				.option('seed', {
 					describe: 'Determines the order. If no seed is provided, the shuffler uses a random one.',
 					type: 'string'
+				})
+				.option('check_dupes', {
+					describe: 'Abort if duplicate is found',
+					type: 'boolean'
+				})
+				.option('print_js', {
+					describe: 'Print result as an array in JavaScript',
+					type: 'boolean'
 				})
 		}, (argv) => {
 			CmdShuffle({argv});
@@ -549,3 +611,6 @@ yargs(hideBin(process.argv))
   .scriptName('')
   .demandCommand(1)
   .argv
+
+// For unit testing
+exports.CmdShuffle = CmdShuffle
