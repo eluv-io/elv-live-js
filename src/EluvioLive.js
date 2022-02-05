@@ -189,7 +189,7 @@ class EluvioLive {
 			const nftAddr = item.nft_template.nft.address;
 			const info = await this.NftBalanceOf({addr:nftAddr, ownerAddr});
 
-			if(info.length){
+			if(info.length == 0){
 				continue;
 			}
 			const nft = await this.NftShow({addr: nftAddr});
@@ -241,7 +241,7 @@ class EluvioLive {
 
 				const info = await this.NftBalanceOf({addr:nftAddr, ownerAddr});
 
-				if(info.length){
+				if(info.length == 0){
 					continue;
 				}
 				const nft = await this.NftShow({addr: nftAddr});
