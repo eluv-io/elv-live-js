@@ -64,10 +64,11 @@ const CmfNftSetProxy = async ({argv}) => {
 			  argv.addr, argv.proxy_addr)
   await Init();
 
-  var c = await elvlv.NftSetTransferProxy({
+  var p = await elvlv.NftSetTransferProxy({
 	addr: argv.addr,
 	proxyAddr: argv.proxy_addr
   })
+  console.log("Proxy: ", p);
 
 }
 

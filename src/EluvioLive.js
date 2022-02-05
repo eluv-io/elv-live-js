@@ -488,7 +488,6 @@ class EluvioLive {
   async NftSetTransferProxy({addr, proxyAddr}) {
 
 	if (proxyAddr == null || proxyAddr.length() == 0) {
-	  console.log("Create TransferProxy");
 	  proxyAddr = await this.CreateNftTransferProxy({});
 	}
 
@@ -502,8 +501,6 @@ class EluvioLive {
       ],
       formatArguments: true
     });
-
-	console.log("NFT: ", addr, "TransferProxy: ", proxyAddr);
 
 	return proxyAddr;
   }
@@ -525,8 +522,6 @@ class EluvioLive {
 	  constructorArgs: [
 	  ]
 	});
-
-	console.log("NFT TransferProxy address:", c.contractAddress);
 
 	return c.contractAddress;
   }
@@ -590,7 +585,7 @@ class EluvioLive {
    */
   async NftBalanceOf({addr, ownerAddr}) {
 
-	var balance = {};
+	var balance = [];
     const abi = fs.readFileSync(path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi"));
     var res = await this.client.CallContractMethod({
       contractAddress: addr,
@@ -630,7 +625,7 @@ class EluvioLive {
 	  } catch(e) {
 	  }
 
-	  balance[tokenId.toString()] = {hold: holdSecs.toString(), holdEnd: holdEnd};
+	  balance[i] = {tokenId: tokenId.toString(), hold: holdSecs.toString(), holdEnd: holdEnd};
 	}
 	return balance;
   }
