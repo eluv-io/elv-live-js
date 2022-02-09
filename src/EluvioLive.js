@@ -1229,6 +1229,58 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
 	return res;
   }
 
+  async Sign({message}) {
+	const signature = await this.client.authClient.Sign(Ethers.utils.keccak256(Ethers.utils.toUtf8Bytes(message)));
+	const multiSig = this.client.utils.FormatSignature(signature);
+	return {signature, multiSig}
+  }
+
+  async MakeAuthServiceRequest({method, path, body}){
+
+	const {signature, multiSig} = await this.Sign({message:JSON.stringify(body)});
+
+	let res = await this.client.authClient.MakeAuthServiceRequest({
+	  method,
+	  path,
+	  body,
+	  headers: {
+		"Authorization": `Bearer ${multiSig}`
+	  }
+	});
+
+	return res;
+  }
+
+  async TenantMint({tenant, marketplace, sku, addr}) {
+
+	let now = Date.now();
+
+	let body = {
+	  "trans_id":"",
+	  "tickets":null,
+	  "products":[
+		{
+		  "prod_name": "",
+		  "sku": sku,
+		  "quant": 1
+		}
+	  ],
+	  "ident":"minter@tenant.com",
+	  "email":"minter@tenant.com",
+	  "cust_name":"minter@tenant.com",
+	  "ts": now,
+	  "extra":{
+		"elv_addr": addr
+	  }
+	};
+
+	let res = await this.MakeAuthServiceRequest({
+	  method: "POST",
+	  path: "/as/tnt/trans/base/" + tenant + "/" + marketplace,
+	  body
+	});
+	return res;
+  }
 
 }
 
