@@ -192,7 +192,8 @@ class EluvioLive {
 			if(info.length == 0){
 				continue;
 			}
-			const nft = await this.NftShow({addr: nftAddr});
+			var nft = await this.NftShow({addr: nftAddr});
+			nft.tokens = info
 			
 			nftInfo.marketplaces[key].nfts[nftAddr] = nft
 			}
@@ -203,14 +204,13 @@ class EluvioLive {
 		return nftInfo;
 	}
 
-
-	//WIP
   /**
    * Get a list of the NFTs of this tenant owned by 'ownerAddr'
    *
    * @namedParams
    * @param {string} tenantId - The ID of the tenant (iten***)
    * @param {string} ownerAddr - A user address to check the balance of
+	 * @param {integer} maxNumber - Max number of NFTs returned
    * @return {Promise<Object>} - Number of tokens owned
    */
 	 async TenantBalanceOf({tenantId, ownerAddr, maxNumber=Number.MAX_SAFE_INTEGER}) {
@@ -244,13 +244,14 @@ class EluvioLive {
 				if(info.length == 0){
 					continue;
 				}
-				const nft = await this.NftShow({addr: nftAddr});
+				
+				var nft = await this.NftShow({addr: nftAddr});
+				nft.tokens = info;
 
 				nftInfo.nfts[nftAddr] = nft;
 				num++;
 			}catch(e){
 				//We don't know the length so just stop on error and return
-				console.log(e);
 				break;
 			}
 		}
@@ -666,7 +667,7 @@ class EluvioLive {
       });
 
 	  var holdSecs = -1;
-	  var holdEnd;
+	  var holdEnd = -1;
 	  try {
 		holdSecs = await this.client.CallContractMethod({
 		  contractAddress: addr,
@@ -680,7 +681,10 @@ class EluvioLive {
 	  } catch(e) {
 	  }
 
-	  balance[i] = {tokenId: tokenId.toString(), hold: holdSecs.toString(), holdEnd: holdEnd};
+	  balance[i] = {tokenId: tokenId.toString(), 
+				hold: holdSecs.toString(), 
+				holdEnd: holdEnd
+			};
 	}
 
 	return balance;
