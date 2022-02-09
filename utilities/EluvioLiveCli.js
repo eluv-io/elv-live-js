@@ -638,7 +638,7 @@ yargs(hideBin(process.argv))
 			  describe: 'Marketplace ID',
 			  type: 'string'
 			})
-			.positional('SKU', {
+			.positional('sku', {
 			  describe: 'NFT marketplace SKU',
 			  type: 'string'
 			})
