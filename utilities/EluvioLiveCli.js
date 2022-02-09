@@ -262,6 +262,27 @@ const CmdShuffle = async ({argv}) => {
 	}
 }
 
+const TenantMint = async ({argv}) => {
+
+  console.log("Tenant mint", argv.tenant, argv.marketplace, argv.sku, argv.addr);
+  try {
+	await Init();
+
+	let res = await elvlv.TenantMint({
+	  tenant: argv.tenant,
+	  marketplace: argv.marketplace,
+	  sku: argv.sku,
+	  addr: argv.addr
+	});
+
+	console.log("Mint request submitted: ", res.statusText);
+
+  } catch (e) {
+	console.error("ERROR:", e)
+  }
+
+}
+
 yargs(hideBin(process.argv))
 
   .command('nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]',
@@ -583,7 +604,7 @@ yargs(hideBin(process.argv))
 
 		   })
 
-	.command('shuffle <file> [options]',
+    .command('shuffle <file> [options]',
 		'Sort each line deterministically based on the seed', (yargs) => {
 			yargs
 				.positional('file', {
@@ -604,6 +625,29 @@ yargs(hideBin(process.argv))
 				})
 		}, (argv) => {
 			CmdShuffle({argv});
+		})
+
+    .command('tenant_mint <tenant> <marketplace> <sku> <addr>',
+	    'Mint a marketplace NFT by SKU as tenant admin', (yargs) => {
+		  yargs
+			.positional('tenant', {
+			  describe: 'Tenant ID',
+			  type: 'string'
+			})
+			.positional('marketplace', {
+			  describe: 'Marketplace ID',
+			  type: 'string'
+			})
+			.positional('sku', {
+			  describe: 'NFT marketplace SKU',
+			  type: 'string'
+			})
+			.positional('addr', {
+			  describe: 'Target address to mint to',
+			  type: 'string'
+			})
+		}, (argv) => {
+			TenantMint({argv});
 		})
 
   .help()
