@@ -262,6 +262,21 @@ const CmdShuffle = async ({argv}) => {
 	}
 }
 
+const CmdList = async ({argv}) => {
+	console.log("list ", argv.tenant);
+  try{
+		await Init();
+		
+		var res = await elvlv.list({
+			tenantId: argv.tenant
+		})
+		
+		console.log(yaml.dump(res));
+	}catch(e){
+		console.error(e);
+	}
+}
+
 yargs(hideBin(process.argv))
 
   .command('nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]',
@@ -604,6 +619,17 @@ yargs(hideBin(process.argv))
 				})
 		}, (argv) => {
 			CmdShuffle({argv});
+		})
+
+		.command('list [options]',
+		'List the whole eluvio media platform', (yargs) => {
+			yargs
+				.option('tenant', {
+					describe: 'The tenant ID branch to show.',
+					type: 'string'
+				})
+		}, (argv) => {
+			CmdList({argv});
 		})
 
   .help()

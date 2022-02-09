@@ -27,27 +27,27 @@ class EluvioLive {
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
   constructor({
-	configUrl,
-	mainObjectId,
-	tenantObjectId
+		configUrl,
+		mainObjectId,
+		tenantObjectId
   }) {
 
     this.configUrl = configUrl || ElvClient.main;
-	this.mainObjectId = mainObjectId;
+		this.mainObjectId = mainObjectId;
 
     this.debug = false;
   }
 
   async Init() {
-	this.client = await ElvClient.FromConfigurationUrl({
-      configUrl: this.configUrl
-    });
-	let wallet = this.client.GenerateWallet();
-    let signer = wallet.AddAccount({
-      privateKey: process.env.PRIVATE_KEY
-    });
-    this.client.SetSigner({signer});
-	this.client.ToggleLogging(false);
+		this.client = await ElvClient.FromConfigurationUrl({
+				configUrl: this.configUrl
+			});
+		let wallet = this.client.GenerateWallet();
+		let signer = wallet.AddAccount({
+			privateKey: process.env.PRIVATE_KEY
+		});
+		this.client.SetSigner({signer});
+		this.client.ToggleLogging(false);
   }
 
   /**
@@ -1233,6 +1233,63 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
 	return res;
   }
 
+	async list({tenantId}){
+		var results = {};
+
+		var objectId = this.mainObjectId;
+
+		const libraryId = await this.client.ContentObjectLibraryId({
+			objectId
+		});
+
+		var warns = [];
+		var meta = {};
+		var tenantOnly = false;
+		var metadataSubtree = "/public/asset_metadata";
+
+		if(tenantId){
+			metadataSubtree = "/public/asset_metadata/featured_events";
+			tenantOnly = true;
+		}
+
+		meta = await this.client.ContentObjectMetadata({
+			libraryId,
+			objectId,
+			metadataSubtree,
+			resolveLinks: true,
+			resolveIncludeSource: true,
+			resolveIgnoreErrors: true,
+			linkDepthLimit: 5
+		});
+
+		if(!tenantOnly){
+			results = meta;
+		}else{
+			var tenantSites = [];
+			results.sites = [];
+			let sites = meta || {};
+
+      for (const index in sites) {
+        try {
+          let item = sites[index];
+          let key = Object.keys(item)[0];
+          let site = sites[index][key];
+					if(site.info.tenant_id === tenantId){
+						tenantSites.push(site);
+					}
+				}catch(e){
+					warns.push(e);
+				}
+			}
+
+			results.sites = tenantSites;
+			results.count = tenantSites.length;
+		}
+
+		results.warns = warns;
+
+		return results;
+	}
 
 }
 
