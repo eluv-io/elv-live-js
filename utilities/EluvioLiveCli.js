@@ -262,8 +262,29 @@ const CmdShuffle = async ({argv}) => {
 	}
 }
 
+const TenantMint = async ({argv}) => {
+
+  console.log("Tenant mint", argv.tenant, argv.marketplace, argv.sku, argv.addr);
+  try {
+	await Init();
+
+	let res = await elvlv.TenantMint({
+	  tenant: argv.tenant,
+	  marketplace: argv.marketplace,
+	  sku: argv.sku,
+	  addr: argv.addr
+	});
+
+	console.log("Mint request submitted: ", res.statusText);
+
+  } catch (e) {
+	console.error("ERROR:", e)
+  }
+
+}
+
 const CmdList = async ({argv}) => {
-	console.log("list ",argv.tenant, argv.tenant_slug);
+	console.log(`list tenant: ${argv.tenant} tenant_slug: ${argv.tenant_slug}`);
   try{
 		await Init();
 		
@@ -599,7 +620,7 @@ yargs(hideBin(process.argv))
 
 		   })
 
-	.command('shuffle <file> [options]',
+    .command('shuffle <file> [options]',
 		'Sort each line deterministically based on the seed', (yargs) => {
 			yargs
 				.positional('file', {
@@ -622,15 +643,38 @@ yargs(hideBin(process.argv))
 			CmdShuffle({argv});
 		})
 
+    .command('tenant_mint <tenant> <marketplace> <sku> <addr>',
+	    'Mint a marketplace NFT by SKU as tenant admin', (yargs) => {
+		  yargs
+			.positional('tenant', {
+			  describe: 'Tenant ID',
+			  type: 'string'
+			})
+			.positional('marketplace', {
+			  describe: 'Marketplace ID',
+			  type: 'string'
+			})
+			.positional('sku', {
+			  describe: 'NFT marketplace SKU',
+			  type: 'string'
+			})
+			.positional('addr', {
+			  describe: 'Target address to mint to',
+			  type: 'string'
+			})
+		}, (argv) => {
+			TenantMint({argv});
+		})
+
 		.command('list [options]',
-		'List the whole eluvio media platform', (yargs) => {
+		'List the Eluvio Live Tenants', (yargs) => {
 			yargs
 				.option('tenant', {
-					describe: 'The tenant ID branch to show. Eg. itenXXX...',
+					describe: 'Show the tenant based on id. Eg. itenXXX...',
 					type: 'string'
 				})
 				.option('tenant_slug', {
-					describe: 'The tenant url id branch to show. A url id is a dash separated human readable identifier for web paths. Eg. elv-live',
+					describe: 'Show the tenant based on slug. Eg. elv-live',
 					type: 'string'
 				})
 		}, (argv) => {
