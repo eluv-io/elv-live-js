@@ -1339,13 +1339,13 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return res;
   }
 
-	async TenantWallets({ tenant, marketplace, maxNumber=Number.MAX_SAFE_INTEGER}) {
+	async TenantWallets({ tenant, maxNumber=Number.MAX_SAFE_INTEGER}) {
 		if (maxNumber < 1) {
       maxNumber = Number.MAX_SAFE_INTEGER;
     }
-		
+
     let res = await this.GetServiceRequest({
-      path: urljoin("/tnt/wlt/",tenant, marketplace),
+      path: urljoin("/tnt/wlt/",tenant),
 			limit: maxNumber
     });
     return res;

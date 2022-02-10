@@ -279,23 +279,15 @@ const CmdTenantMint = async ({ argv }) => {
 };
 
 const CmdTenantWallets = async ({ argv }) => {
-  console.log(`Tenant wallets tenant: ${argv.tenant} marketplace: ${argv.marketplace} max_results: ${argv.max_results}`);
+  console.log(`Tenant wallets tenant: ${argv.tenant} max_results: ${argv.max_results}`);
   try {
     await Init();
 
     let res = await elvlv.TenantWallets({
       tenant: argv.tenant,
-			marketplace: argv.marketplace,
 			maxNumber: argv.max_results
     });
 
-		let contents = [];
-		for(const index in res.contents){
-			var content = res.contents[index];
-			delete content['ord'];
-			contents.push(content);
-		}
-		res.contents = contents;
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -718,16 +710,12 @@ yargs(hideBin(process.argv))
   )
 
 	.command(
-    "tenant_wallets <tenant> <marketplace> [options]",
+    "tenant_wallets <tenant> [options]",
     "Show the wallets associated with this tenant",
     (yargs) => {
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("marketplace", {
-          describe: "Marketplace ID",
           type: "string",
         })
 				.option("max_results", {
