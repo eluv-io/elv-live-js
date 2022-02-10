@@ -289,6 +289,13 @@ const CmdTenantWallets = async ({ argv }) => {
 			maxNumber: argv.max_results
     });
 
+		let contents = [];
+		for(const index in res.contents){
+			var content = res.contents[index];
+			delete content['ord'];
+			contents.push(content);
+		}
+		res.contents = contents;
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
