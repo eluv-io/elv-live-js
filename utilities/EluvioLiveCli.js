@@ -1,691 +1,722 @@
-const { ElvClient } = require("elv-client-js")
-const { EluvioLive } = require("../src/EluvioLive.js")
-const { Config } = require("../src/Config.js")
-const {Shuffler} = require("../src/Shuffler")
+const { ElvClient } = require("elv-client-js");
+const { EluvioLive } = require("../src/EluvioLive.js");
+const { Config } = require("../src/Config.js");
+const { Shuffler } = require("../src/Shuffler");
 
-const yargs = require('yargs/yargs')
-const { hideBin } = require('yargs/helpers')
-const yaml = require('js-yaml');
+const yargs = require("yargs/yargs");
+const { hideBin } = require("yargs/helpers");
+const yaml = require("js-yaml");
 
-const fs = require("fs")
-const path = require("path")
+const fs = require("fs");
+const path = require("path");
 
 var elvlv;
 
 const Init = async () => {
-
   console.log("Network: " + Config.net);
 
   elvlv = new EluvioLive({
-	configUrl: Config.networks[Config.net],
-	mainObjectId: Config.mainObjects[Config.net]
+    configUrl: Config.networks[Config.net],
+    mainObjectId: Config.mainObjects[Config.net],
   });
   await elvlv.Init();
+};
 
-}
-
-const CmfNftTemplateAddNftContract = async ({argv}) => {
-
-  console.log("NFT Template - set contract",
-			  argv.library, argv.object, argv.tenant, argv.minthelper, argv.minter, argv.cap, argv.name, argv.symbol,
-			  argv.nftAddress)
+const CmfNftTemplateAddNftContract = async ({ argv }) => {
+  console.log(
+    "NFT Template - set contract",
+    argv.library,
+    argv.object,
+    argv.tenant,
+    argv.minthelper,
+    argv.minter,
+    argv.cap,
+    argv.name,
+    argv.symbol,
+    argv.nftAddress
+  );
   await Init();
 
   var c = await elvlv.NftTemplateAddNftContract({
-	libraryId: argv.library,
-	objectId: argv.object,
-	//nftAddr,
-	tenantId: argv.tenant,
-	mintHelperAddr: argv.minthelper, //"0x59e79eFE007F5208857a646Db5cBddA82261Ca81",
-	minterAddr: argv.minter,
-	totalSupply: argv.cap,
-	collectionName: argv.name,
-	collectionSymbol: argv.symbol,
-	hold: argv.hold,
-	contractUri: "",
-	proxyAddress: ""
-  })
+    libraryId: argv.library,
+    objectId: argv.object,
+    //nftAddr,
+    tenantId: argv.tenant,
+    mintHelperAddr: argv.minthelper, //"0x59e79eFE007F5208857a646Db5cBddA82261Ca81",
+    minterAddr: argv.minter,
+    totalSupply: argv.cap,
+    collectionName: argv.name,
+    collectionSymbol: argv.symbol,
+    hold: argv.hold,
+    contractUri: "",
+    proxyAddress: "",
+  });
+};
 
-}
-
-const CmfNftAddMintHelper = async ({argv}) => {
-
-  console.log("NFT - add mint helper",
-			  argv.addr, argv.minter)
+const CmfNftAddMintHelper = async ({ argv }) => {
+  console.log("NFT - add mint helper", argv.addr, argv.minter);
   await Init();
 
   var c = await elvlv.NftAddMinter({
-	addr: argv.addr,
-	minterAddr: argv.minter
-  })
+    addr: argv.addr,
+    minterAddr: argv.minter,
+  });
+};
 
-}
-
-const CmfNftSetProxy = async ({argv}) => {
-
-  console.log("NFT - set proxy",
-			  argv.addr, argv.proxy_addr)
+const CmfNftSetProxy = async ({ argv }) => {
+  console.log("NFT - set proxy", argv.addr, argv.proxy_addr);
   await Init();
 
   var p = await elvlv.NftSetTransferProxy({
-	addr: argv.addr,
-	proxyAddr: argv.proxy_addr
-  })
+    addr: argv.addr,
+    proxyAddr: argv.proxy_addr,
+  });
   console.log("Proxy: ", p);
+};
 
-}
-
-const CmdNftBalanceOf = async ({argv}) => {
-
+const CmdNftBalanceOf = async ({ argv }) => {
   console.log("NFT - call", argv.addr, argv.owner);
 
   await Init();
 
   var res = await elvlv.NftBalanceOf({
-	addr: argv.addr,
-	ownerAddr: argv.owner
-  })
+    addr: argv.addr,
+    ownerAddr: argv.owner,
+  });
 
   console.log(yaml.dump(res));
-}
+};
 
-const CmdNftShow = async ({argv}) => {
-
+const CmdNftShow = async ({ argv }) => {
   console.log("NFT - show", argv.addr, argv.show_owners);
 
   await Init();
 
   var res = await elvlv.NftShow({
-	addr: argv.addr,
-	mintHelper: argv.check_minter,
-	showOwners: argv.show_owners
-  })
+    addr: argv.addr,
+    mintHelper: argv.check_minter,
+    showOwners: argv.show_owners,
+  });
 
   console.log(yaml.dump(res));
-}
+};
 
-const CmdNftBuild = async ({argv}) => {
-
+const CmdNftBuild = async ({ argv }) => {
   console.log("NFT - build public/nft", argv.object);
 
   await Init();
 
   var res = await elvlv.NftBuild({
-	libraryId: argv.library,
-	objectId: argv.object
-  })
+    libraryId: argv.library,
+    objectId: argv.object,
+  });
 
   console.log(yaml.dump(res));
-}
+};
 
-const CmdNftLookup = async ({argv}) => {
-
+const CmdNftLookup = async ({ argv }) => {
   console.log("NFT - lookup", argv.addr, argv.token_id);
 
   await Init();
 
   var res = await elvlv.NftLookup({
-	addr: argv.addr,
-	tokenId: argv.token_id
-  })
+    addr: argv.addr,
+    tokenId: argv.token_id,
+  });
 
   console.log(yaml.dump(res));
-}
+};
 
-const CmdNftProxyTransfer = async ({argv}) => {
-
-  console.log("NFT - transer as proxy owner", argv.addr, argv.from_addr, argv.to_addr);
+const CmdNftProxyTransfer = async ({ argv }) => {
+  console.log(
+    "NFT - transer as proxy owner",
+    argv.addr,
+    argv.from_addr,
+    argv.to_addr
+  );
 
   await Init();
 
   var res = await elvlv.NftProxyTransferFrom({
-	addr: argv.addr,
-	tokenId: argv.token_id,
-	fromAddr: argv.from_addr,
-	toAddr: argv.to_addr
-  })
+    addr: argv.addr,
+    tokenId: argv.token_id,
+    fromAddr: argv.from_addr,
+    toAddr: argv.to_addr,
+  });
 
   console.log(yaml.dump(res));
-}
+};
 
-const CmdTenantShow = async ({argv}) => {
-
+const CmdTenantShow = async ({ argv }) => {
   console.log("Tenant - show", argv.tenant);
 
   await Init();
 
   var res = await elvlv.TenantShow({
-	tenantId: argv.tenant,
-	libraryId: argv.library,
-	objectId: argv.object,
-	marketplaceId: argv.marketplace,
-	eventId: argv.event,
-	cauth: argv.check_cauth,
-	mintHelper: argv.check_minter
-  })
+    tenantId: argv.tenant,
+    libraryId: argv.library,
+    objectId: argv.object,
+    marketplaceId: argv.marketplace,
+    eventId: argv.event,
+    cauth: argv.check_cauth,
+    mintHelper: argv.check_minter,
+  });
 
   console.log(yaml.dump(res));
-}
+};
 
-const CmdSiteShow = async ({argv}) => {
-
+const CmdSiteShow = async ({ argv }) => {
   console.log("Site - show", argv.object);
 
   await Init();
 
   var res = await elvlv.SiteShow({
-	libraryId: argv.library,
-	objectId: argv.object,
-  })
+    libraryId: argv.library,
+    objectId: argv.object,
+  });
 
   console.log(yaml.dump(res));
-}
+};
 
-const CmdSiteSetDrop = async ({argv}) => {
-
+const CmdSiteSetDrop = async ({ argv }) => {
   console.log("Site - set drop", argv.object, argv.uuid, "update", argv.update);
 
   await Init();
 
   var res = await elvlv.SiteSetDrop({
-	libraryId: argv.library,
-	objectId: argv.object,
-	uuid: argv.uuid,
-	start: argv.start_date,
-	end: argv.end_date,
-	endVote: argv.end_vote,
-	startMint: argv.start_mint,
-	newUuid: argv.new_uuid,
-	update: argv.update
-  })
+    libraryId: argv.library,
+    objectId: argv.object,
+    uuid: argv.uuid,
+    start: argv.start_date,
+    end: argv.end_date,
+    endVote: argv.end_vote,
+    startMint: argv.start_mint,
+    newUuid: argv.new_uuid,
+    update: argv.update,
+  });
 
   console.log(yaml.dump(res));
-}
+};
 
-const CmdTenantBalanceOf = async ({argv}) => {
-
+const CmdTenantBalanceOf = async ({ argv }) => {
   console.log("Tenant - balance of", argv.tenant, argv.owner, argv.max_results);
 
   await Init();
 
   var res = await elvlv.TenantBalanceOf({
-		tenantId: argv.tenant,
-		ownerAddr: argv.owner,
-		maxNumber: argv.max_results
-  })
+    tenantId: argv.tenant,
+    ownerAddr: argv.owner,
+    maxNumber: argv.max_results,
+  });
 
   console.log(yaml.dump(res));
-}
+};
 
-const CmdFabricTenantBalanceOf = async ({argv}) => {
+const CmdFabricTenantBalanceOf = async ({ argv }) => {
+  console.log("Fabric Tenant - balance of", argv.object, argv.owner);
 
-	console.log("Fabric Tenant - balance of", argv.object, argv.owner);
-  
-	await Init();
-  
-	var res = await elvlv.FabricTenantBalanceOf({
-	  objectId: argv.object,
-	  ownerAddr: argv.owner
-	})
-  
-	console.log(yaml.dump(res));
-}
+  await Init();
 
-const CmdShuffle = async ({argv}) => {
-	try {
-		let files = [argv.file]
-		let isDir = fs.lstatSync(argv.file).isDirectory()
-		if (isDir) {
-			files = fs.readdirSync(argv.file)
-			files.forEach((f, i) => {
-				files[i] = path.join(argv.file, f)
-			})
-		}
+  var res = await elvlv.FabricTenantBalanceOf({
+    objectId: argv.object,
+    ownerAddr: argv.owner,
+  });
 
-		for (let f of files) {
-			console.log("\n" + Shuffler.shuffledPath(f) + ":")
+  console.log(yaml.dump(res));
+};
 
-			let a = await Shuffler.shuffleFile(
-				f, true, argv.seed, argv.check_dupes)
-
-			if (argv.print_js) {
-				console.log(a)
-			} else {
-				a.forEach((line) => {
-					console.log(line)
-				})
-			}
-		}
-		console.log("")
-	} catch (e) {
-		console.error("ERROR:", e)
-	}
-}
-
-const TenantMint = async ({argv}) => {
-
-  console.log("Tenant mint", argv.tenant, argv.marketplace, argv.sku, argv.addr);
+const CmdShuffle = async ({ argv }) => {
   try {
-	await Init();
+    let files = [argv.file];
+    let isDir = fs.lstatSync(argv.file).isDirectory();
+    if (isDir) {
+      files = fs.readdirSync(argv.file);
+      files.forEach((f, i) => {
+        files[i] = path.join(argv.file, f);
+      });
+    }
 
-	let res = await elvlv.TenantMint({
-	  tenant: argv.tenant,
-	  marketplace: argv.marketplace,
-	  sku: argv.sku,
-	  addr: argv.addr
-	});
+    for (let f of files) {
+      console.log("\n" + Shuffler.shuffledPath(f) + ":");
 
-	console.log("Mint request submitted: ", res.statusText);
+      let a = await Shuffler.shuffleFile(f, true, argv.seed, argv.check_dupes);
 
+      if (argv.print_js) {
+        console.log(a);
+      } else {
+        a.forEach((line) => {
+          console.log(line);
+        });
+      }
+    }
+    console.log("");
   } catch (e) {
-	console.error("ERROR:", e)
+    console.error("ERROR:", e);
   }
+};
 
-}
+const TenantMint = async ({ argv }) => {
+  console.log(
+    "Tenant mint",
+    argv.tenant,
+    argv.marketplace,
+    argv.sku,
+    argv.addr
+  );
+  try {
+    await Init();
 
-const CmdList = async ({argv}) => {
-	console.log(`list tenant: ${argv.tenant} tenant_slug: ${argv.tenant_slug}`);
-  try{
-		await Init();
-		
-		var res = await elvlv.list({
-			tenantId: argv.tenant,
-			tenantSlug:argv.tenant_slug
-		})
-		
-		console.log(yaml.dump(res));
-	}catch(e){
-		console.error(e);
-	}
-}
+    let res = await elvlv.TenantMint({
+      tenant: argv.tenant,
+      marketplace: argv.marketplace,
+      sku: argv.sku,
+      addr: argv.addr,
+    });
+
+    console.log("Mint request submitted: ", res.statusText);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdList = async ({ argv }) => {
+  console.log(`list tenant: ${argv.tenant} tenant_slug: ${argv.tenant_slug}`);
+  try {
+    await Init();
+
+    var res = await elvlv.list({
+      tenantId: argv.tenant,
+      tenantSlug: argv.tenant_slug,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error(e);
+  }
+};
 
 yargs(hideBin(process.argv))
+  .command(
+    "nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]",
+    "Add a new or existing NFT contract to an NFT Template object",
+    (yargs) => {
+      yargs
+        .positional("library", {
+          describe: "NFT Template library ID",
+          type: "string",
+        })
+        .positional("object", {
+          describe: "NFT Template object ID",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("minthelper", {
+          describe: "Mint helper address (hex)",
+          type: "string",
+        })
+        .option("minter", {
+          describe: "Minter address (hex)",
+          type: "string",
+        })
+        .option("cap", {
+          describe: "NFT total supply cap",
+          type: "number",
+        })
+        .option("name", {
+          describe: "NFT collection name",
+          type: "string",
+        })
+        .option("symbol", {
+          describe: "NFT collection symbol",
+          type: "string",
+        })
+        .option("nftaddr", {
+          describe: "NFT contract address (will not create a new one)",
+          type: "string",
+        })
+        .option("hold", {
+          describe: "Hold period in seconds (default 7 days)",
+          type: "number",
+        });
+    },
+    (argv) => {
+      CmfNftTemplateAddNftContract({ argv });
+    }
+  )
 
-  .command('nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]',
-		   'Add a new or existing NFT contract to an NFT Template object', (yargs) => {
-			 yargs
-			   .positional('library', {
-				 describe: 'NFT Template library ID',
-				 type: 'string'
-			   })
-			   .positional('object', {
-				 describe: 'NFT Template object ID',
-				 type: 'string'
-			   })
-			   .positional('tenant', {
-				 describe: "Tenant ID",
-				 type: 'string'
-			   })
-			   .option('minthelper', {
-				 describe: "Mint helper address (hex)",
-				 type: 'string'
-			   })
-			   .option('minter', {
-				 describe: "Minter address (hex)",
-				 type: 'string'
-			   })
-			   .option('cap', {
-				 describe: "NFT total supply cap",
-				 type: 'number'
-			   })
-			   .option('name', {
-				 describe: "NFT collection name",
-				 type: 'string'
-			   })
-			   .option('symbol', {
-				 describe: "NFT collection symbol",
-				 type: 'string'
-			   })
-			   .option('nftaddr', {
-				 describe: "NFT contract address (will not create a new one)",
-				 type: 'string'
-			   })
-			   .option('hold', {
-				 describe: "Hold period in seconds (default 7 days)",
-				 type: 'number'
-			   })
-		   }, (argv) => {
+  .command(
+    "nft_add_minter <addr> <minter>",
+    "Add a new or existing NFT contract to an NFT Template object",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT address (hex)",
+          type: "string",
+        })
+        .option("minter", {
+          describe: "Minter or mint helper address (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmfNftAddMintHelper({ argv });
+    }
+  )
 
-			 CmfNftTemplateAddNftContract({argv});
+  .command(
+    "nft_set_proxy <addr> [proxy_addr]",
+    "Set a proxy on an NFT contract",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT address (hex)",
+          type: "string",
+        })
+        .option("proxy_addr", {
+          describe: "Proxy contract address (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmfNftSetProxy({ argv });
+    }
+  )
 
-		   })
+  .command(
+    "nft_balance_of <addr> <owner>",
+    "Call NFT ownerOf - determine if this is an owner",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT address (hex)",
+          type: "string",
+        })
+        .positional("owner", {
+          describe: "Owner address to check (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftBalanceOf({ argv });
+    }
+  )
 
-  .command('nft_add_minter <addr> <minter>',
-		   'Add a new or existing NFT contract to an NFT Template object', (yargs) => {
-			 yargs
-			   .positional('addr', {
-				 describe: 'NFT address (hex)',
-				 type: 'string'
-			   })
-			   .option('minter', {
-				 describe: "Minter or mint helper address (hex)",
-				 type: 'string'
-			   })
-		   }, (argv) => {
+  .command(
+    "nft_show <addr>",
+    "Show info on this NFT",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT address (hex)",
+          type: "string",
+        })
+        .option("check_minter", {
+          describe: "Check that all NFTs use this mint helper",
+        })
+        .option("show_owners", {
+          describe: "Show up to these many owners (default 0)",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdNftShow({ argv });
+    }
+  )
 
-			 CmfNftAddMintHelper({argv});
+  .command(
+    "nft_proxy_transfer <addr> <token_id> <from_addr> <to_addr>",
+    "Tranfer NFT as a proxy owner",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT address (hex)",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "NFT address (hex)",
+          type: "integer",
+        })
+        .positional("from_addr", {
+          describe: "Address to transfer from (hex)",
+          type: "string",
+        })
+        .positional("to_addr", {
+          describe: "Address to transfer to (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftProxyTransfer({ argv });
+    }
+  )
 
-		   })
+  .command(
+    "nft_build <library> <object>",
+    "Build the public/nft section based on asset metadata",
+    (yargs) => {
+      yargs
+        .positional("library", {
+          describe: "Content library",
+          type: "string",
+        })
+        .positional("object", {
+          describe: "Content object hash (hq__) or id (iq__)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftBuild({ argv });
+    }
+  )
 
-  .command('nft_set_proxy <addr> [proxy_addr]',
-		   'Set a proxy on an NFT contract', (yargs) => {
-			 yargs
-			   .positional('addr', {
-				 describe: 'NFT address (hex)',
-				 type: 'string'
-			   })
-			   .option('proxy_addr', {
-				 describe: "Proxy contract address (hex)",
-				 type: 'string'
-			   })
-		   }, (argv) => {
+  .command(
+    "nft_lookup <addr> <token_id>",
+    "Decode and look up a local NFT by external token ID",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "Local NFT contract address",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "External token ID",
+          type: "string", // BigNumber as string
+        });
+    },
+    (argv) => {
+      CmdNftLookup({ argv });
+    }
+  )
 
-			 CmfNftSetProxy({argv});
+  .command(
+    "tenant_show <tenant> <library> <object> [event] [marketplace]",
+    "Show info on this tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("library", {
+          describe: "Tenant-level EluvioLive library",
+          type: "string",
+        })
+        .positional("object", {
+          describe: "Tenant-level EluvioLive object ID",
+          type: "string",
+        })
+        .option("event", {
+          describe: "Event ID",
+          type: "string",
+        })
+        .option("marketplace", {
+          describe: "Marketplace ID",
+          type: "string",
+        })
+        .option("check_cauth", {
+          describe:
+            "Check that all NFTs use this minter address in ikms format",
+          type: "string",
+        })
+        .option("check_minter", {
+          describe: "Check that all NFTs use this mint helper",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantShow({ argv });
+    }
+  )
 
-		   })
+  .command(
+    "tenant_balance_of <tenant> <owner>",
+    "Show NFTs owned by this owner in this tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("owner", {
+          describe: "Owner address (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantBalanceOf({ argv });
+    }
+  )
 
+  .command(
+    "fabric_tenant_balance_of <object> <owner>",
+    "Show NFTs owned by this owner in this tenant",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "Tenant-level EluvioLive object ID",
+          type: "string",
+        })
+        .positional("owner", {
+          describe: "Owner address (hex)",
+          type: "string",
+        })
+        .option("max_results", {
+          describe: "Show up to these many results (default 0)",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdFabricTenantBalanceOf({ argv });
+    }
+  )
 
-  .command('nft_balance_of <addr> <owner>',
-		   'Call NFT ownerOf - determine if this is an owner', (yargs) => {
-			 yargs
-			   .positional('addr', {
-				 describe: 'NFT address (hex)',
-				 type: 'string'
-			   })
-			   .positional('owner', {
-				 describe: 'Owner address to check (hex)',
-				 type: 'string'
-			   })
-		   }, (argv) => {
+  .command(
+    "site_show <library> <object>",
+    "Show info on this site/event",
+    (yargs) => {
+      yargs
+        .positional("library", {
+          describe: "Site library",
+          type: "string",
+        })
+        .positional("object", {
+          describe: "Site object ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdSiteShow({ argv });
+    }
+  )
 
-			 CmdNftBalanceOf({argv});
+  .command(
+    "site_set_drop <library> <object> <uuid> <start_date> [options]",
+    "Set drop dates for a site/event",
+    (yargs) => {
+      yargs
+        .positional("library", {
+          describe: "Site library",
+          type: "string",
+        })
+        .positional("object", {
+          describe: "Site object ID",
+          type: "string",
+        })
+        .positional("uuid", {
+          describe: "Drop UUID",
+          type: "string",
+        })
+        .positional("start_date", {
+          describe: "Event start date (ISO format)",
+          type: "string",
+        })
+        .option("end_date", {
+          describe: "Event end date (ISO format)",
+          type: "string",
+        })
+        .option("end_vote", {
+          describe: "Event vote end date (ISO foramt)",
+          type: "string",
+        })
+        .option("start_mint", {
+          describe: "Event start mint date (ISO format)",
+          type: "string",
+        })
+        .option("new_uuid", {
+          describe: "Assign a new UUID",
+          type: "boolean",
+        })
+        .option("update", {
+          describe: "Tenant-level EluvioLive object to update",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdSiteSetDrop({ argv });
+    }
+  )
 
-		   })
+  .command(
+    "shuffle <file> [options]",
+    "Sort each line deterministically based on the seed",
+    (yargs) => {
+      yargs
+        .positional("file", {
+          describe: "File or directory path",
+          type: "string",
+        })
+        .option("seed", {
+          describe:
+            "Determines the order. If no seed is provided, the shuffler uses a random one.",
+          type: "string",
+        })
+        .option("check_dupes", {
+          describe: "Abort if duplicate is found",
+          type: "boolean",
+        })
+        .option("print_js", {
+          describe: "Print result as an array in JavaScript",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdShuffle({ argv });
+    }
+  )
 
-  .command('nft_show <addr>',
-		   'Show info on this NFT', (yargs) => {
-			 yargs
-			   .positional('addr', {
-				 describe: 'NFT address (hex)',
-                 type: 'string'
-               })
-               .option('check_minter', {
-                 describe: 'Check that all NFTs use this mint helper',
-			   })
-               .option('show_owners', {
-				 describe: 'Show up to these many owners (default 0)',
-				 type: 'integer'
-			   })
-		   }, (argv) => {
+  .command(
+    "tenant_mint <tenant> <marketplace> <sku> <addr>",
+    "Mint a marketplace NFT by SKU as tenant admin",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("marketplace", {
+          describe: "Marketplace ID",
+          type: "string",
+        })
+        .positional("sku", {
+          describe: "NFT marketplace SKU",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "Target address to mint to",
+          type: "string",
+        });
+    },
+    (argv) => {
+      TenantMint({ argv });
+    }
+  )
 
-			 CmdNftShow({argv});
-
-		   })
-
-  .command('nft_proxy_transfer <addr> <token_id> <from_addr> <to_addr>',
-		   'Tranfer NFT as a proxy owner', (yargs) => {
-			 yargs
-			   .positional('addr', {
-				 describe: 'NFT address (hex)',
-                 type: 'string'
-               })
-			   .positional('token_id', {
-				 describe: 'NFT address (hex)',
-                 type: 'integer'
-               })
-			   .positional('from_addr', {
-				 describe: 'Address to transfer from (hex)',
-                 type: 'string'
-               })
-			   .positional('to_addr', {
-				 describe: 'Address to transfer to (hex)',
-                 type: 'string'
-               })
-		   }, (argv) => {
-
-			 CmdNftProxyTransfer({argv});
-
-		   })
-
-  .command('nft_build <library> <object>',
-		   'Build the public/nft section based on asset metadata', (yargs) => {
-			 yargs
-			   .positional('library', {
-				 describe: 'Content library',
-				 type: 'string'
-			   })
-			   .positional('object', {
-				 describe: 'Content object hash (hq__) or id (iq__)',
-				 type: 'string'
-			   })
-		   }, (argv) => {
-
-			 CmdNftBuild({argv});
-
-		   })
-
-  .command('nft_lookup <addr> <token_id>',
-		   'Decode and look up a local NFT by external token ID', (yargs) => {
-			 yargs
-			   .positional('addr', {
-				 describe: 'Local NFT contract address',
-				 type: 'string'
-			   })
-			   .positional('token_id', {
-				 describe: 'External token ID',
-				 type: 'string' // BigNumber as string
-			   })
-		   }, (argv) => {
-
-			 CmdNftLookup({argv});
-
-		   })
-
-  .command('tenant_show <tenant> <library> <object> [event] [marketplace]',
-		   'Show info on this tenant', (yargs) => {
-			 yargs
-			   .positional('tenant', {
-				 describe: 'Tenant ID',
-				 type: 'string'
-			   })
-			   .positional('library', {
-				 describe: 'Tenant-level EluvioLive library',
-				 type: 'string'
-			   })
-			   .positional('object', {
-				 describe: 'Tenant-level EluvioLive object ID',
-				 type: 'string'
-			   })
-			   .option('event', {
-				 describe: 'Event ID',
-				 type: 'string'
-			   })
-			   .option('marketplace', {
-				 describe: 'Marketplace ID',
-				 type: 'string'
-			   })
-			   .option('check_cauth', {
-				 describe: 'Check that all NFTs use this minter address in ikms format',
-				 type: 'string'
-			   })
-			   .option('check_minter', {
-				 describe: 'Check that all NFTs use this mint helper',
-				 type: 'string'
-			   })
-
-		   }, (argv) => {
-
-			 CmdTenantShow({argv});
-
-		   })
-
-  .command('tenant_balance_of <tenant> <owner>',
-		   'Show NFTs owned by this owner in this tenant', (yargs) => {
-			 yargs
-			   .positional('tenant', {
-						describe: 'Tenant ID',
-						type: 'string'
-			   })
-			   .positional('owner', {
-						describe: 'Owner address (hex)',
-						type: 'string'
-			   })
-		   }, (argv) => {
-
-			 CmdTenantBalanceOf({argv});
-
-		   })
-
-	.command('fabric_tenant_balance_of <object> <owner>',
-		  'Show NFTs owned by this owner in this tenant', (yargs) => {
-			yargs
-				.positional('object', {
-					describe: 'Tenant-level EluvioLive object ID',
-					type: 'string'
-				})
-				.positional('owner', {
-					describe: 'Owner address (hex)',
-					type: 'string'
-				})
-				.option('max_results', {
-					describe: 'Show up to these many results (default 0)',
-					type: 'integer'
-				})
-		   }, (argv) => {
-
-			 CmdFabricTenantBalanceOf({argv});
-
-	})
-
-  .command('site_show <library> <object>',
-		   'Show info on this site/event', (yargs) => {
-			 yargs
-			   .positional('library', {
-				 describe: 'Site library',
-				 type: 'string'
-			   })
-			   .positional('object', {
-				 describe: 'Site object ID',
-				 type: 'string'
-			   })
-		   }, (argv) => {
-
-			 CmdSiteShow({argv});
-
-		   })
-
-  .command('site_set_drop <library> <object> <uuid> <start_date> [options]',
-		   'Set drop dates for a site/event', (yargs) => {
-			 yargs
-			   .positional('library', {
-				 describe: 'Site library',
-				 type: 'string'
-			   })
-			   .positional('object', {
-				 describe: 'Site object ID',
-				 type: 'string'
-			   })
-			   .positional('uuid', {
-				 describe: 'Drop UUID',
-				 type: 'string'
-			   })
-			   .positional('start_date', {
-				 describe: 'Event start date (ISO format)',
-				 type: 'string'
-			   })
-			   .option('end_date', {
-				 describe: 'Event end date (ISO format)',
-				 type: 'string'
-			   })
-			   .option('end_vote', {
-				 describe: 'Event vote end date (ISO foramt)',
-				 type: 'string'
-			   })
-			   .option('start_mint', {
-				 describe: 'Event start mint date (ISO format)',
-				 type: 'string'
-			   })
-			   .option('new_uuid', {
-				 describe: 'Assign a new UUID',
-				 type: 'boolean'
-			   })
-			   .option('update', {
-				 describe: 'Tenant-level EluvioLive object to update',
-				 type: 'string'
-			   })
-
-		   }, (argv) => {
-
-			 CmdSiteSetDrop({argv});
-
-		   })
-
-    .command('shuffle <file> [options]',
-		'Sort each line deterministically based on the seed', (yargs) => {
-			yargs
-				.positional('file', {
-					describe: 'File or directory path',
-					type: 'string'
-				})
-				.option('seed', {
-					describe: 'Determines the order. If no seed is provided, the shuffler uses a random one.',
-					type: 'string'
-				})
-				.option('check_dupes', {
-					describe: 'Abort if duplicate is found',
-					type: 'boolean'
-				})
-				.option('print_js', {
-					describe: 'Print result as an array in JavaScript',
-					type: 'boolean'
-				})
-		}, (argv) => {
-			CmdShuffle({argv});
-		})
-
-    .command('tenant_mint <tenant> <marketplace> <sku> <addr>',
-	    'Mint a marketplace NFT by SKU as tenant admin', (yargs) => {
-		  yargs
-			.positional('tenant', {
-			  describe: 'Tenant ID',
-			  type: 'string'
-			})
-			.positional('marketplace', {
-			  describe: 'Marketplace ID',
-			  type: 'string'
-			})
-			.positional('sku', {
-			  describe: 'NFT marketplace SKU',
-			  type: 'string'
-			})
-			.positional('addr', {
-			  describe: 'Target address to mint to',
-			  type: 'string'
-			})
-		}, (argv) => {
-			TenantMint({argv});
-		})
-
-		.command('list [options]',
-		'List the Eluvio Live Tenants', (yargs) => {
-			yargs
-				.option('tenant', {
-					describe: 'Show the tenant based on id. Eg. itenXXX...',
-					type: 'string'
-				})
-				.option('tenant_slug', {
-					describe: 'Show the tenant based on slug. Eg. elv-live',
-					type: 'string'
-				})
-		}, (argv) => {
-			CmdList({argv});
-		})
+  .command(
+    "list [options]",
+    "List the Eluvio Live Tenants",
+    (yargs) => {
+      yargs
+        .option("tenant", {
+          describe: "Show the tenant based on id. Eg. itenXXX...",
+          type: "string",
+        })
+        .option("tenant_slug", {
+          describe: "Show the tenant based on slug. Eg. elv-live",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdList({ argv });
+    }
+  )
 
   .help()
-  .usage('EluvioLive CLI\n\nUsage: elv-live <command>')
-  .scriptName('')
-  .demandCommand(1)
-  .argv
+  .usage("EluvioLive CLI\n\nUsage: elv-live <command>")
+  .scriptName("")
+  .demandCommand(1).argv;
 
 // For unit testing
-exports.CmdShuffle = CmdShuffle
+exports.CmdShuffle = CmdShuffle;
