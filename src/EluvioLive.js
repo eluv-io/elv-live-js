@@ -1233,7 +1233,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
 	return res;
   }
 
-	async list({tenantId}){
+	async list({tenantId, tenantSlug}){
 		var results = {};
 
 		var objectId = this.mainObjectId;
@@ -1244,13 +1244,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
 
 		var warns = [];
 		var meta = {};
-		var tenantOnly = false;
-		var metadataSubtree = "/public/asset_metadata";
-
-		if(tenantId){
-			metadataSubtree = "/public/asset_metadata/featured_events";
-			tenantOnly = true;
-		}
+		var metadataSubtree = "/public/asset_metadata/tenants";
 
 		meta = await this.client.ContentObjectMetadata({
 			libraryId,
@@ -1262,28 +1256,28 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
 			linkDepthLimit: 5
 		});
 
-		if(!tenantOnly){
-			results = meta;
-		}else{
-			var tenantSites = [];
-			results.sites = [];
-			let sites = meta || {};
 
-      for (const index in sites) {
-        try {
-          let item = sites[index];
-          let key = Object.keys(item)[0];
-          let site = sites[index][key];
-					if(site.info.tenant_id === tenantId){
-						tenantSites.push(site);
+		if(tenantSlug){
+			results=meta[tenantSlug];
+		}else if(tenantId){
+				let tenants = meta || {};
+	
+				for (const index in tenants) {
+					try {
+						let tenantObj = tenants[index];
+						let key = Object.keys(tenantObj.marketplaces)[0];
+						let marketplace = tenantObj.marketplaces[key];
+						var testTenantId = marketplace.info.tenant_id;
+						if(testTenantId === tenantId){
+							results = tenantObj;
+							break;
+						}
+					}catch(e){
+						warns.push(`Error reading tenant: ${index} ${e}`);
 					}
-				}catch(e){
-					warns.push(e);
 				}
-			}
-
-			results.sites = tenantSites;
-			results.count = tenantSites.length;
+		}else{
+			results = meta;
 		}
 
 		results.warns = warns;

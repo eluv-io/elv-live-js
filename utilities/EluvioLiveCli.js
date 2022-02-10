@@ -263,12 +263,13 @@ const CmdShuffle = async ({argv}) => {
 }
 
 const CmdList = async ({argv}) => {
-	console.log("list ", argv.tenant);
+	console.log("list ",argv.tenant, argv.tenant_slug);
   try{
 		await Init();
 		
 		var res = await elvlv.list({
-			tenantId: argv.tenant
+			tenantId: argv.tenant,
+			tenantSlug:argv.tenant_slug
 		})
 		
 		console.log(yaml.dump(res));
@@ -625,7 +626,11 @@ yargs(hideBin(process.argv))
 		'List the whole eluvio media platform', (yargs) => {
 			yargs
 				.option('tenant', {
-					describe: 'The tenant ID branch to show.',
+					describe: 'The tenant ID branch to show. Eg. itenXXX...',
+					type: 'string'
+				})
+				.option('tenant_slug', {
+					describe: 'The tenant url id branch to show. A url id is a dash separated human readable identifier for web paths. Eg. elv-live',
 					type: 'string'
 				})
 		}, (argv) => {
