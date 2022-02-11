@@ -6,7 +6,6 @@ const { Shuffler } = require("../src/Shuffler");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
-
 const fs = require("fs");
 const path = require("path");
 
@@ -255,7 +254,7 @@ const CmdShuffle = async ({ argv }) => {
   }
 };
 
-const TenantMint = async ({ argv }) => {
+const CmdTenantMint = async ({ argv }) => {
   console.log(
     "Tenant mint",
     argv.tenant,
@@ -274,6 +273,22 @@ const TenantMint = async ({ argv }) => {
     });
 
     console.log("Mint request submitted: ", res.statusText);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantWallets = async ({ argv }) => {
+  console.log(`Tenant wallets tenant: ${argv.tenant} max_results: ${argv.max_results}`);
+  try {
+    await Init();
+
+    let res = await elvlv.TenantWallets({
+      tenant: argv.tenant,
+			maxNumber: argv.max_results
+    });
+
+    console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -551,7 +566,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "fabric_tenant_balance_of <object> <owner>",
+    "fabric_tenant_balance_of <object> <owner> [options]",
     "Show NFTs owned by this owner in this tenant",
     (yargs) => {
       yargs
@@ -564,7 +579,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("max_results", {
-          describe: "Show up to these many results (default 0)",
+          describe: "Show up to these many results (default 0 = unlimited)",
           type: "integer",
         });
     },
@@ -690,9 +705,29 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      TenantMint({ argv });
+      CmdTenantMint({ argv });
     }
   )
+
+	.command(
+    "tenant_wallets <tenant> [options]",
+    "Show the wallets associated with this tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+				.option("max_results", {
+          describe: "Show up to these many results (default 0 = unlimited)",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdTenantWallets({ argv });
+    }
+  )
+
 
   .command(
     "list [options]",
@@ -706,7 +741,7 @@ yargs(hideBin(process.argv))
         .option("tenant_slug", {
           describe: "Show the tenant based on slug. Eg. elv-live",
           type: "string",
-        });
+        })
     },
     (argv) => {
       CmdList({ argv });

@@ -6,6 +6,7 @@ const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const BigNumber = require("big-number");
+var urljoin = require('url-join');
 
 /**
  * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
@@ -1268,14 +1269,17 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return { signature, multiSig };
   }
 
-  async MakeAuthServiceRequest({ method, path, body }) {
-    const { signature, multiSig } = await this.Sign({
+  async PostServiceRequest({path, body }) {
+		if(!body){
+			body = {}
+		}
+    const { multiSig } = await this.Sign({
       message: JSON.stringify(body),
     });
 
     let res = await this.client.authClient.MakeAuthServiceRequest({
-      method,
-      path,
+      method:"POST",
+      path:urljoin("/as",path),
       body,
       headers: {
         Authorization: `Bearer ${multiSig}`,
@@ -1283,6 +1287,27 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     });
 
     return res;
+  }
+
+	async GetServiceRequest({path, limit=Number.MAX_SAFE_INTEGER}) {
+		let ts = Date.now();
+		//var newPath = urljoin(path,`?ts=${now}`);
+		var newPath = path + `?ts=${ts}` + `&limit=${limit}`
+
+    const { multiSig } = await this.Sign({
+      message: newPath
+    });
+
+    let res = await this.client.authClient.MakeAuthServiceRequest({
+      method: "GET",
+      path:urljoin("/as",path),
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+			queryParams:{ts, limit}
+    });
+
+    return await res.json();
   }
 
   async TenantMint({ tenant, marketplace, sku, addr }) {
@@ -1307,10 +1332,21 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       },
     };
 
-    let res = await this.MakeAuthServiceRequest({
-      method: "POST",
-      path: "/as/tnt/trans/base/" + tenant + "/" + marketplace,
+    let res = await this.PostServiceRequest({
+      path: urljoin("/tnt/trans/base/",tenant,marketplace),
       body,
+    });
+    return res;
+  }
+
+	async TenantWallets({ tenant, maxNumber=Number.MAX_SAFE_INTEGER}) {
+		if (maxNumber < 1) {
+      maxNumber = Number.MAX_SAFE_INTEGER;
+    }
+
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/wlt/",tenant),
+			limit: maxNumber
     });
     return res;
   }
