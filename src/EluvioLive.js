@@ -1310,6 +1310,16 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return await res.json();
   }
 
+	/**
+   * Mint an NFT using Tenant Auth
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {string} marketplace - Marketplace ID of the NFT
+   * @param {string} sku - SKU of the NFTs
+   * @param {string} addr - The address to mint to
+   * @return {Promise<Object>} - API Response Object
+   */
   async TenantMint({ tenant, marketplace, sku, addr }) {
     let now = Date.now();
 
@@ -1339,6 +1349,14 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return res;
   }
 
+	/**
+   * Get the list of wallets bound by the Tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {integer} maxNumber - The address to mint to
+   * @return {Promise<Object>} - The API Response containing list of Wallet Info
+   */
 	async TenantWallets({ tenant, maxNumber=Number.MAX_SAFE_INTEGER}) {
 		if (maxNumber < 1) {
       maxNumber = Number.MAX_SAFE_INTEGER;
@@ -1351,20 +1369,36 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return res;
   }
 
-  async list({ tenantId, tenantSlug }) {
-    var results = {};
+	/**
+   * Get the list of Tenant marketplaces/sites from the Main Live Object
+   * No Tenant ID or Tenant Slug will return all tenants.
+	 * 
+   * @namedParams
+   * @param {string} tenantId - The Tenant ID (Optional). 
+   * @param {string} tenantSlug - The Tenant ID (Optional). No Tenant ID will return all tenants.
+   * @return {Promise<Object>} - List or single Tenant Info
+   */
+  async List({ tenantId, tenantSlug }) {
+    let results = {};
 
-    var objectId = this.mainObjectId;
+    let objectId = this.mainObjectId;
 
     const libraryId = await this.client.ContentObjectLibraryId({
       objectId,
     });
 
-    var warns = [];
-    var meta = {};
-    var metadataSubtree = "/public/asset_metadata/tenants";
+		let staticToken = await this.client.authClient.AuthorizationToken({libraryId,
+			channelAuth: false,
+			noAuth: true});
 
-    meta = await this.client.ContentObjectMetadata({
+		//Create a new client using only staticToken
+		let client = await ElvClient.FromConfigurationUrl({configUrl:this.configUrl, staticToken});
+
+    let warns = [];
+    let meta = {};
+    let metadataSubtree = "/public/asset_metadata/tenants";
+
+    meta = await client.ContentObjectMetadata({
       libraryId,
       objectId,
       metadataSubtree,
@@ -1384,7 +1418,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
           let tenantObj = tenants[index];
           let key = Object.keys(tenantObj.marketplaces)[0];
           let marketplace = tenantObj.marketplaces[key];
-          var testTenantId = marketplace.info.tenant_id;
+          let testTenantId = marketplace.info.tenant_id;
           if (testTenantId === tenantId) {
             results = tenantObj;
             break;
@@ -1394,13 +1428,77 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
         }
       }
     } else {
-      results = meta;
+      results.tenants = meta;
     }
 
     results.warns = warns;
 
     return results;
   }
+
+	FilterTenant = ({object}) =>{
+		let result = {};
+		result.marketplaces = object.marketplaces;
+		result.sites = object.sites;
+		return result;
+	}
+	
+	FilterMarketplace = ({object}) =>{
+		let result = {};
+		let warns = [];
+		
+		result.title = object.title;
+
+		result.tenant_id = object.info.tenant_id || null;
+		if(!result.tenant_id){
+			warns.push(`No tenant_id for ${object.title}`);
+		}
+
+		result.items = object.info.items || null;
+		if(!result.items || result.items.length === 0){
+			warns.push(`No Items found for ${object.title}`);
+		}
+
+		return {result,warns};
+	}
+
+	FilterNft = ({object}) =>{
+		let result = {};
+		let warns = [];
+		result.title = object.nft_template.title;
+
+		result.sku = object.sku  || null;
+		if(!result.sku) 
+			warns.push(`No sku for ${object.title}`);
+
+		result.address = object.nft_template.nft.address;
+		if(!result.address) 
+			warns.push(`No address for ${object.title}`);
+
+		result.version_hash = object.nft_template["."].source;
+		if(!result.version_hash) 
+			warns.push(`No versionHash for ${object.title}`);
+
+		return {result,warns};
+	}
+
+	FilterSite = ({object}) =>{
+		let result = {};
+		let warns = [];
+
+		result.title = object.title || null;
+
+		result.tenant_id = object.info.tenant_id || null;
+		if(!result.tenant_id) 
+			warns.push(`No tenant_id for ${object.title}`);
+
+		result.marketplace_slug = object.info.marketplace_slug || null;
+		if(!result.marketplace_slug) 
+			warns.push(`No marketplace_slug for ${object.title}`);
+
+		return {result,warns};
+	}
+
 }
 
 exports.EluvioLive = EluvioLive;
