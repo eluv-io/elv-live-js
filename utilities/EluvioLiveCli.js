@@ -9,7 +9,7 @@ const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
 
-var elvlv;
+let elvlv;
 
 const Init = async () => {
   console.log("Network: " + Config.net);
@@ -36,7 +36,7 @@ const CmfNftTemplateAddNftContract = async ({ argv }) => {
   );
   await Init();
 
-  var c = await elvlv.NftTemplateAddNftContract({
+  let c = await elvlv.NftTemplateAddNftContract({
     libraryId: argv.library,
     objectId: argv.object,
     //nftAddr,
@@ -56,7 +56,7 @@ const CmfNftAddMintHelper = async ({ argv }) => {
   console.log("NFT - add mint helper", argv.addr, argv.minter);
   await Init();
 
-  var c = await elvlv.NftAddMinter({
+  let c = await elvlv.NftAddMinter({
     addr: argv.addr,
     minterAddr: argv.minter,
   });
@@ -66,7 +66,7 @@ const CmfNftSetProxy = async ({ argv }) => {
   console.log("NFT - set proxy", argv.addr, argv.proxy_addr);
   await Init();
 
-  var p = await elvlv.NftSetTransferProxy({
+  let p = await elvlv.NftSetTransferProxy({
     addr: argv.addr,
     proxyAddr: argv.proxy_addr,
   });
@@ -78,7 +78,7 @@ const CmdNftBalanceOf = async ({ argv }) => {
 
   await Init();
 
-  var res = await elvlv.NftBalanceOf({
+  let res = await elvlv.NftBalanceOf({
     addr: argv.addr,
     ownerAddr: argv.owner,
   });
@@ -91,7 +91,7 @@ const CmdNftShow = async ({ argv }) => {
 
   await Init();
 
-  var res = await elvlv.NftShow({
+  let res = await elvlv.NftShow({
     addr: argv.addr,
     mintHelper: argv.check_minter,
     showOwners: argv.show_owners,
@@ -105,7 +105,7 @@ const CmdNftBuild = async ({ argv }) => {
 
   await Init();
 
-  var res = await elvlv.NftBuild({
+  let res = await elvlv.NftBuild({
     libraryId: argv.library,
     objectId: argv.object,
   });
@@ -118,7 +118,7 @@ const CmdNftLookup = async ({ argv }) => {
 
   await Init();
 
-  var res = await elvlv.NftLookup({
+  let res = await elvlv.NftLookup({
     addr: argv.addr,
     tokenId: argv.token_id,
   });
@@ -136,7 +136,7 @@ const CmdNftProxyTransfer = async ({ argv }) => {
 
   await Init();
 
-  var res = await elvlv.NftProxyTransferFrom({
+  let res = await elvlv.NftProxyTransferFrom({
     addr: argv.addr,
     tokenId: argv.token_id,
     fromAddr: argv.from_addr,
@@ -151,7 +151,7 @@ const CmdTenantShow = async ({ argv }) => {
 
   await Init();
 
-  var res = await elvlv.TenantShow({
+  let res = await elvlv.TenantShow({
     tenantId: argv.tenant,
     libraryId: argv.library,
     objectId: argv.object,
@@ -169,7 +169,7 @@ const CmdSiteShow = async ({ argv }) => {
 
   await Init();
 
-  var res = await elvlv.SiteShow({
+  let res = await elvlv.SiteShow({
     libraryId: argv.library,
     objectId: argv.object,
   });
@@ -182,7 +182,7 @@ const CmdSiteSetDrop = async ({ argv }) => {
 
   await Init();
 
-  var res = await elvlv.SiteSetDrop({
+  let res = await elvlv.SiteSetDrop({
     libraryId: argv.library,
     objectId: argv.object,
     uuid: argv.uuid,
@@ -202,7 +202,7 @@ const CmdTenantBalanceOf = async ({ argv }) => {
 
   await Init();
 
-  var res = await elvlv.TenantBalanceOf({
+  let res = await elvlv.TenantBalanceOf({
     tenantId: argv.tenant,
     ownerAddr: argv.owner,
     maxNumber: argv.max_results,
@@ -216,7 +216,7 @@ const CmdFabricTenantBalanceOf = async ({ argv }) => {
 
   await Init();
 
-  var res = await elvlv.FabricTenantBalanceOf({
+  let res = await elvlv.FabricTenantBalanceOf({
     objectId: argv.object,
     ownerAddr: argv.owner,
   });
@@ -299,16 +299,66 @@ const CmdList = async ({ argv }) => {
   try {
     await Init();
 
-    var res = await elvlv.list({
+    let res = await elvlv.List({
       tenantId: argv.tenant,
       tenantSlug: argv.tenant_slug,
     });
+
+		if(argv.tenant){
+			let {result, warns} = FilterListTenant({tenant:res});
+			let warnSaved = res.warns || [];
+			res = result;
+			res.warns = warnSaved.concat(warns);
+		}else{
+			let keys = Object.keys(res.tenants);
+			for (const key of keys){
+				let {result, warns} = FilterListTenant({tenant:res.tenants[key]});
+				res.tenants[key] = result;
+				res.warns = res.warns.concat(warns);
+			}
+		}
 
     console.log(yaml.dump(res));
   } catch (e) {
     console.error(e);
   }
 };
+
+FilterListTenant = ({tenant}) => {
+	let res = {};
+	res.result = {};
+	res.warns = [];
+
+	let tenantObject = elvlv.FilterTenant({object:tenant});
+	let keys = Object.keys(tenantObject.marketplaces);
+	for(const key of keys){
+		let {result,warns} = elvlv.FilterMarketplace({object:tenantObject.marketplaces[key]});
+		let marketplace = result;
+		res.warns = res.warns.concat(warns);
+		let filteredItems = [];
+		for(const item of marketplace.items){
+			let {result,warns} = elvlv.FilterNft({object:item});
+			let filteredItem = result;
+			res.warns = res.warns.concat(warns);
+			filteredItems.push(filteredItem);
+		}
+		marketplace.items = filteredItems;
+		tenantObject.marketplaces[key] = marketplace;
+	}
+
+	keys = Object.keys(tenantObject.sites);
+
+	for(const key of keys){
+		let {result,warns} = elvlv.FilterSite({object:tenantObject.sites[key]});
+		let site = result;
+		tenantObject.sites[key] = site;
+		res.warns = res.warns.concat(warns);
+	}
+
+	res.result = tenantObject;
+
+	return res;
+}
 
 yargs(hideBin(process.argv))
   .command(
