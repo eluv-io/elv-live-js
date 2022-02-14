@@ -6,7 +6,7 @@ const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const BigNumber = require("big-number");
-var urljoin = require('url-join');
+var urljoin = require("url-join");
 
 /**
  * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
@@ -1269,17 +1269,17 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return { signature, multiSig };
   }
 
-  async PostServiceRequest({path, body }) {
-		if(!body){
-			body = {}
-		}
+  async PostServiceRequest({ path, body }) {
+    if (!body) {
+      body = {};
+    }
     const { multiSig } = await this.Sign({
       message: JSON.stringify(body),
     });
 
     let res = await this.client.authClient.MakeAuthServiceRequest({
-      method:"POST",
-      path:urljoin("/as",path),
+      method: "POST",
+      path: urljoin("/as", path),
       body,
       headers: {
         Authorization: `Bearer ${multiSig}`,
@@ -1289,28 +1289,28 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return res;
   }
 
-	async GetServiceRequest({path, limit=Number.MAX_SAFE_INTEGER}) {
-		let ts = Date.now();
-		//var newPath = urljoin(path,`?ts=${now}`);
-		var newPath = path + `?ts=${ts}` + `&limit=${limit}`
+  async GetServiceRequest({ path, limit = Number.MAX_SAFE_INTEGER }) {
+    let ts = Date.now();
+    //var newPath = urljoin(path,`?ts=${now}`);
+    var newPath = path + `?ts=${ts}` + `&limit=${limit}`;
 
     const { multiSig } = await this.Sign({
-      message: newPath
+      message: newPath,
     });
 
     let res = await this.client.authClient.MakeAuthServiceRequest({
       method: "GET",
-      path:urljoin("/as",path),
+      path: urljoin("/as", path),
       headers: {
         Authorization: `Bearer ${multiSig}`,
       },
-			queryParams:{ts, limit}
+      queryParams: { ts, limit },
     });
 
     return await res.json();
   }
 
-	/**
+  /**
    * Mint an NFT using Tenant Auth
    *
    * @namedParams
@@ -1320,7 +1320,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
    * @param {string} addr - The address to mint to
    * @return {Promise<Object>} - API Response Object
    */
-  async TenantMint({ tenant, marketplace, sku, addr, quantity=1}) {
+  async TenantMint({ tenant, marketplace, sku, addr, quantity = 1 }) {
     let now = Date.now();
 
     let body = {
@@ -1343,13 +1343,13 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     };
 
     let res = await this.PostServiceRequest({
-      path: urljoin("/tnt/trans/base/",tenant,marketplace),
+      path: urljoin("/tnt/trans/base/", tenant, marketplace),
       body,
     });
     return res;
   }
 
-	/**
+  /**
    * Get the list of wallets bound by the Tenant
    *
    * @namedParams
@@ -1357,24 +1357,24 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
    * @param {integer} maxNumber - The address to mint to
    * @return {Promise<Object>} - The API Response containing list of Wallet Info
    */
-	async TenantWallets({ tenant, maxNumber=Number.MAX_SAFE_INTEGER}) {
-		if (maxNumber < 1) {
+  async TenantWallets({ tenant, maxNumber = Number.MAX_SAFE_INTEGER }) {
+    if (maxNumber < 1) {
       maxNumber = Number.MAX_SAFE_INTEGER;
     }
 
     let res = await this.GetServiceRequest({
-      path: urljoin("/tnt/wlt/",tenant),
-			limit: maxNumber
+      path: urljoin("/tnt/wlt/", tenant),
+      limit: maxNumber,
     });
     return res;
   }
 
-	/**
+  /**
    * Get the list of Tenant marketplaces/sites from the Main Live Object
    * No Tenant ID or Tenant Slug will return all tenants.
-	 * 
+   *
    * @namedParams
-   * @param {string} tenantId - The Tenant ID (Optional). 
+   * @param {string} tenantId - The Tenant ID (Optional).
    * @param {string} tenantSlug - The Tenant ID (Optional). No Tenant ID will return all tenants.
    * @return {Promise<Object>} - List or single Tenant Info
    */
@@ -1387,12 +1387,17 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       objectId,
     });
 
-		let staticToken = await this.client.authClient.AuthorizationToken({libraryId,
-			channelAuth: false,
-			noAuth: true});
+    let staticToken = await this.client.authClient.AuthorizationToken({
+      libraryId,
+      channelAuth: false,
+      noAuth: true,
+    });
 
-		//Create a new client using only staticToken
-		let client = await ElvClient.FromConfigurationUrl({configUrl:this.configUrl, staticToken});
+    //Create a new client using only staticToken
+    let client = await ElvClient.FromConfigurationUrl({
+      configUrl: this.configUrl,
+      staticToken,
+    });
 
     let warns = [];
     let meta = {};
@@ -1436,69 +1441,64 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return results;
   }
 
-	FilterTenant = ({object}) =>{
-		let result = {};
-		result.marketplaces = object.marketplaces;
-		result.sites = object.sites;
-		return result;
-	}
-	
-	FilterMarketplace = ({object}) =>{
-		let result = {};
-		let warns = [];
-		
-		result.title = object.title;
+  FilterTenant = ({ object }) => {
+    let result = {};
+    result.marketplaces = object.marketplaces;
+    result.sites = object.sites;
+    return result;
+  };
 
-		result.tenant_id = object.info.tenant_id || null;
-		if(!result.tenant_id){
-			warns.push(`No tenant_id for ${object.title}`);
-		}
+  FilterMarketplace = ({ object }) => {
+    let result = {};
+    let warns = [];
 
-		result.items = object.info.items || null;
-		if(!result.items || result.items.length === 0){
-			warns.push(`No Items found for ${object.title}`);
-		}
+    result.title = object.title;
 
-		return {result,warns};
-	}
+    result.tenant_id = object.info.tenant_id || null;
+    if (!result.tenant_id) {
+      warns.push(`No tenant_id for ${object.title}`);
+    }
 
-	FilterNft = ({object}) =>{
-		let result = {};
-		let warns = [];
-		result.title = object.nft_template.title;
+    result.items = object.info.items || null;
+    if (!result.items || result.items.length === 0) {
+      warns.push(`No Items found for ${object.title}`);
+    }
 
-		result.sku = object.sku  || null;
-		if(!result.sku) 
-			warns.push(`No sku for ${object.title}`);
+    return { result, warns };
+  };
 
-		result.address = object.nft_template.nft.address;
-		if(!result.address) 
-			warns.push(`No address for ${object.title}`);
+  FilterNft = ({ object }) => {
+    let result = {};
+    let warns = [];
+    result.title = object.nft_template.title;
 
-		result.version_hash = object.nft_template["."].source;
-		if(!result.version_hash) 
-			warns.push(`No versionHash for ${object.title}`);
+    result.sku = object.sku || null;
+    if (!result.sku) warns.push(`No sku for ${object.title}`);
 
-		return {result,warns};
-	}
+    result.address = object.nft_template.nft.address;
+    if (!result.address) warns.push(`No address for ${object.title}`);
 
-	FilterSite = ({object}) =>{
-		let result = {};
-		let warns = [];
+    result.version_hash = object.nft_template["."].source;
+    if (!result.version_hash) warns.push(`No versionHash for ${object.title}`);
 
-		result.title = object.title || null;
+    return { result, warns };
+  };
 
-		result.tenant_id = object.info.tenant_id || null;
-		if(!result.tenant_id) 
-			warns.push(`No tenant_id for ${object.title}`);
+  FilterSite = ({ object }) => {
+    let result = {};
+    let warns = [];
 
-		result.marketplace_slug = object.info.marketplace_slug || null;
-		if(!result.marketplace_slug) 
-			warns.push(`No marketplace_slug for ${object.title}`);
+    result.title = object.title || null;
 
-		return {result,warns};
-	}
+    result.tenant_id = object.info.tenant_id || null;
+    if (!result.tenant_id) warns.push(`No tenant_id for ${object.title}`);
 
+    result.marketplace_slug = object.info.marketplace_slug || null;
+    if (!result.marketplace_slug)
+      warns.push(`No marketplace_slug for ${object.title}`);
+
+    return { result, warns };
+  };
 }
 
 exports.EluvioLive = EluvioLive;

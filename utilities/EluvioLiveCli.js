@@ -261,9 +261,9 @@ const CmdTenantMint = async ({ argv }) => {
     argv.marketplace,
     argv.sku,
     argv.addr,
-		argv.quantity
+    argv.quantity
   );
-	
+
   try {
     await Init();
 
@@ -272,7 +272,7 @@ const CmdTenantMint = async ({ argv }) => {
       marketplace: argv.marketplace,
       sku: argv.sku,
       addr: argv.addr,
-			quantity: argv.quantity
+      quantity: argv.quantity,
     });
 
     console.log("Mint request submitted: ", res.statusText);
@@ -282,13 +282,15 @@ const CmdTenantMint = async ({ argv }) => {
 };
 
 const CmdTenantWallets = async ({ argv }) => {
-  console.log(`Tenant wallets tenant: ${argv.tenant} max_results: ${argv.max_results}`);
+  console.log(
+    `Tenant wallets tenant: ${argv.tenant} max_results: ${argv.max_results}`
+  );
   try {
     await Init();
 
     let res = await elvlv.TenantWallets({
       tenant: argv.tenant,
-			maxNumber: argv.max_results
+      maxNumber: argv.max_results,
     });
 
     console.log(yaml.dump(res));
@@ -307,19 +309,19 @@ const CmdList = async ({ argv }) => {
       tenantSlug: argv.tenant_slug,
     });
 
-		if(argv.tenant){
-			let {result, warns} = FilterListTenant({tenant:res});
-			let warnSaved = res.warns || [];
-			res = result;
-			res.warns = warnSaved.concat(warns);
-		}else{
-			let keys = Object.keys(res.tenants);
-			for (const key of keys){
-				let {result, warns} = FilterListTenant({tenant:res.tenants[key]});
-				res.tenants[key] = result;
-				res.warns = res.warns.concat(warns);
-			}
-		}
+    if (argv.tenant) {
+      let { result, warns } = FilterListTenant({ tenant: res });
+      let warnSaved = res.warns || [];
+      res = result;
+      res.warns = warnSaved.concat(warns);
+    } else {
+      let keys = Object.keys(res.tenants);
+      for (const key of keys) {
+        let { result, warns } = FilterListTenant({ tenant: res.tenants[key] });
+        res.tenants[key] = result;
+        res.warns = res.warns.concat(warns);
+      }
+    }
 
     console.log(yaml.dump(res));
   } catch (e) {
@@ -327,41 +329,45 @@ const CmdList = async ({ argv }) => {
   }
 };
 
-FilterListTenant = ({tenant}) => {
-	let res = {};
-	res.result = {};
-	res.warns = [];
+FilterListTenant = ({ tenant }) => {
+  let res = {};
+  res.result = {};
+  res.warns = [];
 
-	let tenantObject = elvlv.FilterTenant({object:tenant});
-	let keys = Object.keys(tenantObject.marketplaces);
-	for(const key of keys){
-		let {result,warns} = elvlv.FilterMarketplace({object:tenantObject.marketplaces[key]});
-		let marketplace = result;
-		res.warns = res.warns.concat(warns);
-		let filteredItems = [];
-		for(const item of marketplace.items){
-			let {result,warns} = elvlv.FilterNft({object:item});
-			let filteredItem = result;
-			res.warns = res.warns.concat(warns);
-			filteredItems.push(filteredItem);
-		}
-		marketplace.items = filteredItems;
-		tenantObject.marketplaces[key] = marketplace;
-	}
+  let tenantObject = elvlv.FilterTenant({ object: tenant });
+  let keys = Object.keys(tenantObject.marketplaces);
+  for (const key of keys) {
+    let { result, warns } = elvlv.FilterMarketplace({
+      object: tenantObject.marketplaces[key],
+    });
+    let marketplace = result;
+    res.warns = res.warns.concat(warns);
+    let filteredItems = [];
+    for (const item of marketplace.items) {
+      let { result, warns } = elvlv.FilterNft({ object: item });
+      let filteredItem = result;
+      res.warns = res.warns.concat(warns);
+      filteredItems.push(filteredItem);
+    }
+    marketplace.items = filteredItems;
+    tenantObject.marketplaces[key] = marketplace;
+  }
 
-	keys = Object.keys(tenantObject.sites);
+  keys = Object.keys(tenantObject.sites);
 
-	for(const key of keys){
-		let {result,warns} = elvlv.FilterSite({object:tenantObject.sites[key]});
-		let site = result;
-		tenantObject.sites[key] = site;
-		res.warns = res.warns.concat(warns);
-	}
+  for (const key of keys) {
+    let { result, warns } = elvlv.FilterSite({
+      object: tenantObject.sites[key],
+    });
+    let site = result;
+    tenantObject.sites[key] = site;
+    res.warns = res.warns.concat(warns);
+  }
 
-	res.result = tenantObject;
+  res.result = tenantObject;
 
-	return res;
-}
+  return res;
+};
 
 yargs(hideBin(process.argv))
   .command(
@@ -756,7 +762,7 @@ yargs(hideBin(process.argv))
           describe: "Target address to mint to",
           type: "string",
         })
-				.option("quanity", {
+        .option("quanity", {
           describe: "Specify how many to mint (default 1)",
           type: "integer",
         });
@@ -766,7 +772,7 @@ yargs(hideBin(process.argv))
     }
   )
 
-	.command(
+  .command(
     "tenant_wallets <tenant> [options]",
     "Show the wallets associated with this tenant",
     (yargs) => {
@@ -775,7 +781,7 @@ yargs(hideBin(process.argv))
           describe: "Tenant ID",
           type: "string",
         })
-				.option("max_results", {
+        .option("max_results", {
           describe: "Show up to these many results (default 0 = unlimited)",
           type: "integer",
         });
@@ -784,7 +790,6 @@ yargs(hideBin(process.argv))
       CmdTenantWallets({ argv });
     }
   )
-
 
   .command(
     "list [options]",
@@ -798,7 +803,7 @@ yargs(hideBin(process.argv))
         .option("tenant_slug", {
           describe: "Show the tenant based on slug. Eg. elv-live",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdList({ argv });
