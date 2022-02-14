@@ -22,10 +22,9 @@ class EluvioLive {
    * @namedParams
    * @param {string} configUrl - The Content Fabric configuration URL
    * @param {string} mainObjectId - The top-level Eluvio Live object ID
-   * @param {string} tenantObjectId - The ID of the tenant specific EluvioLive object (optional)
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
-  constructor({ configUrl, mainObjectId, tenantObjectId }) {
+  constructor({ configUrl, mainObjectId }) {
     this.configUrl = configUrl || ElvClient.main;
     this.mainObjectId = mainObjectId;
 
@@ -59,21 +58,14 @@ class EluvioLive {
    * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
   async TenantShow({
-    tenantId,
+    /*tenantId,*/
     libraryId,
     objectId,
-    eventId,
-    marketplaceId,
+    /* eventId,*/
+    /* marketplaceId,*/
     cauth,
     mintHelper,
   }) {
-    const abiNft = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/ElvTradable.abi")
-    );
-    const abiTenant = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
-    );
-
     var tenantInfo = {};
 
     var m = await this.client.ContentObjectMetadata({
@@ -298,6 +290,8 @@ class EluvioLive {
       methodArgs: ["tenant_nfts", nftAddr],
       formatArguments: true,
     });
+
+    return res;
   }
 
   /**
@@ -585,7 +579,8 @@ class EluvioLive {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
-    var res = await this.client.CallContractMethod({
+
+    await this.client.CallContractMethod({
       contractAddress: addr,
       abi: JSON.parse(abi),
       methodName: "setProxyRegistryAddress",
@@ -602,7 +597,7 @@ class EluvioLive {
    * @namedParams
    * @return {Promise<Object>} - New contract address
    */
-  async CreateNftTransferProxy({}) {
+  async CreateNftTransferProxy() {
     const abistr = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi")
     );
@@ -710,7 +705,10 @@ class EluvioLive {
           formatArguments: true,
         });
         holdEnd = new Date(holdSecs * 1000);
-      } catch (e) {}
+      } catch (e) {
+        //FIXME: Do we want to print error?
+        //console.error(e);
+      }
 
       balance[i] = {
         tokenId: tokenId.toString(),
@@ -960,6 +958,8 @@ class EluvioLive {
       methodArgs: [minterAddr],
       formatArguments: true,
     });
+
+    return res;
   }
 
   /**
@@ -1059,9 +1059,9 @@ class EluvioLive {
     var pnft = {};
 
     /* Add this to description */
-    const addtlInfo = `
+    /*const addtlInfo = `
 
-Lookup NFT: https://wallet.contentfabric.io/lookup/`;
+Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
     pnft.name = m.nft.name;
     pnft.display_name = m.nft.display_name;
@@ -1157,7 +1157,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     console.log("Token URI: ", tokenUri);
 
     // Set the token URI - edit the object one more time
-    var e = await this.client.EditContentObject({
+    e = await this.client.EditContentObject({
       libraryId,
       objectId,
     });
@@ -1188,7 +1188,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
    * @param {integer} tokenId - External NFT token ID
    * @return {Promise<Object>} - NFT info JSON
    */
-  async NftLookup({ addr, tokenId }) {
+  async NftLookup({ /* addr, */ tokenId }) {
     console.log("tokenId", tokenId);
 
     var x = new BigNumber(tokenId, 10);
@@ -1441,14 +1441,14 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return results;
   }
 
-  FilterTenant = ({ object }) => {
+  FilterTenant({ object }) {
     let result = {};
     result.marketplaces = object.marketplaces;
     result.sites = object.sites;
     return result;
-  };
+  }
 
-  FilterMarketplace = ({ object }) => {
+  FilterMarketplace({ object }) {
     let result = {};
     let warns = [];
 
@@ -1465,9 +1465,9 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     }
 
     return { result, warns };
-  };
+  }
 
-  FilterNft = ({ object }) => {
+  FilterNft({ object }) {
     let result = {};
     let warns = [];
     result.title = object.nft_template.title;
@@ -1482,9 +1482,9 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     if (!result.version_hash) warns.push(`No versionHash for ${object.title}`);
 
     return { result, warns };
-  };
+  }
 
-  FilterSite = ({ object }) => {
+  FilterSite({ object }) {
     let result = {};
     let warns = [];
 
@@ -1498,7 +1498,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       warns.push(`No marketplace_slug for ${object.title}`);
 
     return { result, warns };
-  };
+  }
 }
 
 exports.EluvioLive = EluvioLive;
