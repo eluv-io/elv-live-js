@@ -260,8 +260,10 @@ const CmdTenantMint = async ({ argv }) => {
     argv.tenant,
     argv.marketplace,
     argv.sku,
-    argv.addr
+    argv.addr,
+		argv.quantity
   );
+	
   try {
     await Init();
 
@@ -270,6 +272,7 @@ const CmdTenantMint = async ({ argv }) => {
       marketplace: argv.marketplace,
       sku: argv.sku,
       addr: argv.addr,
+			quantity: argv.quantity
     });
 
     console.log("Mint request submitted: ", res.statusText);
@@ -752,6 +755,10 @@ yargs(hideBin(process.argv))
         .positional("addr", {
           describe: "Target address to mint to",
           type: "string",
+        })
+				.option("quanity", {
+          describe: "Specify how many to mint (default 1)",
+          type: "integer",
         });
     },
     (argv) => {

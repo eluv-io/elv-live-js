@@ -1320,7 +1320,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
    * @param {string} addr - The address to mint to
    * @return {Promise<Object>} - API Response Object
    */
-  async TenantMint({ tenant, marketplace, sku, addr }) {
+  async TenantMint({ tenant, marketplace, sku, addr, quantity=1}) {
     let now = Date.now();
 
     let body = {
@@ -1330,7 +1330,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
         {
           prod_name: "",
           sku: sku,
-          quant: 1,
+          quant: quantity,
         },
       ],
       ident: "minter@tenant.com",
