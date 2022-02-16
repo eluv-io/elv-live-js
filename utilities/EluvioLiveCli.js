@@ -561,7 +561,8 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdNftLookup({ argv });
+      var x = CmdNftLookup({ argv });
+      console.log(x);
     }
   )
 
