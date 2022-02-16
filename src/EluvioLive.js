@@ -1289,10 +1289,9 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return res;
   }
 
-  async GetServiceRequest({ path, limit = Number.MAX_SAFE_INTEGER }) {
+  async GetServiceRequest({ path, limit }) {
     let ts = Date.now();
-    //var newPath = urljoin(path,`?ts=${now}`);
-    var newPath = path + `?ts=${ts}` + `&limit=${limit}`;
+    var newPath = !limit? path + `?ts=${ts}` : path + `?ts=${ts}` + `&limit=${limit}`;
 
     const { multiSig } = await this.Sign({
       message: newPath,
@@ -1304,7 +1303,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       headers: {
         Authorization: `Bearer ${multiSig}`,
       },
-      queryParams: { ts, limit },
+      queryParams: !limit? {ts} : { ts, limit },
     });
 
     return await res.json();
@@ -1438,6 +1437,105 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
     results.warns = warns;
 
+    return results;
+  }
+
+  /**
+   * Get primary sales history for the tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {string} marketplace - The marketplace ID
+   * @return {Promise<Object>} - The API Response containing primary sales info
+   */
+  async TenantPrimarySales({ tenant, marketplace}) {
+    let results = {};
+    let warns = [];
+    
+    let processor = "stripe";
+    let res = null;
+    try {
+      res = await this.GetServiceRequest({
+        path: urljoin("/tnt/purchases/", tenant, marketplace,processor)
+      });
+
+      results[processor] = res;
+    } catch (e){
+      warns.push(e);
+    }
+    
+    processor = "coinbase";
+    try {
+      res = await this.GetServiceRequest({
+        path: urljoin("/tnt/purchases/", tenant, marketplace,processor)
+      });
+
+      results[processor] = res;
+    } catch (e){
+      warns.push(e);
+    }
+    
+    processor = "eluvio";
+    try {
+      res = await this.GetServiceRequest({
+        path: urljoin("/tnt/purchases/", tenant, marketplace,processor)
+      });
+
+      results[processor] = res;
+    } catch (e){
+      warns.push(e);
+    }
+
+    results.warns = warns;
+    return results;
+  }
+
+  /**
+   * Get primary sales history for the tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response containing primary sales info
+   */
+  async TenantSecondarySales({ tenant }) {
+    let results = {};
+    let warns = [];
+    
+    let processor = "stripe";
+    let res = null;
+    try {
+      res = await this.GetServiceRequest({
+        path: urljoin("/tnt/payments/", tenant,processor)
+      });
+
+      results[processor] = res;
+    } catch (e){
+      warns.push(e);
+    }
+    
+    processor = "coinbase";
+    try {
+      res = await this.GetServiceRequest({
+        path: urljoin("/tnt/payments/", tenant,processor)
+      });
+
+      results[processor] = res;
+    } catch (e){
+      warns.push(e);
+    }
+    
+    processor = "eluvio";
+    try {
+      res = await this.GetServiceRequest({
+        path: urljoin("/tnt/payments/", tenant,processor)
+      });
+
+      results[processor] = res;
+    } catch (e){
+      warns.push(e);
+    }
+
+    results.warns = warns;
     return results;
   }
 

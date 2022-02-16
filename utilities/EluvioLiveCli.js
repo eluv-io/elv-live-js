@@ -329,6 +329,41 @@ const CmdList = async ({ argv }) => {
   }
 };
 
+const CmdTenantPrimarySales = async ({ argv }) => {
+  console.log(
+    `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`
+  );
+  try {
+    await Init();
+
+    let res = await elvlv.TenantPrimarySales({
+      tenant: argv.tenant,
+      marketplace: argv.marketplace,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantSecondarySales = async ({ argv }) => {
+  console.log(
+    `Tenant Secondary Sales: ${argv.tenant}`
+  );
+  try {
+    await Init();
+
+    let res = await elvlv.TenantSecondarySales({
+      tenant: argv.tenant
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 FilterListTenant = ({ tenant }) => {
   let res = {};
   res.result = {};
@@ -808,6 +843,40 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdList({ argv });
+    }
+  )
+
+  .command(
+    "tenant_primary_sales <tenant> <marketplace>",
+    "Show tenant primary sales history",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("marketplace", {
+          describe: "Marketplace ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantPrimarySales({ argv });
+    }
+  )
+
+  .command(
+    "tenant_secondary_sales <tenant>",
+    "Show tenant secondary sales history",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantSecondarySales({ argv });
     }
   )
 
