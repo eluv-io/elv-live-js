@@ -1196,6 +1196,43 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
   }
 
   /**
+   * Burn the specified NFT token as the owner
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   * @return {Promise<Object>} - NFT info JSON
+   */
+  async NftBurn({ addr, tokenId }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "burn",
+      methodArgs: [tokenId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Burn the specified NFT token as a proxy owner
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   * @return {Promise<Object>} - NFT info JSON
+   */
+  // eslint-disable-next-line no-unused-vars
+  async NftProxyBurn({ addr, tokenId }) {
+    return "Sorry, not yet implemented.";
+  }
+
+  /**
    * Transfer an NFT as a proxy owner.
    *
    * @namedParams
@@ -1227,26 +1264,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       return;
     }
 
-    const proxy = await this.client.CallContractMethod({
-      contractAddress: addr,
-      abi: JSON.parse(abi),
-      methodName: "proxyRegistryAddress",
-      formatArguments: true,
-    });
-
-    if (proxy == "0x0000000000000000000000000000000000000000") {
-      console.log("NFT has no proxy");
-      return;
-    }
-    console.log("Proxy: ", proxy);
-
-    var proxyInfo = await this.ShowNftTransferProxy({ addr: proxy });
-    if (proxyInfo.owner != this.client.signer.address) {
-      console.log(
-        "Bad key - not proxy owner (should be: " + proxyInfo.owner + ")"
-      );
-      return;
-    }
+    const proxy = await this.NFTProxyAddress({ addr });
 
     console.log("Executing proxyTransferFrom");
     var res = await this.client.CallContractMethod({
@@ -1259,6 +1277,30 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
     res.wait(1);
     return res;
+  }
+
+  async NFTProxyAddress({ addr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    const proxy = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "proxyRegistryAddress",
+      formatArguments: true,
+    });
+
+    if (proxy == "0x0000000000000000000000000000000000000000") {
+      throw "NFT has no proxy";
+    }
+
+    var proxyInfo = await this.ShowNftTransferProxy({ addr: proxy });
+    if (proxyInfo.owner != this.client.signer.address) {
+      throw `Bad key - not proxy owner (should be: ${proxyInfo.owner}`;
+    }
+
+    return proxy;
   }
 
   async Sign({ message }) {
