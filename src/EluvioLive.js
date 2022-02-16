@@ -1104,13 +1104,136 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
   }
 
   /**
-   * Set the public/nft section based on asset metadata
+   * Read image and attributes info from a directory
+   *
+   * Required format:
+   * - the directory should contain a list of '*.jpg' files (flat, not in a hierarchy)
+   * - there can be an optional sidecar file for each jpg file, with the same name but
+   *   '.json' extension (for example for image img-001.jpg the sidecar file is img-001.json)
+   *
+   * Returns an array of objects containing:
+   * - imgFile - file name (no path)
+   * - imgFilePath - full path to source file
+   * - attrs - attributes object (optional)
    *
    * @namedParams
-   * @param {string} hash - The NFT Template hash or id
-   * @return {Promise<Object>} - The public/nft JSON
+   * @param {string} imageDir - the directory containing the images
+   * @return {Promise<Object>} - The 'images' object
    */
-  async NftBuild({ libraryId, objectId }) {
+  async readNftImageDir({imageDir}) {
+	let imgs = [];
+	let files;
+
+	try {
+	  files = await fs.promises.readdir(imageDir);
+	} catch (err) {
+      return console.log('Unable to scan directory: ' + err);
+	}
+
+	files.forEach(function (file) {
+	  // Only considering jpg files
+	  if (path.extname(file) == '.jpg' || path.extname(file) == '.jpeg') {
+		let img = {};
+		img.imgFilePath = path.join(imageDir, file);
+		img.imgFile = file;
+		const attrsFile = path.parse(file).name + ".json";
+		if (fs.existsSync(path.join(imageDir, attrsFile))) {
+		  let attrsBuf = fs.readFileSync(path.join(imageDir, attrsFile));
+		  let attrs = JSON.parse(attrsBuf);
+		  img.attrs = attrs.attributes;
+		}
+		imgs.push(img);
+	  }
+	});
+    return imgs;
+  }
+
+  /**
+   * Make a single element of the public/nfts section of a generative,
+   * multi-image token based on asset metadata and input parameters.
+   * The public/nfts key is an array of objects, each equivalent to
+   * the single NFT public/nft section.
+   *
+   * Prerequisites:
+   * - NFT contract set
+   *
+   * @namedParams
+   * @param {Object} assetMetadata - The NFT Template asset metadata
+   * @param {string} hash - NFT Template hash
+   * @param {string} imagePath - Local file path to the image
+   * @param {Object} attrs - Extra attributes for this token
+   * @return {Promise<Object>} - The public/nfts JSON array element
+   */
+  async NftMakeGenerative({ assetMetadata, hash, imagePath, attrs }) {
+    const m = assetMetadata;
+    var pnft = {};
+
+	const imageUrl =
+      Config.networks[Config.net] +
+      "/s/" +
+      Config.net +
+      "/q/" +
+	  hash +
+      "/files/" +
+      imagePath;
+
+    pnft.name = m.nft.name;
+    pnft.display_name = m.nft.display_name;
+    pnft.description = m.nft.description;
+    pnft.edition_name = m.nft.edition_name;
+    pnft.rich_text = m.nft.rich_text;
+
+    pnft.address = m.nft.address;
+    pnft.total_supply = m.nft.total_supply;
+    pnft.template_id = m.nft.template_id;
+
+    pnft.copyright = m.nft.copyright;
+    pnft.created_at = m.nft.created_at;
+    pnft.creator = m.nft.creator;
+
+    pnft.embed_url = m.nft.embed_url;
+    pnft.external_url = m.nft.external_url;
+    pnft.youtube_url = m.nft.marketplace_attributes.opensea.youtube_url;
+    pnft.image = imageUrl;
+    pnft.playable = false;
+
+    pnft.attributes = [
+      {
+        trait_type: "Creator",
+        value: "Eluvio NFT Central",
+      },
+      {
+        trait_type: "Total Minted Supply",
+        value: m.nft.total_supply.toString(),
+      },
+      {
+        trait_type: "Content Fabric Hash",
+        value: hash,
+      },
+    ];
+
+	pnft.attributes = pnft.attributes.concat(attrs);
+
+	return pnft;
+  }
+
+  /**
+   * Set the public/nft section based on asset metadata
+   *
+   * For generative NFTs we use the following convention - imageDir must contain:
+   * - one or more jpg files (will be sorted alphabetically)
+   * - optional side car attributes files with the same name as the image,
+   *   and a '.json' extension (for example: img001.jpg has img001.json)
+   * The attributes JSON file should contain a top level key 'attributes' pointing
+   * to an array of objects {"trait_type": "", "value": ""}
+   *
+   * @namedParams
+   * @param {string} library ID
+   * @param {string} hash - The NFT Template hash or id
+   * @param {string} imageDir - Directory containing image files (optional)
+   * @return {Promise<Object>} - The public/nft or public/nfts JSON
+   */
+  async NftBuild({ libraryId, objectId, imageDir }) {
     var hash = await this.client.LatestVersionHash({
       objectId,
     });
@@ -1122,21 +1245,55 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       resolveLinks: false,
     });
 
-    var pnft = await this.NftMake({ assetMetadata: m, hash });
-    console.log(pnft);
+	var pnft;
+	var pnfts = [];
+
+	// Determine if this is a single or multi-image NFT
+
+	if (imageDir != null && imageDir.length > 0) {
+
+	  // Generative NFT - build an nft array
+
+	  // Read image and attributes info from directory
+	  let imgs = await this.readNftImageDir({imageDir});
+	  for (const img of imgs) {
+		pnft= await this.NftMakeGenerative({
+		  assetMetadata: m,
+		  hash,
+		  imagePath: path.join("nft", img.imgFile),
+		  attrs: img.attrs});
+		pnfts.push(pnft);
+	  }
+	} else {
+
+	  // Single media NFT - build an nft object
+      pnft = await this.NftMake({ assetMetadata: m, hash });
+	}
 
     var e = await this.client.EditContentObject({
       libraryId,
       objectId,
     });
 
-    await this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken: e.write_token,
-      metadataSubtree: "public/nft",
-      metadata: pnft,
-    });
+	if (imageDir != null && imageDir.length > 0) {
+	  // Merge the nft array
+      await this.client.ReplaceMetadata({
+		libraryId,
+		objectId,
+		writeToken: e.write_token,
+		metadataSubtree: "public/nfts",
+		metadata: pnfts,
+      });
+	} else {
+	  // Merge the single nft object
+      await this.client.ReplaceMetadata({
+		libraryId,
+		objectId,
+		writeToken: e.write_token,
+		metadataSubtree: "public/nft",
+		metadata: pnft,
+      });
+	}
 
     var f = await this.client.FinalizeContentObject({
       libraryId,
@@ -1145,39 +1302,43 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       commitMessage: "Set NFT public/nft",
     });
 
-    const nftPath = "/meta/public/nft";
-    const tokenUri =
-      Config.networks[Config.net] +
-      "/s/" +
-      Config.net +
-      "/q/" +
-      f.hash +
-      nftPath;
+	// Note: there may not be a need to set the token URI in the asset_metadata
+	const set_token_uri = false;
+	if (set_token_uri) {
+      const nftPath = "/meta/public/nft";
+      const tokenUri =
+			Config.networks[Config.net] +
+			"/s/" +
+			Config.net +
+			"/q/" +
+			f.hash +
+			nftPath;
 
-    console.log("Token URI: ", tokenUri);
+      console.log("Token URI: ", tokenUri);
 
-    // Set the token URI - edit the object one more time
-    var e = await this.client.EditContentObject({
-      libraryId,
-      objectId,
-    });
+      // Set the token URI - edit the object one more time
+      var e = await this.client.EditContentObject({
+		libraryId,
+		objectId,
+      });
 
-    await this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken: e.write_token,
-      metadataSubtree: "public/asset_metadata/nft/token_uri",
-      metadata: tokenUri,
-    });
+      await this.client.ReplaceMetadata({
+		libraryId,
+		objectId,
+		writeToken: e.write_token,
+		metadataSubtree: "public/asset_metadata/nft/token_uri",
+		metadata: tokenUri,
+      });
 
-    var f2 = await this.client.FinalizeContentObject({
-      libraryId,
-      objectId,
-      writeToken: e.write_token,
-      commitMessage: "Set NFT token URI",
-    });
+      var f2 = await this.client.FinalizeContentObject({
+		libraryId,
+		objectId,
+		writeToken: e.write_token,
+		commitMessage: "Set NFT token URI",
+      });
+	}
 
-    return f2;
+    return f2 ? f2 : f;
   }
 
   /**

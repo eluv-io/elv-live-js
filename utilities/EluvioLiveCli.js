@@ -108,6 +108,7 @@ const CmdNftBuild = async ({ argv }) => {
   let res = await elvlv.NftBuild({
     libraryId: argv.library,
     objectId: argv.object,
+	imageDir: argv.image_dir
   });
 
   console.log(yaml.dump(res));
@@ -539,7 +540,13 @@ yargs(hideBin(process.argv))
         .positional("object", {
           describe: "Content object hash (hq__) or id (iq__)",
           type: "string",
+        })
+	    .option("image_dir", {
+          describe: "Create a multi-media NFT (generative). " +
+			"Directory contains image and attribute (json) files",
+          type: "string",
         });
+
     },
     (argv) => {
       CmdNftBuild({ argv });
@@ -762,7 +769,7 @@ yargs(hideBin(process.argv))
           describe: "Target address to mint to",
           type: "string",
         })
-        .option("quanity", {
+        .option("quantity", {
           describe: "Specify how many to mint (default 1)",
           type: "integer",
         });
