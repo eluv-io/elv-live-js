@@ -1309,6 +1309,26 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return await res.json();
   }
 
+  async GetDumpRequest({ path, offset }) {
+    let ts = Date.now();
+    var newPath = path + `?ts=${ts}` + `&offset=${offset}`;
+
+    const { multiSig } = await this.Sign({
+      message: newPath,
+    });
+
+    let res = await this.client.authClient.MakeAuthServiceRequest({
+      method: "GET",
+      path: urljoin("/as", path),
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+      queryParams: { ts, offset },
+    });
+
+    return await res.json();
+  }
+
   /**
    * Mint an NFT using Tenant Auth
    *
@@ -1448,37 +1468,39 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * @param {string} marketplace - The marketplace ID
    * @return {Promise<Object>} - The API Response containing primary sales info
    */
-  async TenantPrimarySales({ tenant, marketplace}) {
+  async TenantPrimarySales({ tenant, marketplace, offset }) {
     let results = {};
     let warns = [];
-    
     let processor = "stripe";
     let res = null;
     try {
-      res = await this.GetServiceRequest({
-        path: urljoin("/tnt/purchases/", tenant, marketplace,processor)
+      res = await this.GetDumpRequest({
+        path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
+        offset: offset,
       });
 
       results[processor] = res;
     } catch (e){
       warns.push(e);
     }
-    
+
     processor = "coinbase";
     try {
-      res = await this.GetServiceRequest({
-        path: urljoin("/tnt/purchases/", tenant, marketplace,processor)
+      res = await this.GetDumpRequest({
+        path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
+        offset: offset,
       });
 
       results[processor] = res;
     } catch (e){
       warns.push(e);
     }
-    
+
     processor = "eluvio";
     try {
-      res = await this.GetServiceRequest({
-        path: urljoin("/tnt/purchases/", tenant, marketplace,processor)
+      res = await this.GetDumpRequest({
+        path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
+        offset: offset,
       });
 
       results[processor] = res;
@@ -1497,37 +1519,40 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * @param {string} tenant - The Tenant ID
    * @return {Promise<Object>} - The API Response containing primary sales info
    */
-  async TenantSecondarySales({ tenant }) {
+  async TenantSecondarySales({ tenant, offset }) {
     let results = {};
     let warns = [];
-    
+
     let processor = "stripe";
     let res = null;
     try {
-      res = await this.GetServiceRequest({
-        path: urljoin("/tnt/payments/", tenant,processor)
+      res = await this.GetDumpRequest({
+        path: urljoin("/tnt/payments/", tenant, processor),
+        offset: offset,
       });
 
       results[processor] = res;
     } catch (e){
       warns.push(e);
     }
-    
+
     processor = "coinbase";
     try {
-      res = await this.GetServiceRequest({
-        path: urljoin("/tnt/payments/", tenant,processor)
+      res = await this.GetDumpRequest({
+        path: urljoin("/tnt/payments/", tenant, processor),
+        offset: offset,
       });
 
       results[processor] = res;
     } catch (e){
       warns.push(e);
     }
-    
+
     processor = "eluvio";
     try {
-      res = await this.GetServiceRequest({
-        path: urljoin("/tnt/payments/", tenant,processor)
+      res = await this.GetDumpRequest({
+        path: urljoin("/tnt/payments/", tenant, processor),
+        offset: offset,
       });
 
       results[processor] = res;

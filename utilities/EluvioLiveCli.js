@@ -330,15 +330,15 @@ const CmdList = async ({ argv }) => {
 };
 
 const CmdTenantPrimarySales = async ({ argv }) => {
-  console.log(
-    `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`
-  );
+  console.log(`Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`);
+  console.log(`Offset: ${argv.offset}`)
   try {
     await Init();
 
     let res = await elvlv.TenantPrimarySales({
       tenant: argv.tenant,
       marketplace: argv.marketplace,
+      offset: argv.offset,
     });
 
     console.log(yaml.dump(res));
@@ -348,14 +348,14 @@ const CmdTenantPrimarySales = async ({ argv }) => {
 };
 
 const CmdTenantSecondarySales = async ({ argv }) => {
-  console.log(
-    `Tenant Secondary Sales: ${argv.tenant}`
-  );
+  console.log(`Tenant Secondary Sales: ${argv.tenant}`);
+  console.log(`Offset: ${argv.offset}`)
   try {
     await Init();
 
     let res = await elvlv.TenantSecondarySales({
-      tenant: argv.tenant
+      tenant: argv.tenant,
+      offset: argv.offset,
     });
 
     console.log(yaml.dump(res));
@@ -858,6 +858,12 @@ yargs(hideBin(process.argv))
         .positional("marketplace", {
           describe: "Marketplace ID",
           type: "string",
+        })
+        .option("offset", {
+          describe:
+            "Offset in months to dump data where 0 is the current month",
+          type: "number",
+          default: 1,
         });
     },
     (argv) => {
@@ -873,6 +879,12 @@ yargs(hideBin(process.argv))
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
+        })
+        .option("offset", {
+          describe:
+            "Offset in months to dump data where 0 is the current month",
+          type: "number",
+          default: 1,
         });
     },
     (argv) => {
