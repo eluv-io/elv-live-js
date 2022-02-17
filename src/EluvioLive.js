@@ -1289,9 +1289,12 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return res;
   }
 
-  async GetServiceRequest({ path, limit }) {
+  async GetServiceRequest({ path, queryParams, headers = {} }) {
     let ts = Date.now();
-    var newPath = !limit? path + `?ts=${ts}` : path + `?ts=${ts}` + `&limit=${limit}`;
+    let params = { ts, ...queryParams };
+    const paramString = new URLSearchParams(params).toString();
+
+    var newPath = path + "?" + paramString;
 
     const { multiSig } = await this.Sign({
       message: newPath,
@@ -1302,31 +1305,12 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       path: urljoin("/as", path),
       headers: {
         Authorization: `Bearer ${multiSig}`,
+        ...headers,
       },
-      queryParams: !limit? {ts} : { ts, limit },
+      queryParams: { ts, ...queryParams },
     });
 
-    return await res.json();
-  }
-
-  async GetDumpRequest({ path, offset }) {
-    let ts = Date.now();
-    var newPath = path + `?ts=${ts}` + `&offset=${offset}`;
-
-    const { multiSig } = await this.Sign({
-      message: newPath,
-    });
-
-    let res = await this.client.authClient.MakeAuthServiceRequest({
-      method: "GET",
-      path: urljoin("/as", path),
-      headers: {
-        Authorization: `Bearer ${multiSig}`,
-      },
-      queryParams: { ts, offset },
-    });
-
-    return await res.json();
+    return await res;
   }
 
   /**
@@ -1383,9 +1367,9 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
     let res = await this.GetServiceRequest({
       path: urljoin("/tnt/wlt/", tenant),
-      limit: maxNumber,
+      queryParams: { limit: maxNumber },
     });
-    return res;
+    return await res.json();
   }
 
   /**
@@ -1468,48 +1452,21 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * @param {string} marketplace - The marketplace ID
    * @return {Promise<Object>} - The API Response containing primary sales info
    */
-  async TenantPrimarySales({ tenant, marketplace, offset }) {
-    let results = {};
-    let warns = [];
-    let processor = "stripe";
-    let res = null;
-    try {
-      res = await this.GetDumpRequest({
-        path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
-        offset: offset,
-      });
-
-      results[processor] = res;
-    } catch (e){
-      warns.push(e);
+  async TenantPrimarySales({ tenant, marketplace, processor, csv, offset }) {
+    let headers = {};
+    let toJson = true;
+    if (csv && csv != "") {
+      headers = { Accept: "text/csv" };
+      toJson = false;
     }
 
-    processor = "coinbase";
-    try {
-      res = await this.GetDumpRequest({
-        path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
-        offset: offset,
-      });
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
+      queryParams: { offset },
+      headers,
+    });
 
-      results[processor] = res;
-    } catch (e){
-      warns.push(e);
-    }
-
-    processor = "eluvio";
-    try {
-      res = await this.GetDumpRequest({
-        path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
-        offset: offset,
-      });
-
-      results[processor] = res;
-    } catch (e){
-      warns.push(e);
-    }
-
-    results.warns = warns;
-    return results;
+    return toJson ? await res.json() : await res.text();
   }
 
   /**
@@ -1519,49 +1476,21 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * @param {string} tenant - The Tenant ID
    * @return {Promise<Object>} - The API Response containing primary sales info
    */
-  async TenantSecondarySales({ tenant, offset }) {
-    let results = {};
-    let warns = [];
-
-    let processor = "stripe";
-    let res = null;
-    try {
-      res = await this.GetDumpRequest({
-        path: urljoin("/tnt/payments/", tenant, processor),
-        offset: offset,
-      });
-
-      results[processor] = res;
-    } catch (e){
-      warns.push(e);
+  async TenantSecondarySales({ tenant, processor, csv, offset }) {
+    let headers = {};
+    let toJson = true;
+    if (csv && csv != "") {
+      headers = { Accept: "text/csv" };
+      toJson = false;
     }
 
-    processor = "coinbase";
-    try {
-      res = await this.GetDumpRequest({
-        path: urljoin("/tnt/payments/", tenant, processor),
-        offset: offset,
-      });
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/payments/", tenant, processor),
+      queryParams: { offset },
+      headers,
+    });
 
-      results[processor] = res;
-    } catch (e){
-      warns.push(e);
-    }
-
-    processor = "eluvio";
-    try {
-      res = await this.GetDumpRequest({
-        path: urljoin("/tnt/payments/", tenant, processor),
-        offset: offset,
-      });
-
-      results[processor] = res;
-    } catch (e){
-      warns.push(e);
-    }
-
-    results.warns = warns;
-    return results;
+    return toJson ? await res.json() : await res.text();
   }
 
   FilterTenant({ object }) {

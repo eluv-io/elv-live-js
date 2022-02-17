@@ -330,35 +330,53 @@ const CmdList = async ({ argv }) => {
 };
 
 const CmdTenantPrimarySales = async ({ argv }) => {
-  console.log(`Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`);
-  console.log(`Offset: ${argv.offset}`)
+  console.log(
+    `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace} ${argv.processor}`
+  );
+  console.log(`Offset: ${argv.offset}`);
+  console.log(`CSV: ${argv.csv}`);
+
   try {
     await Init();
 
     let res = await elvlv.TenantPrimarySales({
       tenant: argv.tenant,
       marketplace: argv.marketplace,
+      processor: argv.processor,
+      csv: argv.csv,
       offset: argv.offset,
     });
 
-    console.log(yaml.dump(res));
+    if (argv.csv && argv.csv != "") {
+      fs.writeFileSync(argv.csv, res);
+    } else {
+      console.log(yaml.dump(res));
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
 
 const CmdTenantSecondarySales = async ({ argv }) => {
-  console.log(`Tenant Secondary Sales: ${argv.tenant}`);
-  console.log(`Offset: ${argv.offset}`)
+  console.log(`Tenant Secondary Sales: ${argv.tenant} ${argv.processor}`);
+  console.log(`Offset: ${argv.offset}`);
+  console.log(`CSV: ${argv.csv}`);
+
   try {
     await Init();
 
     let res = await elvlv.TenantSecondarySales({
       tenant: argv.tenant,
+      processor: argv.processor,
+      csv: argv.csv,
       offset: argv.offset,
     });
 
-    console.log(yaml.dump(res));
+    if (argv.csv && argv.csv != "") {
+      fs.writeFileSync(argv.csv, res);
+    } else {
+      console.log(yaml.dump(res));
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -847,7 +865,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_primary_sales <tenant> <marketplace>",
+    "tenant_primary_sales <tenant> <marketplace> <processor>",
     "Show tenant primary sales history",
     (yargs) => {
       yargs
@@ -857,6 +875,14 @@ yargs(hideBin(process.argv))
         })
         .positional("marketplace", {
           describe: "Marketplace ID",
+          type: "string",
+        })
+        .positional("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
           type: "string",
         })
         .option("offset", {
@@ -872,12 +898,20 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_secondary_sales <tenant>",
+    "tenant_secondary_sales <tenant> <processor>",
     "Show tenant secondary sales history",
     (yargs) => {
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
           type: "string",
         })
         .option("offset", {
