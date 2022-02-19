@@ -925,7 +925,7 @@ yargs(hideBin(process.argv))
       CmdTenantSecondarySales({ argv });
     }
   )
-
+  .strict()
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")
   .scriptName("")
