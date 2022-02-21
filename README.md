@@ -4,6 +4,10 @@ Eluvio Live JavaScript SDK and CLI
 
 A collection of libraries and utilities for managing content, live performance and NFT marketplaces on [Eluvio Live](https://live.eluv.io)
 
+# Dependencies
+
+You'll need the latest current Nodejs and NPM (Node 17.5.0+ or npm 8.5.1+): https://nodejs.org/en/download/current/
+
 # Build
 
 ```
