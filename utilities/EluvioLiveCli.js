@@ -34,96 +34,120 @@ const CmfNftTemplateAddNftContract = async ({ argv }) => {
     argv.symbol,
     argv.nftAddress
   );
-  await Init();
+  try {
+    await Init();
 
-  let c = await elvlv.NftTemplateAddNftContract({
-    libraryId: argv.library,
-    objectId: argv.object,
-    //nftAddr,
-    tenantId: argv.tenant,
-    mintHelperAddr: argv.minthelper, //"0x59e79eFE007F5208857a646Db5cBddA82261Ca81",
-    minterAddr: argv.minter,
-    totalSupply: argv.cap,
-    collectionName: argv.name,
-    collectionSymbol: argv.symbol,
-    hold: argv.hold,
-    contractUri: "",
-    proxyAddress: "",
-  });
+    let c = await elvlv.NftTemplateAddNftContract({
+      libraryId: argv.library,
+      objectId: argv.object,
+      //nftAddr,
+      tenantId: argv.tenant,
+      mintHelperAddr: argv.minthelper, //"0x59e79eFE007F5208857a646Db5cBddA82261Ca81",
+      minterAddr: argv.minter,
+      totalSupply: argv.cap,
+      collectionName: argv.name,
+      collectionSymbol: argv.symbol,
+      hold: argv.hold,
+      contractUri: "",
+      proxyAddress: "",
+    });
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmfNftAddMintHelper = async ({ argv }) => {
   console.log("NFT - add mint helper", argv.addr, argv.minter);
-  await Init();
+  try {
+    await Init();
 
-  let c = await elvlv.NftAddMinter({
-    addr: argv.addr,
-    minterAddr: argv.minter,
-  });
+    let c = await elvlv.NftAddMinter({
+      addr: argv.addr,
+      minterAddr: argv.minter,
+    });
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmfNftSetProxy = async ({ argv }) => {
   console.log("NFT - set proxy", argv.addr, argv.proxy_addr);
-  await Init();
+  try {
+    await Init();
 
-  let p = await elvlv.NftSetTransferProxy({
-    addr: argv.addr,
-    proxyAddr: argv.proxy_addr,
-  });
-  console.log("Proxy: ", p);
+    let p = await elvlv.NftSetTransferProxy({
+      addr: argv.addr,
+      proxyAddr: argv.proxy_addr,
+    });
+    console.log("Proxy: ", p);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdNftBalanceOf = async ({ argv }) => {
   console.log("NFT - call", argv.addr, argv.owner);
+  try {
+    await Init();
 
-  await Init();
+    let res = await elvlv.NftBalanceOf({
+      addr: argv.addr,
+      ownerAddr: argv.owner,
+    });
 
-  let res = await elvlv.NftBalanceOf({
-    addr: argv.addr,
-    ownerAddr: argv.owner,
-  });
-
-  console.log(yaml.dump(res));
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdNftShow = async ({ argv }) => {
   console.log("NFT - show", argv.addr, argv.show_owners);
+  try {
+    await Init();
 
-  await Init();
+    let res = await elvlv.NftShow({
+      addr: argv.addr,
+      mintHelper: argv.check_minter,
+      showOwners: argv.show_owners,
+    });
 
-  let res = await elvlv.NftShow({
-    addr: argv.addr,
-    mintHelper: argv.check_minter,
-    showOwners: argv.show_owners,
-  });
-
-  console.log(yaml.dump(res));
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdNftBuild = async ({ argv }) => {
   console.log("NFT - build public/nft", argv.object);
+  try {
+    await Init();
 
-  await Init();
+    let res = await elvlv.NftBuild({
+      libraryId: argv.library,
+      objectId: argv.object,
+    });
 
-  let res = await elvlv.NftBuild({
-    libraryId: argv.library,
-    objectId: argv.object,
-  });
-
-  console.log(yaml.dump(res));
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdNftLookup = async ({ argv }) => {
   console.log("NFT - lookup", argv.addr, argv.token_id);
+  try {
+    await Init();
 
-  await Init();
+    let res = await elvlv.NftLookup({
+      addr: argv.addr,
+      tokenId: argv.token_id,
+    });
 
-  let res = await elvlv.NftLookup({
-    addr: argv.addr,
-    tokenId: argv.token_id,
-  });
-
-  console.log(yaml.dump(res));
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdNftProxyTransfer = async ({ argv }) => {
@@ -133,95 +157,114 @@ const CmdNftProxyTransfer = async ({ argv }) => {
     argv.from_addr,
     argv.to_addr
   );
+  try {
+    await Init();
 
-  await Init();
+    let res = await elvlv.NftProxyTransferFrom({
+      addr: argv.addr,
+      tokenId: argv.token_id,
+      fromAddr: argv.from_addr,
+      toAddr: argv.to_addr,
+    });
 
-  let res = await elvlv.NftProxyTransferFrom({
-    addr: argv.addr,
-    tokenId: argv.token_id,
-    fromAddr: argv.from_addr,
-    toAddr: argv.to_addr,
-  });
-
-  console.log(yaml.dump(res));
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdTenantShow = async ({ argv }) => {
   console.log("Tenant - show", argv.tenant);
+  try {
+    await Init();
 
-  await Init();
+    let res = await elvlv.TenantShow({
+      tenantId: argv.tenant,
+      libraryId: argv.library,
+      objectId: argv.object,
+      marketplaceId: argv.marketplace,
+      eventId: argv.event,
+      cauth: argv.check_cauth,
+      mintHelper: argv.check_minter,
+    });
 
-  let res = await elvlv.TenantShow({
-    tenantId: argv.tenant,
-    libraryId: argv.library,
-    objectId: argv.object,
-    marketplaceId: argv.marketplace,
-    eventId: argv.event,
-    cauth: argv.check_cauth,
-    mintHelper: argv.check_minter,
-  });
-
-  console.log(yaml.dump(res));
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdSiteShow = async ({ argv }) => {
   console.log("Site - show", argv.object);
+  try {
+    await Init();
 
-  await Init();
+    let res = await elvlv.SiteShow({
+      libraryId: argv.library,
+      objectId: argv.object,
+    });
 
-  let res = await elvlv.SiteShow({
-    libraryId: argv.library,
-    objectId: argv.object,
-  });
-
-  console.log(yaml.dump(res));
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdSiteSetDrop = async ({ argv }) => {
   console.log("Site - set drop", argv.object, argv.uuid, "update", argv.update);
 
-  await Init();
+  try {
+    await Init();
 
-  let res = await elvlv.SiteSetDrop({
-    libraryId: argv.library,
-    objectId: argv.object,
-    uuid: argv.uuid,
-    start: argv.start_date,
-    end: argv.end_date,
-    endVote: argv.end_vote,
-    startMint: argv.start_mint,
-    newUuid: argv.new_uuid,
-    update: argv.update,
-  });
+    let res = await elvlv.SiteSetDrop({
+      libraryId: argv.library,
+      objectId: argv.object,
+      uuid: argv.uuid,
+      start: argv.start_date,
+      end: argv.end_date,
+      endVote: argv.end_vote,
+      startMint: argv.start_mint,
+      newUuid: argv.new_uuid,
+      update: argv.update,
+    });
 
-  console.log(yaml.dump(res));
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdTenantBalanceOf = async ({ argv }) => {
   console.log("Tenant - balance of", argv.tenant, argv.owner, argv.max_results);
+  try {
+    await Init();
 
-  await Init();
+    let res = await elvlv.TenantBalanceOf({
+      tenantId: argv.tenant,
+      ownerAddr: argv.owner,
+      maxNumber: argv.max_results,
+    });
 
-  let res = await elvlv.TenantBalanceOf({
-    tenantId: argv.tenant,
-    ownerAddr: argv.owner,
-    maxNumber: argv.max_results,
-  });
-
-  console.log(yaml.dump(res));
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdFabricTenantBalanceOf = async ({ argv }) => {
   console.log("Fabric Tenant - balance of", argv.object, argv.owner);
+  try {
+    await Init();
 
-  await Init();
+    let res = await elvlv.FabricTenantBalanceOf({
+      objectId: argv.object,
+      ownerAddr: argv.owner,
+    });
 
-  let res = await elvlv.FabricTenantBalanceOf({
-    objectId: argv.object,
-    ownerAddr: argv.owner,
-  });
-
-  console.log(yaml.dump(res));
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmdShuffle = async ({ argv }) => {

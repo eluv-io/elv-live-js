@@ -84,6 +84,16 @@ class EluvioLive {
     for (var key in m.marketplaces) {
       tenantInfo.marketplaces[key] = {};
       tenantInfo.marketplaces[key].items = {};
+      tenantInfo.marketplaces[key].summary = {};
+      var totalNfts = m.marketplaces[key].info.items.length || 0;
+      tenantInfo.marketplaces[key].summary.total_nfts = totalNfts;
+
+      var totalMinted = 0;
+      var totalCap = 0;
+      var totalSupply = 0;
+      var topMintedValue = 0;
+      var topMintedList = [];
+
       for (var i in m.marketplaces[key].info.items) {
         const item = m.marketplaces[key].info.items[i];
 
@@ -130,6 +140,21 @@ class EluvioLive {
           tenantInfo.marketplaces[key].items[sku].defHoldSecs =
             nftInfo.defHoldSecs;
 
+          //Some nfts had -1 for some reason
+          totalMinted += nftInfo.minted > 0 ? nftInfo.minted : 0;
+          totalCap += nftInfo.cap > 0 ? nftInfo.cap : 0;
+          totalSupply += nftInfo.totalSupply > 0 ? nftInfo.totalSupply : 0;
+
+          if (topMintedValue <= nftInfo.minted) {
+            topMintedList.unshift({
+              name: nftInfo.name,
+              minted: nftInfo.minted,
+              sku: sku,
+              address: item.nft_template.nft.address,
+            });
+            topMintedValue = nftInfo.minted;
+          }
+
           if (nftInfo.cap != item.nft_template.nft.total_supply) {
             warns.push("NFT cap mismatch sku: " + sku);
           }
@@ -144,6 +169,13 @@ class EluvioLive {
           }
         }
       }
+      tenantInfo.marketplaces[key].summary.total_minted = totalMinted;
+      tenantInfo.marketplaces[key].summary.total_cap = totalCap;
+      tenantInfo.marketplaces[key].summary.total_supply = totalSupply;
+      tenantInfo.marketplaces[key].summary.top_minted = topMintedList.slice(
+        0,
+        3
+      );
     }
 
     tenantInfo.sites = {};
@@ -236,6 +268,13 @@ class EluvioLive {
 
     var nftInfo = {};
     nftInfo.nfts = {};
+    nftInfo.summary = {};
+
+    var totalMinted = 0;
+    var totalCap = 0;
+    var totalSupply = 0;
+    var topMintedValue = 0;
+    var topMintedList = [];
 
     var num = 0;
     for (var i = 0; i < Number.MAX_SAFE_INTEGER && num < maxNumber; i++) {
@@ -260,11 +299,30 @@ class EluvioLive {
 
         nftInfo.nfts[nftAddr] = nft;
         num++;
+
+        totalMinted += nft.minted > 0 ? nft.minted : 0;
+        totalCap += nft.cap > 0 ? nft.cap : 0;
+        totalSupply += nft.totalSupply > 0 ? nft.totalSupply : 0;
+
+        if (topMintedValue <= nft.minted) {
+          topMintedList.unshift({
+            name: nft.name,
+            minted: nft.minted,
+            address: nftAddr,
+          });
+          topMintedValue = nft.minted;
+        }
       } catch (e) {
         //We don't know the length so just stop on error and return
         break;
       }
     }
+
+    nftInfo.summary.total_nfts = num;
+    nftInfo.summary.total_minted = totalMinted;
+    nftInfo.summary.total_cap = totalCap;
+    nftInfo.summary.total_supply = totalSupply;
+    nftInfo.summary.top_minted = topMintedList.slice(0, 3);
 
     return nftInfo;
   }
