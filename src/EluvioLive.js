@@ -1347,10 +1347,12 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return res;
   }
 
-  async GetServiceRequest({ path, limit = Number.MAX_SAFE_INTEGER }) {
+  async GetServiceRequest({ path, queryParams, headers = {} }) {
     let ts = Date.now();
-    //var newPath = urljoin(path,`?ts=${now}`);
-    var newPath = path + `?ts=${ts}` + `&limit=${limit}`;
+    let params = { ts, ...queryParams };
+    const paramString = new URLSearchParams(params).toString();
+
+    var newPath = path + "?" + paramString;
 
     const { multiSig } = await this.Sign({
       message: newPath,
@@ -1361,11 +1363,12 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       path: urljoin("/as", path),
       headers: {
         Authorization: `Bearer ${multiSig}`,
+        ...headers,
       },
-      queryParams: { ts, limit },
+      queryParams: { ts, ...queryParams },
     });
 
-    return await res.json();
+    return await res;
   }
 
   /**
@@ -1422,9 +1425,9 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
     let res = await this.GetServiceRequest({
       path: urljoin("/tnt/wlt/", tenant),
-      limit: maxNumber,
+      queryParams: { limit: maxNumber },
     });
-    return res;
+    return await res.json();
   }
 
   /**
@@ -1497,6 +1500,55 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     results.warns = warns;
 
     return results;
+  }
+
+  /**
+   * Get primary sales history for the tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {string} marketplace - The marketplace ID
+   * @return {Promise<Object>} - The API Response containing primary sales info
+   */
+  async TenantPrimarySales({ tenant, marketplace, processor, csv, offset }) {
+    let headers = {};
+    let toJson = true;
+    if (csv && csv != "") {
+      headers = { Accept: "text/csv" };
+      toJson = false;
+    }
+
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
+      queryParams: { offset },
+      headers,
+    });
+
+    return toJson ? await res.json() : await res.text();
+  }
+
+  /**
+   * Get primary sales history for the tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response containing primary sales info
+   */
+  async TenantSecondarySales({ tenant, processor, csv, offset }) {
+    let headers = {};
+    let toJson = true;
+    if (csv && csv != "") {
+      headers = { Accept: "text/csv" };
+      toJson = false;
+    }
+
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/payments/", tenant, processor),
+      queryParams: { offset },
+      headers,
+    });
+
+    return toJson ? await res.json() : await res.text();
   }
 
   FilterTenant({ object }) {

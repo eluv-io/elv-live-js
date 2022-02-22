@@ -372,6 +372,59 @@ const CmdList = async ({ argv }) => {
   }
 };
 
+const CmdTenantPrimarySales = async ({ argv }) => {
+  console.log(
+    `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace} ${argv.processor}`
+  );
+  console.log(`Offset: ${argv.offset}`);
+  console.log(`CSV: ${argv.csv}`);
+
+  try {
+    await Init();
+
+    let res = await elvlv.TenantPrimarySales({
+      tenant: argv.tenant,
+      marketplace: argv.marketplace,
+      processor: argv.processor,
+      csv: argv.csv,
+      offset: argv.offset,
+    });
+
+    if (argv.csv && argv.csv != "") {
+      fs.writeFileSync(argv.csv, res);
+    } else {
+      console.log(yaml.dump(res));
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantSecondarySales = async ({ argv }) => {
+  console.log(`Tenant Secondary Sales: ${argv.tenant} ${argv.processor}`);
+  console.log(`Offset: ${argv.offset}`);
+  console.log(`CSV: ${argv.csv}`);
+
+  try {
+    await Init();
+
+    let res = await elvlv.TenantSecondarySales({
+      tenant: argv.tenant,
+      processor: argv.processor,
+      csv: argv.csv,
+      offset: argv.offset,
+    });
+
+    if (argv.csv && argv.csv != "") {
+      fs.writeFileSync(argv.csv, res);
+    } else {
+      console.log(yaml.dump(res));
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 FilterListTenant = ({ tenant }) => {
   let res = {};
   res.result = {};
@@ -854,6 +907,68 @@ yargs(hideBin(process.argv))
     }
   )
 
+  .command(
+    "tenant_primary_sales <tenant> <marketplace> <processor>",
+    "Show tenant primary sales history",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("marketplace", {
+          describe: "Marketplace ID",
+          type: "string",
+        })
+        .positional("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
+          type: "string",
+        })
+        .option("offset", {
+          describe:
+            "Offset in months to dump data where 0 is the current month",
+          type: "number",
+          default: 1,
+        });
+    },
+    (argv) => {
+      CmdTenantPrimarySales({ argv });
+    }
+  )
+
+  .command(
+    "tenant_secondary_sales <tenant> <processor>",
+    "Show tenant secondary sales history",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
+          type: "string",
+        })
+        .option("offset", {
+          describe:
+            "Offset in months to dump data where 0 is the current month",
+          type: "number",
+          default: 1,
+        });
+    },
+    (argv) => {
+      CmdTenantSecondarySales({ argv });
+    }
+  )
+  .strict()
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")
   .scriptName("")
