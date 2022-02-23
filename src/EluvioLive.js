@@ -1051,7 +1051,6 @@ class EluvioLive {
     proxyAddress,
     totalSupply,
   }) {
-    console.log("Create NFT contract");
 
     if (nftAddr == null) {
       nftAddr = await this.CreateNftContract({
@@ -1068,7 +1067,6 @@ class EluvioLive {
     }
 
     // Update object metadata
-    console.log("Update object metadata");
     var m = await this.client.ContentObjectMetadata({
       libraryId,
       objectId,
@@ -1097,8 +1095,6 @@ class EluvioLive {
       writeToken: e.write_token,
       commitMessage: "Set NFT contract address " + nftAddr,
     });
-
-    console.log("Finalized", f);
 
     return nftAddr;
   }
@@ -1182,11 +1178,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 	let imgs = [];
 	let files;
 
-	try {
-	  files = await fs.promises.readdir(imageDir);
-	} catch (err) {
-      return console.log('Unable to scan directory: ' + err);
-	}
+	files = await fs.promises.readdir(imageDir);
 
 	files.forEach(function (file) {
 	  // Only considering jpg files
@@ -1361,43 +1353,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       commitMessage: "Set NFT public/nft",
     });
 
-	// Note: there may not be a need to set the token URI in the asset_metadata
-	const set_token_uri = false;
-	if (set_token_uri) {
-      const nftPath = "/meta/public/nft";
-      const tokenUri =
-			Config.networks[Config.net] +
-			"/s/" +
-			Config.net +
-			"/q/" +
-			f.hash +
-			nftPath;
-
-      console.log("Token URI: ", tokenUri);
-
-      // Set the token URI - edit the object one more time
-      var e = await this.client.EditContentObject({
-		libraryId,
-		objectId,
-      });
-
-      await this.client.ReplaceMetadata({
-		libraryId,
-		objectId,
-		writeToken: e.write_token,
-		metadataSubtree: "public/asset_metadata/nft/token_uri",
-		metadata: tokenUri,
-      });
-
-      var f2 = await this.client.FinalizeContentObject({
-		libraryId,
-		objectId,
-		writeToken: e.write_token,
-		commitMessage: "Set NFT token URI",
-      });
-	}
-
-    return f2 ? f2 : f;
+    return f;
   }
 
   /**
