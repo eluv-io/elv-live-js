@@ -22,10 +22,9 @@ class EluvioLive {
    * @namedParams
    * @param {string} configUrl - The Content Fabric configuration URL
    * @param {string} mainObjectId - The top-level Eluvio Live object ID
-   * @param {string} tenantObjectId - The ID of the tenant specific EluvioLive object (optional)
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
-  constructor({ configUrl, mainObjectId, tenantObjectId }) {
+  constructor({ configUrl, mainObjectId }) {
     this.configUrl = configUrl || ElvClient.main;
     this.mainObjectId = mainObjectId;
 
@@ -59,21 +58,14 @@ class EluvioLive {
    * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
   async TenantShow({
-    tenantId,
+    /*tenantId,*/
     libraryId,
     objectId,
-    eventId,
-    marketplaceId,
+    /* eventId,*/
+    /* marketplaceId,*/
     cauth,
     mintHelper,
   }) {
-    const abiNft = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/ElvTradable.abi")
-    );
-    const abiTenant = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
-    );
-
     var tenantInfo = {};
 
     var m = await this.client.ContentObjectMetadata({
@@ -92,6 +84,16 @@ class EluvioLive {
     for (var key in m.marketplaces) {
       tenantInfo.marketplaces[key] = {};
       tenantInfo.marketplaces[key].items = {};
+      tenantInfo.marketplaces[key].summary = {};
+      var totalNfts = m.marketplaces[key].info.items.length || 0;
+      tenantInfo.marketplaces[key].summary.total_nfts = totalNfts;
+
+      var totalMinted = 0;
+      var totalCap = 0;
+      var totalSupply = 0;
+      var topMintedValue = 0;
+      var topMintedList = [];
+
       for (var i in m.marketplaces[key].info.items) {
         const item = m.marketplaces[key].info.items[i];
 
@@ -138,6 +140,21 @@ class EluvioLive {
           tenantInfo.marketplaces[key].items[sku].defHoldSecs =
             nftInfo.defHoldSecs;
 
+          //Some nfts had -1 for some reason
+          totalMinted += nftInfo.minted > 0 ? nftInfo.minted : 0;
+          totalCap += nftInfo.cap > 0 ? nftInfo.cap : 0;
+          totalSupply += nftInfo.totalSupply > 0 ? nftInfo.totalSupply : 0;
+
+          if (topMintedValue <= nftInfo.minted) {
+            topMintedList.unshift({
+              name: nftInfo.name,
+              minted: nftInfo.minted,
+              sku: sku,
+              address: item.nft_template.nft.address,
+            });
+            topMintedValue = nftInfo.minted;
+          }
+
           if (nftInfo.cap != item.nft_template.nft.total_supply) {
             warns.push("NFT cap mismatch sku: " + sku);
           }
@@ -152,6 +169,13 @@ class EluvioLive {
           }
         }
       }
+      tenantInfo.marketplaces[key].summary.total_minted = totalMinted;
+      tenantInfo.marketplaces[key].summary.total_cap = totalCap;
+      tenantInfo.marketplaces[key].summary.total_supply = totalSupply;
+      tenantInfo.marketplaces[key].summary.top_minted = topMintedList.slice(
+        0,
+        3
+      );
     }
 
     tenantInfo.sites = {};
@@ -244,6 +268,13 @@ class EluvioLive {
 
     var nftInfo = {};
     nftInfo.nfts = {};
+    nftInfo.summary = {};
+
+    var totalMinted = 0;
+    var totalCap = 0;
+    var totalSupply = 0;
+    var topMintedValue = 0;
+    var topMintedList = [];
 
     var num = 0;
     for (var i = 0; i < Number.MAX_SAFE_INTEGER && num < maxNumber; i++) {
@@ -268,11 +299,30 @@ class EluvioLive {
 
         nftInfo.nfts[nftAddr] = nft;
         num++;
+
+        totalMinted += nft.minted > 0 ? nft.minted : 0;
+        totalCap += nft.cap > 0 ? nft.cap : 0;
+        totalSupply += nft.totalSupply > 0 ? nft.totalSupply : 0;
+
+        if (topMintedValue <= nft.minted) {
+          topMintedList.unshift({
+            name: nft.name,
+            minted: nft.minted,
+            address: nftAddr,
+          });
+          topMintedValue = nft.minted;
+        }
       } catch (e) {
         //We don't know the length so just stop on error and return
         break;
       }
     }
+
+    nftInfo.summary.total_nfts = num;
+    nftInfo.summary.total_minted = totalMinted;
+    nftInfo.summary.total_cap = totalCap;
+    nftInfo.summary.total_supply = totalSupply;
+    nftInfo.summary.top_minted = topMintedList.slice(0, 3);
 
     return nftInfo;
   }
@@ -298,6 +348,8 @@ class EluvioLive {
       methodArgs: ["tenant_nfts", nftAddr],
       formatArguments: true,
     });
+
+    return res;
   }
 
   /**
@@ -585,7 +637,8 @@ class EluvioLive {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
-    var res = await this.client.CallContractMethod({
+
+    await this.client.CallContractMethod({
       contractAddress: addr,
       abi: JSON.parse(abi),
       methodName: "setProxyRegistryAddress",
@@ -602,7 +655,7 @@ class EluvioLive {
    * @namedParams
    * @return {Promise<Object>} - New contract address
    */
-  async CreateNftTransferProxy({}) {
+  async CreateNftTransferProxy() {
     const abistr = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi")
     );
@@ -710,7 +763,10 @@ class EluvioLive {
           formatArguments: true,
         });
         holdEnd = new Date(holdSecs * 1000);
-      } catch (e) {}
+      } catch (e) {
+        //FIXME: Do we want to print error?
+        //console.error(e);
+      }
 
       balance[i] = {
         tokenId: tokenId.toString(),
@@ -960,6 +1016,8 @@ class EluvioLive {
       methodArgs: [minterAddr],
       formatArguments: true,
     });
+
+    return res;
   }
 
   /**
@@ -1059,9 +1117,9 @@ class EluvioLive {
     var pnft = {};
 
     /* Add this to description */
-    const addtlInfo = `
+    /*const addtlInfo = `
 
-Lookup NFT: https://wallet.contentfabric.io/lookup/`;
+Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
     pnft.name = m.nft.name;
     pnft.display_name = m.nft.display_name;
@@ -1270,6 +1328,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       pnft = await this.NftMake({ assetMetadata: m, hash });
 	}
 
+    // Set the token URI - edit the object one more time
     var e = await this.client.EditContentObject({
       libraryId,
       objectId,
@@ -1349,7 +1408,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
    * @param {integer} tokenId - External NFT token ID
    * @return {Promise<Object>} - NFT info JSON
    */
-  async NftLookup({ addr, tokenId }) {
+  async NftLookup({ /* addr, */ tokenId }) {
     console.log("tokenId", tokenId);
 
     var x = new BigNumber(tokenId, 10);
@@ -1450,10 +1509,12 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return res;
   }
 
-  async GetServiceRequest({ path, limit = Number.MAX_SAFE_INTEGER }) {
+  async GetServiceRequest({ path, queryParams, headers = {} }) {
     let ts = Date.now();
-    //var newPath = urljoin(path,`?ts=${now}`);
-    var newPath = path + `?ts=${ts}` + `&limit=${limit}`;
+    let params = { ts, ...queryParams };
+    const paramString = new URLSearchParams(params).toString();
+
+    var newPath = path + "?" + paramString;
 
     const { multiSig } = await this.Sign({
       message: newPath,
@@ -1464,11 +1525,12 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       path: urljoin("/as", path),
       headers: {
         Authorization: `Bearer ${multiSig}`,
+        ...headers,
       },
-      queryParams: { ts, limit },
+      queryParams: { ts, ...queryParams },
     });
 
-    return await res.json();
+    return await res;
   }
 
   /**
@@ -1525,9 +1587,9 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
 
     let res = await this.GetServiceRequest({
       path: urljoin("/tnt/wlt/", tenant),
-      limit: maxNumber,
+      queryParams: { limit: maxNumber },
     });
-    return res;
+    return await res.json();
   }
 
   /**
@@ -1602,14 +1664,63 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     return results;
   }
 
-  FilterTenant = ({ object }) => {
+  /**
+   * Get primary sales history for the tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {string} marketplace - The marketplace ID
+   * @return {Promise<Object>} - The API Response containing primary sales info
+   */
+  async TenantPrimarySales({ tenant, marketplace, processor, csv, offset }) {
+    let headers = {};
+    let toJson = true;
+    if (csv && csv != "") {
+      headers = { Accept: "text/csv" };
+      toJson = false;
+    }
+
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
+      queryParams: { offset },
+      headers,
+    });
+
+    return toJson ? await res.json() : await res.text();
+  }
+
+  /**
+   * Get primary sales history for the tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response containing primary sales info
+   */
+  async TenantSecondarySales({ tenant, processor, csv, offset }) {
+    let headers = {};
+    let toJson = true;
+    if (csv && csv != "") {
+      headers = { Accept: "text/csv" };
+      toJson = false;
+    }
+
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/payments/", tenant, processor),
+      queryParams: { offset },
+      headers,
+    });
+
+    return toJson ? await res.json() : await res.text();
+  }
+
+  FilterTenant({ object }) {
     let result = {};
     result.marketplaces = object.marketplaces;
     result.sites = object.sites;
     return result;
-  };
+  }
 
-  FilterMarketplace = ({ object }) => {
+  FilterMarketplace({ object }) {
     let result = {};
     let warns = [];
 
@@ -1626,9 +1737,9 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     }
 
     return { result, warns };
-  };
+  }
 
-  FilterNft = ({ object }) => {
+  FilterNft({ object }) {
     let result = {};
     let warns = [];
     result.title = object.nft_template.title;
@@ -1643,9 +1754,9 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
     if (!result.version_hash) warns.push(`No versionHash for ${object.title}`);
 
     return { result, warns };
-  };
+  }
 
-  FilterSite = ({ object }) => {
+  FilterSite({ object }) {
     let result = {};
     let warns = [];
 
@@ -1659,7 +1770,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`;
       warns.push(`No marketplace_slug for ${object.title}`);
 
     return { result, warns };
-  };
+  }
 }
 
 exports.EluvioLive = EluvioLive;
