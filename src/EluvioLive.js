@@ -1089,7 +1089,7 @@ class EluvioLive {
       metadata: m,
     });
 
-    var f = await this.client.FinalizeContentObject({
+    await this.client.FinalizeContentObject({
       libraryId,
       objectId,
       writeToken: e.write_token,
@@ -1175,26 +1175,26 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * @return {Promise<Object>} - The 'images' object
    */
   async readNftImageDir({imageDir}) {
-	let imgs = [];
-	let files;
+    let imgs = [];
+    let files;
 
-	files = await fs.promises.readdir(imageDir);
+    files = await fs.promises.readdir(imageDir);
 
-	files.forEach(function (file) {
+    files.forEach(function (file) {
 	  // Only considering jpg files
-	  if (path.extname(file) == '.jpg' || path.extname(file) == '.jpeg') {
-		let img = {};
-		img.imgFilePath = path.join(imageDir, file);
-		img.imgFile = file;
-		const attrsFile = path.parse(file).name + ".json";
-		if (fs.existsSync(path.join(imageDir, attrsFile))) {
+	  if (path.extname(file) == ".jpg" || path.extname(file) == ".jpeg") {
+        let img = {};
+        img.imgFilePath = path.join(imageDir, file);
+        img.imgFile = file;
+        const attrsFile = path.parse(file).name + ".json";
+        if (fs.existsSync(path.join(imageDir, attrsFile))) {
 		  let attrsBuf = fs.readFileSync(path.join(imageDir, attrsFile));
 		  let attrs = JSON.parse(attrsBuf);
 		  img.attrs = attrs.attributes;
-		}
-		imgs.push(img);
+        }
+        imgs.push(img);
 	  }
-	});
+    });
     return imgs;
   }
 
@@ -1218,7 +1218,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     const m = assetMetadata;
     var pnft = {};
 
-	const imageUrl =
+    const imageUrl =
       Config.networks[Config.net] +
       "/s/" +
       Config.net +
@@ -1262,9 +1262,9 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       },
     ];
 
-	pnft.attributes = pnft.attributes.concat(attrs);
+    pnft.attributes = pnft.attributes.concat(attrs);
 
-	return pnft;
+    return pnft;
   }
 
   /**
@@ -1295,56 +1295,55 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       resolveLinks: false,
     });
 
-	var pnft;
-	var pnfts = [];
+    var pnft;
+    var pnfts = [];
 
-	// Determine if this is a single or multi-image NFT
+    // Determine if this is a single or multi-image NFT
 
-	if (imageDir != null && imageDir.length > 0) {
+    if (imageDir != null && imageDir.length > 0) {
 
 	  // Generative NFT - build an nft array
 
 	  // Read image and attributes info from directory
 	  let imgs = await this.readNftImageDir({imageDir});
 	  for (const img of imgs) {
-		pnft= await this.NftMakeGenerative({
+        pnft= await this.NftMakeGenerative({
 		  assetMetadata: m,
 		  hash,
 		  imagePath: path.join("nft", img.imgFile),
 		  attrs: img.attrs});
-		pnfts.push(pnft);
+        pnfts.push(pnft);
 	  }
-	} else {
+    } else {
 
-	  // Single media NFT - build an nft object
+      // Single media NFT - build an nft object
       pnft = await this.NftMake({ assetMetadata: m, hash });
-	}
+    }
 
-    // Set the token URI - edit the object one more time
     var e = await this.client.EditContentObject({
       libraryId,
       objectId,
     });
 
-	if (imageDir != null && imageDir.length > 0) {
-	  // Merge the nft array
+    if (imageDir != null && imageDir.length > 0) {
+      // Merge the nft array
       await this.client.ReplaceMetadata({
-		libraryId,
-		objectId,
-		writeToken: e.write_token,
-		metadataSubtree: "public/nfts",
-		metadata: pnfts,
+        libraryId,
+        objectId,
+        writeToken: e.write_token,
+        metadataSubtree: "public/nfts",
+        metadata: pnfts,
       });
-	} else {
+    } else {
 	  // Merge the single nft object
       await this.client.ReplaceMetadata({
-		libraryId,
-		objectId,
-		writeToken: e.write_token,
-		metadataSubtree: "public/nft",
-		metadata: pnft,
+        libraryId,
+        objectId,
+        writeToken: e.write_token,
+        metadataSubtree: "public/nft",
+        metadata: pnft,
       });
-	}
+    }
 
     var f = await this.client.FinalizeContentObject({
       libraryId,
