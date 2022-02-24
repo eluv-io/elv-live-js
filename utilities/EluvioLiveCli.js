@@ -354,7 +354,7 @@ const CmdList = async ({ argv }) => {
       tenantSlug: argv.tenant_slug,
     });
 
-    if (argv.tenant) {
+    if (argv.tenant || argv.tenant_slug) {
       let { result, warns } = FilterListTenant({ tenant: res });
       let warnSaved = res.warns || [];
       res = result;
