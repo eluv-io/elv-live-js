@@ -429,35 +429,46 @@ FilterListTenant = ({ tenant }) => {
   let res = {};
   res.result = {};
   res.warns = [];
-
   let tenantObject = elvlv.FilterTenant({ object: tenant });
-  let keys = Object.keys(tenantObject.marketplaces);
-  for (const key of keys) {
-    let { result, warns } = elvlv.FilterMarketplace({
-      object: tenantObject.marketplaces[key],
-    });
-    let marketplace = result;
-    res.warns = res.warns.concat(warns);
-    let filteredItems = [];
-    for (const item of marketplace.items) {
-      let { result, warns } = elvlv.FilterNft({ object: item });
-      let filteredItem = result;
-      res.warns = res.warns.concat(warns);
-      filteredItems.push(filteredItem);
+  try {
+    if (tenantObject.marketplaces) {
+      let keys = Object.keys(tenantObject.marketplaces);
+      for (const key of keys) {
+        let { result, warns } = elvlv.FilterMarketplace({
+          object: tenantObject.marketplaces[key],
+        });
+        let marketplace = result;
+        res.warns = res.warns.concat(warns);
+        let filteredItems = [];
+        for (const item of marketplace.items) {
+          let { result, warns } = elvlv.FilterNft({ object: item });
+          let filteredItem = result;
+          res.warns = res.warns.concat(warns);
+          filteredItems.push(filteredItem);
+        }
+        marketplace.items = filteredItems;
+        tenantObject.marketplaces[key] = marketplace;
+      }
     }
-    marketplace.items = filteredItems;
-    tenantObject.marketplaces[key] = marketplace;
+  } catch (e) {
+    res.warns.push(`${tenant.display_title} : ${e}`);
   }
 
-  keys = Object.keys(tenantObject.sites);
+  try {
+    if (tenantObject.sites) {
+      keys = Object.keys(tenantObject.sites);
 
-  for (const key of keys) {
-    let { result, warns } = elvlv.FilterSite({
-      object: tenantObject.sites[key],
-    });
-    let site = result;
-    tenantObject.sites[key] = site;
-    res.warns = res.warns.concat(warns);
+      for (const key of keys) {
+        let { result, warns } = elvlv.FilterSite({
+          object: tenantObject.sites[key],
+        });
+        let site = result;
+        tenantObject.sites[key] = site;
+        res.warns = res.warns.concat(warns);
+      }
+    }
+  } catch (e) {
+    res.warns.push(`${tenant.display_title} : ${e}`);
   }
 
   res.result = tenantObject;
