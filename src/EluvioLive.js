@@ -1146,7 +1146,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       },
       {
         trait_type: "Total Minted Supply",
-        value: m.nft.total_supply.toString(),
+        value: pnft.total_supply.toString(),
       },
       {
         trait_type: "Content Fabric Hash",
@@ -1218,14 +1218,14 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     const m = assetMetadata;
     var pnft = {};
 
-    const imageUrl =
-      Config.networks[Config.net] +
-      "/s/" +
-      Config.net +
-      "/q/" +
-	  hash +
-      "/files/" +
-      imagePath;
+    const imageUrl = urljoin(
+      Config.networks[Config.net],
+      "/s/",
+      Config.net,
+      "/q/",
+	  hash,
+      "/files/",
+      imagePath);
 
     pnft.name = m.nft.name;
     pnft.display_name = m.nft.display_name;
@@ -1300,7 +1300,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
     // Determine if this is a single or multi-image NFT
 
-    if (imageDir != null && imageDir.length > 0) {
+    if (imageDir && imageDir.length > 0) {
 
 	  // Generative NFT - build an nft array
 
@@ -1325,7 +1325,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       objectId,
     });
 
-    if (imageDir != null && imageDir.length > 0) {
+    if (imageDir && imageDir.length > 0) {
       // Merge the nft array
       await this.client.ReplaceMetadata({
         libraryId,
