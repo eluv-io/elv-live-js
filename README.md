@@ -49,10 +49,10 @@ The ids required for the commands are located in the Eluvio fabric browser at:
 
 ```
 Tenant Id:
-Properties > Drop Event > Manage > Tenant ID
+Properties > Drop Event > Manage > Tenant Id
 ```
 ```
-Library id:
+Library Id:
 Properties > Library Info > Library Id
 ```
 ```
