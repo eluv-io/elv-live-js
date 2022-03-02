@@ -16,15 +16,58 @@ npm install
 
 Then:
 
-``` bash
-./elv-live --help
 ```
+./elv-live --help
 
+EluvioLive CLI
+Usage: elv-live <command>
+
+Commands:
+  nft_add_contract <library> <object>       Add a new or existing NFT contract
+  <tenant> [minthelper] [cap] [name]        to an NFT Template object
+  [symbol] [nftaddr] [hold]
+  nft_add_minter <addr> <minter>            Add a new or existing NFT contract
+                                            to an NFT Template object
+  nft_set_proxy <addr> [proxy_addr]         Set a proxy on an NFT contract
+  nft_balance_of <addr> <owner>             Call NFT ownerOf - determine if this
+                                            is an owner
+  nft_show <addr>                           Show info on this NFT
+  nft_proxy_transfer <addr> <token_id>      Tranfer NFT as a proxy owner
+  <from_addr> <to_addr>
+  nft_build <library> <object>              Build the public/nft section based
+                                            on asset metadata
+  nft_lookup <addr> <token_id>              Decode and look up a /local NFT by
+                                            external token ID
+  tenant_show <tenant> <library> <object>   Show info on this tenant
+  [event] [marketplace]
+  tenant_balance_of <tenant> <owner>        Show NFTs owned by this owner in
+                                            this tenant
+  fabric_tenant_balance_of <object>         Show NFTs owned by this owner in
+  <owner> [options]                         this tenant
+  site_show <library> <object>              Show info on this site/event
+  site_set_drop <library> <object> <uuid>   Set drop dates for a site/event
+  <start_date> [options]
+  shuffle <file> [options]                  Sort each line deterministically
+                                            based on the seed
+  tenant_mint <tenant> <marketplace> <sku>  Mint a marketplace NFT by SKU as
+  <addr>                                    tenant admin
+  tenant_wallets <tenant> [options]         Show the wallets associated with
+                                            this tenant
+  list [options]                            List the Eluvio Live Tenants
+  tenant_primary_sales <tenant>             Show tenant primary sales history
+  <marketplace> <processor>
+  tenant_secondary_sales <tenant>           Show tenant secondary sales history
+  <processor>
+
+Options:
+  --version  Show version number                                       [boolean]
+  --help     Show help                                                 [boolean]
+```
 # Usage Examples
 
 Environment variables required:
 
-``` bash
+```bash
 export PRIVATE_KEY=0x11...11
 ```
 
