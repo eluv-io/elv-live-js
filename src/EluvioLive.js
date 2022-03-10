@@ -1172,11 +1172,12 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    *
    * @namedParams
    * @param {string} imageDir - the directory containing the images
-   * @return {Promise<Object>} - The 'images' object
+   * @return {Promise<Object>} - The 'images' object and calculated rarity
    */
   async readNftImageDir({imageDir}) {
     let imgs = [];
     let files;
+    let rarity = {};
 
     files = await fs.promises.readdir(imageDir);
 
@@ -1191,11 +1192,38 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 		  let attrsBuf = fs.readFileSync(path.join(imageDir, attrsFile));
 		  let attrs = JSON.parse(attrsBuf);
 		  img.attrs = attrs.attributes;
+
+          // Calculate rarity
+          if (img.attrs != null) {
+            img.attrs.forEach( elem => {
+
+              // Fix up attributes - replace 'type' wit 'trait_type'
+              if (elem.type != null) {
+                elem.trait_type = elem.type;
+                delete elem.type;
+              }
+
+              if (rarity[elem.trait_type]) {
+                rarity[elem.trait_type].total = rarity[elem.trait_type].total + 1;
+              } else {
+                rarity[elem.trait_type] = {};
+                rarity[elem.trait_type].total = 1;
+              }
+
+              if (rarity[elem.trait_type][elem.value]) {
+                rarity[elem.trait_type][elem.value] = rarity[elem.trait_type][elem.value] + 1;
+              } else {
+                rarity[elem.trait_type][elem.value] = 1;
+              }
+            });
+
+          }
         }
         imgs.push(img);
 	  }
     });
-    return imgs;
+
+    return {imgs, rarity};
   }
 
   /**
@@ -1212,9 +1240,10 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * @param {string} hash - NFT Template hash
    * @param {string} imagePath - Local file path to the image
    * @param {Object} attrs - Extra attributes for this token
+   * @param {Object} rarity - Stats for each trait and value
    * @return {Promise<Object>} - The public/nfts JSON array element
    */
-  async NftMakeGenerative({ assetMetadata, hash, imagePath, attrs }) {
+  async NftMakeGenerative({ assetMetadata, hash, imagePath, attrs, rarity }) {
     const m = assetMetadata;
     var pnft = {};
 
@@ -1262,6 +1291,13 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       },
     ];
 
+    // Insert rarity
+    for (const i in attrs) {
+      if (rarity && rarity[attrs[i].trait_type]) {
+        let r = rarity[attrs[i].trait_type];
+        attrs[i].rarity = r[attrs[i].value] + "/" + r.total;
+      }
+    }
     pnft.attributes = pnft.attributes.concat(attrs);
 
     return pnft;
@@ -1304,14 +1340,15 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
 	  // Generative NFT - build an nft array
 
-	  // Read image and attributes info from directory
-	  let imgs = await this.readNftImageDir({imageDir});
-	  for (const img of imgs) {
+      // Read image and attributes info from directory
+      let {imgs, rarity} = await this.readNftImageDir({imageDir});
+      for (const img of imgs) {
         pnft= await this.NftMakeGenerative({
-		  assetMetadata: m,
-		  hash,
-		  imagePath: path.join("nft", img.imgFile),
-		  attrs: img.attrs});
+          assetMetadata: m,
+          hash,
+          imagePath: path.join("nft", img.imgFile),
+          attrs: img.attrs,
+          rarity});
         pnfts.push(pnft);
 	  }
     } else {
