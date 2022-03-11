@@ -1295,7 +1295,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     for (const i in attrs) {
       if (rarity && rarity[attrs[i].trait_type]) {
         let r = rarity[attrs[i].trait_type];
-        attrs[i].rarity = r[attrs[i].value] + "/" + r.total;
+        attrs[i].rarity = r[attrs[i].value] + "/" + pnft.total_supply.toString();
       }
     }
     pnft.attributes = pnft.attributes.concat(attrs);
