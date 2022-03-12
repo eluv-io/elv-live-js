@@ -146,7 +146,7 @@ class EluvioLive {
           tenantInfo.marketplaces[key].items[sku].nftTotalSupply =
             nftInfo.totalSupply;
           tenantInfo.marketplaces[key].items[sku].nftName = nftInfo.name;
-          tenantInfo.marketplaces[key].items[sku].proxy = nftInfo.owner;
+          tenantInfo.marketplaces[key].items[sku].owner = nftInfo.owner;
           tenantInfo.marketplaces[key].items[sku].proxy = nftInfo.proxy;
           tenantInfo.marketplaces[key].items[sku].firstTokenUri =
             nftInfo.firstTokenUri;
@@ -794,11 +794,35 @@ class EluvioLive {
    *
    * @namedParams
    * @param {string} addr - The NFT Transfer Proxy contract address
-   * @return {Promise<Object>} - New contract address
+   * @return {Promise<Object>} - Proxy info object
    */
   async ShowNftTransferProxy({ addr }) {
     const abistr = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi")
+    );
+
+    var info = {};
+
+    info.owner = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abistr),
+      methodName: "owner",
+      formatArguments: true,
+    });
+
+    return info;
+  }
+
+  /**
+   * Show NFT mint helper info
+   *
+   * @namedParams
+   * @param {string} addr - The mint helper contract address
+   * @return {Promise<Object>} - Mint helper info object
+   */
+  async ShowMintHelper({ addr }) {
+    const abistr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTokenHelper.abi")
     );
 
     var info = {};
@@ -1044,6 +1068,12 @@ class EluvioLive {
       if (!isMinter) {
         warns.push("Minter not set up addr: " + addr);
       }
+
+      nftInfo.mintHelperInfo = await this.ShowMintHelper({addr: mintHelper});
+      if (nftInfo.mintHelperInfo.owner == "" ||
+          nftInfo.mintHelperInfo.owner != nftInfo.owner) {
+        warns.push("Bad mint helper owner " +  nftInfo.mintHelperInfo.owner + " " + addr);
+      }
     }
 
     try {
@@ -1123,7 +1153,7 @@ class EluvioLive {
   async NftAddMinter({ addr, minterAddr }) {
     console.log("Add minter", addr, minterAddr);
     const abi = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/ElvTradable.abi")
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
 
     var res = await this.client.CallContractMethodAndWait({
