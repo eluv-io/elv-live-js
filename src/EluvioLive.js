@@ -224,17 +224,20 @@ class EluvioLive {
           warns.push("No NFT Template sku: " + sku);
           continue;
         }
+        try {
+          const nftAddr = item.nft_template.nft.address;
+          const info = await this.NftBalanceOf({ addr: nftAddr, ownerAddr });
 
-        const nftAddr = item.nft_template.nft.address;
-        const info = await this.NftBalanceOf({ addr: nftAddr, ownerAddr });
+          if (info.length == 0) {
+            continue;
+          }
+          var nft = await this.NftShow({ addr: nftAddr });
+          nft.tokens = info;
 
-        if (info.length == 0) {
-          continue;
+          nftInfo.marketplaces[key].nfts[nftAddr] = nft;
+        } catch (e) {
+          warns.push(`Error parsing marketplace ${key}, item sku ${sku}. ${e}`);
         }
-        var nft = await this.NftShow({ addr: nftAddr });
-        nft.tokens = info;
-
-        nftInfo.marketplaces[key].nfts[nftAddr] = nft;
       }
     }
 
@@ -1051,7 +1054,6 @@ class EluvioLive {
     proxyAddress,
     totalSupply,
   }) {
-
     if (nftAddr == null) {
       nftAddr = await this.CreateNftContract({
         tenantId,
@@ -1174,7 +1176,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * @param {string} imageDir - the directory containing the images
    * @return {Promise<Object>} - The 'images' object and calculated rarity
    */
-  async readNftImageDir({imageDir}) {
+  async readNftImageDir({ imageDir }) {
     let imgs = [];
     let files;
     let rarity = {};
@@ -1182,21 +1184,20 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     files = await fs.promises.readdir(imageDir);
 
     files.forEach(function (file) {
-	  // Only considering jpg files
-	  if (path.extname(file) == ".jpg" || path.extname(file) == ".jpeg") {
+      // Only considering jpg files
+      if (path.extname(file) == ".jpg" || path.extname(file) == ".jpeg") {
         let img = {};
         img.imgFilePath = path.join(imageDir, file);
         img.imgFile = file;
         const attrsFile = path.parse(file).name + ".json";
         if (fs.existsSync(path.join(imageDir, attrsFile))) {
-		  let attrsBuf = fs.readFileSync(path.join(imageDir, attrsFile));
-		  let attrs = JSON.parse(attrsBuf);
-		  img.attrs = attrs.attributes;
+          let attrsBuf = fs.readFileSync(path.join(imageDir, attrsFile));
+          let attrs = JSON.parse(attrsBuf);
+          img.attrs = attrs.attributes;
 
           // Calculate rarity
           if (img.attrs != null) {
-            img.attrs.forEach( elem => {
-
+            img.attrs.forEach((elem) => {
               // Fix up attributes - replace 'type' wit 'trait_type'
               if (elem.type != null) {
                 elem.trait_type = elem.type;
@@ -1204,26 +1205,27 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
               }
 
               if (rarity[elem.trait_type]) {
-                rarity[elem.trait_type].total = rarity[elem.trait_type].total + 1;
+                rarity[elem.trait_type].total =
+                  rarity[elem.trait_type].total + 1;
               } else {
                 rarity[elem.trait_type] = {};
                 rarity[elem.trait_type].total = 1;
               }
 
               if (rarity[elem.trait_type][elem.value]) {
-                rarity[elem.trait_type][elem.value] = rarity[elem.trait_type][elem.value] + 1;
+                rarity[elem.trait_type][elem.value] =
+                  rarity[elem.trait_type][elem.value] + 1;
               } else {
                 rarity[elem.trait_type][elem.value] = 1;
               }
             });
-
           }
         }
         imgs.push(img);
-	  }
+      }
     });
 
-    return {imgs, rarity};
+    return { imgs, rarity };
   }
 
   /**
@@ -1252,9 +1254,10 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       "/s/",
       Config.net,
       "/q/",
-	  hash,
+      hash,
       "/files/",
-      imagePath);
+      imagePath
+    );
 
     pnft.name = m.nft.name;
     pnft.display_name = m.nft.display_name;
@@ -1295,7 +1298,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     for (const i in attrs) {
       if (rarity && rarity[attrs[i].trait_type]) {
         let r = rarity[attrs[i].trait_type];
-        attrs[i].rarity = r[attrs[i].value] + "/" + pnft.total_supply.toString();
+        attrs[i].rarity =
+          r[attrs[i].value] + "/" + pnft.total_supply.toString();
       }
     }
     pnft.attributes = pnft.attributes.concat(attrs);
@@ -1337,22 +1341,21 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     // Determine if this is a single or multi-image NFT
 
     if (imageDir && imageDir.length > 0) {
-
-	  // Generative NFT - build an nft array
+      // Generative NFT - build an nft array
 
       // Read image and attributes info from directory
-      let {imgs, rarity} = await this.readNftImageDir({imageDir});
+      let { imgs, rarity } = await this.readNftImageDir({ imageDir });
       for (const img of imgs) {
-        pnft= await this.NftMakeGenerative({
+        pnft = await this.NftMakeGenerative({
           assetMetadata: m,
           hash,
           imagePath: path.join("nft", img.imgFile),
           attrs: img.attrs,
-          rarity});
+          rarity,
+        });
         pnfts.push(pnft);
-	  }
+      }
     } else {
-
       // Single media NFT - build an nft object
       pnft = await this.NftMake({ assetMetadata: m, hash });
     }
@@ -1372,7 +1375,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
         metadata: pnfts,
       });
     } else {
-	  // Merge the single nft object
+      // Merge the single nft object
       await this.client.ReplaceMetadata({
         libraryId,
         objectId,
