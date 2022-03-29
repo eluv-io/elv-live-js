@@ -71,25 +71,6 @@ class EluvioLive {
    */
   async TenantShow({ tenantId, cauth, mintHelper }) {
     var tenantInfo = {};
-
-    /*
-    let objectId = this.mainObjectId;
-
-    const libraryId = await this.client.ContentObjectLibraryId({
-      objectId,
-    });
-
-    var m = await this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      metadataSubtree: "/public/asset_metadata",
-      resolveLinks: true,
-      resolveIncludeSource: true,
-      resolveIgnoreErrors: true,
-      linkDepthLimit: 5,
-    });
-    */
-
     let m = await this.List({ tenantId });
 
     tenantInfo.marketplaces = {};
