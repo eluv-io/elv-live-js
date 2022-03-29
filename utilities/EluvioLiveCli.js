@@ -474,8 +474,8 @@ FilterListTenant = ({ tenant }) => {
 };
 
 // eslint-disable-next-line no-unused-vars
-const CmdCreateTenant = async ({ argv }) => {
-  console.log("Create Tenant\n");
+const CmdCreateAccount = async ({ argv }) => {
+  console.log("Create Account\n");
 
   try {
     elvlv = new EluvioLive({
@@ -983,9 +983,13 @@ yargs(hideBin(process.argv))
     }
   )
 
-  .command("create_tenant", "Create a tenant root key.", (argv) => {
-    CmdCreateTenant({ argv });
-  })
+  .command(
+    "create_account",
+    "Create a new account -> mnemonic, address, private key.",
+    (argv) => {
+      CmdCreateAccount({ argv });
+    }
+  )
 
   .strict()
   .help()
