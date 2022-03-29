@@ -123,11 +123,10 @@ const CmdNftBuild = async ({ argv }) => {
   try {
     await Init();
 
-
     let res = await elvlv.NftBuild({
       libraryId: argv.library,
       objectId: argv.object,
-      imageDir: argv.image_dir
+      imageDir: argv.image_dir,
     });
 
     console.log(yaml.dump(res));
@@ -182,10 +181,6 @@ const CmdTenantShow = async ({ argv }) => {
 
     let res = await elvlv.TenantShow({
       tenantId: argv.tenant,
-      libraryId: argv.library,
-      objectId: argv.object,
-      marketplaceId: argv.marketplace,
-      eventId: argv.event,
       cauth: argv.check_cauth,
       mintHelper: argv.check_minter,
     });
@@ -478,6 +473,22 @@ FilterListTenant = ({ tenant }) => {
   return res;
 };
 
+// eslint-disable-next-line no-unused-vars
+const CmdCreateTenant = async ({ argv }) => {
+  console.log("Create Tenant\n");
+
+  try {
+    elvlv = new EluvioLive({
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    });
+    let res = await elvlv.InitNew();
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .command(
     "nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]",
@@ -649,12 +660,12 @@ yargs(hideBin(process.argv))
           describe: "Content object hash (hq__) or id (iq__)",
           type: "string",
         })
-	    .option("image_dir", {
-          describe: "Create a multi-media NFT (generative). " +
-			"Directory contains image and attribute (json) files",
+        .option("image_dir", {
+          describe:
+            "Create a multi-media NFT (generative). " +
+            "Directory contains image and attribute (json) files",
           type: "string",
         });
-
     },
     (argv) => {
       CmdNftBuild({ argv });
@@ -682,28 +693,12 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_show <tenant> <library> <object> [event] [marketplace]",
+    "tenant_show <tenant>",
     "Show info on this tenant",
     (yargs) => {
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("library", {
-          describe: "Tenant-level EluvioLive library",
-          type: "string",
-        })
-        .positional("object", {
-          describe: "Tenant-level EluvioLive object ID",
-          type: "string",
-        })
-        .option("event", {
-          describe: "Event ID",
-          type: "string",
-        })
-        .option("marketplace", {
-          describe: "Marketplace ID",
           type: "string",
         })
         .option("check_cauth", {
@@ -987,6 +982,11 @@ yargs(hideBin(process.argv))
       CmdTenantSecondarySales({ argv });
     }
   )
+
+  .command("create_tenant", "Create a tenant root key.", (argv) => {
+    CmdCreateTenant({ argv });
+  })
+
   .strict()
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")

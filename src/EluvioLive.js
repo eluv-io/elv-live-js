@@ -43,30 +43,41 @@ class EluvioLive {
     this.client.ToggleLogging(false);
   }
 
+  async InitNew() {
+    this.client = await ElvClient.FromConfigurationUrl({
+      configUrl: this.configUrl,
+    });
+    let wallet = this.client.GenerateWallet();
+    const mnemonic = wallet.GenerateMnemonic();
+    const signer = wallet.AddAccountFromMnemonic({ mnemonic });
+    const privateKey = signer.privateKey;
+    const address = signer.address;
+
+    this.client.SetSigner({ signer });
+    this.client.ToggleLogging(false);
+
+    return { mnemonic, privateKey, address };
+  }
+
   /**
    * Show info about this tenant.
    * Currently only listing NFT marketplaces.
    *
    * @namedParams
    * @param {string} tenantId - The ID of the tenant (iten***)
-   * @param {string} libraryId - The 'properties' library ID
-   * @param {string} objectId - The ID of the tenant specific EluvioLive object
-   * @param {string} eventId - The specific event to list (optional)
-   * @param {string} marketplaceId - The specific marketplace to list (optional)
    * @cauth {string} cauth - Warn if any NFTs have a different cauth ID (optional)
    * @cauth {string} mintHelper - Warn if any NFTs don't have this as minter
    * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
-  async TenantShow({
-    /*tenantId,*/
-    libraryId,
-    objectId,
-    /* eventId,*/
-    /* marketplaceId,*/
-    cauth,
-    mintHelper,
-  }) {
+  async TenantShow({ tenantId, cauth, mintHelper }) {
     var tenantInfo = {};
+
+    /*
+    let objectId = this.mainObjectId;
+
+    const libraryId = await this.client.ContentObjectLibraryId({
+      objectId,
+    });
 
     var m = await this.client.ContentObjectMetadata({
       libraryId,
@@ -77,6 +88,9 @@ class EluvioLive {
       resolveIgnoreErrors: true,
       linkDepthLimit: 5,
     });
+    */
+
+    let m = await this.List({ tenantId });
 
     tenantInfo.marketplaces = {};
     var warns = [];
@@ -1639,12 +1653,15 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       for (const index in tenants) {
         try {
           let tenantObj = tenants[index];
-          let key = Object.keys(tenantObj.marketplaces)[0];
-          let marketplace = tenantObj.marketplaces[key];
-          let testTenantId = marketplace.info.tenant_id;
-          if (testTenantId === tenantId) {
-            results = tenantObj;
-            break;
+          for (var key in tenantObj.marketplaces) {
+            let marketplace = tenantObj.marketplaces[key];
+            if (marketplace && marketplace.info) {
+              let testTenantId = marketplace.info.tenant_id;
+              if (testTenantId === tenantId) {
+                results = tenantObj;
+                break;
+              }
+            }
           }
         } catch (e) {
           warns.push(`Error reading tenant: ${index} ${e}`);
