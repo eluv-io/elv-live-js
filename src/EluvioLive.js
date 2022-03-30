@@ -351,6 +351,107 @@ class EluvioLive {
   }
 
   /**
+   * Remove an NFT contract from the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} nftAddr = The address of the NFT contract (hex format)
+   */
+  async TenantRemoveNft({ tenantId, nftAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const addr = Utils.HashToAddress(tenantId);
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "removeGroup",
+      methodArgs: ["tenant_nfts", nftAddr],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Returns true if an NFT contract is in the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} nftAddr = The address of the NFT contract (hex format)
+   */
+  async TenantHasNft({ tenantId, nftAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    var arg = "tenant_nfts";
+
+    for (var i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+      var ordinal = BigNumber(i).toString(16);
+      try {
+        var currNftAddr = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
+          methodName: "groupsMapping",
+          methodArgs: [arg, ordinal],
+          formatArguments: true,
+        });
+
+        if (currNftAddr.toLowerCase() != nftAddr.toLowerCase()) {
+          continue;
+        } else {
+          return true;
+        }
+      } catch (e) {
+        //We don't know the length so just stop on error and return
+        break;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Returns list of NFT contracts in the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   */
+  async TenantNftList({ tenantId }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    let result = [];
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    var arg = "tenant_nfts";
+
+    for (var i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+      var ordinal = BigNumber(i).toString(16);
+      try {
+        var nftAddr = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
+          methodName: "groupsMapping",
+          methodArgs: [arg, ordinal],
+          formatArguments: true,
+        });
+
+        result.push(nftAddr.toLowerCase());
+      } catch (e) {
+        //We don't know the length so just stop on error and return
+        break;
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Show info about this site (event)
    *
    * @namedParams

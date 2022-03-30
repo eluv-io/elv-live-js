@@ -8,6 +8,7 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
+const prompt = require("prompt-sync")({ sigint: true });
 
 let elvlv;
 
@@ -483,6 +484,79 @@ const CmdCreateAccount = async ({ argv }) => {
       mainObjectId: Config.mainObjects[Config.net],
     });
     let res = await elvlv.InitNew();
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantNftRemove = async ({ argv }) => {
+  console.log("Tenant NFT Remove");
+  console.log(`Tenant ID: ${argv.tenant}`);
+  console.log(`NFT Address: ${argv.addr}`);
+
+  try {
+    await Init();
+
+    console.log("Searching for NFT address in tenant contract...");
+    let res = await elvlv.TenantHasNft({
+      tenantId: argv.tenant,
+      nftAddr: argv.addr,
+    });
+
+    if (!res) {
+      console.warn("The NFT is not part of the tenant contract.");
+      return;
+    }
+
+    res = await elvlv.NftShow({ addr: argv.addr, showOwners: false });
+    delete res.warns;
+    delete res.tokens;
+
+    console.log(yaml.dump(res));
+    const ans = prompt("Do you want to remove the above contract? (y/n)");
+    if (ans.toLowerCase() != "y") {
+      console.log("Aborting...");
+      return;
+    }
+
+    res = await elvlv.TenantRemoveNft({
+      tenantId: argv.tenant,
+      nftAddr: argv.addr,
+    });
+
+    console.log("Done.");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantNftList = async ({ argv }) => {
+  console.log("Tenant NFT List");
+  console.log(`Tenant ID: ${argv.tenant}`);
+
+  try {
+    await Init();
+    res = await elvlv.TenantNftList({ tenantId: argv.tenant });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantHasNft = async ({ argv }) => {
+  console.log("Tenant Has NFT");
+  console.log(`Tenant ID: ${argv.tenant}`);
+  console.log(`NFT Address: ${argv.addr}`);
+
+  try {
+    await Init();
+    res = await elvlv.TenantHasNft({
+      tenantId: argv.tenant,
+      nftAddr: argv.addr,
+    });
+
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -985,9 +1059,60 @@ yargs(hideBin(process.argv))
 
   .command(
     "create_account",
-    "Create a new account -> mnemonic, address, private key.",
+    "Create a new account -> mnemonic, address, private key",
     (argv) => {
       CmdCreateAccount({ argv });
+    }
+  )
+
+  .command(
+    "tenant_nft_remove <tenant> <addr>",
+    "Removes the nft address from the tenant contract",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "NFT Address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantNftRemove({ argv });
+    }
+  )
+
+  .command(
+    "tenant_nft_list <tenant>",
+    "List all tenant_nfts within a tenant contract",
+    (yargs) => {
+      yargs.positional("tenant", {
+        describe: "Tenant ID",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdTenantNftList({ argv });
+    }
+  )
+
+  .command(
+    "tenant_has_nft <tenant> <addr>",
+    "Searches tenant_nfts list in tenant contract and returns true if exists",
+    (yargs) => {
+      yargs.positional("tenant", {
+        describe: "Tenant ID",
+        type: "string",
+      });
+      yargs.positional("addr", {
+        describe: "NFT Address",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdTenantHasNft({ argv });
     }
   )
 
