@@ -69,12 +69,17 @@ class EluvioLive {
    * @cauth {string} mintHelper - Warn if any NFTs don't have this as minter
    * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
-  async TenantShow({ tenantId, cauth, mintHelper }) {
+  async TenantShow({ tenantId, cauth, mintHelper, checkNft = false }) {
     var tenantInfo = {};
     let m = await this.List({ tenantId });
 
     tenantInfo.marketplaces = {};
     var warns = [];
+
+    let tenantNftList = [];
+    if (checkNft) {
+      tenantNftList = await this.TenantNftList({ tenantId });
+    }
 
     for (var key in m.marketplaces) {
       tenantInfo.marketplaces[key] = {};
@@ -123,6 +128,19 @@ class EluvioLive {
             addr: item.nft_template.nft.address,
             mintHelper,
           });
+
+          if (checkNft) {
+            let isInContract = tenantNftList.includes(
+              item.nft_template.nft.address
+            );
+
+            tenantInfo.marketplaces[key].items[sku].isValid = checkNft;
+            if (!isInContract) {
+              warns.push(
+                `${item.nft_template.nft.address} is not in the tenant contract.`
+              );
+            }
+          }
           tenantInfo.marketplaces[key].items[sku].nftCap = nftInfo.cap;
           tenantInfo.marketplaces[key].items[sku].nftMinted = nftInfo.minted;
           tenantInfo.marketplaces[key].items[sku].nftTotalSupply =

@@ -177,6 +177,9 @@ const CmdNftProxyTransfer = async ({ argv }) => {
 
 const CmdTenantShow = async ({ argv }) => {
   console.log("Tenant - show", argv.tenant);
+  console.log("check_cauth", argv.check_cauth);
+  console.log("check_minter", argv.check_minter);
+  console.log("check_nfts", argv.check_nfts);
   try {
     await Init();
 
@@ -184,6 +187,7 @@ const CmdTenantShow = async ({ argv }) => {
       tenantId: argv.tenant,
       cauth: argv.check_cauth,
       mintHelper: argv.check_minter,
+      checkNft: argv.check_nfts,
     });
 
     console.log(yaml.dump(res));
@@ -767,7 +771,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_show <tenant>",
+    "tenant_show <tenant> [options]",
     "Show info on this tenant",
     (yargs) => {
       yargs
@@ -783,6 +787,11 @@ yargs(hideBin(process.argv))
         .option("check_minter", {
           describe: "Check that all NFTs use this mint helper",
           type: "string",
+        })
+        .option("check_nfts", {
+          describe:
+            "Check that all NFTs are part of the tenant contract's tenant_nfts group",
+          type: "boolean",
         });
     },
     (argv) => {
