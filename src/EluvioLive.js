@@ -43,43 +43,43 @@ class EluvioLive {
     this.client.ToggleLogging(false);
   }
 
+  async InitNew() {
+    this.client = await ElvClient.FromConfigurationUrl({
+      configUrl: this.configUrl,
+    });
+    let wallet = this.client.GenerateWallet();
+    const mnemonic = wallet.GenerateMnemonic();
+    const signer = wallet.AddAccountFromMnemonic({ mnemonic });
+    const privateKey = signer.privateKey;
+    const address = signer.address;
+
+    this.client.SetSigner({ signer });
+    this.client.ToggleLogging(false);
+
+    return { mnemonic, privateKey, address };
+  }
+
   /**
    * Show info about this tenant.
    * Currently only listing NFT marketplaces.
    *
    * @namedParams
    * @param {string} tenantId - The ID of the tenant (iten***)
-   * @param {string} libraryId - The 'properties' library ID
-   * @param {string} objectId - The ID of the tenant specific EluvioLive object
-   * @param {string} eventId - The specific event to list (optional)
-   * @param {string} marketplaceId - The specific marketplace to list (optional)
    * @cauth {string} cauth - Warn if any NFTs have a different cauth ID (optional)
    * @cauth {string} mintHelper - Warn if any NFTs don't have this as minter
    * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
-  async TenantShow({
-    /*tenantId,*/
-    libraryId,
-    objectId,
-    /* eventId,*/
-    /* marketplaceId,*/
-    cauth,
-    mintHelper,
-  }) {
+  async TenantShow({ tenantId, cauth, mintHelper, checkNft = false }) {
     var tenantInfo = {};
-
-    var m = await this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      metadataSubtree: "/public/asset_metadata",
-      resolveLinks: true,
-      resolveIncludeSource: true,
-      resolveIgnoreErrors: true,
-      linkDepthLimit: 5,
-    });
+    let m = await this.List({ tenantId });
 
     tenantInfo.marketplaces = {};
     var warns = [];
+
+    let tenantNftList = [];
+    if (checkNft) {
+      tenantNftList = await this.TenantNftList({ tenantId });
+    }
 
     for (var key in m.marketplaces) {
       tenantInfo.marketplaces[key] = {};
@@ -128,6 +128,19 @@ class EluvioLive {
             addr: item.nft_template.nft.address,
             mintHelper,
           });
+
+          if (checkNft) {
+            let isInContract = tenantNftList.includes(
+              item.nft_template.nft.address
+            );
+
+            tenantInfo.marketplaces[key].items[sku].isValid = checkNft;
+            if (!isInContract) {
+              warns.push(
+                `${item.nft_template.nft.address} is not in the tenant contract.`
+              );
+            }
+          }
           tenantInfo.marketplaces[key].items[sku].nftCap = nftInfo.cap;
           tenantInfo.marketplaces[key].items[sku].nftMinted = nftInfo.minted;
           tenantInfo.marketplaces[key].items[sku].nftTotalSupply =
@@ -353,6 +366,107 @@ class EluvioLive {
     });
 
     return res;
+  }
+
+  /**
+   * Remove an NFT contract from the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} nftAddr = The address of the NFT contract (hex format)
+   */
+  async TenantRemoveNft({ tenantId, nftAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const addr = Utils.HashToAddress(tenantId);
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "removeGroup",
+      methodArgs: ["tenant_nfts", nftAddr],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Returns true if an NFT contract is in the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} nftAddr = The address of the NFT contract (hex format)
+   */
+  async TenantHasNft({ tenantId, nftAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    var arg = "tenant_nfts";
+
+    for (var i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+      var ordinal = BigNumber(i).toString(16);
+      try {
+        var currNftAddr = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
+          methodName: "groupsMapping",
+          methodArgs: [arg, ordinal],
+          formatArguments: true,
+        });
+
+        if (currNftAddr.toLowerCase() != nftAddr.toLowerCase()) {
+          continue;
+        } else {
+          return true;
+        }
+      } catch (e) {
+        //We don't know the length so just stop on error and return
+        break;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Returns list of NFT contracts in the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   */
+  async TenantNftList({ tenantId }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    let result = [];
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    var arg = "tenant_nfts";
+
+    for (var i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+      var ordinal = BigNumber(i).toString(16);
+      try {
+        var nftAddr = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
+          methodName: "groupsMapping",
+          methodArgs: [arg, ordinal],
+          formatArguments: true,
+        });
+
+        result.push(nftAddr.toLowerCase());
+      } catch (e) {
+        //We don't know the length so just stop on error and return
+        break;
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -1639,12 +1753,15 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       for (const index in tenants) {
         try {
           let tenantObj = tenants[index];
-          let key = Object.keys(tenantObj.marketplaces)[0];
-          let marketplace = tenantObj.marketplaces[key];
-          let testTenantId = marketplace.info.tenant_id;
-          if (testTenantId === tenantId) {
-            results = tenantObj;
-            break;
+          for (var key in tenantObj.marketplaces) {
+            let marketplace = tenantObj.marketplaces[key];
+            if (marketplace && marketplace.info) {
+              let testTenantId = marketplace.info.tenant_id;
+              if (testTenantId === tenantId) {
+                results = tenantObj;
+                break;
+              }
+            }
           }
         } catch (e) {
           warns.push(`Error reading tenant: ${index} ${e}`);
