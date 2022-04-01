@@ -8,6 +8,7 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
+const prompt = require("prompt-sync")({ sigint: true });
 
 let elvlv;
 
@@ -123,11 +124,10 @@ const CmdNftBuild = async ({ argv }) => {
   try {
     await Init();
 
-
     let res = await elvlv.NftBuild({
       libraryId: argv.library,
       objectId: argv.object,
-      imageDir: argv.image_dir
+      imageDir: argv.image_dir,
     });
 
     console.log(yaml.dump(res));
@@ -177,17 +177,17 @@ const CmdNftProxyTransfer = async ({ argv }) => {
 
 const CmdTenantShow = async ({ argv }) => {
   console.log("Tenant - show", argv.tenant);
+  console.log("check_cauth", argv.check_cauth);
+  console.log("check_minter", argv.check_minter);
+  console.log("check_nfts", argv.check_nfts);
   try {
     await Init();
 
     let res = await elvlv.TenantShow({
       tenantId: argv.tenant,
-      libraryId: argv.library,
-      objectId: argv.object,
-      marketplaceId: argv.marketplace,
-      eventId: argv.event,
       cauth: argv.check_cauth,
       mintHelper: argv.check_minter,
+      checkNft: argv.check_nfts,
     });
 
     console.log(yaml.dump(res));
@@ -478,6 +478,95 @@ FilterListTenant = ({ tenant }) => {
   return res;
 };
 
+// eslint-disable-next-line no-unused-vars
+const CmdCreateAccount = async ({ argv }) => {
+  console.log("Create Account\n");
+
+  try {
+    elvlv = new EluvioLive({
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    });
+    let res = await elvlv.InitNew();
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantNftRemove = async ({ argv }) => {
+  console.log("Tenant NFT Remove");
+  console.log(`Tenant ID: ${argv.tenant}`);
+  console.log(`NFT Address: ${argv.addr}`);
+
+  try {
+    await Init();
+
+    console.log("Searching for NFT address in tenant contract...");
+    let res = await elvlv.TenantHasNft({
+      tenantId: argv.tenant,
+      nftAddr: argv.addr,
+    });
+
+    if (!res) {
+      console.warn("The NFT is not part of the tenant contract.");
+      return;
+    }
+
+    res = await elvlv.NftShow({ addr: argv.addr, showOwners: false });
+    delete res.warns;
+    delete res.tokens;
+
+    console.log(yaml.dump(res));
+    const ans = prompt("Do you want to remove the above contract? (y/n)");
+    if (ans.toLowerCase() != "y") {
+      console.log("Aborting...");
+      return;
+    }
+
+    res = await elvlv.TenantRemoveNft({
+      tenantId: argv.tenant,
+      nftAddr: argv.addr,
+    });
+
+    console.log("Done.");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantNftList = async ({ argv }) => {
+  console.log("Tenant NFT List");
+  console.log(`Tenant ID: ${argv.tenant}`);
+
+  try {
+    await Init();
+    res = await elvlv.TenantNftList({ tenantId: argv.tenant });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantHasNft = async ({ argv }) => {
+  console.log("Tenant Has NFT");
+  console.log(`Tenant ID: ${argv.tenant}`);
+  console.log(`NFT Address: ${argv.addr}`);
+
+  try {
+    await Init();
+    res = await elvlv.TenantHasNft({
+      tenantId: argv.tenant,
+      nftAddr: argv.addr,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .command(
     "nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]",
@@ -649,12 +738,12 @@ yargs(hideBin(process.argv))
           describe: "Content object hash (hq__) or id (iq__)",
           type: "string",
         })
-	    .option("image_dir", {
-          describe: "Create a multi-media NFT (generative). " +
-			"Directory contains image and attribute (json) files",
+        .option("image_dir", {
+          describe:
+            "Create a multi-media NFT (generative). " +
+            "Directory contains image and attribute (json) files",
           type: "string",
         });
-
     },
     (argv) => {
       CmdNftBuild({ argv });
@@ -682,28 +771,12 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_show <tenant> <library> <object> [event] [marketplace]",
+    "tenant_show <tenant> [options]",
     "Show info on this tenant",
     (yargs) => {
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("library", {
-          describe: "Tenant-level EluvioLive library",
-          type: "string",
-        })
-        .positional("object", {
-          describe: "Tenant-level EluvioLive object ID",
-          type: "string",
-        })
-        .option("event", {
-          describe: "Event ID",
-          type: "string",
-        })
-        .option("marketplace", {
-          describe: "Marketplace ID",
           type: "string",
         })
         .option("check_cauth", {
@@ -714,6 +787,11 @@ yargs(hideBin(process.argv))
         .option("check_minter", {
           describe: "Check that all NFTs use this mint helper",
           type: "string",
+        })
+        .option("check_nfts", {
+          describe:
+            "Check that all NFTs are part of the tenant contract's tenant_nfts group",
+          type: "boolean",
         });
     },
     (argv) => {
@@ -987,6 +1065,66 @@ yargs(hideBin(process.argv))
       CmdTenantSecondarySales({ argv });
     }
   )
+
+  .command(
+    "create_account",
+    "Create a new account -> mnemonic, address, private key",
+    (argv) => {
+      CmdCreateAccount({ argv });
+    }
+  )
+
+  .command(
+    "tenant_nft_remove <tenant> <addr>",
+    "Removes the nft address from the tenant contract",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "NFT Address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantNftRemove({ argv });
+    }
+  )
+
+  .command(
+    "tenant_nft_list <tenant>",
+    "List all tenant_nfts within a tenant contract",
+    (yargs) => {
+      yargs.positional("tenant", {
+        describe: "Tenant ID",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdTenantNftList({ argv });
+    }
+  )
+
+  .command(
+    "tenant_has_nft <tenant> <addr>",
+    "Searches tenant_nfts list in tenant contract and returns true if exists",
+    (yargs) => {
+      yargs.positional("tenant", {
+        describe: "Tenant ID",
+        type: "string",
+      });
+      yargs.positional("addr", {
+        describe: "NFT Address",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdTenantHasNft({ argv });
+    }
+  )
+
   .strict()
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")

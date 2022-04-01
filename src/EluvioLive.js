@@ -43,43 +43,43 @@ class EluvioLive {
     this.client.ToggleLogging(false);
   }
 
+  async InitNew() {
+    this.client = await ElvClient.FromConfigurationUrl({
+      configUrl: this.configUrl,
+    });
+    let wallet = this.client.GenerateWallet();
+    const mnemonic = wallet.GenerateMnemonic();
+    const signer = wallet.AddAccountFromMnemonic({ mnemonic });
+    const privateKey = signer.privateKey;
+    const address = signer.address;
+
+    this.client.SetSigner({ signer });
+    this.client.ToggleLogging(false);
+
+    return { mnemonic, privateKey, address };
+  }
+
   /**
    * Show info about this tenant.
    * Currently only listing NFT marketplaces.
    *
    * @namedParams
    * @param {string} tenantId - The ID of the tenant (iten***)
-   * @param {string} libraryId - The 'properties' library ID
-   * @param {string} objectId - The ID of the tenant specific EluvioLive object
-   * @param {string} eventId - The specific event to list (optional)
-   * @param {string} marketplaceId - The specific marketplace to list (optional)
    * @cauth {string} cauth - Warn if any NFTs have a different cauth ID (optional)
    * @cauth {string} mintHelper - Warn if any NFTs don't have this as minter
    * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
-  async TenantShow({
-    /*tenantId,*/
-    libraryId,
-    objectId,
-    /* eventId,*/
-    /* marketplaceId,*/
-    cauth,
-    mintHelper,
-  }) {
+  async TenantShow({ tenantId, cauth, mintHelper, checkNft = false }) {
     var tenantInfo = {};
-
-    var m = await this.client.ContentObjectMetadata({
-      libraryId,
-      objectId,
-      metadataSubtree: "/public/asset_metadata",
-      resolveLinks: true,
-      resolveIncludeSource: true,
-      resolveIgnoreErrors: true,
-      linkDepthLimit: 5,
-    });
+    let m = await this.List({ tenantId });
 
     tenantInfo.marketplaces = {};
     var warns = [];
+
+    let tenantNftList = [];
+    if (checkNft) {
+      tenantNftList = await this.TenantNftList({ tenantId });
+    }
 
     for (var key in m.marketplaces) {
       tenantInfo.marketplaces[key] = {};
@@ -128,6 +128,19 @@ class EluvioLive {
             addr: item.nft_template.nft.address,
             mintHelper,
           });
+
+          if (checkNft) {
+            let isInContract = tenantNftList.includes(
+              item.nft_template.nft.address
+            );
+
+            tenantInfo.marketplaces[key].items[sku].isValid = checkNft;
+            if (!isInContract) {
+              warns.push(
+                `${item.nft_template.nft.address} is not in the tenant contract.`
+              );
+            }
+          }
           tenantInfo.marketplaces[key].items[sku].nftCap = nftInfo.cap;
           tenantInfo.marketplaces[key].items[sku].nftMinted = nftInfo.minted;
           tenantInfo.marketplaces[key].items[sku].nftTotalSupply =
@@ -224,17 +237,20 @@ class EluvioLive {
           warns.push("No NFT Template sku: " + sku);
           continue;
         }
+        try {
+          const nftAddr = item.nft_template.nft.address;
+          const info = await this.NftBalanceOf({ addr: nftAddr, ownerAddr });
 
-        const nftAddr = item.nft_template.nft.address;
-        const info = await this.NftBalanceOf({ addr: nftAddr, ownerAddr });
+          if (info.length == 0) {
+            continue;
+          }
+          var nft = await this.NftShow({ addr: nftAddr });
+          nft.tokens = info;
 
-        if (info.length == 0) {
-          continue;
+          nftInfo.marketplaces[key].nfts[nftAddr] = nft;
+        } catch (e) {
+          warns.push(`Error parsing marketplace ${key}, item sku ${sku}. ${e}`);
         }
-        var nft = await this.NftShow({ addr: nftAddr });
-        nft.tokens = info;
-
-        nftInfo.marketplaces[key].nfts[nftAddr] = nft;
       }
     }
 
@@ -350,6 +366,107 @@ class EluvioLive {
     });
 
     return res;
+  }
+
+  /**
+   * Remove an NFT contract from the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} nftAddr = The address of the NFT contract (hex format)
+   */
+  async TenantRemoveNft({ tenantId, nftAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const addr = Utils.HashToAddress(tenantId);
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "removeGroup",
+      methodArgs: ["tenant_nfts", nftAddr],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Returns true if an NFT contract is in the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} nftAddr = The address of the NFT contract (hex format)
+   */
+  async TenantHasNft({ tenantId, nftAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    var arg = "tenant_nfts";
+
+    for (var i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+      var ordinal = BigNumber(i).toString(16);
+      try {
+        var currNftAddr = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
+          methodName: "groupsMapping",
+          methodArgs: [arg, ordinal],
+          formatArguments: true,
+        });
+
+        if (currNftAddr.toLowerCase() != nftAddr.toLowerCase()) {
+          continue;
+        } else {
+          return true;
+        }
+      } catch (e) {
+        //We don't know the length so just stop on error and return
+        break;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Returns list of NFT contracts in the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   */
+  async TenantNftList({ tenantId }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    let result = [];
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    var arg = "tenant_nfts";
+
+    for (var i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+      var ordinal = BigNumber(i).toString(16);
+      try {
+        var nftAddr = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
+          methodName: "groupsMapping",
+          methodArgs: [arg, ordinal],
+          formatArguments: true,
+        });
+
+        result.push(nftAddr.toLowerCase());
+      } catch (e) {
+        //We don't know the length so just stop on error and return
+        break;
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -1081,7 +1198,6 @@ class EluvioLive {
     proxyAddress,
     totalSupply,
   }) {
-
     if (nftAddr == null) {
       nftAddr = await this.CreateNftContract({
         tenantId,
@@ -1204,7 +1320,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * @param {string} imageDir - the directory containing the images
    * @return {Promise<Object>} - The 'images' object and calculated rarity
    */
-  async readNftImageDir({imageDir}) {
+  async readNftImageDir({ imageDir }) {
     let imgs = [];
     let files;
     let rarity = {};
@@ -1212,21 +1328,20 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     files = await fs.promises.readdir(imageDir);
 
     files.forEach(function (file) {
-	  // Only considering jpg files
-	  if (path.extname(file) == ".jpg" || path.extname(file) == ".jpeg") {
+      // Only considering jpg files
+      if (path.extname(file) == ".jpg" || path.extname(file) == ".jpeg") {
         let img = {};
         img.imgFilePath = path.join(imageDir, file);
         img.imgFile = file;
         const attrsFile = path.parse(file).name + ".json";
         if (fs.existsSync(path.join(imageDir, attrsFile))) {
-		  let attrsBuf = fs.readFileSync(path.join(imageDir, attrsFile));
-		  let attrs = JSON.parse(attrsBuf);
-		  img.attrs = attrs.attributes;
+          let attrsBuf = fs.readFileSync(path.join(imageDir, attrsFile));
+          let attrs = JSON.parse(attrsBuf);
+          img.attrs = attrs.attributes;
 
           // Calculate rarity
           if (img.attrs != null) {
-            img.attrs.forEach( elem => {
-
+            img.attrs.forEach((elem) => {
               // Fix up attributes - replace 'type' wit 'trait_type'
               if (elem.type != null) {
                 elem.trait_type = elem.type;
@@ -1234,26 +1349,27 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
               }
 
               if (rarity[elem.trait_type]) {
-                rarity[elem.trait_type].total = rarity[elem.trait_type].total + 1;
+                rarity[elem.trait_type].total =
+                  rarity[elem.trait_type].total + 1;
               } else {
                 rarity[elem.trait_type] = {};
                 rarity[elem.trait_type].total = 1;
               }
 
               if (rarity[elem.trait_type][elem.value]) {
-                rarity[elem.trait_type][elem.value] = rarity[elem.trait_type][elem.value] + 1;
+                rarity[elem.trait_type][elem.value] =
+                  rarity[elem.trait_type][elem.value] + 1;
               } else {
                 rarity[elem.trait_type][elem.value] = 1;
               }
             });
-
           }
         }
         imgs.push(img);
-	  }
+      }
     });
 
-    return {imgs, rarity};
+    return { imgs, rarity };
   }
 
   /**
@@ -1282,9 +1398,10 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       "/s/",
       Config.net,
       "/q/",
-	  hash,
+      hash,
       "/files/",
-      imagePath);
+      imagePath
+    );
 
     pnft.name = m.nft.name;
     pnft.display_name = m.nft.display_name;
@@ -1325,7 +1442,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     for (const i in attrs) {
       if (rarity && rarity[attrs[i].trait_type]) {
         let r = rarity[attrs[i].trait_type];
-        attrs[i].rarity = r[attrs[i].value] + "/" + pnft.total_supply.toString();
+        attrs[i].rarity =
+          r[attrs[i].value] + "/" + pnft.total_supply.toString();
       }
     }
     pnft.attributes = pnft.attributes.concat(attrs);
@@ -1367,22 +1485,21 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     // Determine if this is a single or multi-image NFT
 
     if (imageDir && imageDir.length > 0) {
-
-	  // Generative NFT - build an nft array
+      // Generative NFT - build an nft array
 
       // Read image and attributes info from directory
-      let {imgs, rarity} = await this.readNftImageDir({imageDir});
+      let { imgs, rarity } = await this.readNftImageDir({ imageDir });
       for (const img of imgs) {
-        pnft= await this.NftMakeGenerative({
+        pnft = await this.NftMakeGenerative({
           assetMetadata: m,
           hash,
           imagePath: path.join("nft", img.imgFile),
           attrs: img.attrs,
-          rarity});
+          rarity,
+        });
         pnfts.push(pnft);
-	  }
+      }
     } else {
-
       // Single media NFT - build an nft object
       pnft = await this.NftMake({ assetMetadata: m, hash });
     }
@@ -1402,7 +1519,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
         metadata: pnfts,
       });
     } else {
-	  // Merge the single nft object
+      // Merge the single nft object
       await this.client.ReplaceMetadata({
         libraryId,
         objectId,
@@ -1666,12 +1783,15 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       for (const index in tenants) {
         try {
           let tenantObj = tenants[index];
-          let key = Object.keys(tenantObj.marketplaces)[0];
-          let marketplace = tenantObj.marketplaces[key];
-          let testTenantId = marketplace.info.tenant_id;
-          if (testTenantId === tenantId) {
-            results = tenantObj;
-            break;
+          for (var key in tenantObj.marketplaces) {
+            let marketplace = tenantObj.marketplaces[key];
+            if (marketplace && marketplace.info) {
+              let testTenantId = marketplace.info.tenant_id;
+              if (testTenantId === tenantId) {
+                results = tenantObj;
+                break;
+              }
+            }
           }
         } catch (e) {
           warns.push(`Error reading tenant: ${index} ${e}`);
