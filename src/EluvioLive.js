@@ -43,7 +43,7 @@ class EluvioLive {
     this.client.ToggleLogging(false);
   }
 
-  async CreateAccount({ funds = 0.1, accountName, tenantId }) {
+  async CreateAccount({ funds = 0.25, accountName, tenantId }) {
     if (!this.client) {
       throw Error("EluvioLive not intialized");
     }
