@@ -124,7 +124,7 @@ class EluvioLive {
           warns.push("No NFT address sku: " + sku);
         } else {
 
-          const minterAddr = Utils.HashToAddress(cauth);
+          const minterAddr = cauth ? Utils.HashToAddress(cauth) : null;
 
           // Check NFT contract parameters
           const nftInfo = await this.NftShow({
@@ -824,7 +824,7 @@ class EluvioLive {
    * @param {string} addr - The mint helper contract address
    * @return {Promise<Object>} - Mint helper info object
    */
-  async ShowMintHelper({ addr, owner }) {
+  async ShowMintHelper({ addr }) {
     const abistr = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTokenHelper.abi")
     );
@@ -837,7 +837,7 @@ class EluvioLive {
         methodName: "owner",
         formatArguments: true,
       });
-    } catch(e) {
+    } catch (e) {
       info.warns = "Bad mint helper address " + addr;
     }
     return info;
@@ -1081,7 +1081,7 @@ class EluvioLive {
         warns.push(...nftInfo.warns);
       }
 
-      if (nftInfo.mintHelperInfo.owner == "") {
+      if (!nftInfo.mintHelperInfo.owner || nftInfo.mintHelperInfo.owner == "") {
         warns.push("Bad mint helper - owner not available " + addr);
       } else if (minterAddr &&
                  nftInfo.mintHelperInfo.owner.toLowerCase() != minterAddr.toLowerCase()) {
