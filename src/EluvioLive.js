@@ -43,8 +43,12 @@ class EluvioLive {
     this.client.ToggleLogging(false);
   }
 
-  async InitNew() {
-    this.client = await ElvClient.FromConfigurationUrl({
+  async CreateAccount({ funds = 0.1, accountName, tenantId }) {
+    if (!this.client) {
+      throw Error("EluvioLive not intialized");
+    }
+
+    let client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
     let wallet = this.client.GenerateWallet();
@@ -53,10 +57,28 @@ class EluvioLive {
     const privateKey = signer.privateKey;
     const address = signer.address;
 
-    this.client.SetSigner({ signer });
-    this.client.ToggleLogging(false);
+    client.SetSigner({ signer });
 
-    return { mnemonic, privateKey, address };
+    await this.client.SendFunds({
+      recipient: address,
+      ether: funds,
+    });
+
+    await client.userProfileClient.CreateWallet();
+
+    if (tenantId) {
+      await client.userProfileClient.SetTenantId({ id: tenantId });
+    }
+
+    if (accountName) {
+      await client.userProfileClient.ReplaceUserMetadata({
+        metadataSubtree: "public/name",
+        metadata: accountName,
+      });
+    }
+
+    let balance = await wallet.GetAccountBalance({ signer });
+    return { mnemonic, privateKey, address, accountName, balance };
   }
 
   /**
@@ -123,14 +145,13 @@ class EluvioLive {
         if (item.nft_template.nft.address === "") {
           warns.push("No NFT address sku: " + sku);
         } else {
-
           const minterAddr = cauth ? Utils.HashToAddress(cauth) : null;
 
           // Check NFT contract parameters
           const nftInfo = await this.NftShow({
             addr: item.nft_template.nft.address,
             mintHelper,
-            minterAddr
+            minterAddr,
           });
 
           if (checkNft) {
@@ -1076,15 +1097,17 @@ class EluvioLive {
         warns.push("Mint helper not set up addr: " + addr);
       }
 
-      nftInfo.mintHelperInfo = await this.ShowMintHelper({addr: mintHelper});
+      nftInfo.mintHelperInfo = await this.ShowMintHelper({ addr: mintHelper });
       if (nftInfo.warns && nftInfo.warns.length > 0) {
         warns.push(...nftInfo.warns);
       }
 
       if (!nftInfo.mintHelperInfo.owner || nftInfo.mintHelperInfo.owner == "") {
         warns.push("Bad mint helper - owner not available " + addr);
-      } else if (minterAddr &&
-                 nftInfo.mintHelperInfo.owner.toLowerCase() != minterAddr.toLowerCase()) {
+      } else if (
+        minterAddr &&
+        nftInfo.mintHelperInfo.owner.toLowerCase() != minterAddr.toLowerCase()
+      ) {
         warns.push("Bad mint helper owner " + addr);
       }
     }

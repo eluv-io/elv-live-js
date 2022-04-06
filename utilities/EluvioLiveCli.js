@@ -483,11 +483,12 @@ const CmdCreateAccount = async ({ argv }) => {
   console.log("Create Account\n");
 
   try {
-    elvlv = new EluvioLive({
-      configUrl: Config.networks[Config.net],
-      mainObjectId: Config.mainObjects[Config.net],
+    await Init();
+    let res = await elvlv.CreateAccount({
+      funds: argv.funds,
+      accountName: argv.account_name,
+      tenantId: argv.tenantId,
     });
-    let res = await elvlv.InitNew();
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -1067,8 +1068,24 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "create_account",
+    "create_account <funds> <account_name> <tenant>",
     "Create a new account -> mnemonic, address, private key",
+    (yargs) => {
+      yargs
+        .positional("funds", {
+          describe:
+            "How much to fund the new account from this private key in ETH.",
+          type: "string",
+        })
+        .positional("account_name", {
+          describe: "Account Name",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
     (argv) => {
       CmdCreateAccount({ argv });
     }
