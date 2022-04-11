@@ -43,6 +43,16 @@ class EluvioLive {
     this.client.ToggleLogging(false);
   }
 
+  /**
+   * Creates a new account including wallet object and contract.
+   * Current client must be initialized and funded.
+   *
+   * @namedParams
+   * @param {number} funds - The amount in ETH to fund the new account.
+   * @cauth {string} accountName - The name of the account to set in it's wallet metadata (Optional)
+   * @cauth {string} tenantId - The tenant ID to set for the user's wallet (Optional)
+   * @return {Promise<Object>} - An object containing the new account mnemonic, privateKey, address, accountName, balance
+   */
   async CreateAccount({ funds = 0.25, accountName, tenantId }) {
     if (!this.client) {
       throw Error("EluvioLive not intialized");
@@ -79,6 +89,23 @@ class EluvioLive {
 
     let balance = await wallet.GetAccountBalance({ signer });
     return { mnemonic, privateKey, address, accountName, balance };
+  }
+
+  /**
+   * Show info about this account.
+   */
+  async AccountShow() {
+    if (!this.client) {
+      throw Error("EluvioLive not intialized");
+    }
+
+    let tenantId = await this.client.userProfileClient.TenantId();
+    let walletAddress = await this.client.userProfileClient.WalletAddress();
+    let userWalletObject =
+      await this.client.userProfileClient.UserWalletObjectInfo();
+    let userMetadata = await this.client.userProfileClient.UserMetadata();
+
+    return { tenantId, walletAddress, userWalletObject, userMetadata };
   }
 
   /**

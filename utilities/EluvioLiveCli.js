@@ -478,17 +478,31 @@ FilterListTenant = ({ tenant }) => {
   return res;
 };
 
-// eslint-disable-next-line no-unused-vars
-const CmdCreateAccount = async ({ argv }) => {
-  console.log("Create Account\n");
+const CmdAccountCreate = async ({ argv }) => {
+  console.log("Account Create\n");
+  console.log(`funds: ${argv.funds}`);
+  console.log(`account_name: ${argv.account_name}`);
+  console.log(`tenant: ${argv.tenant}`);
 
   try {
     await Init();
     let res = await elvlv.CreateAccount({
       funds: argv.funds,
       accountName: argv.account_name,
-      tenantId: argv.tenantId,
+      tenantId: argv.tenant,
     });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdAccountShow = async () => {
+  console.log("Account Show\n");
+
+  try {
+    await Init();
+    let res = await elvlv.AccountShow();
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -1068,7 +1082,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "create_account <funds> <account_name> <tenant>",
+    "account_create <funds> <account_name> <tenant>",
     "Create a new account -> mnemonic, address, private key",
     (yargs) => {
       yargs
@@ -1087,9 +1101,13 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdCreateAccount({ argv });
+      CmdAccountCreate({ argv });
     }
   )
+
+  .command("account_show", "Shows current account information.", () => {
+    CmdAccountShow();
+  })
 
   .command(
     "tenant_nft_remove <tenant> <addr>",
