@@ -478,16 +478,31 @@ FilterListTenant = ({ tenant }) => {
   return res;
 };
 
-// eslint-disable-next-line no-unused-vars
-const CmdCreateAccount = async ({ argv }) => {
-  console.log("Create Account\n");
+const CmdAccountCreate = async ({ argv }) => {
+  console.log("Account Create\n");
+  console.log(`funds: ${argv.funds}`);
+  console.log(`account_name: ${argv.account_name}`);
+  console.log(`tenant_admins: ${argv.tenant_admins}`);
 
   try {
-    elvlv = new EluvioLive({
-      configUrl: Config.networks[Config.net],
-      mainObjectId: Config.mainObjects[Config.net],
+    await Init();
+    let res = await elvlv.AccountCreate({
+      funds: argv.funds,
+      accountName: argv.account_name,
+      tenantAdminsId: argv.tenant_admins,
     });
-    let res = await elvlv.InitNew();
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdAccountShow = async () => {
+  console.log("Account Show\n");
+
+  try {
+    await Init();
+    let res = await elvlv.AccountShow();
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -1067,12 +1082,32 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "create_account",
+    "account_create <funds> <account_name> <tenant_admins>",
     "Create a new account -> mnemonic, address, private key",
+    (yargs) => {
+      yargs
+        .positional("funds", {
+          describe:
+            "How much to fund the new account from this private key in ETH.",
+          type: "string",
+        })
+        .positional("account_name", {
+          describe: "Account Name",
+          type: "string",
+        })
+        .positional("tenant_admins", {
+          describe: "Tenant Admins group ID",
+          type: "string",
+        });
+    },
     (argv) => {
-      CmdCreateAccount({ argv });
+      CmdAccountCreate({ argv });
     }
   )
+
+  .command("account_show", "Shows current account information.", () => {
+    CmdAccountShow();
+  })
 
   .command(
     "tenant_nft_remove <tenant> <addr>",
