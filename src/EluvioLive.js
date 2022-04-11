@@ -50,10 +50,10 @@ class EluvioLive {
    * @namedParams
    * @param {number} funds - The amount in ETH to fund the new account.
    * @cauth {string} accountName - The name of the account to set in it's wallet metadata (Optional)
-   * @cauth {string} tenantId - The tenant ID to set for the user's wallet (Optional)
+   * @cauth {string} tenantAdminsGroup - The tenant admins group ID to set for the user's wallet (Optional)
    * @return {Promise<Object>} - An object containing the new account mnemonic, privateKey, address, accountName, balance
    */
-  async CreateAccount({ funds = 0.25, accountName, tenantId }) {
+  async AccountCreate({ funds = 0.25, accountName, tenantAdminsId }) {
     if (!this.client) {
       throw Error("EluvioLive not intialized");
     }
@@ -76,8 +76,9 @@ class EluvioLive {
 
     await client.userProfileClient.CreateWallet();
 
-    if (tenantId) {
-      await client.userProfileClient.SetTenantId({ id: tenantId });
+    if (tenantAdminsId) {
+      await client.userProfileClient.SetTenantId({ id: tenantAdminsId });
+      tenantAdminsId = await this.client.userProfileClient.TenantId();
     }
 
     if (accountName) {
@@ -88,7 +89,14 @@ class EluvioLive {
     }
 
     let balance = await wallet.GetAccountBalance({ signer });
-    return { mnemonic, privateKey, address, accountName, balance };
+    return {
+      tenantAdminsId,
+      mnemonic,
+      privateKey,
+      address,
+      accountName,
+      balance,
+    };
   }
 
   /**
@@ -99,13 +107,13 @@ class EluvioLive {
       throw Error("EluvioLive not intialized");
     }
 
-    let tenantId = await this.client.userProfileClient.TenantId();
+    let tenantAmdinsId = await this.client.userProfileClient.TenantId();
     let walletAddress = await this.client.userProfileClient.WalletAddress();
     let userWalletObject =
       await this.client.userProfileClient.UserWalletObjectInfo();
     let userMetadata = await this.client.userProfileClient.UserMetadata();
 
-    return { tenantId, walletAddress, userWalletObject, userMetadata };
+    return { tenantAmdinsId, walletAddress, userWalletObject, userMetadata };
   }
 
   /**

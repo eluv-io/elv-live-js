@@ -482,14 +482,14 @@ const CmdAccountCreate = async ({ argv }) => {
   console.log("Account Create\n");
   console.log(`funds: ${argv.funds}`);
   console.log(`account_name: ${argv.account_name}`);
-  console.log(`tenant: ${argv.tenant}`);
+  console.log(`tenant_admins: ${argv.tenant_admins}`);
 
   try {
     await Init();
-    let res = await elvlv.CreateAccount({
+    let res = await elvlv.AccountCreate({
       funds: argv.funds,
       accountName: argv.account_name,
-      tenantId: argv.tenant,
+      tenantAdminsId: argv.tenant_admins,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -1082,7 +1082,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "account_create <funds> <account_name> <tenant>",
+    "account_create <funds> <account_name> <tenant_admins>",
     "Create a new account -> mnemonic, address, private key",
     (yargs) => {
       yargs
@@ -1095,8 +1095,8 @@ yargs(hideBin(process.argv))
           describe: "Account Name",
           type: "string",
         })
-        .positional("tenant", {
-          describe: "Tenant ID",
+        .positional("tenant_admins", {
+          describe: "Tenant Admins group ID",
           type: "string",
         });
     },
