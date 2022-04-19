@@ -148,7 +148,7 @@ class Marketplace extends EluvioLive {
       metadataSubtree: "/public/asset_metadata/info/storefront/sections"
     });
 
-    if(!sections || sections.length === 0) {
+    if (!sections || sections.length === 0) {
       sections.push({
         items: [],
         section_header: "",
@@ -159,7 +159,7 @@ class Marketplace extends EluvioLive {
     const sectionByName = sections.find(section => section.section_header === name);
     section = (name && sectionByName) ? sectionByName : sections[0];
 
-    if(!section.items || !Array.isArray(section.items)) section.items = [];
+    if (!section.items || !Array.isArray(section.items)) section.items = [];
 
     section.items.push(sku);
 
