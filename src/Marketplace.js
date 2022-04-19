@@ -135,6 +135,56 @@ class Marketplace extends EluvioLive {
       commitMessage: "Remove marketplace item"
     });
   }
+
+  async StorefrontSectionAddItem({objectId, sku, name}) {
+    const libraryId = await this.client.ContentObjectLibraryId({
+      objectId
+    });
+    let section;
+
+    const sections = await this.client.ContentObjectMetadata({
+      objectId,
+      libraryId,
+      metadataSubtree: "/public/asset_metadata/info/storefront/sections"
+    });
+
+    if(!sections || sections.length === 0) {
+      sections.push({
+        items: [],
+        section_header: "",
+        section_subheader: ""
+      });
+    }
+
+    const sectionByName = sections.find(section => section.section_header === name);
+    section = (name && sectionByName) ? sectionByName : sections[0];
+
+    if(!section.items || !Array.isArray(section.items)) section.items = [];
+
+    section.items.push(sku);
+
+    const { write_token } = await this.client.EditContentObject({
+      objectId,
+      libraryId
+    });
+
+    await this.client.ReplaceMetadata({
+      objectId,
+      libraryId,
+      writeToken: write_token,
+      metadataSubtree: "/public/asset_metadata/info/storefront/sections",
+      metadata: sections
+    });
+
+    await this.client.FinalizeContentObject({
+      objectId,
+      libraryId,
+      writeToken: write_token,
+      commitMessage: "Add storefront section item"
+    });
+
+    return section;
+  }
 }
 
 exports.Marketplace = Marketplace;

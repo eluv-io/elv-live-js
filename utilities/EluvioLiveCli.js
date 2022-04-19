@@ -538,6 +538,26 @@ const CmdMarketplaceRemoveItem = async ({ argv }) => {
   }
 };
 
+const CmdStorefrontSectionAddItem = async ({ argv }) => {
+  console.log("Storefront Add Section");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`Marketplace Item SKU: ${argv.sku}`);
+  console.log(`Marketplace Storefront Section: ${argv.section}`);
+
+  try {
+    await Init();
+    const res = await marketplace.StorefrontSectionAddItem({
+      objectId: argv.marketplace,
+      sku: argv.sku,
+      name: argv.section
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .command(
     "nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]",
@@ -1082,6 +1102,29 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdMarketplaceRemoveItem({ argv });
+    }
+  )
+
+  .command(
+    "storefront_section_add_item <marketplace> <sku> [section]",
+    "Adds an item to a marketplace storefront section",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string"
+      });
+      yargs.positional("sku", {
+        describe: "Marketplace item SKU",
+        type: "string"
+      });
+      yargs.positional("section", {
+        describe: "Storefront section name",
+        type: "string",
+        string: true
+      });
+    },
+    (argv) => {
+      CmdStorefrontSectionAddItem({ argv });
     }
   )
 

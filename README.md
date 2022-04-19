@@ -62,9 +62,11 @@ Commands:
   marketplace_add_item <marketplace>        Add an item to a marketplace
   <object> <price> [forSale]
   
-                                            Remove an item from a
-  marketplace_remove_item <marketplace>     marketplace
-  <object>
+  marketplace_remove_item <marketplace>     Remove an item from a
+  <object>                                  marketplace
+  
+  storefront_section_add_item               Add an item to a marketplace
+  <marketplace> <sku> [section]             storefront section
 
 Options:
   --version  Show version number                                       [boolean]
