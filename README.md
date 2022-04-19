@@ -58,6 +58,13 @@ Commands:
   <marketplace> <processor>
   tenant_secondary_sales <tenant>           Show tenant secondary sales history
   <processor>
+  
+  marketplace_add_item <marketplace>        Add an item to a marketplace
+  <object> <price> [forSale]
+  
+                                            Remove an item from a
+  marketplace_remove_item <marketplace>     marketplace
+  <object>
 
 Options:
   --version  Show version number                                       [boolean]

@@ -8,17 +8,23 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
+const { Marketplace } = require("../src/Marketplace");
 
 let elvlv;
+let marketplace;
 
 const Init = async () => {
   console.log("Network: " + Config.net);
 
-  elvlv = new EluvioLive({
+  const config = {
     configUrl: Config.networks[Config.net],
     mainObjectId: Config.mainObjects[Config.net],
-  });
+  };
+  elvlv = new EluvioLive(config);
   await elvlv.Init();
+
+  marketplace = new Marketplace(config);
+  await marketplace.Init();
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
@@ -483,6 +489,49 @@ const CmdCreateAccount = async ({ argv }) => {
       mainObjectId: Config.mainObjects[Config.net],
     });
     let res = await elvlv.InitNew();
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdMarketplaceAddItem = async ({ argv }) => {
+  console.log("Marketplace Add Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`NFT Template Object ID/Hash: ${argv.object}`);
+  console.log(`NFT Template Price: ${argv.price}`);
+  console.log(`NFT For Sale: ${argv.forSale}`);
+
+  try {
+    await Init();
+    const res = await marketplace.MarketplaceAddItem({
+      nftObjectId: argv.object.startsWith("iq__") ? argv.object : undefined,
+      nftObjectHash: argv.object.startsWith("hq__") ? argv.object : undefined,
+      marketplaceObjectId: argv.marketplace,
+      price: argv.price,
+      currency: argv.currency,
+      maxPerUser: argv.maxPerUser,
+      forSale: argv.forSale
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdMarketplaceRemoveItem = async ({ argv }) => {
+  console.log("Marketplace Remove Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`NFT Template Object Hash: ${argv.object}`);
+
+  try {
+    await Init();
+    const res = await marketplace.MarketplaceRemoveItem({
+      nftObjectHash: argv.object,
+      marketplaceObjectId: argv.marketplace,
+    });
+
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -988,6 +1037,51 @@ yargs(hideBin(process.argv))
     "Create a new account -> mnemonic, address, private key.",
     (argv) => {
       CmdCreateAccount({ argv });
+    }
+  )
+
+  .command(
+    "marketplace_add_item <marketplace> <object> <price> [forSale]",
+    "Adds an item to a marketplace",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string"
+      });
+      yargs.positional("object", {
+        describe: "NFT Template object hash (hq__) or id (iq__)",
+        type: "string"
+      });
+      yargs.positional("price", {
+        describe: "Price to list for",
+        type: "number"
+      });
+      yargs.positional("forSale", {
+        describe: "Whether to show for sale",
+        type: "boolean",
+        default: true
+      });
+    },
+    (argv) => {
+      CmdMarketplaceAddItem({ argv });
+    }
+  )
+
+  .command(
+    "marketplace_remove_item <marketplace> <object>",
+    "Removes an item from a marketplace",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string"
+      });
+      yargs.positional("object", {
+        describe: "NFT Template object hash (hq__)",
+        type: "string"
+      });
+    },
+    (argv) => {
+      CmdMarketplaceRemoveItem({ argv });
     }
   )
 
