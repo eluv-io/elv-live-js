@@ -646,7 +646,7 @@ const CmdTenantHasNft = async ({ argv }) => {
 const CmdSpaceTenantDeploy = async ({ argv }) => {
   console.log("Tenant Deploy");
   console.log(`Tenant name: ${argv.tenant_name}`);
-  console.log(`Owner address: ${argv.owner_address}`);
+  console.log(`Owner address: ${argv.owner_addr}`);
   console.log(`Tenant admin group address: ${argv.tenant_admin_addr}`);
 
   try {
@@ -659,7 +659,7 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
 
     res = await space.DeployTenant({
       tenantName: argv.tenant_name,
-      ownerAddress: argv.owner_address,
+      ownerAddress: argv.owner_addr,
       adminGroupAddress: argv.tenant_admin_addr
     });
 
@@ -1280,11 +1280,19 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "space_deploy_tenant <tenant_name>",
+    "space_deploy_tenant <tenant_name> [owner_address] []",
     "Deploys a tenant contract",
     (yargs) => {
       yargs.positional("tenant_name", {
         describe: "Tenant Name",
+        type: "string",
+      }),
+      yargs.positional("owner_addr", {
+        describe: "Owner of the new contract",
+        type: "string",
+      }),
+      yargs.positional("tenant_admin_addr", {
+        describe: "Address of the tenant admins groups",
         type: "string",
       });
     },
