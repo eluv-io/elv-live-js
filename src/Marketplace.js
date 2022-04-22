@@ -114,7 +114,7 @@ class Marketplace extends EluvioLive {
     return newItem;
   }
 
-  async MarketplaceRemoveItem({marketplaceObjectId, nftObjectHash}) {
+  async MarketplaceRemoveItem({marketplaceObjectId, nftObjectId}) {
     const libraryId = await this.client.ContentObjectLibraryId({
       objectId: marketplaceObjectId
     });
@@ -130,22 +130,28 @@ class Marketplace extends EluvioLive {
       libraryId
     });
 
-    let sku;
+    const skus = [];
     const filteredItems = items.filter(item => {
-      if (item.nft_template["/"].includes(nftObjectHash)) {
-        sku = item.sku;
+      const versionHash = (item.nft_template["/"].match(/^\/?qfab\/([\w]+)\/?.+/) || [])[1];
+
+      if (Utils.DecodeVersionHash(versionHash).objectId === nftObjectId) {
+        skus.push(item.sku);
         return false;
       } else {
         return true;
       }
     });
 
-    if (sku) {
-      await this.StorefrontSectionRemoveItem({
-        objectId: marketplaceObjectId,
-        sku,
-        writeToken: write_token
-      });
+    if (skus.length > 0) {
+      await Promise.all(
+        skus.map(async sku => {
+          await this.StorefrontSectionRemoveItem({
+            objectId: marketplaceObjectId,
+            sku,
+            writeToken: write_token
+          });
+        })
+      );
     }
 
     await this.client.ReplaceMetadata({
@@ -228,9 +234,7 @@ class Marketplace extends EluvioLive {
     });
 
     sections.forEach(section => {
-      const index = section.items.indexOf(sku);
-
-      if (index > -1) section.items.splice(index, 1);
+      section.items = section.items.filter(itemSKU => itemSKU !== sku);
     });
 
     const finalize = !writeToken;

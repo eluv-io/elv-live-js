@@ -523,12 +523,12 @@ const CmdMarketplaceAddItem = async ({ argv }) => {
 const CmdMarketplaceRemoveItem = async ({ argv }) => {
   console.log("Marketplace Remove Item");
   console.log(`Marketplace Object ID: ${argv.marketplace}`);
-  console.log(`NFT Template Object Hash: ${argv.object}`);
+  console.log(`NFT Template Object ID: ${argv.object}`);
 
   try {
     await Init();
     const res = await marketplace.MarketplaceRemoveItem({
-      nftObjectHash: argv.object,
+      nftObjectId: argv.object,
       marketplaceObjectId: argv.marketplace,
     });
 
@@ -1116,7 +1116,7 @@ yargs(hideBin(process.argv))
         type: "string"
       });
       yargs.positional("object", {
-        describe: "NFT Template object hash (hq__)",
+        describe: "NFT Template object ID (iq__)",
         type: "string"
       });
     },
