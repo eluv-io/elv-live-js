@@ -67,7 +67,10 @@ Commands:
   
   storefront_section_add_item               Add an item to a marketplace
   <marketplace> <sku> [section]             storefront section
-
+  
+  storefront_section_remove_item            Remove an item from a marketplace
+  <marketplace> <sku> [writeToken]          storefront section
+  
 Options:
   --version  Show version number                                       [boolean]
   --help     Show help                                                 [boolean]

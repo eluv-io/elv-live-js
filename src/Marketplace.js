@@ -1,5 +1,6 @@
 const Utils = require("elv-client-js/src/Utils");
 const { v4: UUID, parse: UUIDParse } = require("uuid");
+const UrlJoin = require("url-join");
 const { EluvioLive } = require("./EluvioLive");
 const { ElvClient } = require("elv-client-js");
 
@@ -12,14 +13,25 @@ class Marketplace extends EluvioLive {
   }
 
   CreateLink({targetHash, linkTarget="/meta/public/asset_metadata", options={}}) {
-    return {
-      ...options,
-      ".": {
-        ...(options["."] || {}),
-        "auto_update":{"tag":"latest"}
-      },
-      "/": `/qfab/${targetHash}${linkTarget}`
-    };
+    if (!targetHash) {
+      return {
+        ...options,
+        ".": {
+          ...(options["."] || {}),
+          "auto_update":{"tag":"latest"}
+        },
+        "/": UrlJoin("./", linkTarget)
+      };
+    } else {
+      return {
+        ...options,
+        ".": {
+          ...(options["."] || {}),
+          "auto_update":{"tag":"latest"}
+        },
+        "/": UrlJoin("/qfab", targetHash, linkTarget)
+      };
+    }
   }
 
   async MarketplaceAddItem({
@@ -113,12 +125,28 @@ class Marketplace extends EluvioLive {
       metadataSubtree: "/public/asset_metadata/info/items"
     }) || [];
 
-    const filteredItems = items.filter(item => !item.nft_template["/"].includes(nftObjectHash));
-
     const { write_token } = await this.client.EditContentObject({
       objectId: marketplaceObjectId,
       libraryId
     });
+
+    let sku;
+    const filteredItems = items.filter(item => {
+      if (item.nft_template["/"].includes(nftObjectHash)) {
+        sku = item.sku;
+        return false;
+      } else {
+        return true;
+      }
+    });
+
+    if (sku) {
+      await this.StorefrontSectionRemoveItem({
+        objectId: marketplaceObjectId,
+        sku,
+        writeToken: write_token
+      });
+    }
 
     await this.client.ReplaceMetadata({
       objectId: marketplaceObjectId,
@@ -161,7 +189,9 @@ class Marketplace extends EluvioLive {
 
     if (!section.items || !Array.isArray(section.items)) section.items = [];
 
-    section.items.push(sku);
+    if (!section.items.find(itemSKU => sku === itemSKU)) {
+      section.items.push(sku);
+    }
 
     const { write_token } = await this.client.EditContentObject({
       objectId,
@@ -184,6 +214,50 @@ class Marketplace extends EluvioLive {
     });
 
     return section;
+  }
+
+  async StorefrontSectionRemoveItem({objectId, sku, writeToken}) {
+    const libraryId = await this.client.ContentObjectLibraryId({
+      objectId
+    });
+
+    const sections = await this.client.ContentObjectMetadata({
+      objectId,
+      libraryId,
+      metadataSubtree: "/public/asset_metadata/info/storefront/sections"
+    });
+
+    sections.forEach(section => {
+      const index = section.items.indexOf(sku);
+
+      if (index > -1) section.items.splice(index, 1);
+    });
+
+    const finalize = !writeToken;
+    if (!writeToken) {
+      const response = await this.client.EditContentObject({
+        objectId,
+        libraryId
+      });
+      writeToken = response.write_token;
+    }
+
+    await this.client.ReplaceMetadata({
+      objectId,
+      libraryId,
+      writeToken,
+      metadataSubtree: "/public/asset_metadata/info/storefront/sections",
+      metadata: sections
+    });
+
+    if (finalize) {
+      return await this.client.FinalizeContentObject({
+        objectId,
+        libraryId,
+        writeToken,
+        commitMessage: "Remove storefront section item"
+      });
+    }
   }
 }
 

@@ -539,7 +539,7 @@ const CmdMarketplaceRemoveItem = async ({ argv }) => {
 };
 
 const CmdStorefrontSectionAddItem = async ({ argv }) => {
-  console.log("Storefront Add Section");
+  console.log("Storefront Section Add Item");
   console.log(`Marketplace Object ID: ${argv.marketplace}`);
   console.log(`Marketplace Item SKU: ${argv.sku}`);
   console.log(`Marketplace Storefront Section: ${argv.section}`);
@@ -550,6 +550,26 @@ const CmdStorefrontSectionAddItem = async ({ argv }) => {
       objectId: argv.marketplace,
       sku: argv.sku,
       name: argv.section
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdStorefrontSectionRemoveItem = async ({ argv }) => {
+  console.log("Storefront Section Remove Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`Marketplace Item SKU: ${argv.sku}`);
+  console.log(`Object Write Token: ${argv.writeToken}`);
+
+  try {
+    await Init();
+    const res = await marketplace.StorefrontSectionRemoveItem({
+      objectId: argv.marketplace,
+      sku: argv.sku,
+      writeToken: argv.writeToken
     });
 
     console.log(yaml.dump(res));
@@ -1125,6 +1145,28 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdStorefrontSectionAddItem({ argv });
+    }
+  )
+
+  .command(
+    "storefront_section_remove_item <marketplace> <sku> [writeToken]",
+    "Removes an item from a marketplace storefront section",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string"
+      });
+      yargs.positional("sku", {
+        describe: "Marketplace item SKU",
+        type: "string"
+      });
+      yargs.positional("writeToken", {
+        describe: "Write token (if not provided, object will be finalized)",
+        type: "string"
+      });
+    },
+    (argv) => {
+      CmdStorefrontSectionRemoveItem({ argv });
     }
   )
 
