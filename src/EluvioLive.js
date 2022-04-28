@@ -43,8 +43,22 @@ class EluvioLive {
     this.client.ToggleLogging(false);
   }
 
-  async InitNew() {
-    this.client = await ElvClient.FromConfigurationUrl({
+  /**
+   * Creates a new account including wallet object and contract.
+   * Current client must be initialized and funded.
+   *
+   * @namedParams
+   * @param {number} funds - The amount in ETH to fund the new account.
+   * @cauth {string} accountName - The name of the account to set in it's wallet metadata (Optional)
+   * @cauth {string} tenantAdminsGroup - The tenant admins group ID to set for the user's wallet (Optional)
+   * @return {Promise<Object>} - An object containing the new account mnemonic, privateKey, address, accountName, balance
+   */
+  async AccountCreate({ funds = 0.25, accountName, tenantAdminsId }) {
+    if (!this.client) {
+      throw Error("EluvioLive not intialized");
+    }
+
+    let client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
     let wallet = this.client.GenerateWallet();
@@ -53,10 +67,53 @@ class EluvioLive {
     const privateKey = signer.privateKey;
     const address = signer.address;
 
-    this.client.SetSigner({ signer });
-    this.client.ToggleLogging(false);
+    client.SetSigner({ signer });
 
-    return { mnemonic, privateKey, address };
+    await this.client.SendFunds({
+      recipient: address,
+      ether: funds,
+    });
+
+    await client.userProfileClient.CreateWallet();
+
+    if (tenantAdminsId) {
+      await client.userProfileClient.SetTenantId({ id: tenantAdminsId });
+      tenantAdminsId = await this.client.userProfileClient.TenantId();
+    }
+
+    if (accountName) {
+      await client.userProfileClient.ReplaceUserMetadata({
+        metadataSubtree: "public/name",
+        metadata: accountName,
+      });
+    }
+
+    let balance = await wallet.GetAccountBalance({ signer });
+    return {
+      tenantAdminsId,
+      mnemonic,
+      privateKey,
+      address,
+      accountName,
+      balance,
+    };
+  }
+
+  /**
+   * Show info about this account.
+   */
+  async AccountShow() {
+    if (!this.client) {
+      throw Error("EluvioLive not intialized");
+    }
+
+    let tenantAmdinsId = await this.client.userProfileClient.TenantId();
+    let walletAddress = await this.client.userProfileClient.WalletAddress();
+    let userWalletObject =
+      await this.client.userProfileClient.UserWalletObjectInfo();
+    let userMetadata = await this.client.userProfileClient.UserMetadata();
+
+    return { tenantAmdinsId, walletAddress, userWalletObject, userMetadata };
   }
 
   /**
@@ -69,12 +126,17 @@ class EluvioLive {
    * @cauth {string} mintHelper - Warn if any NFTs don't have this as minter
    * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
-  async TenantShow({ tenantId, cauth, mintHelper }) {
+  async TenantShow({ tenantId, cauth, mintHelper, checkNft = false }) {
     var tenantInfo = {};
     let m = await this.List({ tenantId });
 
     tenantInfo.marketplaces = {};
     var warns = [];
+
+    let tenantNftList = [];
+    if (checkNft) {
+      tenantNftList = await this.TenantNftList({ tenantId });
+    }
 
     for (var key in m.marketplaces) {
       tenantInfo.marketplaces[key] = {};
@@ -118,17 +180,33 @@ class EluvioLive {
         if (item.nft_template.nft.address === "") {
           warns.push("No NFT address sku: " + sku);
         } else {
+          const minterAddr = cauth ? Utils.HashToAddress(cauth) : null;
+
           // Check NFT contract parameters
           const nftInfo = await this.NftShow({
             addr: item.nft_template.nft.address,
             mintHelper,
+            minterAddr,
           });
+
+          if (checkNft) {
+            let isInContract = tenantNftList.includes(
+              item.nft_template.nft.address
+            );
+
+            tenantInfo.marketplaces[key].items[sku].isValid = checkNft;
+            if (!isInContract) {
+              warns.push(
+                `${item.nft_template.nft.address} is not in the tenant contract.`
+              );
+            }
+          }
           tenantInfo.marketplaces[key].items[sku].nftCap = nftInfo.cap;
           tenantInfo.marketplaces[key].items[sku].nftMinted = nftInfo.minted;
           tenantInfo.marketplaces[key].items[sku].nftTotalSupply =
             nftInfo.totalSupply;
           tenantInfo.marketplaces[key].items[sku].nftName = nftInfo.name;
-          tenantInfo.marketplaces[key].items[sku].proxy = nftInfo.owner;
+          tenantInfo.marketplaces[key].items[sku].owner = nftInfo.owner;
           tenantInfo.marketplaces[key].items[sku].proxy = nftInfo.proxy;
           tenantInfo.marketplaces[key].items[sku].firstTokenUri =
             nftInfo.firstTokenUri;
@@ -348,6 +426,107 @@ class EluvioLive {
     });
 
     return res;
+  }
+
+  /**
+   * Remove an NFT contract from the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} nftAddr = The address of the NFT contract (hex format)
+   */
+  async TenantRemoveNft({ tenantId, nftAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const addr = Utils.HashToAddress(tenantId);
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "removeGroup",
+      methodArgs: ["tenant_nfts", nftAddr],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Returns true if an NFT contract is in the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} nftAddr = The address of the NFT contract (hex format)
+   */
+  async TenantHasNft({ tenantId, nftAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    var arg = "tenant_nfts";
+
+    for (var i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+      var ordinal = BigNumber(i).toString(16);
+      try {
+        var currNftAddr = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
+          methodName: "groupsMapping",
+          methodArgs: [arg, ordinal],
+          formatArguments: true,
+        });
+
+        if (currNftAddr.toLowerCase() != nftAddr.toLowerCase()) {
+          continue;
+        } else {
+          return true;
+        }
+      } catch (e) {
+        //We don't know the length so just stop on error and return
+        break;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Returns list of NFT contracts in the tenant's 'tenant_nfts' group
+   *
+   * @namedParams
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   */
+  async TenantNftList({ tenantId }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    let result = [];
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    var arg = "tenant_nfts";
+
+    for (var i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+      var ordinal = BigNumber(i).toString(16);
+      try {
+        var nftAddr = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
+          methodName: "groupsMapping",
+          methodArgs: [arg, ordinal],
+          formatArguments: true,
+        });
+
+        result.push(nftAddr.toLowerCase());
+      } catch (e) {
+        //We don't know the length so just stop on error and return
+        break;
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -675,7 +854,7 @@ class EluvioLive {
    *
    * @namedParams
    * @param {string} addr - The NFT Transfer Proxy contract address
-   * @return {Promise<Object>} - New contract address
+   * @return {Promise<Object>} - Proxy info object
    */
   async ShowNftTransferProxy({ addr }) {
     const abistr = fs.readFileSync(
@@ -691,6 +870,32 @@ class EluvioLive {
       formatArguments: true,
     });
 
+    return info;
+  }
+
+  /**
+   * Show NFT mint helper info
+   *
+   * @namedParams
+   * @param {string} addr - The mint helper contract address
+   * @return {Promise<Object>} - Mint helper info object
+   */
+  async ShowMintHelper({ addr }) {
+    const abistr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTokenHelper.abi")
+    );
+
+    var info = {};
+    try {
+      info.owner = await this.client.CallContractMethod({
+        contractAddress: addr,
+        abi: JSON.parse(abistr),
+        methodName: "owner",
+        formatArguments: true,
+      });
+    } catch (e) {
+      info.warns = "Bad mint helper address " + addr;
+    }
     return info;
   }
 
@@ -845,10 +1050,11 @@ class EluvioLive {
    *
    * @namedParams
    * @param {string} addr - The NFT contract address
-   * @param {string} mintHelper - Warn if this is not a minter for the NFT contract
+   * @param {string} mintHelper - Warn if this is not a minter for the NFT contract (hex)
+   * @param {string} minter - Warn if this is not the owner of the mint helper contract (hex)
    * @return {Promise<Object>} - An object containing NFT info, including 'warnings'
    */
-  async NftShow({ addr, mintHelper, showOwners }) {
+  async NftShow({ addr, mintHelper, minterAddr, showOwners }) {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
@@ -920,6 +1126,33 @@ class EluvioLive {
         abi: JSON.parse(abi),
         methodName: "isMinter",
         methodArgs: [mintHelper],
+        formatArguments: true,
+      });
+      if (!isMinter) {
+        warns.push("Mint helper not set up addr: " + addr);
+      }
+
+      nftInfo.mintHelperInfo = await this.ShowMintHelper({ addr: mintHelper });
+      if (nftInfo.warns && nftInfo.warns.length > 0) {
+        warns.push(...nftInfo.warns);
+      }
+
+      if (!nftInfo.mintHelperInfo.owner || nftInfo.mintHelperInfo.owner == "") {
+        warns.push("Bad mint helper - owner not available " + addr);
+      } else if (
+        minterAddr &&
+        nftInfo.mintHelperInfo.owner.toLowerCase() != minterAddr.toLowerCase()
+      ) {
+        warns.push("Bad mint helper owner " + addr);
+      }
+    }
+
+    if (minterAddr) {
+      const isMinter = await this.client.CallContractMethod({
+        contractAddress: addr,
+        abi: JSON.parse(abi),
+        methodName: "isMinter",
+        methodArgs: [minterAddr],
         formatArguments: true,
       });
       if (!isMinter) {
@@ -1004,7 +1237,7 @@ class EluvioLive {
   async NftAddMinter({ addr, minterAddr }) {
     console.log("Add minter", addr, minterAddr);
     const abi = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/ElvTradable.abi")
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
 
     var res = await this.client.CallContractMethodAndWait({
