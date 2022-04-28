@@ -2,6 +2,7 @@ const { ElvClient } = require("elv-client-js");
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
+const { Marketplace } = require("../src/Marketplace");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -11,15 +12,20 @@ const path = require("path");
 const prompt = require("prompt-sync")({ sigint: true });
 
 let elvlv;
+let marketplace;
 
 const Init = async () => {
   console.log("Network: " + Config.net);
 
-  elvlv = new EluvioLive({
+  const config = {
     configUrl: Config.networks[Config.net],
     mainObjectId: Config.mainObjects[Config.net],
-  });
+  };
+  elvlv = new EluvioLive(config);
   await elvlv.Init();
+
+  marketplace = new Marketplace(config);
+  await marketplace.Init();
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
@@ -574,6 +580,89 @@ const CmdTenantHasNft = async ({ argv }) => {
     res = await elvlv.TenantHasNft({
       tenantId: argv.tenant,
       nftAddr: argv.addr,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdMarketplaceAddItem = async ({ argv }) => {
+  console.log("Marketplace Add Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`NFT Template Object ID/Hash: ${argv.object}`);
+  console.log(`NFT Template Price: ${argv.price}`);
+  console.log(`NFT For Sale: ${argv.forSale}`);
+
+  try {
+    await Init();
+    const res = await marketplace.MarketplaceAddItem({
+      nftObjectId: argv.object.startsWith("iq__") ? argv.object : undefined,
+      nftObjectHash: argv.object.startsWith("hq__") ? argv.object : undefined,
+      marketplaceObjectId: argv.marketplace,
+      price: argv.price,
+      currency: argv.currency,
+      maxPerUser: argv.maxPerUser,
+      forSale: argv.forSale
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdMarketplaceRemoveItem = async ({ argv }) => {
+  console.log("Marketplace Remove Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`NFT Template Object ID: ${argv.object}`);
+
+  try {
+    await Init();
+    const res = await marketplace.MarketplaceRemoveItem({
+      nftObjectId: argv.object,
+      marketplaceObjectId: argv.marketplace,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdStorefrontSectionAddItem = async ({ argv }) => {
+  console.log("Storefront Section Add Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`Marketplace Item SKU: ${argv.sku}`);
+  console.log(`Marketplace Storefront Section: ${argv.section}`);
+
+  try {
+    await Init();
+    const res = await marketplace.StorefrontSectionAddItem({
+      objectId: argv.marketplace,
+      sku: argv.sku,
+      name: argv.section
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdStorefrontSectionRemoveItem = async ({ argv }) => {
+  console.log("Storefront Section Remove Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`Marketplace Item SKU: ${argv.sku}`);
+  console.log(`Object Write Token: ${argv.writeToken}`);
+
+  try {
+    await Init();
+    const res = await marketplace.StorefrontSectionRemoveItem({
+      objectId: argv.marketplace,
+      sku: argv.sku,
+      writeToken: argv.writeToken
     });
 
     console.log(yaml.dump(res));
@@ -1157,6 +1246,96 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantHasNft({ argv });
+    }
+  )
+
+  .command(
+    "marketplace_add_item <marketplace> <object> <price> [forSale]",
+    "Adds an item to a marketplace",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string"
+      });
+      yargs.positional("object", {
+        describe: "NFT Template object hash (hq__) or id (iq__)",
+        type: "string"
+      });
+      yargs.positional("price", {
+        describe: "Price to list for",
+        type: "number"
+      });
+      yargs.positional("forSale", {
+        describe: "Whether to show for sale",
+        type: "boolean",
+        default: true
+      });
+    },
+    (argv) => {
+      CmdMarketplaceAddItem({ argv });
+    }
+  )
+
+  .command(
+    "marketplace_remove_item <marketplace> <object>",
+    "Removes an item from a marketplace",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string"
+      });
+      yargs.positional("object", {
+        describe: "NFT Template object ID (iq__)",
+        type: "string"
+      });
+    },
+    (argv) => {
+      CmdMarketplaceRemoveItem({ argv });
+    }
+  )
+
+  .command(
+    "storefront_section_add_item <marketplace> <sku> [section]",
+    "Adds an item to a marketplace storefront section",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string"
+      });
+      yargs.positional("sku", {
+        describe: "Marketplace item SKU",
+        type: "string"
+      });
+      yargs.positional("section", {
+        describe: "Storefront section name",
+        type: "string",
+        string: true
+      });
+    },
+    (argv) => {
+      CmdStorefrontSectionAddItem({ argv });
+    }
+  )
+
+  .command(
+    "storefront_section_remove_item <marketplace> <sku> [writeToken]",
+    "Removes an item from a marketplace storefront section",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string"
+      });
+      yargs.positional("sku", {
+        describe: "Marketplace item SKU",
+        type: "string"
+      });
+      yargs.positional("writeToken", {
+        describe: "Write token (if not provided, object will be finalized)",
+        type: "string"
+      });
+    },
+    (argv) => {
+      CmdStorefrontSectionRemoveItem({ argv });
     }
   )
 
