@@ -1476,11 +1476,11 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     const m = assetMetadata;
     var pnft = {};
 
-    pnft.name = m.nft.name;
-    pnft.display_name = m.nft.display_name;
-    pnft.description = m.nft.description;
-    pnft.edition_name = m.nft.edition_name;
-    pnft.rich_text = m.nft.rich_text;
+    pnft.name = nftMeta.name || m.nft.name;
+    pnft.display_name = nftMeta.display_name || m.nft.display_name;
+    pnft.description = nftMeta.description || m.nft.description;
+    pnft.edition_name = nftMeta.edition_name || m.nft.edition_name;
+    pnft.rich_text = nftMeta.rich_text || m.nft.rich_text;
 
     pnft.address = m.nft.address;
     pnft.total_supply = m.nft.total_supply;
