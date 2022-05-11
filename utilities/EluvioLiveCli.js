@@ -126,14 +126,17 @@ const CmdNftShow = async ({ argv }) => {
 };
 
 const CmdNftBuild = async ({ argv }) => {
-  console.log("NFT - build public/nft", argv.object);
+  console.log("NFT - build ");
+  console.log("NFT - libraryId ", argv.library);
+  console.log("NFT - objectId ", argv.object);
+  console.log("NFT - nftDir ", argv.nft_dir);
   try {
     await Init();
 
     let res = await elvlv.NftBuild({
       libraryId: argv.library,
       objectId: argv.object,
-      imageDir: argv.image_dir,
+      nftDir: argv.nft_dir,
     });
 
     console.log(yaml.dump(res));
@@ -604,7 +607,7 @@ const CmdMarketplaceAddItem = async ({ argv }) => {
       price: argv.price,
       currency: argv.currency,
       maxPerUser: argv.maxPerUser,
-      forSale: argv.forSale
+      forSale: argv.forSale,
     });
 
     console.log(yaml.dump(res));
@@ -642,7 +645,7 @@ const CmdStorefrontSectionAddItem = async ({ argv }) => {
     const res = await marketplace.StorefrontSectionAddItem({
       objectId: argv.marketplace,
       sku: argv.sku,
-      name: argv.section
+      name: argv.section,
     });
 
     console.log(yaml.dump(res));
@@ -662,7 +665,7 @@ const CmdStorefrontSectionRemoveItem = async ({ argv }) => {
     const res = await marketplace.StorefrontSectionRemoveItem({
       objectId: argv.marketplace,
       sku: argv.sku,
-      writeToken: argv.writeToken
+      writeToken: argv.writeToken,
     });
 
     console.log(yaml.dump(res));
@@ -842,10 +845,10 @@ yargs(hideBin(process.argv))
           describe: "Content object hash (hq__) or id (iq__)",
           type: "string",
         })
-        .option("image_dir", {
+        .option("nft_dir", {
           describe:
             "Create a multi-media NFT (generative). " +
-            "Directory contains image and attribute (json) files",
+            "Directory contains json files describing the nft",
           type: "string",
         });
     },
@@ -1255,20 +1258,20 @@ yargs(hideBin(process.argv))
     (yargs) => {
       yargs.positional("marketplace", {
         describe: "Marketplace object ID",
-        type: "string"
+        type: "string",
       });
       yargs.positional("object", {
         describe: "NFT Template object hash (hq__) or id (iq__)",
-        type: "string"
+        type: "string",
       });
       yargs.positional("price", {
         describe: "Price to list for",
-        type: "number"
+        type: "number",
       });
       yargs.positional("forSale", {
         describe: "Whether to show for sale",
         type: "boolean",
-        default: true
+        default: true,
       });
     },
     (argv) => {
@@ -1282,11 +1285,11 @@ yargs(hideBin(process.argv))
     (yargs) => {
       yargs.positional("marketplace", {
         describe: "Marketplace object ID",
-        type: "string"
+        type: "string",
       });
       yargs.positional("object", {
         describe: "NFT Template object ID (iq__)",
-        type: "string"
+        type: "string",
       });
     },
     (argv) => {
@@ -1300,16 +1303,16 @@ yargs(hideBin(process.argv))
     (yargs) => {
       yargs.positional("marketplace", {
         describe: "Marketplace object ID",
-        type: "string"
+        type: "string",
       });
       yargs.positional("sku", {
         describe: "Marketplace item SKU",
-        type: "string"
+        type: "string",
       });
       yargs.positional("section", {
         describe: "Storefront section name",
         type: "string",
-        string: true
+        string: true,
       });
     },
     (argv) => {
@@ -1323,15 +1326,15 @@ yargs(hideBin(process.argv))
     (yargs) => {
       yargs.positional("marketplace", {
         describe: "Marketplace object ID",
-        type: "string"
+        type: "string",
       });
       yargs.positional("sku", {
         describe: "Marketplace item SKU",
-        type: "string"
+        type: "string",
       });
       yargs.positional("writeToken", {
         describe: "Write token (if not provided, object will be finalized)",
-        type: "string"
+        type: "string",
       });
     },
     (argv) => {
