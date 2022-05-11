@@ -848,7 +848,7 @@ yargs(hideBin(process.argv))
         .option("nft_dir", {
           describe:
             "Create a multi-media NFT (generative). " +
-            "Directory contains json files describing the nft",
+            "Directory contains json files describing the nft.  See documentation to see *.json structure.",
           type: "string",
         });
     },
@@ -908,7 +908,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_balance_of <tenant> <owner>",
-    "Show NFTs owned by this owner in this tenant",
+    "Show NFTs owned by this owner in this tenant using contracts.",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -927,7 +927,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "fabric_tenant_balance_of <object> <owner> [options]",
-    "Show NFTs owned by this owner in this tenant",
+    "Show NFTs owned by this owner in this tenant by using the Fabric EluvioLive object tree.",
     (yargs) => {
       yargs
         .positional("object", {

@@ -1533,12 +1533,35 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
   /**
    * Set the public/nft section based on asset metadata
    *
-   * For generative NFTs we use the following convention - imageDir must contain:
-   * - one or more jpg files (will be sorted alphabetically)
-   * - optional side car attributes files with the same name as the image,
-   *   and a '.json' extension (for example: img001.jpg has img001.json)
-   * The attributes JSON file should contain a top level key 'attributes' pointing
-   * to an array of objects {"trait_type": "", "value": ""}
+   * For generative NFTs we use the following convention - nftDir must contain:
+   * One ore more json files with a '.json' extension (for example: nft001.json, nft002.json)
+   * Example JSON File:
+   *
+   * {
+   *   "count":3,                                   (OPTIONAL, Default: 1)
+   *   "name": "Example NFT",                       (OPTIONAL, Default: from Content Object)
+   *   "display_name": "Example NFT",               (OPTIONAL, Default: from Content Object)
+   *   "description" : "This is an example NFT.",   (OPTIONAL, Default: from Content Object)
+   *   "rich_text" : "",                            (OPTIONAL, Default: from Content Object)
+   *   "image": "https://image003",
+   *   "embed_url":"https://videoURL003",
+   *   "attributes:":
+   *   [
+   *     {
+   *       "trait_type":"trait01",
+   *       "value": "test1"
+   *     }
+   *   ]
+   * }
+   *
+   * The 'count' is an optional parameter to generate copies of this nft element inside
+   * the /public/nfts array
+   *
+   * All other optional keys (name, display_name, description, etc) will override the
+   * NFT content object's value from /asset_metadata/nft if present.
+   *
+   * The required key 'attributes' is an array of objects {"trait_type": "", "value": ""}
+   * and is used to calculate trait rarity
    *
    * @namedParams
    * @param {string} library ID
