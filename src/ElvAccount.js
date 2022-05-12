@@ -26,7 +26,7 @@ class ElvAccount {
     this.client.ToggleLogging(this.debug);
   }
 
-  InitWithClient({elvClient}){
+  InitWithClient({ elvClient }) {
     this.client = elvClient;
   }
 
@@ -40,7 +40,7 @@ class ElvAccount {
    * @cauth {string} tenantAdminsGroup - The tenant admins group ID to set for the user's wallet (Optional)
    * @return {Promise<Object>} - An object containing the new account mnemonic, privateKey, address, accountName, balance
    */
-  async Create({ funds = 0.25, accountName, tenantAdminsId }) {
+  async Create({ funds = 0.25, accountName, tenantAdminsAddress }) {
     if (!this.client) {
       throw Error("ElvAccount not intialized");
     }
@@ -54,36 +54,49 @@ class ElvAccount {
     const privateKey = signer.privateKey;
     const address = signer.address;
 
-    client.SetSigner({ signer });
+    try {
+      client.SetSigner({ signer });
 
-    await this.client.SendFunds({
-      recipient: address,
-      ether: funds,
-    });
-
-    await client.userProfileClient.CreateWallet();
-
-    if (tenantAdminsId) {
-      await client.userProfileClient.SetTenantId({ id: tenantAdminsId });
-      tenantAdminsId = await this.client.userProfileClient.TenantId();
-    }
-
-    if (accountName) {
-      await client.userProfileClient.ReplaceUserMetadata({
-        metadataSubtree: "public/name",
-        metadata: accountName,
+      await this.client.SendFunds({
+        recipient: address,
+        ether: funds,
       });
-    }
 
-    let balance = await wallet.GetAccountBalance({ signer });
-    return {
-      tenantAdminsId,
-      mnemonic,
-      privateKey,
-      address,
-      accountName,
-      balance,
-    };
+      await client.userProfileClient.CreateWallet();
+
+      let tenantAdminsId = "";
+      if (tenantAdminsAddress) {
+        await client.userProfileClient.SetTenantId({
+          address: tenantAdminsAddress,
+        });
+        tenantAdminsId = await this.client.userProfileClient.TenantId();
+      }
+
+      if (accountName) {
+        await client.userProfileClient.ReplaceUserMetadata({
+          metadataSubtree: "public/name",
+          metadata: accountName,
+        });
+      }
+
+      let balance = await wallet.GetAccountBalance({ signer });
+      return {
+        tenantAdminsId,
+        mnemonic,
+        privateKey,
+        address,
+        accountName,
+        balance,
+      };
+    } catch (e) {
+      if (funds > 1) {
+        await client.SendFunds({
+          recipient: this.client.signer.address,
+          ether: funds - 1,
+        });
+      }
+      throw e;
+    }
   }
 
   /**
@@ -103,33 +116,42 @@ class ElvAccount {
     return { tenantAmdinsId, walletAddress, userWalletObject, userMetadata };
   }
 
-  async CreateAccessGroup({name}){
+  async SetAccountTenantAdminsAddress({ tenantAdminsAddress }) {
+    if (!this.client) {
+      throw Error("ElvAccount not intialized");
+    }
+
+    await this.client.userProfileClient.SetTenantId({
+      address: tenantAdminsAddress,
+    });
+  }
+
+  async CreateAccessGroup({ name }) {
     const address = await this.client.CreateAccessGroup({
-      name
+      name,
     });
 
     await this.client.AddAccessGroupManager({
       contractAddress: address,
-      memberAddress: this.client.signer.address
+      memberAddress: this.client.signer.address,
     });
 
-    return {address};
+    return { name, address };
   }
 
-  async AddAccessGroup({groupAddress, accountAddress, isManager=false}) {
-    if (isManager){
+  async AddToAccessGroup({ groupAddress, accountAddress, isManager = false }) {
+    if (isManager) {
       await this.client.AddAccessGroupManager({
         contractAddress: groupAddress,
-        memberAddress: accountAddress
+        memberAddress: accountAddress,
       });
     } else {
       await this.client.AddAccessGroupMember({
         contractAddress: groupAddress,
-        memberAddress: accountAddress
+        memberAddress: accountAddress,
       });
     }
   }
-
 }
 
 exports.ElvAccount = ElvAccount;

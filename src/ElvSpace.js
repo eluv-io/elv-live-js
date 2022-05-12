@@ -1,5 +1,7 @@
 const { ElvClient } = require("elv-client-js");
-const ElvUtils = require("./ElvUtils");
+const { ElvUtils } = require("./Utils");
+const Ethers = require("ethers");
+const { ElvAccount } = require("./ElvAccount");
 
 class ElvSpace {
   /**
@@ -12,8 +14,7 @@ class ElvSpace {
    */
   constructor({ configUrl, spaceAddress, kmsAddress, debugLogging = false }) {
     this.configUrl = configUrl;
-    this.spaceAddress = spaceAddress,
-    this.kmsAddress = kmsAddress;
+    (this.spaceAddress = spaceAddress), (this.kmsAddress = kmsAddress);
     this.debug = debugLogging;
   }
 
@@ -29,63 +30,144 @@ class ElvSpace {
     this.client.ToggleLogging(this.debug);
   }
 
-  InitWithClient({elvClient}){
+  InitWithClient({ elvClient }) {
     this.client = elvClient;
   }
 
-  async DeployTenant({ tenantName, ownerAddress, adminGroupAddress }) {
-    console.log("DeployTenant");
-    let tenantContract = await ElvUtils.DeployContract({filename: "BaseTenantSpace",
-      args: [
-        this.spaceAddress,
-        tenantName,
-        this.kmsAddress
-      ]
+  async TenantCreate({ tenantName, funds = 20 }) {
+    //Create ElvAccount
+    let elvAccount = new ElvAccount({
+      configUrl: this.configUrl,
     });
 
-    let tenantFuncsContract = await ElvUtils.DeployContract({filename: "TenantFuncsBase"
+    await elvAccount.InitWithClient({
+      elvClient: this.client,
     });
+
+    const tenantSlug = tenantName.toLowerCase().replace(/ /g, "-");
+    let account = await elvAccount.Create({
+      funds: funds,
+      accountName: `${tenantSlug}-elv-admin`,
+    });
+
+    await elvAccount.Init({ privateKey: account.privateKey });
+
+    let adminGroup = await elvAccount.CreateAccessGroup({
+      name: `${tenantName} Tenant Admins`,
+    });
+
+    await elvAccount.AddToAccessGroup({
+      groupAddress: adminGroup.address,
+      accountAddress: account.address,
+      isManager: true,
+    });
+
+    // Add KMS to tenant admins group
+    await elvAccount.AddToAccessGroup({
+      groupAddress: adminGroup.address,
+      accountAddress: this.kmsAddress,
+    });
+
+    await elvAccount.SetAccountTenantAdminsAddress({
+      tenantAdminsAddress: adminGroup.address,
+    });
+
+    let contentAdminsGroup = await elvAccount.CreateAccessGroup({
+      name: `${tenantName} Content Admins`,
+    });
+    await elvAccount.AddToAccessGroup({
+      groupAddress: contentAdminsGroup.address,
+      accountAddress: account.address,
+      isManager: true,
+    });
+
+    let usersGroup = await elvAccount.CreateAccessGroup({
+      name: `${tenantName} Content Users`,
+    });
+
+    await elvAccount.AddToAccessGroup({
+      groupAddress: usersGroup.address,
+      accountAddress: account.address,
+      isManager: true,
+    });
+
+    let tenant = await this.TenantDeploy({
+      tenantName,
+      ownerAddress: account.address,
+      adminGroupAddress: adminGroup.address,
+    });
+
+    return {
+      account,
+      adminGroup,
+      contentAdminsGroup,
+      usersGroup,
+      tenant,
+    };
+  }
+
+  async TenantDeploy({ tenantName, ownerAddress, adminGroupAddress }) {
+    let tenantContract = await ElvUtils.DeployContractFile({
+      client: this.client,
+      fileName: "BaseTenantSpace",
+      args: [this.spaceAddress, tenantName, this.kmsAddress],
+    });
+
+    let tenantFuncsContract = await ElvUtils.DeployContractFile({
+      client: this.client,
+      fileName: "TenantFuncsBase",
+    });
+
+    var tt4Bytes = ElvUtils.GetFunc4Bytes(
+      "transferToken(bytes,uint256,address)"
+    );
+
+    var ag4Bytes = ElvUtils.GetFunc4Bytes("applyGroups(bytes,uint256,address)");
+
+    var array4Bytes = [tt4Bytes, ag4Bytes];
 
     await this.client.CallContractMethodAndWait({
       contractAddress: tenantContract.address,
-      abi: JSON.parse(abi),
+      abi: JSON.parse(tenantContract.abi),
       methodName: "addFuncs",
-      methodArgs: ["funcAddr", tenantFuncsContract.address],
-      formatArguments: true,
+      methodArgs: [array4Bytes, tenantFuncsContract.address],
+      formatArguments: false,
     });
 
-    if (ownerAddress){
+    if (ownerAddress) {
       await this.client.CallContractMethodAndWait({
         contractAddress: tenantContract.address,
-        abi: JSON.parse(abi),
+        abi: JSON.parse(tenantContract.abi),
         methodName: "transferOwnership",
-        methodArgs: ["newOwner", ownerAddress],
+        methodArgs: [ownerAddress],
         formatArguments: true,
       });
     }
 
-    if (adminGroupId){
-      let contractAdminGroup = await this.client.CallContractMethodAndWait({
+    if (adminGroupAddress) {
+      let contractAdminGroup = await this.client.CallContractMethod({
         contractAddress: tenantContract.address,
-        abi: JSON.parse(abi),
-        methodName: "GROUPIDADMIN",
-        formatArguments: true,
+        abi: JSON.parse(tenantContract.abi),
+        methodName: "GROUP_ID_ADMIN",
       });
 
-      await this.client.CallContractMethodAndWait({
+      contractAdminGroup = Ethers.utils.parseBytes32String(contractAdminGroup);
+
+      await this.client.CallContractMethod({
         contractAddress: tenantContract.address,
-        abi: JSON.parse(abi),
+        abi: JSON.parse(tenantContract.abi),
         methodName: "addGroup",
-        methodArgs: ["id", contractAdminGroup,
-          "groupAddr", adminGroupAddress
-        ],
+        methodArgs: [contractAdminGroup, adminGroupAddress],
         formatArguments: true,
       });
     }
 
-    return {address:tenantContract.address};
+    return {
+      name: tenantName,
+      address: tenantContract.address,
+      adminGroupAddress,
+    };
   }
-
 }
 
 exports.ElvSpace = ElvSpace;

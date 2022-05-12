@@ -1,7 +1,4 @@
-const { ElvClient } = require("elv-client-js");
 const { EluvioLive } = require("../src/EluvioLive.js");
-const { ElvSpace } = require("../src/ElvSpace.js");
-const { ElvAccount } = require("../src/ElvAccount.js");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
 
@@ -480,96 +477,6 @@ FilterListTenant = ({ tenant }) => {
   return res;
 };
 
-const CmdAccountCreate = async ({ argv }) => {
-  console.log("Account Create\n");
-  console.log(`funds: ${argv.funds}`);
-  console.log(`account_name: ${argv.account_name}`);
-  console.log(`tenant_admins: ${argv.tenant_admins}`);
-
-  try {
-    let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net]
-    });
-
-    await elvAccount.Init({
-      privateKey:process.env.PRIVATE_KEY
-    });
-
-    let res = await elvAccount.Create({
-      funds: argv.funds,
-      accountName: argv.account_name,
-      tenantAdminsId: argv.tenant_admins,
-    });
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
-const CmdAccountShow = async () => {
-  console.log("Account Show\n");
-
-  try {
-    let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net]
-    });
-
-    await elvAccount.Init({
-      privateKey:process.env.PRIVATE_KEY
-    });
-    let res = await elvAccount.Show();
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
-const CmdGroupCreate = async ({ argv }) => {
-  console.log("Group Create\n");
-  console.log(`name: ${argv.name}`);
-
-  try {
-    let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net]
-    });
-
-    await elvAccount.Init({
-      privateKey:process.env.PRIVATE_KEY
-    });
-
-    let res = await elvAccount.CreateAccessGroup({
-      name: argv.name,
-    });
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
-const CmdGroupAdd = async ({ argv }) => {
-  console.log("Group Add\n");
-  console.log(`Group address: ${argv.group_address}`);
-  console.log(`Account address: ${argv.account_address}`);
-  console.log(`Is Manager?: ${argv.is_manager}`);
-
-  try {
-    let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net]
-    });
-
-    await elvAccount.Init({
-      privateKey:process.env.PRIVATE_KEY
-    });
-
-    let res = await elvAccount.CreateAccessGroup({
-      name: argv.name,
-    });
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
 const CmdTenantNftRemove = async ({ argv }) => {
   console.log("Tenant NFT Remove");
   console.log(`Tenant ID: ${argv.tenant}`);
@@ -635,32 +542,6 @@ const CmdTenantHasNft = async ({ argv }) => {
     res = await elvlv.TenantHasNft({
       tenantId: argv.tenant,
       nftAddr: argv.addr,
-    });
-
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
-const CmdSpaceTenantDeploy = async ({ argv }) => {
-  console.log("Tenant Deploy");
-  console.log(`Tenant name: ${argv.tenant_name}`);
-  console.log(`Owner address: ${argv.owner_addr}`);
-  console.log(`Tenant admin group address: ${argv.tenant_admin_addr}`);
-
-  try {
-
-    let space = new ElvSpace({
-      configUrl: Config.networks[Config.net],
-      mainObjectId: Config.mainObjects[Config.net],
-    });
-    await space.Init({spaceOwnerKey:process.env.PRIVATE_KEY});
-
-    res = await space.DeployTenant({
-      tenantName: argv.tenant_name,
-      ownerAddress: argv.owner_addr,
-      adminGroupAddress: argv.tenant_admin_addr
     });
 
     console.log(yaml.dump(res));
@@ -1169,66 +1050,6 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "account_create <funds> <account_name> <tenant_admins>",
-    "Create a new account -> mnemonic, address, private key",
-    (yargs) => {
-      yargs
-        .positional("funds", {
-          describe:
-            "How much to fund the new account from this private key in ETH.",
-          type: "string",
-        })
-        .positional("account_name", {
-          describe: "Account Name",
-          type: "string",
-        })
-        .positional("tenant_admins", {
-          describe: "Tenant Admins group ID",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdAccountCreate({ argv });
-    }
-  )
-
-  .command("account_show", "Shows current account information.", () => {
-    CmdAccountShow();
-  })
-
-  .command(
-    "group_create <name>",
-    "Create a new access group",
-    (yargs) => {
-      yargs
-        .positional("name", {
-          describe:
-            "The name of the access group",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdGroupCreate({ argv });
-    }
-  )
-
-  .command(
-    "group_add <group_address> <account_address> <is_manager>",
-    "Add account to access group",
-    (yargs) => {
-      yargs
-        .positional("name", {
-          describe:
-            "The name of the access group",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdGroupAdd({ argv });
-    }
-  )
-
-  .command(
     "tenant_nft_remove <tenant> <addr>",
     "Removes the nft address from the tenant contract",
     (yargs) => {
@@ -1265,39 +1086,18 @@ yargs(hideBin(process.argv))
     "tenant_has_nft <tenant> <addr>",
     "Searches tenant_nfts list in tenant contract and returns true if exists",
     (yargs) => {
-      yargs.positional("tenant", {
-        describe: "Tenant ID",
-        type: "string",
-      });
-      yargs.positional("addr", {
-        describe: "NFT Address",
-        type: "string",
-      });
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "NFT Address",
+          type: "string",
+        });
     },
     (argv) => {
       CmdTenantHasNft({ argv });
-    }
-  )
-
-  .command(
-    "space_deploy_tenant <tenant_name> [owner_address] []",
-    "Deploys a tenant contract",
-    (yargs) => {
-      yargs.positional("tenant_name", {
-        describe: "Tenant Name",
-        type: "string",
-      }),
-      yargs.positional("owner_addr", {
-        describe: "Owner of the new contract",
-        type: "string",
-      }),
-      yargs.positional("tenant_admin_addr", {
-        describe: "Address of the tenant admins groups",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdSpaceTenantDeploy({ argv });
     }
   )
 
