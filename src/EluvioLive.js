@@ -1517,8 +1517,11 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       },
     ];
 
-    // Insert rarity
+    // Insert rarity if doesn't exist
     for (const i in nftMeta.attributes) {
+      if (nftMeta.attributes[i].rarity !== undefined){
+        continue;
+      }
       if (rarity && rarity[nftMeta.attributes[i].trait_type]) {
         let r = rarity[nftMeta.attributes[i].trait_type];
         nftMeta.attributes[i].rarity =
