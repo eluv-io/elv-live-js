@@ -550,17 +550,16 @@ const CmdTenantHasNft = async ({ argv }) => {
   }
 };
 
-
-const CmdTenantAddConsumer = async ({ argv }) => {
+const CmdTenantAddConsumers = async ({ argv }) => {
   console.log("Tenant Add Consumer");
   console.log(`Group ID: ${argv.group_id}`);
-  console.log(`Account Address: ${argv.addr}`);
+  console.log(`Account Addresses: ${argv.addrs}`);
 
   try {
     await Init();
-    await elvlv.TenantAddConsumer({
+    await elvlv.TenantAddConsumers({
       groupId: argv.group_id,
-      accountAddress: argv.addr,
+      accountAddresses: argv.addrs,
     });
 
     console.log("Success!");
@@ -569,6 +568,27 @@ const CmdTenantAddConsumer = async ({ argv }) => {
     console.error("ERROR:", e);
   }
 };
+
+const CmdTenantHasConsumer = async ({ argv }) => {
+  console.log("Tenant Has Consumer");
+  console.log(`Group ID: ${argv.group_id}`);
+  console.log(`Account Address: ${argv.addr}`);
+
+  try {
+    await Init();
+    var res = await elvlv.TenantHasConsumer({
+      groupId: argv.group_id,
+      accountAddress: argv.addr,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
+
 yargs(hideBin(process.argv))
   .command(
     "nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]",
@@ -1121,8 +1141,29 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_add_consumer <group_id> <addr>",
-    "Adds address to the tenant's consumer group.",
+    "tenant_add_consumers <group_id> [addrs..]",
+    "Adds address(es) to the tenant's consumer group.",
+    (yargs) => {
+      yargs
+        .positional("group_id", {
+          describe: "Tenant consumer group ID",
+          type: "string",
+        })
+        .option("addrs", {
+          describe:
+            "Addresses the to add",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantAddConsumers({ argv });
+    }
+  )
+
+
+  .command(
+    "tenant_has_consumer <group_id> <addr>",
+    "Shows addresses in the tenant consumers group.",
     (yargs) => {
       yargs
         .positional("group_id", {
@@ -1136,7 +1177,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdTenantAddConsumer({ argv });
+      CmdTenantHasConsumer({ argv });
     }
   )
 
