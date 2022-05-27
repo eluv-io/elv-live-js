@@ -1142,7 +1142,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_add_consumers <group_id> [addrs..]",
-    "Adds address(es) to the tenant's consumer group.",
+    "Adds address(es) to the tenant's consumer group",
     (yargs) => {
       yargs
         .positional("group_id", {
@@ -1163,7 +1163,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_has_consumer <group_id> <addr>",
-    "Shows addresses in the tenant consumers group.",
+    "Returns true or false if addr is in the tenant consumer group",
     (yargs) => {
       yargs
         .positional("group_id", {
