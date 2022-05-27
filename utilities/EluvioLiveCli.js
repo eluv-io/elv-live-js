@@ -550,6 +550,25 @@ const CmdTenantHasNft = async ({ argv }) => {
   }
 };
 
+
+const CmdTenantAddConsumer = async ({ argv }) => {
+  console.log("Tenant Add Consumer");
+  console.log(`Group ID: ${argv.group_id}`);
+  console.log(`Account Address: ${argv.addr}`);
+
+  try {
+    await Init();
+    await elvlv.TenantAddConsumer({
+      groupId: argv.group_id,
+      accountAddress: argv.addr,
+    });
+
+    console.log("Success!");
+
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
 yargs(hideBin(process.argv))
   .command(
     "nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]",
@@ -1098,6 +1117,26 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantHasNft({ argv });
+    }
+  )
+
+  .command(
+    "tenant_add_consumer <group_id> <addr>",
+    "Adds address to the tenant's consumer group.",
+    (yargs) => {
+      yargs
+        .positional("group_id", {
+          describe: "Tenant consumer group ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe:
+            "Address the to add",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantAddConsumer({ argv });
     }
   )
 

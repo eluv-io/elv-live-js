@@ -1866,6 +1866,24 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return toJson ? await res.json() : await res.text();
   }
 
+  async TenantAddConsumer({groupId, accountAddress}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantConsumerGroup.abi")
+    );
+    const address = Utils.HashToAddress(groupId);
+    console.log("Address: ", address);
+ 
+    var response = await this.client.CallContractMethodAndWait({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "grantAccess",
+      methodArgs: [accountAddress],
+      formatArguments: true,
+    });
+    
+    return response;
+  }
+
   FilterTenant({ object }) {
     let result = {};
     result.marketplaces = object.marketplaces;
