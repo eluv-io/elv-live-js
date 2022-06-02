@@ -1693,6 +1693,30 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
   }
 
   /**
+   * Burn the specified NFT token as the owner
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   * @return {Promise<Object>} - NFT info JSON
+   */
+  async NftTransfer({ addr, tokenId, toAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "safeTransferFrom",
+      methodArgs: [fromAddr, toAddr, tokenId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
    * Transfer an NFT as a proxy owner.
    *
    * @namedParams
