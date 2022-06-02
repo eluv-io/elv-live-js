@@ -1367,6 +1367,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.image = m.nft.image;
     pnft.playable = m.nft.playable;
 
+    pnft.style = m.nft.style;
+
     let total_supply = pnft.total_supply.toString();
 
     // pnft.addtl_info = addtlInfo;
@@ -1495,6 +1497,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.youtube_url = nftMeta.embed_url;
     pnft.image = nftMeta.image;
     pnft.playable = m.nft.playable;
+
+    pnft.style = m.nft.style;
 
     if (!pnft.total_supply) {
       throw Error("No Total supply found");
