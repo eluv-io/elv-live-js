@@ -1457,7 +1457,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
   /**
    * Make a single element of the public/nfts section of a generative,
-   * multi-image token based on asset metadata and input parameters.
+   * multi image/video token based on asset metadata and input parameters.
    * The public/nfts key is an array of objects, each equivalent to
    * the single NFT public/nft section.
    *
@@ -1537,7 +1537,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * Set the public/nft section based on asset metadata
    *
    * For generative NFTs we use the following convention - nftDir must contain:
-   * One ore more json files with a '.json' extension (for example: nft001.json, nft002.json)
+   * One or more json files with a '.json' extension (for example: nft001.json, nft002.json)
    * Example JSON File:
    *
    * {
@@ -1552,7 +1552,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    *   [
    *     {
    *       "trait_type":"trait01",
-   *       "value": "test1"
+   *       "value": "test1",
+   *       "rarity": 0.2                            (OPTIONAL, If not present, it will be calculated)
    *     }
    *   ]
    * }
@@ -1564,7 +1565,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * NFT content object's value from /asset_metadata/nft if present.
    *
    * The required key 'attributes' is an array of objects {"trait_type": "", "value": ""}
-   * and is used to calculate trait rarity
+   * and is used to calculate trait rarity. If rarity is already present in the attribute,
+   * it will be used instead.
    *
    * @namedParams
    * @param {string} library ID
