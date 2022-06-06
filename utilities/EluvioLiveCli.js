@@ -1,6 +1,7 @@
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
+const { Marketplace } = require("../src/Marketplace");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -10,15 +11,20 @@ const path = require("path");
 const prompt = require("prompt-sync")({ sigint: true });
 
 let elvlv;
+let marketplace;
 
 const Init = async () => {
   console.log("Network: " + Config.net);
 
-  elvlv = new EluvioLive({
+  const config = {
     configUrl: Config.networks[Config.net],
     mainObjectId: Config.mainObjects[Config.net],
-  });
+  };
+  elvlv = new EluvioLive(config);
   await elvlv.Init();
+
+  marketplace = new Marketplace(config);
+  await marketplace.Init();
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
@@ -119,14 +125,17 @@ const CmdNftShow = async ({ argv }) => {
 };
 
 const CmdNftBuild = async ({ argv }) => {
-  console.log("NFT - build public/nft", argv.object);
+  console.log("NFT - build ");
+  console.log("NFT - libraryId ", argv.library);
+  console.log("NFT - objectId ", argv.object);
+  console.log("NFT - nftDir ", argv.nft_dir);
   try {
     await Init();
 
     let res = await elvlv.NftBuild({
       libraryId: argv.library,
       objectId: argv.object,
-      imageDir: argv.image_dir,
+      nftDir: argv.nft_dir,
     });
 
     console.log(yaml.dump(res));
@@ -563,7 +572,49 @@ const CmdTenantAddConsumers = async ({ argv }) => {
     });
 
     console.log("Success!");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
 
+const CmdMarketplaceAddItem = async ({ argv }) => {
+  console.log("Marketplace Add Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`NFT Template Object ID/Hash: ${argv.object}`);
+  console.log(`NFT Template Price: ${argv.price}`);
+  console.log(`NFT For Sale: ${argv.forSale}`);
+
+  try {
+    await Init();
+    const res = await marketplace.MarketplaceAddItem({
+      nftObjectId: argv.object.startsWith("iq__") ? argv.object : undefined,
+      nftObjectHash: argv.object.startsWith("hq__") ? argv.object : undefined,
+      marketplaceObjectId: argv.marketplace,
+      price: argv.price,
+      currency: argv.currency,
+      maxPerUser: argv.maxPerUser,
+      forSale: argv.forSale,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdMarketplaceRemoveItem = async ({ argv }) => {
+  console.log("Marketplace Remove Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`NFT Template Object ID: ${argv.object}`);
+
+  try {
+    await Init();
+    const res = await marketplace.MarketplaceRemoveItem({
+      nftObjectId: argv.object,
+      marketplaceObjectId: argv.marketplace,
+    });
+
+    console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -587,7 +638,45 @@ const CmdTenantHasConsumer = async ({ argv }) => {
   }
 };
 
+const CmdStorefrontSectionAddItem = async ({ argv }) => {
+  console.log("Storefront Section Add Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`Marketplace Item SKU: ${argv.sku}`);
+  console.log(`Marketplace Storefront Section: ${argv.section}`);
 
+  try {
+    await Init();
+    const res = await marketplace.StorefrontSectionAddItem({
+      objectId: argv.marketplace,
+      sku: argv.sku,
+      name: argv.section,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdStorefrontSectionRemoveItem = async ({ argv }) => {
+  console.log("Storefront Section Remove Item");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`Marketplace Item SKU: ${argv.sku}`);
+  console.log(`Object Write Token: ${argv.writeToken}`);
+
+  try {
+    await Init();
+    const res = await marketplace.StorefrontSectionRemoveItem({
+      objectId: argv.marketplace,
+      sku: argv.sku,
+      writeToken: argv.writeToken,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
 
 yargs(hideBin(process.argv))
   .command(
@@ -748,8 +837,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_build <library> <object>",
-    "Build the public/nft section based on asset metadata",
+    "nft_build <library> <object> [options]",
+    "Build the public/nft section based on asset metadata. If --nft_dir is specified, will build a generative nft based on *.json files inside the dir. See README.md for more details.",
     (yargs) => {
       yargs
         .positional("library", {
@@ -760,10 +849,10 @@ yargs(hideBin(process.argv))
           describe: "Content object hash (hq__) or id (iq__)",
           type: "string",
         })
-        .option("image_dir", {
+        .option("nft_dir", {
           describe:
             "Create a multi-media NFT (generative). " +
-            "Directory contains image and attribute (json) files",
+            "Directory contains json files describing the nft.  See documentation to see *.json structure.",
           type: "string",
         });
     },
@@ -823,7 +912,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_balance_of <tenant> <owner>",
-    "Show NFTs owned by this owner in this tenant",
+    "Show NFTs owned by this owner in this tenant using contracts.",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -842,7 +931,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "fabric_tenant_balance_of <object> <owner> [options]",
-    "Show NFTs owned by this owner in this tenant",
+    "Show NFTs owned by this owner in this tenant by using the Fabric EluvioLive object tree.",
     (yargs) => {
       yargs
         .positional("object", {
@@ -1159,8 +1248,7 @@ yargs(hideBin(process.argv))
       CmdTenantAddConsumers({ argv });
     }
   )
-
-
+  
   .command(
     "tenant_has_consumer <group_id> <addr>",
     "Returns true or false if addr is in the tenant consumer group",
@@ -1178,6 +1266,92 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantHasConsumer({ argv });
+    "marketplace_add_item <marketplace> <object> <price> [forSale]",
+    "Adds an item to a marketplace",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string",
+      });
+      yargs.positional("object", {
+        describe: "NFT Template object hash (hq__) or id (iq__)",
+        type: "string",
+      });
+      yargs.positional("price", {
+        describe: "Price to list for",
+        type: "number",
+      });
+      yargs.positional("forSale", {
+        describe: "Whether to show for sale",
+        type: "boolean",
+        default: true,
+      });
+    },
+    (argv) => {
+      CmdMarketplaceAddItem({ argv });
+    }
+  )
+
+  .command(
+    "marketplace_remove_item <marketplace> <object>",
+    "Removes an item from a marketplace",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string",
+      });
+      yargs.positional("object", {
+        describe: "NFT Template object ID (iq__)",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdMarketplaceRemoveItem({ argv });
+    }
+  )
+
+  .command(
+    "storefront_section_add_item <marketplace> <sku> [section]",
+    "Adds an item to a marketplace storefront section",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string",
+      });
+      yargs.positional("sku", {
+        describe: "Marketplace item SKU",
+        type: "string",
+      });
+      yargs.positional("section", {
+        describe: "Storefront section name",
+        type: "string",
+        string: true,
+      });
+    },
+    (argv) => {
+      CmdStorefrontSectionAddItem({ argv });
+    }
+  )
+
+  .command(
+    "storefront_section_remove_item <marketplace> <sku> [writeToken]",
+    "Removes an item from a marketplace storefront section",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string",
+      });
+      yargs.positional("sku", {
+        describe: "Marketplace item SKU",
+        type: "string",
+      });
+      yargs.positional("writeToken", {
+        describe: "Write token (if not provided, object will be finalized)",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdStorefrontSectionRemoveItem({ argv });
     }
   )
 

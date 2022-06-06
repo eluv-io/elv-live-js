@@ -20,6 +20,7 @@ Then:
 ./elv-live --help
 
 EluvioLive CLI
+
 Usage: elv-live <command>
 
 Commands:
@@ -34,16 +35,19 @@ Commands:
   nft_show <addr>                           Show info on this NFT
   nft_proxy_transfer <addr> <token_id>      Tranfer NFT as a proxy owner
   <from_addr> <to_addr>
-  nft_build <library> <object>              Build the public/nft section based
-                                            on asset metadata
-  nft_lookup <addr> <token_id>              Decode and look up a /local NFT by
+  nft_build <library> <object> [options]    Build the public/nft section based
+                                            on asset metadata. If --nft_dir is
+                                            specified, will build a generative
+                                            nft based on *.json files inside the
+                                            dir. See README.md for more details.
+  nft_lookup <addr> <token_id>              Decode and look up a local NFT by
                                             external token ID
-  tenant_show <tenant> <library> <object>   Show info on this tenant
-  [event] [marketplace]
+  tenant_show <tenant> [options]            Show info on this tenant
   tenant_balance_of <tenant> <owner>        Show NFTs owned by this owner in
-                                            this tenant
+                                            this tenant using contracts.
   fabric_tenant_balance_of <object>         Show NFTs owned by this owner in
-  <owner> [options]                         this tenant
+  <owner> [options]                         this tenant by using the Fabric
+                                            EluvioLive object tree.
   site_show <library> <object>              Show info on this site/event
   site_set_drop <library> <object> <uuid>   Set drop dates for a site/event
   <start_date> [options]
@@ -58,6 +62,23 @@ Commands:
   <marketplace> <processor>
   tenant_secondary_sales <tenant>           Show tenant secondary sales history
   <processor>
+  account_create <funds> <account_name>     Create a new account -> mnemonic,
+  <tenant_admins>                           address, private key
+  account_show                              Shows current account information.
+  tenant_nft_remove <tenant> <addr>         Removes the nft address from the
+                                            tenant contract
+  tenant_nft_list <tenant>                  List all tenant_nfts within a tenant
+                                            contract
+  tenant_has_nft <tenant> <addr>            Searches tenant_nfts list in tenant
+                                            contract and returns true if exists
+  marketplace_add_item <marketplace>        Adds an item to a marketplace
+  <object> <price> [forSale]
+  marketplace_remove_item <marketplace>     Removes an item from a marketplace
+  <object>
+  storefront_section_add_item               Adds an item to a marketplace
+  <marketplace> <sku> [section]             storefront section
+  storefront_section_remove_item            Removes an item from a marketplace
+  <marketplace> <sku> [writeToken]          storefront section
 
 Options:
   --version  Show version number                                       [boolean]
@@ -109,3 +130,51 @@ Set up an NFT contract and associate it with an NFT Template object:
 ```
 ./elv-live nft_add_contract  ilib3ErteXJcCoTapj2ZhEvMKWau6jET iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP itenYQbgk66W1BFEqWr95xPmHZEjmdF --minthelper 0x59e79eFE007F5208857a646Db5cBddA82261Ca81 --cap 100 --name "TEST NFT SERIES A" --symbol "TESTA"
 ```
+
+## NFT Build for generative images or videos
+
+./elv-live nft_build command assumes the nft_template object has been created and source images and videos have been ingested into the fabric such that image and embedded video urls have been generated and working.
+
+Refer to this repo/branch for ingesting gernerative nft videos:
+https://github.com/eluv-io/elv-client-js/blob/simple-ingest-wayne/utilities/NFTIngest.js
+
+Note: Video Ingest will soon be brought into elv-live-js in the near future.
+
+eg.
+`./elv-live nft_build ilib3ErteXJcCoTapj2ZhEvMKWau6jET iq__9dMPeAjFqxCp5Ck6BZBuy3BcA1f --nft_dir /Users/test/nftsTest`
+
+For generative NFTs we use the following convention --nft_dir must contain:
+One or more json files with a '.json' extension (for example: nft001.json, nft002.json)
+Example JSON File:
+```
+{
+  "count":3,                                   (OPTIONAL, Default: 1)
+  "name": "Example NFT",                       (OPTIONAL, Default: from Content Object)
+  "display_name": "Example NFT",               (OPTIONAL, Default: from Content Object)
+  "description" : "This is an example NFT.",   (OPTIONAL, Default: from Content Object)
+  "rich_text" : "",                            (OPTIONAL, Default: from Content Object)
+  "image": "https://image003",
+  "embed_url":"https://videoURL003",
+  "attributes:":
+  [
+    {
+      "trait_type":"trait01",
+      "value": "test1",
+      "rarity": 0.2                            (OPTIONAL, If not present, it will be calculated)
+    }
+  ]
+}
+```
+The 'count' is an optional parameter to generate copies of this nft element inside
+the /public/nfts array
+
+For generative images, the "image" attribute must contain a valid url to the image.
+For generative videos, the embed_url points to a playable video url.
+
+All other optional keys (name, display_name, description, etc) will override the
+NFT content object's value from /asset_metadata/nft if present.
+
+The required key 'attributes' is an array of objects {"trait_type": "", "value": ""}
+and is used to calculate trait rarity. If rarity is already present in the attribute,
+it will be used instead.
+   
