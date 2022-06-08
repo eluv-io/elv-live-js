@@ -353,6 +353,26 @@ const CmdTenantWallets = async ({ argv }) => {
   }
 };
 
+const CmdNFTRefresh = async ({ argv }) => {
+  console.log( "NFT Refresh");
+  console.log(`NFT Refresh\ntenant: ${argv.tenant}}`);
+  console.log(`address: ${argv.addr}}`);
+
+  try {
+    await Init();
+
+    let res = await elvlv.NFTRefresh({
+      tenant: argv.tenant,
+      address: argv.addr,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 const CmdList = async ({ argv }) => {
   console.log(`list tenant: ${argv.tenant} tenant_slug: ${argv.tenant_slug}`);
   try {
@@ -1089,6 +1109,25 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantWallets({ argv });
+    }
+  )
+
+  .command(
+    "nft_refresh <tenant> <addr>",
+    "Synchronize backend listings with fabric metadata for a specific tenant's NFT. Requires tenant Key.",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNFTRefresh({ argv });
     }
   )
 
