@@ -1730,12 +1730,45 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return res;
   }
 
+  /**
+   * Synchronize backend listings with fabric metadata for a specific tenant's NFT
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {integer} maxNumber - The address to mint to
+   * @return {Promise<Object>} - The API Response containing list of Wallet Info
+   */
+  async NFTRefresh({ tenant, address}) {
+    let res = await this.PutServiceRequest({
+      path: urljoin("/mkt/refresh/", tenant, address)
+    });
+    return await res.json();
+  }
+  
+
   async Sign({ message }) {
     const signature = await this.client.authClient.Sign(
       Ethers.utils.keccak256(Ethers.utils.toUtf8Bytes(message))
     );
     const multiSig = this.client.utils.FormatSignature(signature);
     return { signature, multiSig };
+  }
+
+  async PutServiceRequest({ path }) {
+    const { multiSig } = await this.Sign({
+      message: "",
+    });
+
+    let res = await this.client.authClient.MakeAuthServiceRequest({
+      method: "PUT",
+      path: urljoin("/as", path),
+      body: "",
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+    });
+
+    return res;
   }
 
   async PostServiceRequest({ path, body }) {
