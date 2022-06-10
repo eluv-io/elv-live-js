@@ -1755,7 +1755,10 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
   }
 
   async PutServiceRequest({ path }) {
-    var body = {};
+    let ts = Date.now();
+    var body = {
+      ts
+    };
     const { multiSig } = await this.Sign({
       message: JSON.stringify(body),
     });
