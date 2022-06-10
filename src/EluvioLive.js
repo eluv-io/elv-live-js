@@ -1755,14 +1755,15 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
   }
 
   async PutServiceRequest({ path }) {
+    var body = {};
     const { multiSig } = await this.Sign({
-      message: "",
+      message: JSON.stringify(body),
     });
 
     let res = await this.client.authClient.MakeAuthServiceRequest({
       method: "PUT",
       path: urljoin("/as", path),
-      body: "",
+      body,
       headers: {
         Authorization: `Bearer ${multiSig}`,
       },
