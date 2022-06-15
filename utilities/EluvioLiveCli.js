@@ -1,3 +1,4 @@
+const { ElvClient } = require("elv-client-js");
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
@@ -352,6 +353,26 @@ const CmdTenantWallets = async ({ argv }) => {
   }
 };
 
+const CmdNFTRefresh = async ({ argv }) => {
+  console.log( "NFT Refresh");
+  console.log(`NFT Refresh\ntenant: ${argv.tenant}}`);
+  console.log(`address: ${argv.addr}}`);
+
+  try {
+    await Init();
+
+    let res = await elvlv.NFTRefresh({
+      tenant: argv.tenant,
+      address: argv.addr,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 const CmdList = async ({ argv }) => {
   console.log(`list tenant: ${argv.tenant} tenant_slug: ${argv.tenant_slug}`);
   try {
@@ -486,6 +507,37 @@ FilterListTenant = ({ tenant }) => {
   return res;
 };
 
+const CmdAccountCreate = async ({ argv }) => {
+  console.log("Account Create\n");
+  console.log(`funds: ${argv.funds}`);
+  console.log(`account_name: ${argv.account_name}`);
+  console.log(`tenant_admins: ${argv.tenant_admins}`);
+
+  try {
+    await Init();
+    let res = await elvlv.AccountCreate({
+      funds: argv.funds,
+      accountName: argv.account_name,
+      tenantAdminsId: argv.tenant_admins,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdAccountShow = async () => {
+  console.log("Account Show\n");
+
+  try {
+    await Init();
+    let res = await elvlv.AccountShow();
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdTenantNftRemove = async ({ argv }) => {
   console.log("Tenant NFT Remove");
   console.log(`Tenant ID: ${argv.tenant}`);
@@ -559,24 +611,6 @@ const CmdTenantHasNft = async ({ argv }) => {
   }
 };
 
-const CmdTenantAddConsumers = async ({ argv }) => {
-  console.log("Tenant Add Consumer");
-  console.log(`Group ID: ${argv.group_id}`);
-  console.log(`Account Addresses: ${argv.addrs}`);
-
-  try {
-    await Init();
-    await elvlv.TenantAddConsumers({
-      groupId: argv.group_id,
-      accountAddresses: argv.addrs,
-    });
-
-    console.log("Success!");
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
 const CmdMarketplaceAddItem = async ({ argv }) => {
   console.log("Marketplace Add Item");
   console.log(`Marketplace Object ID: ${argv.marketplace}`);
@@ -612,24 +646,6 @@ const CmdMarketplaceRemoveItem = async ({ argv }) => {
     const res = await marketplace.MarketplaceRemoveItem({
       nftObjectId: argv.object,
       marketplaceObjectId: argv.marketplace,
-    });
-
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
-const CmdTenantHasConsumer = async ({ argv }) => {
-  console.log("Tenant Has Consumer");
-  console.log(`Group ID: ${argv.group_id}`);
-  console.log(`Account Address: ${argv.addr}`);
-
-  try {
-    await Init();
-    var res = await elvlv.TenantHasConsumer({
-      groupId: argv.group_id,
-      accountAddress: argv.addr,
     });
 
     console.log(yaml.dump(res));
@@ -1097,6 +1113,25 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "nft_refresh <tenant> <addr>",
+    "Synchronize backend listings with fabric metadata for a specific Tenant's NFT. RE",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNFTRefresh({ argv });
+    }
+  )
+
+  .command(
     "list [options]",
     "List the Eluvio Live Tenants",
     (yargs) => {
@@ -1176,6 +1211,34 @@ yargs(hideBin(process.argv))
       CmdTenantSecondarySales({ argv });
     }
   )
+
+  .command(
+    "account_create <funds> <account_name> <tenant_admins>",
+    "Create a new account -> mnemonic, address, private key",
+    (yargs) => {
+      yargs
+        .positional("funds", {
+          describe:
+            "How much to fund the new account from this private key in ETH.",
+          type: "string",
+        })
+        .positional("account_name", {
+          describe: "Account Name",
+          type: "string",
+        })
+        .positional("tenant_admins", {
+          describe: "Tenant Admins group ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAccountCreate({ argv });
+    }
+  )
+
+  .command("account_show", "Shows current account information.", () => {
+    CmdAccountShow();
+  })
 
   .command(
     "tenant_nft_remove <tenant> <addr>",
@@ -1266,6 +1329,10 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantHasConsumer({ argv });
+    }
+  )
+
+  .command(
     "marketplace_add_item <marketplace> <object> <price> [forSale]",
     "Adds an item to a marketplace",
     (yargs) => {
