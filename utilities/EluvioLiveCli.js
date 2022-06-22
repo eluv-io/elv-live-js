@@ -611,6 +611,24 @@ const CmdTenantHasNft = async ({ argv }) => {
   }
 };
 
+const CmdTenantAddConsumers = async ({ argv }) => {
+  console.log("Tenant Add Consumer");
+  console.log(`Group ID: ${argv.group_id}`);
+  console.log(`Account Addresses: ${argv.addrs}`);
+
+  try {
+    await Init();
+    await elvlv.TenantAddConsumers({
+      groupId: argv.group_id,
+      accountAddresses: argv.addrs,
+    });
+
+    console.log("Success!");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdMarketplaceAddItem = async ({ argv }) => {
   console.log("Marketplace Add Item");
   console.log(`Marketplace Object ID: ${argv.marketplace}`);
@@ -646,6 +664,24 @@ const CmdMarketplaceRemoveItem = async ({ argv }) => {
     const res = await marketplace.MarketplaceRemoveItem({
       nftObjectId: argv.object,
       marketplaceObjectId: argv.marketplace,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantHasConsumer = async ({ argv }) => {
+  console.log("Tenant Has Consumer");
+  console.log(`Group ID: ${argv.group_id}`);
+  console.log(`Account Address: ${argv.addr}`);
+
+  try {
+    await Init();
+    var res = await elvlv.TenantHasConsumer({
+      groupId: argv.group_id,
+      accountAddress: argv.addr,
     });
 
     console.log(yaml.dump(res));
