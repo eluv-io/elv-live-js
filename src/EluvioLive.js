@@ -2002,6 +2002,20 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return toJson ? await res.json() : await res.text();
   }
 
+  /**
+   * Get failed transfer report for the tenant. Used to identify payments collected on failed transfers.
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response containing the failed transfers report
+   */
+  async TenantTransferFailures({ tenant }) {
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/transfers/failed/", tenant),
+    });
+    return await res.json();
+  }
+
   FilterTenant({ object }) {
     let result = {};
     result.marketplaces = object.marketplaces;

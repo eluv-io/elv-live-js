@@ -456,6 +456,21 @@ const CmdTenantSecondarySales = async ({ argv }) => {
   }
 };
 
+const CmdTenantTransferFailures = async ({ argv }) => {
+  console.log(`Tenant Trasfer Failures: ${argv.tenant}`);
+
+  try {
+    await Init();
+
+    let res = await elvlv.TenantTransferFailures({
+      tenant: argv.tenant,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 FilterListTenant = ({ tenant }) => {
   let res = {};
   res.result = {};
@@ -1209,6 +1224,21 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantSecondarySales({ argv });
+    }
+  )
+
+  .command(
+    "tenant_transfer_failures <tenant>",
+    "Show tenant transfer failures",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantTransferFailures({ argv });
     }
   )
 
