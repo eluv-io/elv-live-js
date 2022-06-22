@@ -1229,7 +1229,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_transfer_failures <tenant>",
-    "Show tenant transfer failures",
+    "Show tenant transfer failures. Used to identify payments collected on failed transfers.",
     (yargs) => {
       yargs
         .positional("tenant", {
