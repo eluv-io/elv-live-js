@@ -72,25 +72,6 @@ class ElvSpace {
       tenantAdminsAddress: adminGroup.address,
     });
 
-    let contentAdminsGroup = await elvAccount.CreateAccessGroup({
-      name: `${tenantName} Content Admins`,
-    });
-    await elvAccount.AddToAccessGroup({
-      groupAddress: contentAdminsGroup.address,
-      accountAddress: account.address,
-      isManager: true,
-    });
-
-    let usersGroup = await elvAccount.CreateAccessGroup({
-      name: `${tenantName} Content Users`,
-    });
-
-    await elvAccount.AddToAccessGroup({
-      groupAddress: usersGroup.address,
-      accountAddress: account.address,
-      isManager: true,
-    });
-
     let tenant = await this.TenantDeploy({
       tenantName,
       ownerAddress: account.address,
@@ -100,8 +81,6 @@ class ElvSpace {
     return {
       account,
       adminGroup,
-      contentAdminsGroup,
-      usersGroup,
       tenant,
     };
   }
