@@ -31,7 +31,7 @@ class ElvAccount {
   }
 
   Address () {
-    if(this.client){
+    if (this.client){
       return this.client.signer.address;
     }
     return null;
