@@ -35,54 +35,59 @@ class ElvSpace {
   }
 
   async TenantCreate({ tenantName, funds = 20 }) {
-    //Create ElvAccount
-    let elvAccount = new ElvAccount({
-      configUrl: this.configUrl,
-    });
+    let account = null;
+    let elvAccount = null;
+    try {
+      //Create ElvAccount
+      elvAccount = new ElvAccount({
+        configUrl: this.configUrl,
+      });
 
-    await elvAccount.InitWithClient({
-      elvClient: this.client,
-    });
+      await elvAccount.InitWithClient({
+        elvClient: this.client,
+      });
 
-    const tenantSlug = tenantName.toLowerCase().replace(/ /g, "-");
-    let account = await elvAccount.Create({
-      funds: funds,
-      accountName: `${tenantSlug}-elv-admin`,
-    });
+      const tenantSlug = tenantName.toLowerCase().replace(/ /g, "-");
+      account = await elvAccount.Create({
+        funds: funds,
+        accountName: `${tenantSlug}-elv-admin`,
+      });
 
-    await elvAccount.Init({ privateKey: account.privateKey });
+      await elvAccount.Init({ privateKey: account.privateKey });
 
-    let adminGroup = await elvAccount.CreateAccessGroup({
-      name: `${tenantName} Tenant Admins`,
-    });
+      let adminGroup = await elvAccount.CreateAccessGroup({
+        name: `${tenantName} Tenant Admins`,
+      });
 
-    await elvAccount.AddToAccessGroup({
-      groupAddress: adminGroup.address,
-      accountAddress: account.address,
-      isManager: true,
-    });
+      await elvAccount.AddToAccessGroup({
+        groupAddress: adminGroup.address,
+        accountAddress: account.address,
+        isManager: true,
+      });
 
-    // Add KMS to tenant admins group
-    await elvAccount.AddToAccessGroup({
-      groupAddress: adminGroup.address,
-      accountAddress: this.kmsAddress,
-    });
+      // Add KMS to tenant admins group
+      await elvAccount.AddToAccessGroup({
+        groupAddress: adminGroup.address,
+        accountAddress: this.kmsAddress,
+      });
 
-    await elvAccount.SetAccountTenantAdminsAddress({
-      tenantAdminsAddress: adminGroup.address,
-    });
+      await elvAccount.SetAccountTenantAdminsAddress({
+        tenantAdminsAddress: adminGroup.address,
+      });
 
-    let tenant = await this.TenantDeploy({
-      tenantName,
-      ownerAddress: account.address,
-      adminGroupAddress: adminGroup.address,
-    });
-
-    return {
-      account,
-      adminGroup,
-      tenant,
-    };
+      let tenant = await this.TenantDeploy({
+        tenantName,
+        ownerAddress: account.address,
+        adminGroupAddress: adminGroup.address,
+      });
+      return {
+        account,
+        adminGroup,
+        tenant,
+      };
+    } catch (e){
+      throw {error:e, account};
+    }
   }
 
   async TenantDeploy({ tenantName, ownerAddress, adminGroupAddress }) {
@@ -144,6 +149,7 @@ class ElvSpace {
     return {
       name: tenantName,
       address: tenantContract.address,
+      id: "iten" +this.client.utils.AddressToHash(tenantContract.address),
       adminGroupAddress,
     };
   }

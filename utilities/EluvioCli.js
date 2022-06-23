@@ -123,7 +123,7 @@ const CmdGroupAdd = async ({ argv }) => {
 const CmdSpaceTenantCreate = async ({ argv }) => {
   console.log("Tenant Deploy");
   console.log(`Tenant name: ${argv.tenant_name}`);
-  console.log(`Funds funds: ${argv.funds}`);
+  console.log(`Funds: ${argv.funds}`);
 
   try {
     let space = new ElvSpace({
@@ -139,6 +139,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    
   } catch (e) {
     console.error("ERROR:", e);
   }

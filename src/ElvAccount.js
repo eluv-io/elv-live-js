@@ -30,6 +30,13 @@ class ElvAccount {
     this.client = elvClient;
   }
 
+  Address () {
+    if(this.client){
+      return this.client.signer.address;
+    }
+    return null;
+  }
+
   /**
    * Creates a new account including wallet object and contract.
    * Current client must be initialized and funded.
@@ -107,13 +114,14 @@ class ElvAccount {
       throw Error("ElvAccount not intialized");
     }
 
+    let address = await this.client.signer.address;
     let tenantAmdinsId = await this.client.userProfileClient.TenantId();
     let walletAddress = await this.client.userProfileClient.WalletAddress();
     let userWalletObject =
       await this.client.userProfileClient.UserWalletObjectInfo();
     let userMetadata = await this.client.userProfileClient.UserMetadata();
 
-    return { tenantAmdinsId, walletAddress, userWalletObject, userMetadata };
+    return { address, tenantAmdinsId, walletAddress, userWalletObject, userMetadata };
   }
 
   async SetAccountTenantAdminsAddress({ tenantAdminsAddress }) {
