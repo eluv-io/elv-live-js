@@ -4,7 +4,7 @@ const networks = {
   main: "https://main.net955305.contentfabric.io",
   demo: "https://demov3.net955210.contentfabric.io",
   demov3: "https://demov3.net955210.contentfabric.io",
-  test: "https://host-f6a.contentfabric.io/config?qspace=test",
+  test: "https://host-468.contentfabric.io/config?qspace=test&self",
 };
 
 const mainObjects = {

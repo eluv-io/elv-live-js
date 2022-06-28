@@ -53,9 +53,9 @@ class ElvAccount {
       throw Error("ElvAccount not intialized");
     }
     if (tenantAdminsAddress) {
-      if(!Utils.ValidAddress(tenantAdminsAddress)) {
+      if (!Utils.ValidAddress(tenantAdminsAddress)) {
         throw Error(`Invalid tenant admins address: ${tenantAdminsAddress}`);
-     }
+      }
     }
 
     let client = await ElvClient.FromConfigurationUrl({

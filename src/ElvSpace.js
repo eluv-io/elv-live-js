@@ -39,7 +39,6 @@ class ElvSpace {
     let elvAccount = null;
     try {
       //Create ElvAccount
-      console.log("create account");
       elvAccount = new ElvAccount({
         configUrl: this.configUrl,
       });
@@ -79,6 +78,7 @@ class ElvSpace {
         tenantAdminsAddress: adminGroup.address,
       });
 
+      console.log("tenant admins:", adminGroup);
       console.log("deploy tenant");
       let tenant = await this.TenantDeploy({
         tenantName,
@@ -102,6 +102,8 @@ class ElvSpace {
       args: [this.spaceAddress, tenantName, this.kmsAddress],
     });
 
+    let res = {};
+
     let tenantFuncsContract = await ElvUtils.DeployContractFile({
       client: this.client,
       fileName: "TenantFuncsBase",
@@ -115,23 +117,14 @@ class ElvSpace {
 
     var array4Bytes = [tt4Bytes, ag4Bytes];
 
-    await this.client.CallContractMethodAndWait({
+    res = await this.client.CallContractMethodAndWait({
       contractAddress: tenantContract.address,
       abi: JSON.parse(tenantContract.abi),
       methodName: "addFuncs",
       methodArgs: [array4Bytes, tenantFuncsContract.address],
       formatArguments: false,
     });
-
-    if (ownerAddress) {
-      await this.client.CallContractMethodAndWait({
-        contractAddress: tenantContract.address,
-        abi: JSON.parse(tenantContract.abi),
-        methodName: "transferOwnership",
-        methodArgs: [ownerAddress],
-        formatArguments: true,
-      });
-    }
+    console.log("Result addFuncs", res);
 
     if (adminGroupAddress) {
       let contractAdminGroup = await this.client.CallContractMethod({
@@ -142,13 +135,40 @@ class ElvSpace {
 
       contractAdminGroup = Ethers.utils.parseBytes32String(contractAdminGroup);
 
-      await this.client.CallContractMethod({
+      res = await this.client.CallContractMethodAndWait({
         contractAddress: tenantContract.address,
         abi: JSON.parse(tenantContract.abi),
         methodName: "addGroup",
         methodArgs: [contractAdminGroup, adminGroupAddress],
         formatArguments: true,
       });
+
+      console.log("Result set admin group", res);
+    }
+
+    if (ownerAddress) {
+      res = await this.client.CallContractMethodAndWait({
+        contractAddress: tenantContract.address,
+        abi: JSON.parse(tenantContract.abi),
+        methodName: "transferOwnership",
+        methodArgs: [ownerAddress],
+        formatArguments: true,
+      });
+      console.log("Result transferOwnership", res);
+
+      let owner = await this.client.CallContractMethod({
+        contractAddress: tenantContract.address,
+        abi: JSON.parse(tenantContract.abi),
+        methodName: "owner",
+      });
+      let creator = await this.client.CallContractMethod({
+        contractAddress: tenantContract.address,
+        abi: JSON.parse(tenantContract.abi),
+        methodName: "creator",
+      });
+
+      console.log("New owner", owner, "creator", creator);
+
     }
 
     return {
