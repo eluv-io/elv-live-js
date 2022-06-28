@@ -94,6 +94,30 @@ const CmdGroupCreate = async ({ argv }) => {
   }
 };
 
+const CmdAccountSend = async ({ argv }) => {
+  console.log("Account Send\n");
+  console.log(`address: ${argv.address}`);
+  console.log(`funds: ${argv.funds}`);
+
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    await elvAccount.Send({
+      address: argv.address,
+      funds: argv.funds
+    });
+    console.log("Success!");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdGroupAdd = async ({ argv }) => {
   console.log("Group Add\n");
   console.log(`Group address: ${argv.group_address}`);
@@ -213,6 +237,26 @@ yargs(hideBin(process.argv))
   .command("account_show", "Shows current account information.", () => {
     CmdAccountShow();
   })
+
+  .command(
+    "account_send <address> <funds>",
+    "Send funds to a given address using this key",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "Account Name",
+          type: "string",
+        })
+        .positional("funds", {
+          describe:
+            "How much to fund the new account from this private key in ETH.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAccountSend({ argv });
+    }
+  )
 
   .command(
     "group_create <name>",
