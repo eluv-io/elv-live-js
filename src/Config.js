@@ -4,12 +4,13 @@ const networks = {
   main: "https://main.net955305.contentfabric.io",
   demo: "https://demov3.net955210.contentfabric.io",
   demov3: "https://demov3.net955210.contentfabric.io",
-  test: "https://test.net955203.contentfabric.io",
+  test: "https://host-f6a.contentfabric.io/config?qspace=test",
 };
 
 const mainObjects = {
   main: "iq__suqRJUt2vmXsyiWS5ZaSGwtFU9R",
   demov3: "iq__2gkNh8CCZqFFnoRpEUmz7P3PaBQG",
+  test: "" // Not yet available
 };
 
 const consts = {
@@ -25,6 +26,12 @@ const consts = {
     kmsAddress: "0x501382e5f15501427d1fc3d93e949c96b25a2224",
     spaceAddress: "0x9b29360efb1169c801bbcbe8e50d0664dcbc78d3",
   },
+  test: {
+    tokenUriStart: "", // Not yet available
+    tokenUriEnd: "", // Note yet available
+    kmsAddress: "0x567f76e552cfea5a81945a87133867f45fafc418",
+    spaceAddress: "0x8e5935ca87ad11779e3aec4adcb48a5cb7c2abb4",
+  }
 };
 
 exports.Config = { net, networks, mainObjects, consts };

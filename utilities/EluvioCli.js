@@ -187,7 +187,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("tenant_admins", {
-          describe: "Tenant admins group address",
+          describe: "Tenant admins group address (hex)",
           type: "string",
         });
     },
@@ -201,7 +201,7 @@ yargs(hideBin(process.argv))
     "Sets the tenant admins group address for this account.",
     (yargs) => {
       yargs.positional("tenant_admins", {
-        describe: "Tenant admins group address",
+        describe: "Tenant admins group address (hex)",
         type: "string",
       });
     },
@@ -229,13 +229,22 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "group_add <group_address> <account_address> <is_manager>",
+    "group_add <group_address> <account_address>",
     "Add account to access group",
     (yargs) => {
-      yargs.positional("name", {
-        describe: "The name of the access group",
-        type: "string",
-      });
+      yargs
+        .positional("group_address", {
+          describe: "The address of the access group (hex)",
+          type: "string",
+        })
+        .positional("account_address", {
+          describe: "The address to add as member (hex)",
+          type: "string",
+        })
+        .option("is_manager", {
+          describe: "Set new address as group manager",
+          type: "bool",
+        });
     },
     (argv) => {
       CmdGroupAdd({ argv });
