@@ -1356,6 +1356,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.address = m.nft.address;
     pnft.total_supply = m.nft.total_supply;
     pnft.template_id = m.nft.template_id;
+    pnft.id_format = m.nft.id_format;
 
     pnft.copyright = m.nft.copyright;
     pnft.created_at = m.nft.created_at;
@@ -1744,7 +1745,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     });
     return await res.json();
   }
-  
+
 
   async Sign({ message }) {
     const signature = await this.client.authClient.Sign(
