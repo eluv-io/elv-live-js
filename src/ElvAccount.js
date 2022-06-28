@@ -120,8 +120,10 @@ class ElvAccount {
     let userWalletObject =
       await this.client.userProfileClient.UserWalletObjectInfo();
     let userMetadata = await this.client.userProfileClient.UserMetadata();
+    let wallet = this.client.GenerateWallet();
+    let balance = await wallet.GetAccountBalance({ signer:this.client.signer });
 
-    return { address, tenantAmdinsId, walletAddress, userWalletObject, userMetadata };
+    return { address, tenantAmdinsId, walletAddress, userWalletObject, userMetadata, balance };
   }
 
   async SetAccountTenantAdminsAddress({ tenantAdminsAddress }) {
@@ -145,6 +147,13 @@ class ElvAccount {
     });
 
     return { name, address };
+  }
+
+  async Send({ address, funds }) {
+    await this.client.SendFunds({
+      recipient: address,
+      ether: funds,
+    });
   }
 
   async AddToAccessGroup({ groupAddress, accountAddress, isManager = false }) {
