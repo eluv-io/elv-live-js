@@ -1,4 +1,5 @@
 const { ElvClient } = require("elv-client-js");
+const Utils = require("elv-client-js/src/Utils.js");
 
 class ElvAccount {
   /**
@@ -51,6 +52,11 @@ class ElvAccount {
     if (!this.client) {
       throw Error("ElvAccount not intialized");
     }
+    if (tenantAdminsAddress) {
+      if (!Utils.ValidAddress(tenantAdminsAddress)) {
+        throw Error(`Invalid tenant admins address: ${tenantAdminsAddress}`);
+      }
+    }
 
     let client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
@@ -64,12 +70,14 @@ class ElvAccount {
     try {
       client.SetSigner({ signer });
 
-      await this.client.SendFunds({
+      let res = await this.client.SendFunds({
         recipient: address,
         ether: funds,
       });
+      console.log("Add funds res:", res);
 
-      await client.userProfileClient.CreateWallet();
+      res = await client.userProfileClient.CreateWallet();
+      console.log("Create wallet contract:", res);
 
       let tenantAdminsId = "";
       if (tenantAdminsAddress) {
@@ -77,6 +85,7 @@ class ElvAccount {
           address: tenantAdminsAddress,
         });
         tenantAdminsId = await this.client.userProfileClient.TenantId();
+        console.log("Set tenant admins id:", res);
       }
 
       if (accountName) {
@@ -96,10 +105,10 @@ class ElvAccount {
         balance,
       };
     } catch (e) {
-      if (funds > 1) {
+      if (funds > 0.01) {
         await client.SendFunds({
           recipient: this.client.signer.address,
-          ether: funds - 1,
+          ether: funds - 0.01,
         });
       }
       throw e;
@@ -157,18 +166,21 @@ class ElvAccount {
   }
 
   async AddToAccessGroup({ groupAddress, accountAddress, isManager = false }) {
+    let res = {};
     if (isManager) {
-      await this.client.AddAccessGroupManager({
+      res = await this.client.AddAccessGroupManager({
         contractAddress: groupAddress,
         memberAddress: accountAddress,
       });
     } else {
-      await this.client.AddAccessGroupMember({
+      res = await this.client.AddAccessGroupMember({
         contractAddress: groupAddress,
         memberAddress: accountAddress,
       });
     }
+    return { res };
   }
+
 }
 
 exports.ElvAccount = ElvAccount;

@@ -39,6 +39,7 @@ class ElvSpace {
     let elvAccount = null;
     try {
       //Create ElvAccount
+      console.log("create account");
       elvAccount = new ElvAccount({
         configUrl: this.configUrl,
       });
@@ -52,8 +53,11 @@ class ElvSpace {
         funds: funds,
         accountName: `${tenantSlug}-elv-admin`,
       });
+      console.log("create account - done");
 
       await elvAccount.Init({ privateKey: account.privateKey });
+
+      console.log("create admin group");
 
       let adminGroup = await elvAccount.CreateAccessGroup({
         name: `${tenantName} Tenant Admins`,
@@ -75,6 +79,7 @@ class ElvSpace {
         tenantAdminsAddress: adminGroup.address,
       });
 
+      console.log("deploy tenant");
       let tenant = await this.TenantDeploy({
         tenantName,
         ownerAddress: account.address,
