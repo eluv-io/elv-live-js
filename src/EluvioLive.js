@@ -1087,6 +1087,9 @@ class EluvioLive {
     });
     nftInfo.totalSupply = Number(totalSupply);
 
+    nftInfo.transferFee = await this.NftGetTransferFee({address: addr});
+    
+
     try {
       const minted = await this.client.CallContractMethod({
         contractAddress: addr,
@@ -1747,6 +1750,51 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return await res.json();
   }
 
+  /**
+   * Gets the baseTransferFee of the NFT Contract
+   *
+   * @namedParams
+   * @param {string} address - The NFT contract address
+   * @return {string} - The fee as a big number sring
+   */
+  async NftGetTransferFee({address}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "baseTransferFee",
+      formatArguments: true,
+    });
+
+    return Number(res);
+  }
+  
+  /**
+   * Sets the baseTransferFee of the NFT Contract
+   *
+   * @namedParams
+   * @param {string} address - The NFT contract address
+   * @param {string} fee - Fee in ETH to set as a big number string
+   * @return {Promise<Object>} - The Contract transaction logs
+   */
+  async NftSetTransferFee({address, fee}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "setBaseTransferFee",
+      methodArgs: [fee],
+      formatArguments: true,
+    });
+
+    return res;
+  }
 
   async Sign({ message }) {
     const signature = await this.client.authClient.Sign(
