@@ -709,6 +709,41 @@ const CmdStorefrontSectionRemoveItem = async ({ argv }) => {
   }
 };
 
+const CmdNftSetTransferFee = async ({ argv }) => {
+  console.log("NFT Set Transfer Fee");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Fee: ${argv.fee}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NftSetTransferFee({ 
+      address: argv.addr,
+      fee: argv.fee 
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftGetTransferFee = async ({ argv }) => {
+  console.log("NFT Get Transfer Fee");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NftGetTransferFee({address: argv.addr});
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 yargs(hideBin(process.argv))
   .command(
     "nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]",
@@ -911,6 +946,41 @@ yargs(hideBin(process.argv))
       console.log(x);
     }
   )
+
+  .command(
+    "nft_set_transfer_fee <addr> <fee>",
+    "Decode and look up a local NFT by external token ID",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("fee", {
+          describe: "Fee in ETH",
+          type: "string", // BigNumber as string
+        });
+    },
+    (argv) => {
+      CmdNftSetTransferFee({ argv });
+    }
+  )
+
+  .command(
+    "nft_get_transfer_fee <addr>",
+    "Decode and look up a local NFT by external token ID",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftGetTransferFee({ argv });
+    }
+  )
+
 
   .command(
     "tenant_show <tenant> [options]",
