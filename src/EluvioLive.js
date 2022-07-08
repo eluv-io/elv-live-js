@@ -1014,6 +1014,9 @@ class EluvioLive {
     });
     nftInfo.totalSupply = Number(totalSupply);
 
+    nftInfo.transferFee = await this.NftGetTransferFee({address: addr});
+    
+
     try {
       const minted = await this.client.CallContractMethod({
         contractAddress: addr,
@@ -1283,6 +1286,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.address = m.nft.address;
     pnft.total_supply = m.nft.total_supply;
     pnft.template_id = m.nft.template_id;
+    pnft.id_format = m.nft.id_format;
 
     pnft.copyright = m.nft.copyright;
     pnft.created_at = m.nft.created_at;
@@ -1293,6 +1297,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.youtube_url = m.nft.marketplace_attributes.opensea.youtube_url;
     pnft.image = m.nft.image;
     pnft.playable = m.nft.playable;
+
+    pnft.style = m.nft.style;
 
     let total_supply = pnft.total_supply.toString();
 
@@ -1412,6 +1418,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.address = m.nft.address;
     pnft.total_supply = m.nft.total_supply;
     pnft.template_id = m.nft.template_id;
+    pnft.id_format = m.nft.id_format;
 
     pnft.copyright = m.nft.copyright;
     pnft.created_at = m.nft.created_at;
@@ -1422,6 +1429,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.youtube_url = nftMeta.embed_url;
     pnft.image = nftMeta.image;
     pnft.playable = m.nft.playable;
+
+    pnft.style = m.nft.style;
 
     if (!pnft.total_supply) {
       throw Error("No Total supply found");
@@ -1653,12 +1662,94 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return res;
   }
 
+  /**
+   * Synchronize backend listings with fabric metadata for a specific tenant's NFT
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {integer} maxNumber - The address to mint to
+   * @return {Promise<Object>} - The API Response containing list of Wallet Info
+   */
+  async NFTRefresh({ tenant, address}) {
+    let res = await this.PutServiceRequest({
+      path: urljoin("/mkt/refresh/", tenant, address)
+    });
+    return await res.json();
+  }
+
+  /**
+   * Gets the baseTransferFee of the NFT Contract
+   *
+   * @namedParams
+   * @param {string} address - The NFT contract address
+   * @return {string} - The fee as a big number sring
+   */
+  async NftGetTransferFee({address}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "baseTransferFee",
+      formatArguments: true,
+    });
+
+    return Number(res);
+  }
+  
+  /**
+   * Sets the baseTransferFee of the NFT Contract
+   *
+   * @namedParams
+   * @param {string} address - The NFT contract address
+   * @param {string} fee - Fee in ETH to set as a big number string
+   * @return {Promise<Object>} - The Contract transaction logs
+   */
+  async NftSetTransferFee({address, fee}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "setBaseTransferFee",
+      methodArgs: [fee],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
   async Sign({ message }) {
     const signature = await this.client.authClient.Sign(
       Ethers.utils.keccak256(Ethers.utils.toUtf8Bytes(message))
     );
     const multiSig = this.client.utils.FormatSignature(signature);
     return { signature, multiSig };
+  }
+
+  async PutServiceRequest({ path }) {
+    let ts = Date.now();
+    var body = {
+      ts
+    };
+    const { multiSig } = await this.Sign({
+      message: JSON.stringify(body),
+    });
+
+    let res = await this.client.authClient.MakeAuthServiceRequest({
+      method: "PUT",
+      path: urljoin("/as", path),
+      body,
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+    });
+
+    return res;
   }
 
   async PostServiceRequest({ path, body }) {
@@ -1921,6 +2012,20 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     });
     
     return response;
+  }
+  
+  /**
+   * Get failed transfer report for the tenant. Used to identify payments collected on failed transfers.
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response containing the failed transfers report
+   */
+  async TenantTransferFailures({ tenant }) {
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/transfers/failed/", tenant),
+    });
+    return await res.json();
   }
 
   FilterTenant({ object }) {

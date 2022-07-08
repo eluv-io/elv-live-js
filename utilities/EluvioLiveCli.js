@@ -1,4 +1,3 @@
-const { ElvClient } = require("elv-client-js");
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
@@ -456,6 +455,21 @@ const CmdTenantSecondarySales = async ({ argv }) => {
   }
 };
 
+const CmdTenantTransferFailures = async ({ argv }) => {
+  console.log(`Tenant Trasfer Failures: ${argv.tenant}`);
+
+  try {
+    await Init();
+
+    let res = await elvlv.TenantTransferFailures({
+      tenant: argv.tenant,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 FilterListTenant = ({ tenant }) => {
   let res = {};
   res.result = {};
@@ -730,6 +744,41 @@ const CmdStorefrontSectionRemoveItem = async ({ argv }) => {
   }
 };
 
+const CmdNftSetTransferFee = async ({ argv }) => {
+  console.log("NFT Set Transfer Fee");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Fee: ${argv.fee}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NftSetTransferFee({ 
+      address: argv.addr,
+      fee: argv.fee 
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftGetTransferFee = async ({ argv }) => {
+  console.log("NFT Get Transfer Fee");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NftGetTransferFee({address: argv.addr});
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 yargs(hideBin(process.argv))
   .command(
     "nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]",
@@ -932,6 +981,41 @@ yargs(hideBin(process.argv))
       console.log(x);
     }
   )
+
+  .command(
+    "nft_set_transfer_fee <addr> <fee>",
+    "Decode and look up a local NFT by external token ID",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("fee", {
+          describe: "Fee in ETH",
+          type: "string", // BigNumber as string
+        });
+    },
+    (argv) => {
+      CmdNftSetTransferFee({ argv });
+    }
+  )
+
+  .command(
+    "nft_get_transfer_fee <addr>",
+    "Decode and look up a local NFT by external token ID",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftGetTransferFee({ argv });
+    }
+  )
+
 
   .command(
     "tenant_show <tenant> [options]",
@@ -1150,7 +1234,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "nft_refresh <tenant> <addr>",
-    "Synchronize backend listings with fabric metadata for a specific Tenant's NFT. RE",
+    "Synchronize backend listings with fabric metadata for a specific tenant's NFT. Requires tenant Key.",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -1245,6 +1329,21 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantSecondarySales({ argv });
+    }
+  )
+
+  .command(
+    "transfer_errors <tenant>",
+    "Show tenant transfer failures. Used to identify payments collected on failed transfers.",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantTransferFailures({ argv });
     }
   )
 
