@@ -83,6 +83,8 @@ class ElvSpace {
         tenantAdminsAddress: adminGroup.address,
       });
 
+      account.tenantAdminsId = await elvAccount.client.userProfileClient.TenantId();
+
       if (this.debug){
         console.log("tenant admins:", adminGroup);
       }
@@ -192,7 +194,7 @@ class ElvSpace {
     return {
       name: tenantName,
       address: tenantContract.address,
-      id: "iten" +this.client.utils.AddressToHash(tenantContract.address),
+      id: ElvUtils.AddressToId({prefix:"iten", address:tenantContract.address}),
       adminGroupAddress,
     };
   }

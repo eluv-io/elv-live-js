@@ -1,4 +1,6 @@
 const { EluvioLive } = require("../src/EluvioLive.js");
+const { ElvUtils } = require("../src/Utils");
+const { InitializeTenant }  = require("../src/Provision");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
 const { Marketplace } = require("../src/Marketplace");
@@ -778,6 +780,30 @@ const CmdNftGetTransferFee = async ({ argv }) => {
   }
 };
 
+const CmdTenantProvision = async ({ argv }) => {
+  console.log("Tenant Provision");
+  console.log(`tenantName: ${argv.tenant_name}`);
+  console.log(`verbose: ${argv.verbose}`);
+
+  try {
+    await Init();
+    let client = elvlv.client;
+    let kmsId = ElvUtils.AddressToId({prefix:"ikms", 
+      address:Config.consts[Config.net].kmsAddress});
+    console.log(`kmsId: ${kmsId}`);
+
+    res = await InitializeTenant({
+      client,
+      kmsId, 
+      tenantName:argv.tenant_name,
+      debug: argv.verbose
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
 
 yargs(hideBin(process.argv))
   .option("verbose", {
@@ -1561,6 +1587,21 @@ yargs(hideBin(process.argv))
       CmdStorefrontSectionRemoveItem({ argv });
     }
   )
+
+  .command(
+    "tenant_provision <tenant_name>",
+    "Provisions a new tenant account with standard media libraries and content types. Note this account must be created using space_tenant_create.",
+    (yargs) => {
+      yargs.positional("tenant_name", {
+        describe: "Name of the tenant (without the elv-admin postfix). Used to create access groups name.",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdTenantProvision({ argv });
+    }
+  )
+
   .strict()
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")

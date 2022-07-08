@@ -130,11 +130,19 @@ class ElvAccount {
     }
 
     let address = await this.client.signer.address;
-    let tenantAmdinsId = await this.client.userProfileClient.TenantId();
-    let walletAddress = await this.client.userProfileClient.WalletAddress();
+    let tenantAmdinsId = "";
+    let userMetadata = "";
+    try {
+      tenantAmdinsId = await this.client.userProfileClient.TenantId();
+    } catch (e){ console.log("No tenantAdminsId set."); }
+
+    try {
+      userMetadata = await this.client.userProfileClient.UserMetadata();
+    } catch (e){ console.log("No User Metadata."); }
+
+    let walletAddress = await this.client.userProfileClient.WalletAddress() || "";
     let userWalletObject =
-      await this.client.userProfileClient.UserWalletObjectInfo();
-    let userMetadata = await this.client.userProfileClient.UserMetadata();
+      await this.client.userProfileClient.UserWalletObjectInfo() || "";
     let wallet = this.client.GenerateWallet();
     let balance = await wallet.GetAccountBalance({ signer:this.client.signer });
 

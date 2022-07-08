@@ -56,7 +56,7 @@ const CmdAccountSetTenantAdminsAddress = async ({ argv }) => {
     console.error("ERROR:", e);
   }
 };
-const CmdAccountShow = async () => {
+const CmdAccountShow = async ({ argv }) => {
   console.log("Account Show\n");
 
   try {
@@ -248,8 +248,8 @@ yargs(hideBin(process.argv))
     }
   )
 
-  .command("account_show", "Shows current account information.", () => {
-    CmdAccountShow();
+  .command("account_show", "Shows current account information.", (argv) => {
+    CmdAccountShow({argv});
   })
 
   .command(
