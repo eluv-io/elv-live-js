@@ -1,4 +1,3 @@
-const { ElvClient } = require("elv-client-js");
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
@@ -626,6 +625,24 @@ const CmdTenantHasNft = async ({ argv }) => {
   }
 };
 
+const CmdTenantAddConsumers = async ({ argv }) => {
+  console.log("Tenant Add Consumer");
+  console.log(`Group ID: ${argv.group_id}`);
+  console.log(`Account Addresses: ${argv.addrs}`);
+
+  try {
+    await Init();
+    await elvlv.TenantAddConsumers({
+      groupId: argv.group_id,
+      accountAddresses: argv.addrs,
+    });
+
+    console.log("Success!");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdMarketplaceAddItem = async ({ argv }) => {
   console.log("Marketplace Add Item");
   console.log(`Marketplace Object ID: ${argv.marketplace}`);
@@ -661,6 +678,24 @@ const CmdMarketplaceRemoveItem = async ({ argv }) => {
     const res = await marketplace.MarketplaceRemoveItem({
       nftObjectId: argv.object,
       marketplaceObjectId: argv.marketplace,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantHasConsumer = async ({ argv }) => {
+  console.log("Tenant Has Consumer");
+  console.log(`Group ID: ${argv.group_id}`);
+  console.log(`Account Address: ${argv.addr}`);
+
+  try {
+    await Init();
+    var res = await elvlv.TenantHasConsumer({
+      groupId: argv.group_id,
+      accountAddress: argv.addr,
     });
 
     console.log(yaml.dump(res));
@@ -745,6 +780,11 @@ const CmdNftGetTransferFee = async ({ argv }) => {
 
 
 yargs(hideBin(process.argv))
+  .option("verbose", {
+    describe: "Verbose mode",
+    type: "boolean",
+    alias: "v"
+  })
   .command(
     "nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]",
     "Add a new or existing NFT contract to an NFT Template object",
@@ -1377,17 +1417,58 @@ yargs(hideBin(process.argv))
     "tenant_has_nft <tenant> <addr>",
     "Searches tenant_nfts list in tenant contract and returns true if exists",
     (yargs) => {
-      yargs.positional("tenant", {
-        describe: "Tenant ID",
-        type: "string",
-      });
-      yargs.positional("addr", {
-        describe: "NFT Address",
-        type: "string",
-      });
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "NFT Address",
+          type: "string",
+        });
     },
     (argv) => {
       CmdTenantHasNft({ argv });
+    }
+  )
+
+  .command(
+    "tenant_add_consumers <group_id> [addrs..]",
+    "Adds address(es) to the tenant's consumer group",
+    (yargs) => {
+      yargs
+        .positional("group_id", {
+          describe: "Tenant consumer group ID",
+          type: "string",
+        })
+        .option("addrs", {
+          describe:
+            "Addresses the to add",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantAddConsumers({ argv });
+    }
+  )
+  
+  .command(
+    "tenant_has_consumer <group_id> <addr>",
+    "Returns true or false if addr is in the tenant consumer group",
+    (yargs) => {
+      yargs
+        .positional("group_id", {
+          describe: "Tenant consumer group ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe:
+            "Address the to add",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantHasConsumer({ argv });
     }
   )
 
@@ -1480,7 +1561,6 @@ yargs(hideBin(process.argv))
       CmdStorefrontSectionRemoveItem({ argv });
     }
   )
-
   .strict()
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")
