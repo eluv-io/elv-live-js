@@ -803,7 +803,7 @@ const CmdTenantProvision = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
 
 yargs(hideBin(process.argv))
   .option("verbose", {
