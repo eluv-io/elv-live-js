@@ -780,6 +780,11 @@ const CmdNftGetTransferFee = async ({ argv }) => {
 
 
 yargs(hideBin(process.argv))
+  .option("verbose", {
+    describe: "Verbose mode",
+    type: "boolean",
+    alias: "v"
+  })
   .command(
     "nft_add_contract <library> <object> <tenant> [minthelper] [cap] [name] [symbol] [nftaddr] [hold]",
     "Add a new or existing NFT contract to an NFT Template object",
@@ -1556,7 +1561,6 @@ yargs(hideBin(process.argv))
       CmdStorefrontSectionRemoveItem({ argv });
     }
   )
-
   .strict()
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")

@@ -52,11 +52,16 @@ class ElvSpace {
         funds: funds,
         accountName: `${tenantSlug}-elv-admin`,
       });
-      console.log("create account - done");
+
+      if (this.debug){
+        console.log("create account - done");
+      }
 
       await elvAccount.Init({ privateKey: account.privateKey });
 
-      console.log("create admin group");
+      if (this.debug){
+        console.log("create admin group");
+      }
 
       let adminGroup = await elvAccount.CreateAccessGroup({
         name: `${tenantName} Tenant Admins`,
@@ -78,8 +83,10 @@ class ElvSpace {
         tenantAdminsAddress: adminGroup.address,
       });
 
-      console.log("tenant admins:", adminGroup);
-      console.log("deploy tenant");
+      if (this.debug){
+        console.log("tenant admins:", adminGroup);
+      }
+
       let tenant = await this.TenantDeploy({
         tenantName,
         ownerAddress: account.address,
@@ -124,8 +131,11 @@ class ElvSpace {
       methodArgs: [array4Bytes, tenantFuncsContract.address],
       formatArguments: false,
     });
-    console.log("Result addFuncs", res);
-
+    
+    if (this.debug){
+      console.log("Result addFuncs", res);
+    }
+    
     if (adminGroupAddress) {
       let contractAdminGroup = await this.client.CallContractMethod({
         contractAddress: tenantContract.address,
@@ -143,7 +153,9 @@ class ElvSpace {
         formatArguments: true,
       });
 
-      console.log("Result set admin group", res);
+      if (this.debug){
+        console.log("Result set admin group", res);
+      }
     }
 
     if (ownerAddress) {
@@ -154,20 +166,26 @@ class ElvSpace {
         methodArgs: [ownerAddress],
         formatArguments: true,
       });
-      console.log("Result transferOwnership", res);
+
+      if (this.debug){
+        console.log("Result transferOwnership", res);
+      }
 
       let owner = await this.client.CallContractMethod({
         contractAddress: tenantContract.address,
         abi: JSON.parse(tenantContract.abi),
         methodName: "owner",
       });
+
       let creator = await this.client.CallContractMethod({
         contractAddress: tenantContract.address,
         abi: JSON.parse(tenantContract.abi),
         methodName: "creator",
       });
 
-      console.log("New owner", owner, "creator", creator);
+      if (this.debug){
+        console.log("New owner", owner, "creator", creator);
+      }
 
     }
 

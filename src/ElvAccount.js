@@ -67,6 +67,11 @@ class ElvAccount {
     const privateKey = signer.privateKey;
     const address = signer.address;
 
+    if (this.debug){
+      console.log("privateKey: ",privateKey);
+      console.log("address: ", address);
+    }
+
     try {
       client.SetSigner({ signer });
 
@@ -74,10 +79,12 @@ class ElvAccount {
         recipient: address,
         ether: funds,
       });
-      console.log("Add funds res:", res);
 
-      res = await client.userProfileClient.CreateWallet();
-      console.log("Create wallet contract:", res);
+      if (this.debug){
+        console.log("Send Funds result: ", res);
+      }
+
+      await client.userProfileClient.CreateWallet();
 
       let tenantAdminsId = "";
       if (tenantAdminsAddress) {
@@ -85,7 +92,6 @@ class ElvAccount {
           address: tenantAdminsAddress,
         });
         tenantAdminsId = await this.client.userProfileClient.TenantId();
-        console.log("Set tenant admins id:", res);
       }
 
       if (accountName) {

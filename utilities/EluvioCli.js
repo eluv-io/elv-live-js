@@ -16,6 +16,7 @@ const CmdAccountCreate = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -40,6 +41,7 @@ const CmdAccountSetTenantAdminsAddress = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -60,6 +62,7 @@ const CmdAccountShow = async () => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -79,6 +82,7 @@ const CmdGroupCreate = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -102,6 +106,7 @@ const CmdAccountSend = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -127,6 +132,7 @@ const CmdGroupAdd = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -148,12 +154,14 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
   console.log("Tenant Deploy");
   console.log(`Tenant name: ${argv.tenant_name}`);
   console.log(`Funds: ${argv.funds}`);
+  console.log(`verbose: ${argv.verbose}`)
 
   try {
     let space = new ElvSpace({
       configUrl: Config.networks[Config.net],
       spaceAddress: Config.consts[Config.net].spaceAddress,
       kmsAddress: Config.consts[Config.net].kmsAddress,
+      debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
 
@@ -180,6 +188,7 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
       configUrl: Config.networks[Config.net],
       spaceAddress: Config.consts[Config.net].spaceAddress,
       kmsAddress: Config.consts[Config.net].kmsAddress,
+      debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
 
@@ -196,6 +205,11 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
 };
 
 yargs(hideBin(process.argv))
+  .option("verbose", {
+    describe: "Verbose mode",
+    type: "boolean",
+    alias: "v"
+  })
   .command(
     "account_create <funds> <account_name> [tenant_admins]",
     "Create a new account -> mnemonic, address, private key",
@@ -319,7 +333,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "space_tenant_create <tenant_name> <funds>",
+    "space_tenant_create <tenant_name> <funds> [",
     "Creates a new tenant account including all supporting access groups and deployment of contracts. PRIVATE_KEY must be set for the space owner.",
     (yargs) => {
       yargs
@@ -337,7 +351,6 @@ yargs(hideBin(process.argv))
       CmdSpaceTenantCreate({ argv });
     }
   )
-
   .strict()
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")

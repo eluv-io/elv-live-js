@@ -2013,7 +2013,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     
     return response;
   }
-  
+
   /**
    * Get failed transfer report for the tenant. Used to identify payments collected on failed transfers.
    *
