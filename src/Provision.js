@@ -115,6 +115,15 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     }
   };
 
+  const masterMetadata = {
+    bitcode_flags: "abrmaster",
+    bitcode_format: "builtin",
+    public: {
+      "eluv.manageApp": "default",
+    }
+  };
+
+
   const titleTypeId = await client.CreateContentType({
     name: `${tenantName} - Title`,
     metadata: {...typeMetadata}
@@ -131,7 +140,7 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
 
   const masterTypeId = await client.CreateContentType({
     name: `${tenantName} - Title Master`,
-    metadata: {...typeMetadata}
+    metadata: {...masterMetadata}
   });
 
   await SetObjectPermissions(client, masterTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
