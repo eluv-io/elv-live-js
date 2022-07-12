@@ -1015,7 +1015,7 @@ class EluvioLive {
     nftInfo.totalSupply = Number(totalSupply);
 
     nftInfo.transferFee = await this.NftGetTransferFee({address: addr});
-    
+
 
     try {
       const minted = await this.client.CallContractMethod({
@@ -1277,6 +1277,7 @@ class EluvioLive {
 
 Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
+    pnft.test = m.nft.test;
     pnft.name = m.nft.name;
     pnft.display_name = m.nft.display_name;
     pnft.description = m.nft.description; // + addtlInfo;
@@ -1698,7 +1699,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
     return Number(res);
   }
-  
+
   /**
    * Sets the baseTransferFee of the NFT Contract
    *
@@ -1984,7 +1985,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       path.resolve(__dirname, "../contracts/v3/BaseTenantConsumerGroup.abi")
     );
     const address = Utils.HashToAddress(groupId);
- 
+
     var response = await this.client.CallContractMethodAndWait({
       contractAddress: address,
       abi: JSON.parse(abi),
@@ -1992,7 +1993,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       methodArgs: [accountAddresses],
       formatArguments: true,
     });
-    
+
     return response;
   }
 
@@ -2002,7 +2003,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       path.resolve(__dirname, "../contracts/v3/BaseTenantConsumerGroup.abi")
     );
     const address = Utils.HashToAddress(groupId);
- 
+
     var response = await this.client.CallContractMethod({
       contractAddress: address,
       abi: JSON.parse(abi),
@@ -2010,7 +2011,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       methodArgs: [accountAddress],
       formatArguments: true,
     });
-    
+
     return response;
   }
 
