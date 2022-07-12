@@ -1,6 +1,7 @@
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { ElvUtils } = require("../src/Utils");
-const { InitializeTenant }  = require("../src/Provision");
+const Utils = require("elv-client-js/src/Utils.js");
+const { InitializeTenant, AddConsumerGroup }  = require("../src/Provision");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
 const { Marketplace } = require("../src/Marketplace");
@@ -792,12 +793,32 @@ const CmdTenantProvision = async ({ argv }) => {
       address:Config.consts[Config.net].kmsAddress});
     console.log(`kmsId: ${kmsId}`);
 
-    res = await InitializeTenant({
+    res = await AddConsumerGroup({
       client,
       kmsId, 
       tenantName:argv.tenant_name,
       debug: argv.verbose
     });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
+const CmdTenantAddConsumerGroup = async ({ argv }) => {
+  console.log("Tenant Add Consumer Group");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`verbose: ${argv.verbose}`);
+
+  try {
+    await Init();
+    let client = elvlv.client;
+    let tenantAddress = Utils.HashToAddress(argv.tenant);
+    console.log(`Tenant Contract Address: ${tenantAddress}`);
+
+    res = await AddConsumerGroup({client, tenantAddress, debug:argv.verbose});
 
     console.log(yaml.dump(res));
   } catch (e) {
@@ -1593,12 +1614,26 @@ yargs(hideBin(process.argv))
     "Provisions a new tenant account with standard media libraries and content types. Note this account must be created using space_tenant_create.",
     (yargs) => {
       yargs.positional("tenant_name", {
-        describe: "Name of the tenant (without the elv-admin postfix). Used to create access groups name.",
+        describe: "Name of the tenant (without the elv-admin postfix). Used to create access groups name",
         type: "string",
       });
     },
     (argv) => {
       CmdTenantProvision({ argv });
+    }
+  )
+
+  .command(
+    "tenant_add_consumer_group <tenant>",
+    "Deploys a BaseTenantConsumerGroup and adds it to this tenant's contract.",
+    (yargs) => {
+      yargs.positional("tenant", {
+        describe: "Tenant ID",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdTenantAddConsumerGroup({ argv });
     }
   )
 

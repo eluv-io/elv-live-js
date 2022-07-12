@@ -1,4 +1,7 @@
 /* eslint-disable no-console */
+const fs = require("fs");
+const path = require("path");
+const { ElvUtils } = require("../src/Utils");
 
 const liveTypes = [
   { name: "Eluvio LIVE Drop Event Site", spec: require("elv-client-js/typeSpecs/DropEventSite") },
@@ -255,7 +258,8 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
 
   const nftLibraryId = await client.CreateContentLibrary({
     name: `${tenantName} - NFT Templates`,
-    kmsId
+    kmsId,
+    metadata: STANDARD_DRM_CERT
   });
 
   await SetLibraryPermissions(client, nftLibraryId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
@@ -319,4 +323,31 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
   };
 };
 
+const AddConsumerGroup = async ({client, tenantAddress, debug = false}) => {
+  const tenantAbi = fs.readFileSync(
+    path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+  );
+
+  let consumerGroupContract = await ElvUtils.DeployContractFile({
+    client,
+    fileName: "BaseTenantConsumerGroup",
+    args:[tenantAddress]
+  });
+
+  if (debug){
+    console.log("ConsumerGroup: ", consumerGroupContract);
+  }
+
+  res = await client.CallContractMethodAndWait({
+    contractAddress: tenantAddress,
+    abi: JSON.parse(tenantAbi),
+    methodName: "addGroup",
+    methodArgs: ["tenant_consumer", consumerGroupContract.address],
+    formatArguments: true,
+  });
+
+  return res;
+};
+
 exports.InitializeTenant = InitializeTenant;
+exports.AddConsumerGroup = AddConsumerGroup;
