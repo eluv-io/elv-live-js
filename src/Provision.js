@@ -43,17 +43,12 @@ const SetLibraryPermissions = async (client, libraryId, tenantAdmins, contentAdm
 const SetObjectPermissions = async (client, objectId, tenantAdmins, contentAdmins, contentUsers) => {
   let promises = [
     // Tenant admins
-    client.AddContentObjectGroupPermission({objectId, groupAddress: tenantAdmins, permission: "see"}),
-    client.AddContentObjectGroupPermission({objectId, groupAddress: tenantAdmins, permission: "access"}),
     client.AddContentObjectGroupPermission({objectId, groupAddress: tenantAdmins, permission: "manage"}),
 
     // Content admins
-    client.AddContentObjectGroupPermission({objectId, groupAddress: contentAdmins, permission: "see"}),
-    client.AddContentObjectGroupPermission({objectId, groupAddress: contentAdmins, permission: "access"}),
     client.AddContentObjectGroupPermission({objectId, groupAddress: contentAdmins, permission: "manage"}),
 
     // Content users
-    client.AddContentObjectGroupPermission({objectId, groupAddress: contentUsers, permission: "see"}),
     client.AddContentObjectGroupPermission({objectId, groupAddress: contentUsers, permission: "access"})
   ];
 
