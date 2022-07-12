@@ -793,7 +793,7 @@ const CmdTenantProvision = async ({ argv }) => {
       address:Config.consts[Config.net].kmsAddress});
     console.log(`kmsId: ${kmsId}`);
 
-    res = await AddConsumerGroup({
+    res = await InitializeTenant({
       client,
       kmsId, 
       tenantName:argv.tenant_name,
