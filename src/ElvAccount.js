@@ -103,12 +103,12 @@ class ElvAccount {
 
       let balance = await wallet.GetAccountBalance({ signer });
       return {
-        tenantAdminsId,
+        accountName,
+        address,
         mnemonic,
         privateKey,
-        address,
-        accountName,
         balance,
+        tenantAdminsId,
       };
     } catch (e) {
       if (funds > 0.01) {

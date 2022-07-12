@@ -193,8 +193,8 @@ class ElvSpace {
 
     return {
       name: tenantName,
-      address: tenantContract.address,
       id: ElvUtils.AddressToId({prefix:"iten", address:tenantContract.address}),
+      address: tenantContract.address,
       adminGroupAddress,
     };
   }

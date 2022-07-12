@@ -23,7 +23,7 @@ const STANDARD_DRM_CERT={
   }
 };
 
-const SetLibraryPermissions = async (client, libraryId, tenantAdmins, contentAdmins, contentUsers) => {
+const SetLibraryPermissions = async (client, libraryId, tenantAdmins, contentAdmins, contentViewers) => {
   const promises = [
     // Tenant admins
     client.AddContentLibraryGroup({libraryId, groupAddress: tenantAdmins, permission: "accessor"}),
@@ -33,14 +33,14 @@ const SetLibraryPermissions = async (client, libraryId, tenantAdmins, contentAdm
     client.AddContentLibraryGroup({libraryId, groupAddress: contentAdmins, permission: "accessor"}),
     client.AddContentLibraryGroup({libraryId, groupAddress: contentAdmins, permission: "contributor"}),
 
-    // Content users
-    client.AddContentLibraryGroup({libraryId, groupAddress: contentUsers, permission: "accessor"})
+    // Content viewers
+    client.AddContentLibraryGroup({libraryId, groupAddress: contentViewers, permission: "accessor"})
   ];
 
   await Promise.all(promises);
 };
 
-const SetObjectPermissions = async (client, objectId, tenantAdmins, contentAdmins, contentUsers) => {
+const SetObjectPermissions = async (client, objectId, tenantAdmins, contentAdmins, contentViewers) => {
   let promises = [
     // Tenant admins
     client.AddContentObjectGroupPermission({objectId, groupAddress: tenantAdmins, permission: "manage"}),
@@ -48,8 +48,8 @@ const SetObjectPermissions = async (client, objectId, tenantAdmins, contentAdmin
     // Content admins
     client.AddContentObjectGroupPermission({objectId, groupAddress: contentAdmins, permission: "manage"}),
 
-    // Content users
-    client.AddContentObjectGroupPermission({objectId, groupAddress: contentUsers, permission: "access"})
+    // Content viewers
+    client.AddContentObjectGroupPermission({objectId, groupAddress: contentViewers, permission: "access"})
   ];
 
   await Promise.all(promises);
@@ -69,8 +69,8 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     name: `${tenantName} Content Admins`
   });
 
-  const contentUserGroupAddress = await client.CreateAccessGroup({
-    name: `${tenantName} Content Users`
+  const contentViewersGroupAddress = await client.CreateAccessGroup({
+    name: `${tenantName} Content Viewers`
   });
 
   const tenantSlug = tenantName.toLowerCase().replace(/ /g, "-");
@@ -81,7 +81,7 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
   });
 
   await client.AddAccessGroupManager({
-    contractAddress: contentUserGroupAddress,
+    contractAddress: contentViewersGroupAddress,
     memberAddress: tenantAdminSigner.address
   });
 
@@ -93,13 +93,13 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     console.log("\nAccess Groups:\n");
     console.log(`\tOrganization Admins Group: ${tenantAdminGroupAddress}`);
     console.log(`\tContent Admins Group: ${contentAdminGroupAddress}`);
-    console.log(`\tContent Users Group: ${contentUserGroupAddress}`);
+    console.log(`\tContent Viewers Group: ${contentViewersGroupAddress}`);
   }
 
   let groups = {
     tenantAdminGroupAddress,
     contentAdminGroupAddress,
-    contentUserGroupAddress
+    contentViewersGroupAddress
   };
 
   /* Content Types - Create Title, Title Collection and Production Master and add each to the groups */
@@ -127,28 +127,28 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     metadata: {...typeMetadata}
   });
 
-  await SetObjectPermissions(client, titleTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+  await SetObjectPermissions(client, titleTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
   const titleCollectionTypeId = await client.CreateContentType({
     name: `${tenantName} - Title Collection`,
     metadata: {...typeMetadata}
   });
 
-  await SetObjectPermissions(client, titleCollectionTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+  await SetObjectPermissions(client, titleCollectionTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
   const masterTypeId = await client.CreateContentType({
     name: `${tenantName} - Title Master`,
     metadata: {...masterMetadata}
   });
 
-  await SetObjectPermissions(client, masterTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+  await SetObjectPermissions(client, masterTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
   const permissionsTypeId = await client.CreateContentType({
     name: `${tenantName} - Permissions`,
     metadata: {...typeMetadata, public: {"eluv.manageApp": "avails-manager"}}
   });
 
-  await SetObjectPermissions(client, permissionsTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+  await SetObjectPermissions(client, permissionsTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
   const channelTypeId = await client.CreateContentType({
     name: `${tenantName} - Channel`,
@@ -168,7 +168,7 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     }
   });
 
-  await SetObjectPermissions(client, channelTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+  await SetObjectPermissions(client, channelTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
   const streamTypeId = await client.CreateContentType({
     name: `${tenantName} - Live Stream`,
@@ -189,7 +189,7 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     }
   });
 
-  await SetObjectPermissions(client, streamTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+  await SetObjectPermissions(client, streamTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
   if (debug) {
     console.log("\nTenant Types:\n");
     console.log(`\t${tenantName} - Title: ${titleTypeId}`);
@@ -221,7 +221,7 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
       }
     });
 
-    await SetObjectPermissions(client, typeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+    await SetObjectPermissions(client, typeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
     if (debug) {
       console.log(`\t${tenantName} - ${liveTypes[i].name}: ${typeId}`);
@@ -236,14 +236,14 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     kmsId
   });
 
-  await SetLibraryPermissions(client, propertiesLibraryId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+  await SetLibraryPermissions(client, propertiesLibraryId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
   const mastersLibraryId = await client.CreateContentLibrary({
     name: `${tenantName} - Title Masters`,
     kmsId
   });
 
-  await SetLibraryPermissions(client, mastersLibraryId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+  await SetLibraryPermissions(client, mastersLibraryId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
   const mezzanineLibraryId = await client.CreateContentLibrary({
     name: `${tenantName} - Title Mezzanines`,
@@ -257,7 +257,7 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     metadata: STANDARD_DRM_CERT
   });
 
-  await SetLibraryPermissions(client, nftLibraryId, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+  await SetLibraryPermissions(client, nftLibraryId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
   if (debug) {
     console.log("\nTenant Libraries:\n");
@@ -303,7 +303,7 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     writeToken: write_token
   });
 
-  await SetObjectPermissions(client, id, tenantAdminGroupAddress, contentAdminGroupAddress, contentUserGroupAddress);
+  await SetObjectPermissions(client, id, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
   if (debug) {
     console.log("\nSite Object: \n");
