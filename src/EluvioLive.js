@@ -44,79 +44,6 @@ class EluvioLive {
   }
 
   /**
-   * Creates a new account including wallet object and contract.
-   * Current client must be initialized and funded.
-   *
-   * @namedParams
-   * @param {number} funds - The amount in ETH to fund the new account.
-   * @cauth {string} accountName - The name of the account to set in it's wallet metadata (Optional)
-   * @cauth {string} tenantAdminsGroup - The tenant admins group ID to set for the user's wallet (Optional)
-   * @return {Promise<Object>} - An object containing the new account mnemonic, privateKey, address, accountName, balance
-   */
-  async AccountCreate({ funds = 0.25, accountName, tenantAdminsId }) {
-    if (!this.client) {
-      throw Error("EluvioLive not intialized");
-    }
-
-    let client = await ElvClient.FromConfigurationUrl({
-      configUrl: this.configUrl,
-    });
-    let wallet = this.client.GenerateWallet();
-    const mnemonic = wallet.GenerateMnemonic();
-    const signer = wallet.AddAccountFromMnemonic({ mnemonic });
-    const privateKey = signer.privateKey;
-    const address = signer.address;
-
-    client.SetSigner({ signer });
-
-    await this.client.SendFunds({
-      recipient: address,
-      ether: funds,
-    });
-
-    await client.userProfileClient.CreateWallet();
-
-    if (tenantAdminsId) {
-      await client.userProfileClient.SetTenantId({ id: tenantAdminsId });
-      tenantAdminsId = await this.client.userProfileClient.TenantId();
-    }
-
-    if (accountName) {
-      await client.userProfileClient.ReplaceUserMetadata({
-        metadataSubtree: "public/name",
-        metadata: accountName,
-      });
-    }
-
-    let balance = await wallet.GetAccountBalance({ signer });
-    return {
-      tenantAdminsId,
-      mnemonic,
-      privateKey,
-      address,
-      accountName,
-      balance,
-    };
-  }
-
-  /**
-   * Show info about this account.
-   */
-  async AccountShow() {
-    if (!this.client) {
-      throw Error("EluvioLive not intialized");
-    }
-
-    let tenantAmdinsId = await this.client.userProfileClient.TenantId();
-    let walletAddress = await this.client.userProfileClient.WalletAddress();
-    let userWalletObject =
-      await this.client.userProfileClient.UserWalletObjectInfo();
-    let userMetadata = await this.client.userProfileClient.UserMetadata();
-
-    return { tenantAmdinsId, walletAddress, userWalletObject, userMetadata };
-  }
-
-  /**
    * Show info about this tenant.
    * Currently only listing NFT marketplaces.
    *
@@ -1087,6 +1014,9 @@ class EluvioLive {
     });
     nftInfo.totalSupply = Number(totalSupply);
 
+    nftInfo.transferFee = await this.NftGetTransferFee({address: addr});
+    
+
     try {
       const minted = await this.client.CallContractMethod({
         contractAddress: addr,
@@ -1356,6 +1286,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.address = m.nft.address;
     pnft.total_supply = m.nft.total_supply;
     pnft.template_id = m.nft.template_id;
+    pnft.id_format = m.nft.id_format;
 
     pnft.copyright = m.nft.copyright;
     pnft.created_at = m.nft.created_at;
@@ -1366,6 +1297,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.youtube_url = m.nft.marketplace_attributes.opensea.youtube_url;
     pnft.image = m.nft.image;
     pnft.playable = m.nft.playable;
+
+    pnft.style = m.nft.style;
 
     let total_supply = pnft.total_supply.toString();
 
@@ -1457,7 +1390,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
   /**
    * Make a single element of the public/nfts section of a generative,
-   * multi-image token based on asset metadata and input parameters.
+   * multi image/video token based on asset metadata and input parameters.
    * The public/nfts key is an array of objects, each equivalent to
    * the single NFT public/nft section.
    *
@@ -1485,6 +1418,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.address = m.nft.address;
     pnft.total_supply = m.nft.total_supply;
     pnft.template_id = m.nft.template_id;
+    pnft.id_format = m.nft.id_format;
 
     pnft.copyright = m.nft.copyright;
     pnft.created_at = m.nft.created_at;
@@ -1495,6 +1429,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     pnft.youtube_url = nftMeta.embed_url;
     pnft.image = nftMeta.image;
     pnft.playable = m.nft.playable;
+
+    pnft.style = m.nft.style;
 
     if (!pnft.total_supply) {
       throw Error("No Total supply found");
@@ -1517,8 +1453,11 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       },
     ];
 
-    // Insert rarity
+    // Insert rarity if doesn't exist
     for (const i in nftMeta.attributes) {
+      if (nftMeta.attributes[i].rarity !== undefined){
+        continue;
+      }
       if (rarity && rarity[nftMeta.attributes[i].trait_type]) {
         let r = rarity[nftMeta.attributes[i].trait_type];
         nftMeta.attributes[i].rarity =
@@ -1534,7 +1473,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * Set the public/nft section based on asset metadata
    *
    * For generative NFTs we use the following convention - nftDir must contain:
-   * One ore more json files with a '.json' extension (for example: nft001.json, nft002.json)
+   * One or more json files with a '.json' extension (for example: nft001.json, nft002.json)
    * Example JSON File:
    *
    * {
@@ -1549,7 +1488,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    *   [
    *     {
    *       "trait_type":"trait01",
-   *       "value": "test1"
+   *       "value": "test1",
+   *       "rarity": 0.2                            (OPTIONAL, If not present, it will be calculated)
    *     }
    *   ]
    * }
@@ -1561,7 +1501,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
    * NFT content object's value from /asset_metadata/nft if present.
    *
    * The required key 'attributes' is an array of objects {"trait_type": "", "value": ""}
-   * and is used to calculate trait rarity
+   * and is used to calculate trait rarity. If rarity is already present in the attribute,
+   * it will be used instead.
    *
    * @namedParams
    * @param {string} library ID
@@ -1787,12 +1728,94 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return proxy;
   }
 
+  /**
+   * Synchronize backend listings with fabric metadata for a specific tenant's NFT
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {integer} maxNumber - The address to mint to
+   * @return {Promise<Object>} - The API Response containing list of Wallet Info
+   */
+  async NFTRefresh({ tenant, address}) {
+    let res = await this.PutServiceRequest({
+      path: urljoin("/mkt/refresh/", tenant, address)
+    });
+    return await res.json();
+  }
+
+  /**
+   * Gets the baseTransferFee of the NFT Contract
+   *
+   * @namedParams
+   * @param {string} address - The NFT contract address
+   * @return {string} - The fee as a big number sring
+   */
+  async NftGetTransferFee({address}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "baseTransferFee",
+      formatArguments: true,
+    });
+
+    return Number(res);
+  }
+  
+  /**
+   * Sets the baseTransferFee of the NFT Contract
+   *
+   * @namedParams
+   * @param {string} address - The NFT contract address
+   * @param {string} fee - Fee in ETH to set as a big number string
+   * @return {Promise<Object>} - The Contract transaction logs
+   */
+  async NftSetTransferFee({address, fee}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "setBaseTransferFee",
+      methodArgs: [fee],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
   async Sign({ message }) {
     const signature = await this.client.authClient.Sign(
       Ethers.utils.keccak256(Ethers.utils.toUtf8Bytes(message))
     );
     const multiSig = this.client.utils.FormatSignature(signature);
     return { signature, multiSig };
+  }
+
+  async PutServiceRequest({ path }) {
+    let ts = Date.now();
+    var body = {
+      ts
+    };
+    const { multiSig } = await this.Sign({
+      message: JSON.stringify(body),
+    });
+
+    let res = await this.client.authClient.MakeAuthServiceRequest({
+      method: "PUT",
+      path: urljoin("/as", path),
+      body,
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+    });
+
+    return res;
   }
 
   async PostServiceRequest({ path, body }) {
@@ -2020,6 +2043,55 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     });
 
     return toJson ? await res.json() : await res.text();
+  }
+
+  async TenantAddConsumers({groupId, accountAddresses}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantConsumerGroup.abi")
+    );
+    const address = Utils.HashToAddress(groupId);
+ 
+    var response = await this.client.CallContractMethodAndWait({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "grantAccessMany",
+      methodArgs: [accountAddresses],
+      formatArguments: true,
+    });
+    
+    return response;
+  }
+
+
+  async TenantHasConsumer({groupId, accountAddress}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantConsumerGroup.abi")
+    );
+    const address = Utils.HashToAddress(groupId);
+ 
+    var response = await this.client.CallContractMethod({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "hasAccess",
+      methodArgs: [accountAddress],
+      formatArguments: true,
+    });
+    
+    return response;
+  }
+
+  /**
+   * Get failed transfer report for the tenant. Used to identify payments collected on failed transfers.
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response containing the failed transfers report
+   */
+  async TenantTransferFailures({ tenant }) {
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/transfers/failed/", tenant),
+    });
+    return await res.json();
   }
 
   FilterTenant({ object }) {
