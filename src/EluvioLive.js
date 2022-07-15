@@ -1663,7 +1663,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
   }
 
   /**
-   * Burn the specified NFT token as the owner
+   * Transfer the specified NFT token as the owner through contract
    *
    * @namedParams
    * @param {string} addr - Local NFT contract address
@@ -1685,6 +1685,30 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       methodName: "safeTransferFrom",
       methodArgs: [fromAddr, toAddr, tokenId],
       formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Transfer the specified NFT token as the owner using Authority Service
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   * @return {Promise<Object>} - NFT info JSON
+   */
+  async AsNftTransfer({ addr, tokenId, toAddr }) {
+
+    let body = {
+      contract: addr,
+      token: tokenId,
+      to_addr: toAddr
+    };
+
+    let res = await this.PostServiceRequest({
+      path: "/wlt/mkt/xfer",
+      body,
     });
 
     return res;

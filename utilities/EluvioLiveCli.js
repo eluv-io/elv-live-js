@@ -217,19 +217,29 @@ const CmdNftProxyTransfer = async ({ argv }) => {
 
 const CmdNftTransfer = async ({ argv }) => {
   console.log(
-    "NFT - transer as owner",
+    "NFT - transer as token owner",
     argv.addr,
     argv.token_id,
-    argv.to_addr
+    argv.to_addr,
+    argv.auth_service
   );
   try {
     await Init();
 
-    let res = await elvlv.NftTransfer({
-      addr: argv.addr,
-      tokenId: argv.token_id,
-      toAddr: argv.to_addr,
-    });
+    let res;
+    if (argv.auth_service)  {
+      res = await elvlv.AsNftTransfer({
+        addr: argv.addr,
+        tokenId: argv.token_id,
+        toAddr: argv.to_addr,
+      });
+    } else { 
+      res = await elvlv.NftTransfer({
+        addr: argv.addr,
+        tokenId: argv.token_id,
+        toAddr: argv.to_addr,
+      });
+    }
 
     console.log(yaml.dump(res));
   } catch (e) {
@@ -970,8 +980,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_transfer <addr> <token_id> <to_addr>",
-    "Burn the specified NFT as the owner",
+    "nft_transfer <addr> <token_id> <to_addr> [options]",
+    "Transfer the specified NFT as the token owner",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -985,6 +995,9 @@ yargs(hideBin(process.argv))
         .positional("to_addr", {
           describe: "Address to transfer to (hex)",
           type: "string",
+        })
+        .option("auth_service", {
+          describe: "Use the Authority Service to do the transfer"
         });
     },
     (argv) => {
