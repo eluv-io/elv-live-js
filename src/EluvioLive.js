@@ -1272,11 +1272,6 @@ class EluvioLive {
     const m = assetMetadata;
     var pnft = {};
 
-    /* Add this to description */
-    /*const addtlInfo = `
-
-Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
-
     pnft.test = m.nft.test;
     pnft.name = m.nft.name;
     pnft.display_name = m.nft.display_name;
@@ -1410,6 +1405,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     const m = assetMetadata;
     var pnft = {};
 
+    pnft.test = m.nft.test;
     pnft.name = nftMeta.name || m.nft.name;
     pnft.display_name = nftMeta.display_name || m.nft.display_name;
     pnft.description = nftMeta.description || m.nft.description;
