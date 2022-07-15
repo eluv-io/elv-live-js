@@ -1002,7 +1002,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("token_id", {
-          describe: "NFT address (hex)",
+          describe: "Token Id",
           type: "integer",
         })
         .positional("from_addr", {

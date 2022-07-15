@@ -1609,6 +1609,8 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
 
+    await this.CheckIsOwner({addr, tokenId});
+
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: addr,
       abi: JSON.parse(abi),
@@ -1634,6 +1636,33 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
   }
 
   /**
+   * Checks if the current signer address owns the NFT token. Throws error if not owner.
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   */
+  async CheckIsOwner({ addr, tokenId}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    let signerAddr = this.client.signer.address;
+
+    var owner = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "ownerOf",
+      methodArgs: [tokenId],
+      formatArguments: true
+    });
+
+    if (signerAddr.toLowerCase() != owner.toLowerCase()){
+      throw Error(`Not owner. (signer: ${signerAddr} owner: ${owner})`);
+    }
+  }
+
+  /**
    * Burn the specified NFT token as the owner
    *
    * @namedParams
@@ -1645,6 +1674,10 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
+    
+    await this.CheckIsOwner({addr, tokenId});
+
+    let fromAddr = this.client.signer.address;
 
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: addr,
@@ -1692,7 +1725,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     const proxy = await this.NFTProxyAddress({ addr });
 
     console.log("Executing proxyTransferFrom");
-    var res = await this.client.CallContractMethod({
+    var res = await this.client.CallContractMethodAndWait({
       contractAddress: proxy,
       abi: JSON.parse(pxabi),
       methodName: "proxyTransferFrom",
@@ -1700,7 +1733,6 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
       formatArguments: true,
     });
 
-    res.wait(1);
     return res;
   }
 
