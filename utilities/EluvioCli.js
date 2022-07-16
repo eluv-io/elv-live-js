@@ -5,7 +5,6 @@ const { Config } = require("../src/Config.js");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
-const prompt = require("prompt-sync")({ sigint: true });
 
 const CmdAccountCreate = async ({ argv }) => {
   console.log("Account Create\n");
@@ -154,7 +153,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
   console.log("Tenant Deploy");
   console.log(`Tenant name: ${argv.tenant_name}`);
   console.log(`Funds: ${argv.funds}`);
-  console.log(`verbose: ${argv.verbose}`)
+  console.log(`verbose: ${argv.verbose}`);
 
   try {
     let space = new ElvSpace({
@@ -196,6 +195,68 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
       tenantName: argv.tenant_name,
       ownerAddress: argv.owner_addr,
       adminGroupAddress: argv.tenant_admin_addr,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdAccountFabricToken = async ({ argv }) => {
+  console.log("Account Fabric Token\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.CreateFabricToken({
+      duration: argv.duration
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdAccountSignedToken = async ({ argv }) => {
+  console.log("Account Signed Token\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let context;
+
+    if (argv.context){
+      context = JSON.parse(argv.context);
+    }
+
+    let res = await elvAccount.CreateSignedToken({
+      libraryId:argv.library_id,
+      objectid: argv.object_id,
+      versionHash: argv.version_hash,
+      policyId: argv.policy_id,
+      subject: argv.subject,
+      granttype: argv.grant_type,
+      duration: argv.duration,
+      allowDecryption: argv.allow_decryption,
+      context
     });
 
     console.log(yaml.dump(res));
@@ -269,6 +330,68 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAccountSend({ argv });
+    }
+  )
+
+  .command(
+    "account_fabric_token [Options]",
+    "Creates a client signed token using this key",
+    (yargs) => {
+      yargs
+        .option("duration", {
+          describe: "Library ID to authorize",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAccountFabricToken({ argv });
+    }
+  )
+  
+  .command(
+    "account_signed_token [Options]",
+    "Creates a client signed token using this key",
+    (yargs) => {
+      yargs
+        .option("library_id", {
+          describe: "Library ID to authorize",
+          type: "string",
+        })
+        .option("object_id", {
+          describe: "Object ID to authorize",
+          type: "string",
+        })
+        .option("version_hash", {
+          describe: "Version hash to authorize",
+          type: "string",
+        })
+        .option("policy_id", {
+          describe: "The object ID of the policy for this token",
+          type: "string",
+        })
+        .option("subject", {
+          describe: "Subject of the token. Default is the current address",
+          type: "string",
+        })
+        .option("grant_type", {
+          describe: "Permissions to grant for this token. Options: 'access', 'read', 'create', 'update', 'read-crypt'. Default 'read'",
+          type: "string",
+        })
+        .option("duration", {
+          describe: "Time until the token expires, in milliseconds. Default 2 min = 2 * 60 * 1000 = 120000)",
+          type: "integer",
+        })
+        .option("allow_decryption", {
+          describe: "If specified, the re-encryption key will be included in the token, enabling the user of this token to download encrypted content from the specified object",
+          type: "boolean",
+        })
+        .option("context", {
+          describe: "Additional JSON context",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAccountSignedToken({ argv });
     }
   )
 

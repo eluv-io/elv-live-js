@@ -1,7 +1,9 @@
-const { ElvClient } = require("elv-client-js");
-const Utils = require("elv-client-js/src/Utils.js");
+const { ElvClient } = require("@eluvio/elv-client-js");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 
+const TOKEN_DURATION = 120000; //2 min
 class ElvAccount {
+
   /**
    * Instantiate the ElvAccount Object
    *
@@ -31,8 +33,8 @@ class ElvAccount {
     this.client = elvClient;
   }
 
-  Address () {
-    if (this.client){
+  Address() {
+    if (this.client) {
       return this.client.signer.address;
     }
     return null;
@@ -67,8 +69,8 @@ class ElvAccount {
     const privateKey = signer.privateKey;
     const address = signer.address;
 
-    if (this.debug){
-      console.log("privateKey: ",privateKey);
+    if (this.debug) {
+      console.log("privateKey: ", privateKey);
       console.log("address: ", address);
     }
 
@@ -80,7 +82,7 @@ class ElvAccount {
         ether: funds,
       });
 
-      if (this.debug){
+      if (this.debug) {
         console.log("Send Funds result: ", res);
       }
 
@@ -144,7 +146,7 @@ class ElvAccount {
     let userWalletObject =
       await this.client.userProfileClient.UserWalletObjectInfo() || "";
     let wallet = this.client.GenerateWallet();
-    let balance = await wallet.GetAccountBalance({ signer:this.client.signer });
+    let balance = await wallet.GetAccountBalance({ signer: this.client.signer });
 
     return { address, tenantAmdinsId, walletAddress, userWalletObject, userMetadata, balance };
   }
@@ -195,6 +197,31 @@ class ElvAccount {
     return { res };
   }
 
+  async CreateSignedToken({
+    libraryId,
+    objectId,
+    versionHash,
+    policyId,
+    subject = null,
+    grantType,
+    duration = TOKEN_DURATION,
+    allowDecryption,
+    context
+  }) {
+    if (!subject) {
+      subject = this.client.signer.address.toLowerCase();
+    }
+    return await this.client.CreateSignedToken({
+      libraryId, objectId, versionHash, policyId,
+      subject, grantType, duration, allowDecryption, context
+    });
+  }
+
+  async CreateFabricToken({duration=TOKEN_DURATION}){
+    return await this.client.CreateFabricToken({duration});
+  }
+
 }
 
+ElvAccount.TOKEN_DURATION = TOKEN_DURATION;
 exports.ElvAccount = ElvAccount;

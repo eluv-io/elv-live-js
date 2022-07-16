@@ -110,6 +110,38 @@ const CmdNftBalanceOf = async ({ argv }) => {
   }
 };
 
+const CmdNftBurn = async ({ argv }) => {
+  console.log("NFT burn ", argv.addr, argv.token_id);
+  try {
+    await Init();
+
+    let res = await elvlv.NftBurn({
+      addr: argv.addr,
+      tokenId: argv.token_id,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error(`${e}`);
+  }
+};
+
+const CmdNftProxyBurn = async ({ argv }) => {
+  console.log("NFT Proxy burn ", argv.addr, argv.token_id);
+  try {
+    await Init();
+
+    let res = await elvlv.NftProxyBurn({
+      addr: argv.addr,
+      tokenId: argv.token_id,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error(`${e}`);
+  }
+};
+
 const CmdNftShow = async ({ argv }) => {
   console.log("NFT - show", argv.addr, argv.show_owners);
   try {
@@ -179,6 +211,38 @@ const CmdNftProxyTransfer = async ({ argv }) => {
       fromAddr: argv.from_addr,
       toAddr: argv.to_addr,
     });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftTransfer = async ({ argv }) => {
+  console.log(
+    "NFT - transer as token owner",
+    argv.addr,
+    argv.token_id,
+    argv.to_addr,
+    argv.auth_service
+  );
+  try {
+    await Init();
+
+    let res;
+    if (argv.auth_service)  {
+      res = await elvlv.AsNftTransfer({
+        addr: argv.addr,
+        tokenId: argv.token_id,
+        toAddr: argv.to_addr,
+      });
+    } else { 
+      res = await elvlv.NftTransfer({
+        addr: argv.addr,
+        tokenId: argv.token_id,
+        toAddr: argv.to_addr,
+      });
+    }
 
     console.log(yaml.dump(res));
   } catch (e) {
@@ -963,6 +1027,32 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "nft_transfer <addr> <token_id> <to_addr> [options]",
+    "Transfer the specified NFT as the token owner",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "Local NFT contract address",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "External token ID",
+          type: "string", // BigNumber as string
+        })
+        .positional("to_addr", {
+          describe: "Address to transfer to (hex)",
+          type: "string",
+        })
+        .option("auth_service", {
+          describe: "Use the Authority Service to do the transfer"
+        });
+    },
+    (argv) => {
+      CmdNftTransfer({ argv });
+    }
+  )
+
+  .command(
     "nft_proxy_transfer <addr> <token_id> <from_addr> <to_addr>",
     "Tranfer NFT as a proxy owner",
     (yargs) => {
@@ -972,7 +1062,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("token_id", {
-          describe: "NFT address (hex)",
+          describe: "Token Id",
           type: "integer",
         })
         .positional("from_addr", {
@@ -1029,8 +1119,45 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      var x = CmdNftLookup({ argv });
-      console.log(x);
+      CmdNftLookup({ argv });
+    }
+  )
+
+  .command(
+    "nft_burn <addr> <token_id>",
+    "Burn the specified NFT as the owner",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "Local NFT contract address",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "External token ID",
+          type: "string", // BigNumber as string
+        });
+    },
+    (argv) => {
+      CmdNftBurn({ argv });
+    }
+  )
+
+  .command(
+    "nft_proxy_burn <addr> <token_id>",
+    "Burn the specified NFT",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "Local NFT contract address",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "External token ID",
+          type: "string", // BigNumber as string
+        });
+    },
+    (argv) => {
+      CmdNftProxyBurn({ argv });
     }
   )
 

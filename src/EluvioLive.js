@@ -1,7 +1,7 @@
-const { ElvClient } = require("elv-client-js");
-const Utils = require("elv-client-js/src/Utils.js");
+const { ElvClient } = require("@eluvio/elv-client-js");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { Config } = require("./Config.js");
-
+const { ElvAccount } = require("./ElvAccount");
 const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
@@ -1594,6 +1594,125 @@ class EluvioLive {
   }
 
   /**
+   * Burn the specified NFT token as the owner
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   * @return {Promise<Object>} - NFT info JSON
+   */
+  async NftBurn({ addr, tokenId }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    await this.CheckIsOwner({addr, tokenId});
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "burn",
+      methodArgs: [tokenId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Burn the specified NFT token as a proxy owner
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   * @return {Promise<Object>} - NFT info JSON
+   */
+  // eslint-disable-next-line no-unused-vars
+  async NftProxyBurn({ addr, tokenId }) {
+    return "Sorry, not yet implemented.";
+  }
+
+  /**
+   * Checks if the current signer address owns the NFT token. Throws error if not owner.
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   */
+  async CheckIsOwner({ addr, tokenId}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    let signerAddr = this.client.signer.address;
+
+    var owner = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "ownerOf",
+      methodArgs: [tokenId],
+      formatArguments: true
+    });
+
+    if (signerAddr.toLowerCase() != owner.toLowerCase()){
+      throw Error(`Not owner. (signer: ${signerAddr} owner: ${owner})`);
+    }
+  }
+
+  /**
+   * Transfer the specified NFT token as the owner through contract
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   * @return {Promise<Object>} - NFT info JSON
+   */
+  async NftTransfer({ addr, tokenId, toAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+    
+    await this.CheckIsOwner({addr, tokenId});
+
+    let fromAddr = this.client.signer.address;
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "safeTransferFrom",
+      methodArgs: [fromAddr, toAddr, tokenId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Transfer the specified NFT token as the owner using Authority Service
+   *
+   * @namedParams
+   * @param {string} addr - Local NFT contract address
+   * @param {integer} tokenId - External NFT token ID
+   * @return {Promise<Object>} - NFT info JSON
+   */
+  async AsNftTransfer({ addr, tokenId, toAddr }) {
+
+    let body = {
+      contract: addr,
+      token: tokenId,
+      to_addr: toAddr
+    };
+
+    let res = await this.PostServiceRequest({
+      path: "/wlt/mkt/xfer",
+      body,
+      useFabricToken:true
+    });
+
+    return {status: res.status};
+  }
+
+  /**
    * Transfer an NFT as a proxy owner.
    *
    * @namedParams
@@ -1625,6 +1744,25 @@ class EluvioLive {
       return;
     }
 
+    const proxy = await this.NFTProxyAddress({ addr });
+
+    console.log("Executing proxyTransferFrom");
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: proxy,
+      abi: JSON.parse(pxabi),
+      methodName: "proxyTransferFrom",
+      methodArgs: [addr, fromAddr, toAddr, tokenId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  async NFTProxyAddress({ addr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
     const proxy = await this.client.CallContractMethod({
       contractAddress: addr,
       abi: JSON.parse(abi),
@@ -1633,30 +1771,15 @@ class EluvioLive {
     });
 
     if (proxy == "0x0000000000000000000000000000000000000000") {
-      console.log("NFT has no proxy");
-      return;
+      throw "NFT has no proxy";
     }
-    console.log("Proxy: ", proxy);
 
     var proxyInfo = await this.ShowNftTransferProxy({ addr: proxy });
     if (proxyInfo.owner != this.client.signer.address) {
-      console.log(
-        "Bad key - not proxy owner (should be: " + proxyInfo.owner + ")"
-      );
-      return;
+      throw `Bad key - not proxy owner (should be: ${proxyInfo.owner}`;
     }
 
-    console.log("Executing proxyTransferFrom");
-    var res = await this.client.CallContractMethod({
-      contractAddress: proxy,
-      abi: JSON.parse(pxabi),
-      methodName: "proxyTransferFrom",
-      methodArgs: [addr, fromAddr, toAddr, tokenId],
-      formatArguments: true,
-    });
-
-    res.wait(1);
-    return res;
+    return proxy;
   }
 
   /**
@@ -1720,7 +1843,7 @@ class EluvioLive {
     return res;
   }
 
-  async Sign({ message }) {
+  async TenantSign({ message }) {
     const signature = await this.client.authClient.Sign(
       Ethers.utils.keccak256(Ethers.utils.toUtf8Bytes(message))
     );
@@ -1733,7 +1856,7 @@ class EluvioLive {
     var body = {
       ts
     };
-    const { multiSig } = await this.Sign({
+    const { multiSig } = await this.TenantSign({
       message: JSON.stringify(body),
     });
 
@@ -1749,20 +1872,27 @@ class EluvioLive {
     return res;
   }
 
-  async PostServiceRequest({ path, body }) {
+  async PostServiceRequest({ path, body, useFabricToken=false }) {
     if (!body) {
       body = {};
     }
-    const { multiSig } = await this.Sign({
-      message: JSON.stringify(body),
-    });
+
+    let token = "";
+    if ( useFabricToken ) {
+      token = await this.client.CreateFabricToken({duration:ElvAccount.TOKEN_DURATION});
+    } else {
+      const { multiSig } = await this.TenantSign({
+        message: JSON.stringify(body),
+      });
+      token = multiSig;
+    }
 
     let res = await this.client.authClient.MakeAuthServiceRequest({
       method: "POST",
       path: urljoin("/as", path),
       body,
       headers: {
-        Authorization: `Bearer ${multiSig}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -1776,7 +1906,7 @@ class EluvioLive {
 
     var newPath = path + "?" + paramString;
 
-    const { multiSig } = await this.Sign({
+    const { multiSig } = await this.TenantSign({
       message: newPath,
     });
 
