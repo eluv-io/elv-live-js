@@ -5,7 +5,6 @@ const { Config } = require("../src/Config.js");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
-const prompt = require("prompt-sync")({ sigint: true });
 
 const CmdAccountCreate = async ({ argv }) => {
   console.log("Account Create\n");
@@ -56,8 +55,7 @@ const CmdAccountSetTenantAdminsAddress = async ({ argv }) => {
     console.error("ERROR:", e);
   }
 };
-
-const CmdAccountShow = async () => {
+const CmdAccountShow = async ({ argv }) => {
   console.log("Account Show\n");
 
   try {
@@ -155,7 +153,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
   console.log("Tenant Deploy");
   console.log(`Tenant name: ${argv.tenant_name}`);
   console.log(`Funds: ${argv.funds}`);
-  console.log(`verbose: ${argv.verbose}`)
+  console.log(`verbose: ${argv.verbose}`);
 
   try {
     let space = new ElvSpace({
@@ -311,8 +309,8 @@ yargs(hideBin(process.argv))
     }
   )
 
-  .command("account_show", "Shows current account information.", () => {
-    CmdAccountShow();
+  .command("account_show", "Shows current account information.", (argv) => {
+    CmdAccountShow({argv});
   })
 
   .command(
