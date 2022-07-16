@@ -1,7 +1,7 @@
-const { ElvClient } = require("elv-client-js");
-const Utils = require("elv-client-js/src/Utils.js");
+const { ElvClient } = require("@eluvio/elv-client-js");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { Config } = require("./Config.js");
-
+const { ElvAccount } = require("./ElvAccount");
 const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
@@ -1709,9 +1709,10 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     let res = await this.PostServiceRequest({
       path: "/wlt/mkt/xfer",
       body,
+      useFabricToken:true
     });
 
-    return res;
+    return {status: res.status};
   }
 
   /**
@@ -1845,7 +1846,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return res;
   }
 
-  async Sign({ message }) {
+  async TenantSign({ message }) {
     const signature = await this.client.authClient.Sign(
       Ethers.utils.keccak256(Ethers.utils.toUtf8Bytes(message))
     );
@@ -1858,7 +1859,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     var body = {
       ts
     };
-    const { multiSig } = await this.Sign({
+    const { multiSig } = await this.TenantSign({
       message: JSON.stringify(body),
     });
 
@@ -1874,20 +1875,27 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
     return res;
   }
 
-  async PostServiceRequest({ path, body }) {
+  async PostServiceRequest({ path, body, useFabricToken=false }) {
     if (!body) {
       body = {};
     }
-    const { multiSig } = await this.Sign({
-      message: JSON.stringify(body),
-    });
+
+    let token = "";
+    if ( useFabricToken ) {
+      token = await this.client.CreateFabricToken({duration:ElvAccount.TOKEN_DURATION});
+    } else {
+      const { multiSig } = await this.TenantSign({
+        message: JSON.stringify(body),
+      });
+      token = multiSig;
+    }
 
     let res = await this.client.authClient.MakeAuthServiceRequest({
       method: "POST",
       path: urljoin("/as", path),
       body,
       headers: {
-        Authorization: `Bearer ${multiSig}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -1901,7 +1909,7 @@ Lookup NFT: https://wallet.contentfabric.io/lookup/`; */
 
     var newPath = path + "?" + paramString;
 
-    const { multiSig } = await this.Sign({
+    const { multiSig } = await this.TenantSign({
       message: newPath,
     });
 

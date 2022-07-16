@@ -1,8 +1,8 @@
-const Utils = require("elv-client-js/src/Utils");
+const Utils = require("@eluvio/elv-client-js/src/Utils");
 const { v4: UUID, parse: UUIDParse } = require("uuid");
 const UrlJoin = require("url-join");
 const { EluvioLive } = require("./EluvioLive");
-const { ElvClient } = require("elv-client-js");
+const { ElvClient } = require("@eluvio/elv-client-js");
 
 class Marketplace extends EluvioLive {
   constructor({ configUrl, mainObjectId }) {
