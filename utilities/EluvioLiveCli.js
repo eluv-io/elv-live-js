@@ -1,6 +1,6 @@
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { ElvUtils } = require("../src/Utils");
-const Utils = require("elv-client-js/src/Utils.js");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { InitializeTenant, AddConsumerGroup }  = require("../src/Provision");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");

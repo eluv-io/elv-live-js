@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const keccak256 = require("keccak256");
-const Utils = require("elv-client-js/src/Utils.js");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 
 class ElvUtils {
   static async DeployContractFile({ client, fileName, args = [] }) {
