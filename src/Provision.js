@@ -4,11 +4,11 @@ const path = require("path");
 const { ElvUtils } = require("../src/Utils");
 
 const liveTypes = [
-  { name: "Eluvio LIVE Drop Event Site", spec: require("elv-client-js/typeSpecs/DropEventSite") },
-  { name: "Eluvio LIVE Marketplace", spec: require("elv-client-js/typeSpecs/Marketplace") },
-  { name: "Eluvio LIVE Tenant", spec: require("elv-client-js/typeSpecs/EventTenant") },
-  { name: "NFT Collection", spec: require("elv-client-js/typeSpecs/NFTCollection") },
-  { name: "NFT Template", spec: require("elv-client-js/typeSpecs/NFTTemplate") }
+  { name: "Eluvio LIVE Drop Event Site", spec: require("@eluvio/elv-client-js/typeSpecs/DropEventSite") },
+  { name: "Eluvio LIVE Marketplace", spec: require("@eluvio/elv-client-js/typeSpecs/Marketplace") },
+  { name: "Eluvio LIVE Tenant", spec: require("@eluvio/elv-client-js/typeSpecs/EventTenant") },
+  { name: "NFT Collection", spec: require("@eluvio/elv-client-js/typeSpecs/NFTCollection") },
+  { name: "NFT Template", spec: require("@eluvio/elv-client-js/typeSpecs/NFTTemplate") }
 ];
 
 const STANDARD_DRM_CERT={
