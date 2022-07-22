@@ -1,5 +1,5 @@
-const { ElvClient } = require("elv-client-js");
-const Utils = require("elv-client-js/src/Utils.js");
+const { ElvClient } = require("@eluvio/elv-client-js");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { Config } = require("./Config.js");
 
 const Ethers = require("ethers");

@@ -1,4 +1,4 @@
-const { ElvClient } = require("elv-client-js");
+const { ElvClient } = require("@eluvio/elv-client-js");
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
