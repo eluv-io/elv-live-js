@@ -1,7 +1,6 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const { ElvUtils } = require("./Utils");
-const fs = require("fs");
-const { parse } = require("csv-parse");
+const dot = require("dot-object");
 
 /**
  * Tools for operating content on the Content Fabric
@@ -19,9 +18,10 @@ class ElvFabric {
     this.debug = debugLogging;
   }
 
-  async Init({ privateKey }) {
+  async Init({ privateKey, update = false,  }) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
+      noAuth: update ? false : true
     });
     let wallet = this.client.GenerateWallet();
     let signer = wallet.AddAccount({
@@ -29,71 +29,6 @@ class ElvFabric {
     });
     this.client.SetSigner({ signer });
     this.client.ToggleLogging(this.debug);
-  }
-
-  /**
-   * Read list of ids and metadata fields from a CSV file
-   * Format:
-   *   - id (content ID in `iq__` format)
-   *   - all subsequent columns are metadata fields in dotted JSON format
-   *     (for example: public.name, public.asset_metadata.title)
-   *
-   * Substitutions:
-   *   - ${UUID} - 16 byte UUID in base 58 format
-   *
-   * @param {string} csvFile
-   */
-  async readCsv({ csvFile }) {
-
-    let hdr = true;
-    let fields = [];
-    let ids = {};
-
-    const csv = fs.readFileSync(csvFile);
-    const records = parse(csv, {columns: false});
-    await records.forEach(row => {
-      if (hdr) {
-        row.forEach(elem => {
-          // First field is the 'id' (not a real field)
-          fields.push(elem);
-        });
-        hdr = false;
-      } else {
-        let id;
-        row.forEach((elem, idx) => {
-          if (idx == 0) {
-            id = elem;
-            ids[id] = {};
-          } else {
-            const field = fields[idx];
-
-            // Construct the JSON path from the dot notation of the field
-            // For example for public.asset_metadata.title we need to set
-            // {"public" : {"asset_metadata": {"title": "value"}}}
-            let f = ids[id];
-            let a = field.split(".");
-            a.forEach((pathElem, idx) => {
-              if (idx < a.length - 1) {
-                if (!f[pathElem]) {
-                  f[pathElem] = {};
-                }
-                f = f[pathElem];
-              } else {
-                // Apply substitutions
-                switch (elem) {
-                  case "${UUID}":
-                    elem = ElvUtils.UUID();
-                    break;
-                }
-
-                f[pathElem] = elem;
-              }
-            });
-          }
-        });
-      }
-    });
-    return ids;
   }
 
   /**
@@ -112,7 +47,7 @@ class ElvFabric {
    * @param {object} meta Metadata tree to merge into the object
    */
   async setMeta({objectId, meta}) {
-    console.log("setMeta", objectId, "meta", JSON.stringify(meta));
+    console.log("Set Meta", objectId, "meta", JSON.stringify(meta)); // PENDING debug log
 
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
     const editResponse = await this.client.EditContentObject({
@@ -133,6 +68,20 @@ class ElvFabric {
       objectId,
       writeToken: editResponse.write_token
     });
+  }
+
+  /**
+   * Set content metadata for an object
+   * @param {string} objectId
+   */
+  async getMeta({objectId}) {
+
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    const meta = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId
+    });
+    return meta;
   }
 
   /**
@@ -184,7 +133,7 @@ class ElvFabric {
       throw Error("ElvAccount not intialized");
     }
 
-    let ids = await this.readCsv({csvFile});
+    let ids = await ElvUtils.ReadCsvObjects({csvFile});
 
     let res;
     if (!duplicate) {
@@ -193,6 +142,41 @@ class ElvFabric {
       res = await this.copyObjectBatch({ids});
     }
     return res;
+  }
+
+  /**
+   * GetMetaBatch
+   * @param {string} csvFile  File specifying a list of content IDs and metadata fields to read.
+   */
+  async GetMetaBatch({csvFile}) {
+
+    if (!this.client) {
+      throw Error("ElvAccount not intialized");
+    }
+
+    let ids = await ElvUtils.ReadCsvObjects({csvFile});
+
+    // Extract a list of the fields from first object
+    let hdr = "id";
+    let fields = [];
+    for (const [, f] of Object.entries(ids)) {
+      const hdrFields = dot.dot(f);
+      for (const [field] of Object.entries(hdrFields)) {
+        hdr = hdr + "," + field;
+        fields.push(field);
+      }
+      break;
+    }
+
+    let csvOut = hdr + "\n";
+    for (const [id] of Object.entries(ids)) {
+      const meta = await this.getMeta({objectId: id});
+
+      let row = await ElvUtils.MakeCsv({fields, meta});
+      row = id + "," + row;
+      csvOut = csvOut + row + "\n";
+    }
+    return csvOut;
   }
 
 }

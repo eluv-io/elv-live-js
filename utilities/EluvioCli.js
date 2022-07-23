@@ -171,7 +171,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
-    
+
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -266,6 +266,27 @@ const CmdAccountSignedToken = async ({ argv }) => {
   }
 };
 
+const CmdFabricGetMetaBatch = async ({ argv }) => {
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvFabric.GetMetaBatch({
+      csvFile: argv.csv_file,
+    });
+
+    console.log(res); // CSV output
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdFabricSetMetaBatch = async ({ argv }) => {
   console.log("Set Meta Batch", "duplicate", argv.duplicate);
 
@@ -277,6 +298,7 @@ const CmdFabricSetMetaBatch = async ({ argv }) => {
 
     await elvFabric.Init({
       privateKey: process.env.PRIVATE_KEY,
+      update: true
     });
 
     let res = await elvFabric.SetMetaBatch({
@@ -497,6 +519,21 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdSpaceTenantCreate({ argv });
+    }
+  )
+
+  .command(
+    "content_meta_get_batch <csv_file>",
+    "Get metadata fields for the list of content object IDs in the CSV fle.",
+    (yargs) => {
+      yargs
+        .positional("csv_file", {
+          describe: "CSV file",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdFabricGetMetaBatch({ argv });
     }
   )
 
