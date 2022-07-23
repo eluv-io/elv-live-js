@@ -1,5 +1,6 @@
 const { ElvSpace } = require("../src/ElvSpace.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
+const { ElvFabric } = require("../src/ElvFabric.js");
 const { Config } = require("../src/Config.js");
 
 const yargs = require("yargs/yargs");
@@ -265,6 +266,30 @@ const CmdAccountSignedToken = async ({ argv }) => {
   }
 };
 
+const CmdFabricSetMetaBatch = async ({ argv }) => {
+  console.log("Set Meta Batch", "duplicate", argv.duplicate);
+
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvFabric.SetMetaBatch({
+      csvFile: argv.csv_file,
+      duplicate: argv.duplicate
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -456,7 +481,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "space_tenant_create <tenant_name> <funds> [",
+    "space_tenant_create <tenant_name> <funds>",
     "Creates a new tenant account including all supporting access groups and deployment of contracts. PRIVATE_KEY must be set for the space owner.",
     (yargs) => {
       yargs
@@ -474,6 +499,32 @@ yargs(hideBin(process.argv))
       CmdSpaceTenantCreate({ argv });
     }
   )
+
+  .command(
+    "content_meta_set_batch <csv_file>",
+    "Set metadata fields for the list of content object IDs in the CSV fle.",
+    (yargs) => {
+      yargs
+        .positional("csv_file", {
+          describe: "CSV file",
+          type: "string",
+        })
+        .option("duplicate", {
+          describe:
+            "Clone the content objects instead of editing them directly.",
+          type: "boolean",
+        })
+        .option("dryrun", {
+          describe:
+            "Print resulting metadata but don't actually edit the objects.",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdFabricSetMetaBatch({ argv });
+    }
+  )
+
   .strict()
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")

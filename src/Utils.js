@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const keccak256 = require("keccak256");
+const UUID = require("uuid");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 
 class ElvUtils {
@@ -30,6 +31,10 @@ class ElvUtils {
 
   static AddressToId({prefix, address}){
     return prefix + Utils.AddressToHash(address);
+  }
+
+  static UUID() {
+    return Utils.B58(UUID.parse(UUID.v4()));
   }
 }
 
