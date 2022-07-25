@@ -149,7 +149,7 @@ class ElvFabric {
    * GetMetaBatch
    * @param {string} csvFile  File specifying a list of content IDs and metadata fields to read.
    */
-  async GetMetaBatch({csvFile, libraryId = null, limit = 1000}) {
+  async GetMetaBatch({csvFile, libraryId = null, limit = Number.MAX_SAFE_INTEGER}) {
 
     if (!this.client) {
       throw Error("ElvAccount not intialized");
