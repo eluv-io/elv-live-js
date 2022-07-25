@@ -70,6 +70,7 @@ class ElvUtils {
 
     const csv = fs.readFileSync(csvFile);
     const records = parse(csv, {columns: true});
+
     await records.forEach(row => {
       const id = row.id;
       delete row.id;

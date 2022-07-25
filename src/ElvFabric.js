@@ -74,12 +74,13 @@ class ElvFabric {
    * Set content metadata for an object
    * @param {string} objectId
    */
-  async getMeta({objectId}) {
+  async getMeta({objectId, select}) {
 
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
     const meta = await this.client.ContentObjectMetadata({
       libraryId,
-      objectId
+      objectId,
+      select
     });
     return meta;
   }
@@ -148,19 +149,21 @@ class ElvFabric {
    * GetMetaBatch
    * @param {string} csvFile  File specifying a list of content IDs and metadata fields to read.
    */
-  async GetMetaBatch({csvFile}) {
+  async GetMetaBatch({csvFile, libraryId = null, limit = 1000}) {
 
     if (!this.client) {
       throw Error("ElvAccount not intialized");
     }
 
-    let ids = await ElvUtils.ReadCsvObjects({csvFile});
+    let ids = [];
+    ids = await ElvUtils.ReadCsvObjects({csvFile});
 
     // Extract a list of the fields from first object
     let hdr = "id";
     let fields = [];
     for (const [, f] of Object.entries(ids)) {
       const hdrFields = dot.dot(f);
+
       for (const [field] of Object.entries(hdrFields)) {
         hdr = hdr + "," + field;
         fields.push(field);
@@ -168,7 +171,55 @@ class ElvFabric {
       break;
     }
 
-    let csvOut = hdr + "\n";
+    if (libraryId && libraryId.length > 0) {
+      let objects = (await this.client.ContentObjects({libraryId, filterOptions:{limit}}))["contents"].map((obj)=>{
+        return obj.id;
+      });
+
+      let select = fields.map((item) => {
+        return item.replace(".","/");
+      });
+
+      if (this.debug){
+        console.log("Using select: ", select);
+      }
+
+      ids = {};
+      for (const id of objects){
+        let meta = await this.getMeta({objectId:id, select});
+        if (this.debug){
+          console.log(`Found ${id} : ${meta}`);
+        }
+        ids[id] = meta;
+      }
+    }
+
+    let csvOut = await this.GetMetaByIds({ids, fields});
+    csvOut = hdr + "\n" + csvOut;
+
+    return csvOut;
+  }
+
+  /**
+   * GetMetaByIds
+   * @param {[string]} ids  object of id to metadata
+   * @param {[string]} fields  array of fields
+   */
+  async GetMetaByIds({ids,fields}) {
+
+    if (!this.client) {
+      throw Error("ElvAccount not intialized");
+    }
+
+    if (!ids || ids.length == 0){
+      throw Error("No ids given.");
+    }
+
+    if (!fields || fields.length == 0){
+      throw Error("No ids fields.");
+    }
+
+    let csvOut = "";
     for (const [id] of Object.entries(ids)) {
       const meta = await this.getMeta({objectId: id});
 

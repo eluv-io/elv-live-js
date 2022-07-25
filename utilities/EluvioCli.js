@@ -279,6 +279,8 @@ const CmdFabricGetMetaBatch = async ({ argv }) => {
 
     let res = await elvFabric.GetMetaBatch({
       csvFile: argv.csv_file,
+      libraryId: argv.library,
+      limit: argv.limit
     });
 
     console.log(res); // CSV output
@@ -523,13 +525,21 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "content_meta_get_batch <csv_file>",
-    "Get metadata fields for the list of content object IDs in the CSV fle.",
+    "content_meta_get_batch <csv_file> [options]",
+    "Get metadata fields for the list of content object IDs in the CSV file or library.",
     (yargs) => {
       yargs
         .positional("csv_file", {
           describe: "CSV file",
           type: "string",
+        })
+        .option("library", {
+          describe: "Libary ID",
+          type: "string",
+        })
+        .option("limit", {
+          describe: "Max number of objects",
+          type: "integer",
         });
     },
     (argv) => {
