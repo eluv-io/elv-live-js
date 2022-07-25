@@ -106,6 +106,10 @@ class ElvUtils {
       if (v instanceof(Object)) {
         v = JSON.stringify(v);
       }
+
+      if (v && typeof v == "string" && v.includes(",")){
+        v = `"${v}"`;
+      }
       row = (idx > 0 ? row + "," : "") + v;
     });
     return row;

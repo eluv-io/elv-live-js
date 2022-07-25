@@ -184,27 +184,14 @@ class ElvFabric {
       fields = lines[0].split(",").map(s=>s.trim());
       hdr = lines[0];
       fields.shift();
-      console.log(fields);
 
       let objects = (await this.client.ContentObjects({libraryId, filterOptions:{limit}}))["contents"].map((obj)=>{
         return obj.id;
       });
 
-      let select = fields.map((item) => {
-        return item.replace(".","/");
-      });
-
-      if (this.debug){
-        console.log("Using select: ", select);
-      }
-
       ids = {};
       for (const id of objects){
-        let meta = await this.getMeta({objectId:id, select});
-        if (this.debug){
-          console.log(`Found ${id} : ${meta}`);
-        }
-        ids[id] = meta;
+        ids[id] = {};
       }
     }
 
