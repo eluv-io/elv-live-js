@@ -1,6 +1,7 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const { ElvUtils } = require("./Utils");
 const dot = require("dot-object");
+const fs = require("fs");
 
 /**
  * Tools for operating content on the Content Fabric
@@ -158,20 +159,33 @@ class ElvFabric {
     let ids = [];
     ids = await ElvUtils.ReadCsvObjects({csvFile});
 
+    if (this.debug){
+      console.log("Parsed csv: ", ids);
+    }
+
     // Extract a list of the fields from first object
     let hdr = "id";
     let fields = [];
-    for (const [, f] of Object.entries(ids)) {
-      const hdrFields = dot.dot(f);
 
-      for (const [field] of Object.entries(hdrFields)) {
-        hdr = hdr + "," + field;
-        fields.push(field);
+    if (!libraryId || libraryId.length == 0){
+      for (const [, f] of Object.entries(ids)) {
+        const hdrFields = dot.dot(f);
+
+        for (const [field] of Object.entries(hdrFields)) {
+          hdr = hdr + "," + field;
+          fields.push(field);
+        }
+        break;
       }
-      break;
     }
+    else {
+      const csv = fs.readFileSync(csvFile).toString();
+      const lines = csv.split("\n");
+      fields = lines[0].split(",").map(s=>s.trim());
+      hdr = lines[0];
+      fields.shift();
+      console.log(fields);
 
-    if (libraryId && libraryId.length > 0) {
       let objects = (await this.client.ContentObjects({libraryId, filterOptions:{limit}}))["contents"].map((obj)=>{
         return obj.id;
       });
@@ -195,9 +209,7 @@ class ElvFabric {
     }
 
     let csvOut = await this.GetMetaByIds({ids, fields});
-    csvOut = hdr + "\n" + csvOut;
-
-    return csvOut;
+    return hdr + "\n" + csvOut;
   }
 
   /**
@@ -216,7 +228,7 @@ class ElvFabric {
     }
 
     if (!fields || fields.length == 0){
-      throw Error("No ids fields.");
+      throw Error("No fields given.");
     }
 
     let csvOut = "";
