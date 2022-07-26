@@ -236,7 +236,7 @@ const CmdNftTransfer = async ({ argv }) => {
         tokenId: argv.token_id,
         toAddr: argv.to_addr,
       });
-    } else { 
+    } else {
       res = await elvlv.NftTransfer({
         addr: argv.addr,
         tokenId: argv.token_id,
@@ -714,6 +714,7 @@ const CmdMarketplaceAddItem = async ({ argv }) => {
   console.log("Marketplace Add Item");
   console.log(`Marketplace Object ID: ${argv.marketplace}`);
   console.log(`NFT Template Object ID/Hash: ${argv.object}`);
+  console.log(`NFT Template Name${argv.name}`);
   console.log(`NFT Template Price: ${argv.price}`);
   console.log(`NFT For Sale: ${argv.forSale}`);
 
@@ -723,10 +724,11 @@ const CmdMarketplaceAddItem = async ({ argv }) => {
       nftObjectId: argv.object.startsWith("iq__") ? argv.object : undefined,
       nftObjectHash: argv.object.startsWith("hq__") ? argv.object : undefined,
       marketplaceObjectId: argv.marketplace,
+      name: argv.name,
       price: argv.price,
       currency: argv.currency,
       maxPerUser: argv.maxPerUser,
-      forSale: argv.forSale,
+      forSale: argv.forSale
     });
 
     console.log(yaml.dump(res));
@@ -819,9 +821,9 @@ const CmdNftSetTransferFee = async ({ argv }) => {
   try {
     await Init();
 
-    res = await elvlv.NftSetTransferFee({ 
+    res = await elvlv.NftSetTransferFee({
       address: argv.addr,
-      fee: argv.fee 
+      fee: argv.fee
     });
 
     console.log(yaml.dump(res));
@@ -853,13 +855,13 @@ const CmdTenantProvision = async ({ argv }) => {
   try {
     await Init();
     let client = elvlv.client;
-    let kmsId = ElvUtils.AddressToId({prefix:"ikms", 
+    let kmsId = ElvUtils.AddressToId({prefix:"ikms",
       address:Config.consts[Config.net].kmsAddress});
     console.log(`kmsId: ${kmsId}`);
 
     res = await InitializeTenant({
       client,
-      kmsId, 
+      kmsId,
       tenantName:argv.tenant_name,
       debug: argv.verbose
     });
@@ -1625,7 +1627,7 @@ yargs(hideBin(process.argv))
       CmdTenantAddConsumers({ argv });
     }
   )
-  
+
   .command(
     "tenant_has_consumer <group_id> <addr>",
     "Returns true or false if addr is in the tenant consumer group",
@@ -1647,7 +1649,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "marketplace_add_item <marketplace> <object> <price> [forSale]",
+    "marketplace_add_item <marketplace> <object> <name> [price] [forSale]",
     "Adds an item to a marketplace",
     (yargs) => {
       yargs.positional("marketplace", {
@@ -1657,6 +1659,9 @@ yargs(hideBin(process.argv))
       yargs.positional("object", {
         describe: "NFT Template object hash (hq__) or id (iq__)",
         type: "string",
+      });
+      yargs.positional("name", {
+        describe: "Item name"
       });
       yargs.positional("price", {
         describe: "Price to list for",
