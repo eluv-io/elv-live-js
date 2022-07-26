@@ -38,34 +38,20 @@ class Marketplace extends EluvioLive {
     marketplaceObjectId,
     nftObjectId,
     nftObjectHash,
+    name,
     price,
     currency="USD",
     maxPerUser,
     forSale=true
   }) {
-    const free = (price === 0);
+    const free = (!!price && price === 0);
     const sku = Utils.B58(UUIDParse(UUID()));
 
-    if (nftObjectId) {
-      nftObjectHash = this.client.LatestVersionHash({
+    if (!nftObjectHash) {
+      nftObjectHash = await this.client.LatestVersionHash({
         objectId: nftObjectId
       });
     }
-
-    if (nftObjectHash) {
-      nftObjectId = Utils.DecodeVersionHash(nftObjectHash).objectId;
-    }
-
-    const nftTemplateLibraryId = await this.client.ContentObjectLibraryId({
-      objectId: nftObjectId
-    });
-
-    const nftTemplateMeta = await this.client.ContentObjectMetadata({
-      objectId: nftObjectId,
-      libraryId: nftTemplateLibraryId,
-      versionHash: nftObjectHash,
-      metadataSubtree: "/public/asset_metadata"
-    });
 
     const libraryId = await this.client.ContentObjectLibraryId({
       objectId: marketplaceObjectId
@@ -81,11 +67,11 @@ class Marketplace extends EluvioLive {
       for_sale: forSale,
       free,
       max_per_user: free ? (maxPerUser || 1) : 0,
-      name: nftTemplateMeta.display_title || "",
+      name: name,
       nft_template: this.CreateLink({
         targetHash: nftObjectHash
       }),
-      price: free ? null : { [currency]: price },
+      price: price ? { [currency]: price } : {},
       sku
     };
 
