@@ -74,6 +74,7 @@ class ElvUtils {
     await records.forEach(row => {
       const id = row.id;
       delete row.id;
+      delete row.hash;
 
       // Apply substitutions
       let rowProcessed = {};

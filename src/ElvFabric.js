@@ -83,6 +83,10 @@ class ElvFabric {
       objectId,
       select
     });
+
+    meta["hash"] = await this.client.LatestVersionHash({
+      objectId
+    });
     return meta;
   }
 
