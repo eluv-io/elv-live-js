@@ -38,8 +38,10 @@
   ],
   "homepage": "https://github.com/eluv-io/elv-live-js#readme",
   "dependencies": {
-    "big-number": "^2.0.0",
     "@eluvio/elv-client-js": "^3.1.97",
+    "big-number": "^2.0.0",
+    "csv-parse": "^5.3.0",
+    "dot-object": "^2.1.4",
     "ethers": "^5.5.4",
     "fraction.js": "^4.1.1",
     "got": "^11.8.2",
