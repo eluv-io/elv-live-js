@@ -3,6 +3,7 @@ const { v4: UUID, parse: UUIDParse } = require("uuid");
 const UrlJoin = require("url-join");
 const { EluvioLive } = require("./EluvioLive");
 const { ElvClient } = require("@eluvio/elv-client-js");
+const fs = require("fs");
 
 class Marketplace extends EluvioLive {
   constructor({ configUrl, mainObjectId }) {
@@ -98,6 +99,76 @@ class Marketplace extends EluvioLive {
     });
 
     return newItem;
+  }
+
+  async MarketplaceAddItemBatch({marketplaceObjectId, csv}) {
+    const data = fs.readFileSync(csv).toString();
+
+    const rows = data
+      .slice(data.indexOf("\n") + 1)
+      .split("\n")
+      .map(field => {
+        let splitFields = field.trim().split(",");
+        return { object: splitFields[0], name: splitFields[1] };
+      });
+
+    const libraryId = await this.client.ContentObjectLibraryId({
+      objectId: marketplaceObjectId
+    });
+
+    const items = await this.client.ContentObjectMetadata({
+      objectId: marketplaceObjectId,
+      libraryId,
+      metadataSubtree: "/public/asset_metadata/info/items"
+    }) || [];
+
+    const newItems = [];
+
+    await Promise.all(rows.map(async (row) => {
+      let nftObjectHash;
+      const sku = Utils.B58(UUIDParse(UUID()));
+
+      if (row.object.startsWith("iq__")) {
+        nftObjectHash = await this.client.LatestVersionHash({
+          objectId: row.object
+        });
+      } else {
+        nftObjectHash = row.object;
+      }
+
+      const newItem = {
+        name: row.name,
+        nft_template: this.CreateLink({
+          targetHash: nftObjectHash
+        }),
+        price: {},
+        sku
+      };
+
+      newItems.push(newItem);
+    }));
+
+    const { write_token } = await this.client.EditContentObject({
+      objectId: marketplaceObjectId,
+      libraryId
+    });
+
+    await this.client.ReplaceMetadata({
+      objectId: marketplaceObjectId,
+      libraryId,
+      writeToken: write_token,
+      metadataSubtree: "/public/asset_metadata/info/items",
+      metadata: items.concat(newItems)
+    });
+
+    await this.client.FinalizeContentObject({
+      objectId: marketplaceObjectId,
+      libraryId,
+      writeToken: write_token,
+      commitMessage: "Add marketplace items"
+    });
+
+    return newItems;
   }
 
   async MarketplaceRemoveItem({marketplaceObjectId, nftObjectId}) {

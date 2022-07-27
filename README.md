@@ -73,6 +73,9 @@ Commands:
                                             contract and returns true if exists
   marketplace_add_item <marketplace>        Adds an item to a marketplace
   <object> <price> [forSale]
+  marketplace_add_item_batch <marketplace>  Adds multiple items to a 
+  <csv>                                     marketplace
+  
   marketplace_remove_item <marketplace>     Removes an item from a marketplace
   <object>
   storefront_section_add_item               Adds an item to a marketplace
@@ -177,4 +180,3 @@ NFT content object's value from /asset_metadata/nft if present.
 The required key 'attributes' is an array of objects {"trait_type": "", "value": ""}
 and is used to calculate trait rarity. If rarity is already present in the attribute,
 it will be used instead.
-   
