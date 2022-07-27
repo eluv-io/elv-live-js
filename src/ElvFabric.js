@@ -152,7 +152,7 @@ class ElvFabric {
 
   /**
    * GetMetaBatch
-   * @param {string} csvFile  File specifying a list of content IDs and metadata fields to read.
+   * @param {string} csvFile  File specifying a list of content IDs and metadata fields to read. Note that the first two columns has to be id,hash
    */
   async GetMetaBatch({csvFile, libraryId = null, limit = Number.MAX_SAFE_INTEGER}) {
 
@@ -172,6 +172,7 @@ class ElvFabric {
     let fields = [];
 
     if (!libraryId || libraryId.length == 0){
+      fields.push("hash");
       for (const [, f] of Object.entries(ids)) {
         const hdrFields = dot.dot(f);
 
@@ -181,6 +182,8 @@ class ElvFabric {
         }
         break;
       }
+      //Assume we have the hash field.
+      //FIXME: See if we an generalize this better so we don't have "fake" fields: id,hash.
     }
     else {
       const csv = fs.readFileSync(csvFile).toString();
