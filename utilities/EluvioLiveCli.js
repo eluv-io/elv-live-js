@@ -737,6 +737,25 @@ const CmdMarketplaceAddItem = async ({ argv }) => {
   }
 };
 
+const CmdMarketplaceAddItemBatch = async ({ argv }) => {
+  console.log("Marketplace Add Item Batch");
+  console.log(`Marketplace Object ID: ${argv.marketplace}`);
+  console.log(`CSV file containing Object Names and IDs: ${argv.csv}`);
+
+  try {
+    await Init();
+
+    const res = await marketplace.MarketplaceAddItemBatch({
+      marketplaceObjectId: argv.marketplace,
+      csv: argv.csv
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdMarketplaceRemoveItem = async ({ argv }) => {
   console.log("Marketplace Remove Item");
   console.log(`Marketplace Object ID: ${argv.marketplace}`);
@@ -1675,6 +1694,24 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdMarketplaceAddItem({ argv });
+    }
+  )
+
+  .command(
+    "marketplace_add_item_batch <marketplace> <csv>",
+    "Adds multiple items to a marketplace",
+    (yargs) => {
+      yargs.positional("marketplace", {
+        describe: "Marketplace object ID",
+        type: "string",
+      });
+      yargs.positional("csv", {
+        describe: "CSV file containing object ID's and marketplace item name. Expects first row to be header row with columns ordered as object, name",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdMarketplaceAddItemBatch({ argv });
     }
   )
 
