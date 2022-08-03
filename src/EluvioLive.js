@@ -355,6 +355,7 @@ class EluvioLive {
     return res;
   }
 
+
   /**
    * Remove an NFT contract from the tenant's 'tenant_nfts' group
    *

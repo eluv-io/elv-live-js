@@ -1,5 +1,6 @@
 const { ElvSpace } = require("../src/ElvSpace.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
+const { ElvContracts } = require("../src/ElvContracts.js");
 const { Config } = require("../src/Config.js");
 
 const yargs = require("yargs/yargs");
@@ -265,6 +266,110 @@ const CmdAccountSignedToken = async ({ argv }) => {
   }
 };
 
+const CmdClaimerAllocate = async ({ argv }) => {
+  console.log("Claimer Allocate\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.ClaimerAllocate({
+      address: argv.address,
+      amount: argv.amount,
+      expirationDate: argv.expiration_date
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+}
+
+const CmdClaimerClaim = async ({ argv }) => {
+  console.log("Claimer Claim\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.ClaimerClaim({
+      amount: argv.amount
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+}
+
+const CmdClaimerBurn = async ({ argv }) => {
+  console.log("Claimer Burn\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.ClaimerBurn({
+      amount: argv.amount
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+}
+
+const CmdClaimerClearAllocations = async ({ argv }) => {
+  console.log("Claimer Clear Allocations\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.ClaimerClearAllocations({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+}
+
+
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -474,8 +579,77 @@ yargs(hideBin(process.argv))
       CmdSpaceTenantCreate({ argv });
     }
   )
+
+  .command(
+    "claimer_allocate <address> <amount> <expiration_date>",
+    "Allocate an allocation to an user, an allocation contains an amount and an expiration date",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "Address to allocate",
+          type: "string",
+        })
+        .positional("amount", {
+          describe: "Amount to allocate",
+          type: "string",
+        })
+        .positional("expiration_date", {
+          describe: "Expiration date of the allocation",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerAllocate({ argv });
+    }
+  )
+
+  .command(
+    "claimer_claim <amount>",
+    "Claim an amount of your allocations",
+    (yargs) => {
+      yargs
+        .positional("amount", {
+          describe: "Amount to claim",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerClaim({ argv });
+    }
+  )
+  .command(
+    "claimer_burn <amount>",
+    "Burn an amount of your allocations",
+    (yargs) => {
+      yargs
+        .positional("amount", {
+          describe: "Amount to burn",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerBurn({ argv });
+    }
+  )
+  .command(
+    "claimer_clear_allocations <address>",
+    "Clear the expired allocations of an address",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "the expired allocations of this address would be cleared",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerClearAllocations({ argv });
+    }
+  )
+
   .strict()
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")
   .scriptName("")
   .demandCommand(1).argv;
+
+
