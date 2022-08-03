@@ -522,6 +522,31 @@ const CmdTenantSecondarySales = async ({ argv }) => {
   }
 };
 
+const CmdTenantUnifiedSales = async ({ argv }) => {
+  console.log(`Tenant Unified Sales: ${argv.tenant} ${argv.processor}`);
+  console.log(`Offset: ${argv.offset}`);
+  console.log(`CSV: ${argv.csv}`);
+
+  try {
+    await Init();
+
+    let res = await elvlv.TenantUnifiedSales({
+      tenant: argv.tenant,
+      processor: argv.processor,
+      csv: argv.csv,
+      offset: argv.offset,
+    });
+
+    if (argv.csv && argv.csv != "") {
+      fs.writeFileSync(argv.csv, res);
+    } else {
+      console.log(yaml.dump(res));
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdTenantTransferFailures = async ({ argv }) => {
   console.log(`Tenant Trasfer Failures: ${argv.tenant}`);
 
@@ -1529,6 +1554,35 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantSecondarySales({ argv });
+    }
+  )
+  
+  .command(
+    "tenant_sales <tenant> <processor>",
+    "Show tenant secondary sales history",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
+          type: "string",
+        })
+        .option("offset", {
+          describe:
+            "Offset in months to dump data where 0 is the current month",
+          type: "number",
+          default: 1,
+        });
+    },
+    (argv) => {
+      CmdTenantUnifiedSales({ argv });
     }
   )
 
