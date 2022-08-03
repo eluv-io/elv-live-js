@@ -2083,7 +2083,7 @@ class EluvioLive {
   }
 
   /**
-   * Get primary sales history for the tenant
+   * Get secondary sales history for the tenant
    *
    * @namedParams
    * @param {string} tenant - The Tenant ID
@@ -2099,6 +2099,30 @@ class EluvioLive {
 
     let res = await this.GetServiceRequest({
       path: urljoin("/tnt/payments/", tenant, processor),
+      queryParams: { offset },
+      headers,
+    });
+
+    return toJson ? await res.json() : await res.text();
+  }
+
+  /**
+   * Get unified primary&secondary sales history for the tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response containing primary sales info
+   */
+  async TenantUnifiedSales({ tenant, processor, csv, offset }) {
+    let headers = {};
+    let toJson = true;
+    if (csv && csv != "") {
+      headers = { Accept: "text/csv" };
+      toJson = false;
+    }
+
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/report/", tenant, processor),
       queryParams: { offset },
       headers,
     });
