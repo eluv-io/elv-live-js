@@ -1559,7 +1559,7 @@ yargs(hideBin(process.argv))
   
   .command(
     "tenant_sales <tenant> <processor>",
-    "Show tenant secondary sales history",
+    "Show tenant sales history",
     (yargs) => {
       yargs
         .positional("tenant", {
