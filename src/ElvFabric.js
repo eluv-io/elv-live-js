@@ -140,7 +140,7 @@ class ElvFabric {
       throw Error("ElvAccount not intialized");
     }
 
-    let ids = await this.ReadCsvObjects({csvFile});
+    let ids = await this.ReadCsvObjectsMerged({csvFile});
 
     console.log("IDS: ", JSON.stringify(ids,0,2));
     let res;
