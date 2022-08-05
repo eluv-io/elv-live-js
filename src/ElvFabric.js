@@ -2,6 +2,7 @@ const { ElvClient } = require("@eluvio/elv-client-js");
 const { ElvUtils } = require("./Utils");
 const dot = require("dot-object");
 const fs = require("fs");
+const { parse } = require("csv-parse");
 
 /**
  * Tools for operating content on the Content Fabric
@@ -56,7 +57,7 @@ class ElvFabric {
       objectId
     });
 
-    await this.client.MergeMetadata({
+    await this.client.ReplaceMetadata({
       libraryId,
       objectId,
       writeToken: editResponse.write_token,
@@ -139,8 +140,9 @@ class ElvFabric {
       throw Error("ElvAccount not intialized");
     }
 
-    let ids = await ElvUtils.ReadCsvObjects({csvFile});
+    let ids = await this.ReadCsvObjects({csvFile});
 
+    console.log("IDS: ", JSON.stringify(ids,0,2));
     let res;
     if (!duplicate) {
       res = await this.setMetaBatch({ids});
@@ -236,6 +238,59 @@ class ElvFabric {
     return csvOut;
   }
 
+  /**
+   * Read a CSV file and parse into a JSON object merging with the object's existing fabric metadata
+   *
+   * Applies string substitutions on input:
+   *   - ${UUID}
+   *
+   * CSV file format:
+   *   id,field1,field2
+   *   iq_1111,value1,value2
+   *   iq_2222,value1,value2
+   *
+   * Output format:
+   *   {
+   *     "iq_1111" : {
+   *       "field1": "value1",
+   *       "field2": "value2"
+   *     },
+   *     "iq_2222" : {
+   *       "field1": "value1",
+   *       "field2": "value2"
+   *     }
+   *   }
+   *
+   * @param {string} csvFile path to CSV file
+   * @returns object Map of object IDs to metadata
+   */
+  async ReadCsvObjectsMerged({csvFile}) {
+    let ids = {};
+
+    const csv = fs.readFileSync(csvFile);
+    const records = parse(csv, {columns: true});
+
+    await records.forEach(async row => {
+      const id = row.id;
+      delete row.id;
+      delete row.hash;
+
+      // Apply substitutions
+      let rowProcessed = await this.getMeta({objectId: id});
+      for (const [key,val] of Object.entries(row)) {
+        switch (val) {
+          case "${UUID}":
+            rowProcessed[key] = ElvUtils.UUID();
+            break;
+          default:
+            rowProcessed[key] = val;
+        }
+      }
+      ids[id] = dot.object(rowProcessed);
+    });
+
+    return ids;
+  }
 }
 
 exports.ElvFabric = ElvFabric;
