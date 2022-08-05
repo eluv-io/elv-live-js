@@ -140,7 +140,8 @@ class ElvFabric {
       throw Error("ElvAccount not intialized");
     }
 
-    let ids = await this.ReadCsvObjectsMerged({csvFile});
+    let ignore = ["eluv."];
+    let ids = await this.ReadCsvObjectsMerged({csvFile,ignore});
 
     console.log("IDS: ", JSON.stringify(ids,0,2));
     let res;
@@ -239,7 +240,7 @@ class ElvFabric {
   }
 
   /**
-   * Read a CSV file and parse into a JSON object merging with the object's existing fabric metadata
+   * Read a CSV file and parse into a JSON object merging with the object's existing fabric metadata.
    *
    * Applies string substitutions on input:
    *   - ${UUID}
@@ -262,9 +263,10 @@ class ElvFabric {
    *   }
    *
    * @param {string} csvFile path to CSV file
+   * @param {Array} ignore a list of prefixes to ignore eg "eluv." 
    * @returns object Map of object IDs to metadata
    */
-  async ReadCsvObjectsMerged({csvFile}) {
+  async ReadCsvObjectsMerged({csvFile, ignore=[]}) {
     let ids = {};
 
     const csv = fs.readFileSync(csvFile);
@@ -278,6 +280,21 @@ class ElvFabric {
 
       // Apply substitutions
       let rowProcessed = await this.getMeta({objectId: id});
+
+      //Remove ignore keys and save [key,val] in a list for later
+      let ignoredList = {};
+
+      for (const [key,val] of Object.entries(rowProcessed)) {
+        for (const item of ignore){
+          if (!key || key.startsWith(item)){
+            ignoredList[key] = val;
+            delete rowProcessed[key];
+          }
+        }
+      }
+
+      console.log(ignoredList);
+
       for (const [key,val] of Object.entries(row)) {
         switch (val) {
           case "${UUID}":
@@ -290,7 +307,12 @@ class ElvFabric {
             rowProcessed[key] = val;
         }
       }
-      ids[id] = dot.object(rowProcessed);
+
+      let meta = dot.object(rowProcessed);
+      //Add back ignored list
+      meta = {...meta,...ignoredList};
+
+      ids[id] = meta;
     });
 
     return ids;
