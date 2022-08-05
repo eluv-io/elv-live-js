@@ -268,7 +268,8 @@ class ElvFabric {
     let ids = {};
 
     const csv = fs.readFileSync(csvFile);
-    const records = parse(csv, {columns: true});
+    const records = parse(csv, {columns: true, 
+      skip_records_with_empty_values: true});
 
     await records.forEach(async row => {
       const id = row.id;
@@ -281,6 +282,9 @@ class ElvFabric {
         switch (val) {
           case "${UUID}":
             rowProcessed[key] = ElvUtils.UUID();
+            break;
+          case "":
+            rowProcessed[key] = null;
             break;
           default:
             rowProcessed[key] = val;
