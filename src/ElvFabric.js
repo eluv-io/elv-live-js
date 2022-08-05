@@ -76,7 +76,7 @@ class ElvFabric {
    * Set content metadata for an object
    * @param {string} objectId
    */
-  async getMeta({objectId, select}) {
+  async getMeta({objectId, select, includeHash=false}) {
 
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
     const meta = await this.client.ContentObjectMetadata({
@@ -85,9 +85,11 @@ class ElvFabric {
       select
     });
 
-    meta["hash"] = await this.client.LatestVersionHash({
-      objectId
-    });
+    if (includeHash){
+      meta["hash"] = await this.client.LatestVersionHash({
+        objectId
+      });
+    }
     return meta;
   }
 
@@ -230,7 +232,7 @@ class ElvFabric {
 
     let csvOut = "";
     for (const [id] of Object.entries(ids)) {
-      const meta = await this.getMeta({objectId: id});
+      const meta = await this.getMeta({objectId: id, includeHash:true});
 
       let row = await ElvUtils.MakeCsv({fields, meta});
       row = id + "," + row;
@@ -293,7 +295,7 @@ class ElvFabric {
         }
       }
 
-      console.log(ignoredList);
+      console.log("ignored: ", ignoredList);
 
       for (const [key,val] of Object.entries(row)) {
         switch (val) {
