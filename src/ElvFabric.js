@@ -2,6 +2,7 @@ const { ElvClient } = require("@eluvio/elv-client-js");
 const { ElvUtils } = require("./Utils");
 const dot = require("dot-object");
 const fs = require("fs");
+const { parse } = require("csv-parse");
 
 /**
  * Tools for operating content on the Content Fabric
@@ -56,7 +57,7 @@ class ElvFabric {
       objectId
     });
 
-    await this.client.MergeMetadata({
+    await this.client.ReplaceMetadata({
       libraryId,
       objectId,
       writeToken: editResponse.write_token,
@@ -75,7 +76,7 @@ class ElvFabric {
    * Set content metadata for an object
    * @param {string} objectId
    */
-  async getMeta({objectId, select}) {
+  async getMeta({objectId, select, includeHash=false}) {
 
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
     const meta = await this.client.ContentObjectMetadata({
@@ -84,9 +85,11 @@ class ElvFabric {
       select
     });
 
-    meta["hash"] = await this.client.LatestVersionHash({
-      objectId
-    });
+    if (includeHash){
+      meta["hash"] = await this.client.LatestVersionHash({
+        objectId
+      });
+    }
     return meta;
   }
 
@@ -139,7 +142,8 @@ class ElvFabric {
       throw Error("ElvAccount not intialized");
     }
 
-    let ids = await ElvUtils.ReadCsvObjects({csvFile});
+    let ignore = ["eluv."];
+    let ids = await this.ReadCsvObjectsMerged({csvFile,ignore});
 
     let res;
     if (!duplicate) {
@@ -227,7 +231,7 @@ class ElvFabric {
 
     let csvOut = "";
     for (const [id] of Object.entries(ids)) {
-      const meta = await this.getMeta({objectId: id});
+      const meta = await this.getMeta({objectId: id, includeHash:true});
 
       let row = await ElvUtils.MakeCsv({fields, meta});
       row = id + "," + row;
@@ -236,6 +240,84 @@ class ElvFabric {
     return csvOut;
   }
 
+  /**
+   * Read a CSV file and parse into a JSON object merging with the object's existing fabric metadata.
+   *
+   * Applies string substitutions on input:
+   *   - ${UUID}
+   *
+   * CSV file format:
+   *   id,field1,field2
+   *   iq_1111,value1,value2
+   *   iq_2222,value1,value2
+   *
+   * Output format:
+   *   {
+   *     "iq_1111" : {
+   *       "field1": "value1",
+   *       "field2": "value2"
+   *     },
+   *     "iq_2222" : {
+   *       "field1": "value1",
+   *       "field2": "value2"
+   *     }
+   *   }
+   *
+   * @param {string} csvFile path to CSV file
+   * @param {Array} ignore a list of prefixes to ignore eg "eluv." 
+   * @returns object Map of object IDs to metadata
+   */
+  async ReadCsvObjectsMerged({csvFile, ignore=[]}) {
+    let ids = {};
+
+    const csv = fs.readFileSync(csvFile);
+    const records = parse(csv, {columns: true, 
+      skip_records_with_empty_values: true});
+
+    await records.forEach(async row => {
+      const id = row.id;
+      delete row.id;
+      delete row.hash;
+
+      // Apply substitutions
+      let rowProcessed = await this.getMeta({objectId: id});
+
+      //Remove ignore keys and save [key,val] in a list for later
+      let ignoredList = {};
+
+      for (const [key,val] of Object.entries(rowProcessed)) {
+        for (const item of ignore){
+          if (!key || key.startsWith(item)){
+            ignoredList[key] = val;
+            delete rowProcessed[key];
+          }
+        }
+      }
+
+      console.log("ignored: ", ignoredList);
+
+      for (const [key,val] of Object.entries(row)) {
+        switch (val) {
+          case "${UUID}":
+            rowProcessed[key] = ElvUtils.UUID();
+            break;
+          case "":
+            rowProcessed[key] = null;
+            break;
+          default:
+            rowProcessed[key] = val;
+        }
+      }
+
+      let meta = dot.object(rowProcessed);
+      //Add back ignored list
+      meta = {...meta,...ignoredList};
+
+      ids[id] = meta;
+    });
+
+    return ids;
+  }
 }
 
 exports.ElvFabric = ElvFabric;

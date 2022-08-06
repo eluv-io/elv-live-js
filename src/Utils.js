@@ -69,7 +69,8 @@ class ElvUtils {
     let ids = {};
 
     const csv = fs.readFileSync(csvFile);
-    const records = parse(csv, {columns: true});
+    const records = parse(csv, {columns: true,
+      skip_records_with_empty_values: true});
 
     await records.forEach(row => {
       const id = row.id;
