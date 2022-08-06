@@ -145,7 +145,6 @@ class ElvFabric {
     let ignore = ["eluv."];
     let ids = await this.ReadCsvObjectsMerged({csvFile,ignore});
 
-    console.log("IDS: ", JSON.stringify(ids,0,2));
     let res;
     if (!duplicate) {
       res = await this.setMetaBatch({ids});
