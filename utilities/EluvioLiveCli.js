@@ -16,7 +16,7 @@ const prompt = require("prompt-sync")({ sigint: true });
 let elvlv;
 let marketplace;
 
-const Init = async () => {
+const Init = async ({debugLogging = false}) => {
   console.log("Network: " + Config.net);
 
   const config = {
@@ -24,10 +24,10 @@ const Init = async () => {
     mainObjectId: Config.mainObjects[Config.net],
   };
   elvlv = new EluvioLive(config);
-  await elvlv.Init();
+  await elvlv.Init({debugLogging});
 
   marketplace = new Marketplace(config);
-  await marketplace.Init();
+  await marketplace.Init({debugLogging});
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
@@ -936,6 +936,44 @@ const CmdTenantAddConsumerGroup = async ({ argv }) => {
   }
 };
 
+const CmdNFTGetPolicyPermissions = async ({ argv }) => {
+  console.log("NFT Get Policy and Permissions");
+  console.log(`NFT Address: ${argv.addr}`);
+  console.log(`verbose: ${argv.verbose}`);
+
+  try {
+    await Init({debugLogging: argv.verbose});
+
+    res = await elvlv.NftGetPolicyAndPermissions({address: argv.addr});
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNFTSetPolicyPermissions = async ({ argv }) => {
+  console.log("NFT Set Policy and Permissions");
+  console.log(`NFT Address: ${argv.nftAddress}`);
+  console.log(`Policy file path: ${argv.policy_path}`);
+  console.log(`Addresses: ${argv.addrs}`);
+  console.log(`verbose: ${argv.verbose}`);
+
+  try {
+    await Init({debugLogging: argv.verbose});
+
+    res = await elvlv.NftSetPolicyAndPermissions({
+      nftAddress: argv.nftAddress,
+      policyPath: argv.policy_path,
+      addresses: argv.addrs
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -1692,7 +1730,7 @@ yargs(hideBin(process.argv))
         })
         .option("addrs", {
           describe:
-            "Addresses the to add",
+            "Addresses to add",
           type: "string",
         });
     },
@@ -1857,6 +1895,44 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantAddConsumerGroup({ argv });
+    }
+  )
+
+  .command(
+    "nft_get_policy_permissions <addr>",
+    "Gets the policy and permissions from an NFT contract.",
+    (yargs) => {
+      yargs.positional("addr", {
+        describe: "NFT Contract Address. Can also be the Fabric Object ID of the NFT object.",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdNFTGetPolicyPermissions({ argv });
+    }
+  )
+
+  .command(
+    "nft_set_policy_permissions <nftAddress> <policy_path> [addrs..]",
+    "Gets the policy and permissions from an NFT contract.",
+    (yargs) => {
+      yargs
+        .positional("nftAddress", {
+          describe: "NFT Contract Address. Can also be the Fabric Object ID of the NFT object.",
+          type: "string",
+        })
+        .positional("nftAddress", {
+          describe: "NFT Contract Address. Can also be the Fabric Object ID of the NFT object.",
+          type: "string",
+        })
+        .option("addrs", {
+          describe:
+            "Addresses to add",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNFTSetPolicyPermissions({ argv });
     }
   )
 

@@ -314,6 +314,62 @@ const CmdFabricSetMetaBatch = async ({ argv }) => {
   }
 };
 
+const CmdContractGetMeta = async ({ argv }) => {
+  console.log("Get Contract Metadata", 
+    `address: ${argv.addr}`,
+    `key: ${argv.key}`,
+    `verbose: ${argv.verbose}`);
+
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    let res = await elvFabric.GetContractMeta({
+      address: argv.addr,
+      key: argv.key
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdContractSetMeta = async ({ argv }) => {
+  console.log("Set Contract Metadata", 
+    `address: ${argv.addr}`,
+    `key: ${argv.key}`,
+    `value: ${argv.value}`,
+    `verbose: ${argv.verbose}`);
+
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    let res = await elvFabric.SetContractMeta({
+      address: argv.addr,
+      key: argv.key,
+      value: argv.value
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -569,6 +625,48 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdFabricSetMetaBatch({ argv });
+    }
+  )
+
+  .command(
+    "contract_get_meta <addr> <key>",
+    "Get contract metadata.",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "Contract address. NFT object ID also accepted eg. iqxxx.",
+          type: "string",
+        })
+        .positional("key", {
+          describe: "Metadata key to retrieve.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContractGetMeta({ argv });
+    }
+  )
+
+  .command(
+    "contract_set_meta <addr> <key> <value>",
+    "Set contract metadata using key/value.",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "Contract address. NFT object ID also accepted eg. iqxxx.",
+          type: "string",
+        })
+        .positional("key", {
+          describe: "Metadata key.",
+          type: "string",
+        })
+        .positional("value", {
+          describe: "Metadata value.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContractSetMeta({ argv });
     }
   )
 
