@@ -32,7 +32,7 @@ class EluvioLive {
     this.debug = false;
   }
 
-  async Init({debugLogging = false}) {
+  async Init({debugLogging = false}={}) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
