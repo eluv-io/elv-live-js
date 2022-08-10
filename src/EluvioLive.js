@@ -2,6 +2,7 @@ const { ElvClient } = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { Config } = require("./Config.js");
 const { ElvAccount } = require("./ElvAccount");
+const { ElvFabric } = require("../src/ElvFabric.js");
 const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
@@ -31,7 +32,7 @@ class EluvioLive {
     this.debug = false;
   }
 
-  async Init() {
+  async Init({debugLogging = false}) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
@@ -40,7 +41,8 @@ class EluvioLive {
       privateKey: process.env.PRIVATE_KEY,
     });
     this.client.SetSigner({ signer });
-    this.client.ToggleLogging(false);
+    this.client.ToggleLogging(debugLogging);
+    this.debug = debugLogging;
   }
 
   /**
@@ -1179,6 +1181,118 @@ class EluvioLive {
     });
 
     return res;
+  }
+
+  /**
+   * Sets the nft policy and permissions for a given contract
+   *
+   * @namedParams
+   * @param {string} nftAddress - The NFT contract address
+   * @param {string} policyPath - Path to the policy file (eg. nft_owner_minter.yaml). Note that the policy must contain the minter address
+   * @param {[string]} addresses - Array of addresses to set the policy permissions
+   */
+  async NftSetPolicyAndPermissions({ nftAddress, policyPath, addresses=[] }) {
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+
+    //Set Policy
+    const policyString = fs.readFileSync(
+      policyPath
+    ).toString();
+
+    if (!policyString){
+      throw Error("Policy file contents is empty.");
+    }
+
+    if (this.debug){
+      console.log("Policy file contents: ", policyString);
+    }
+
+    let res = await elvFabric.SetContractMeta({
+      address: nftAddress,
+      key: "_ELV",
+      value: policyString
+    });
+
+
+    let addressesString = JSON.stringify(addresses);
+
+    if (this.debug){
+      console.log("Set Policy response: ", res);
+      console.log("Addresses string: ", addressesString);
+    }
+
+    let res2 = await elvFabric.SetContractMeta({
+      address: nftAddress,
+      key: "_NFT_ACCESS",
+      value: addressesString
+    });
+
+    if (this.debug){
+      console.log("Set Policy response: ", res);
+    }
+
+    return {policyResponse: res, permissionsResponse: res2};
+  }
+
+  /**
+   * Sets the nft policy and permissions for a given contract
+   *
+   * @namedParams
+   * @param {string} nftAddress - The NFT contract address. Can also be iqXXX format.
+   * @return {object} object containing the policy string and the list of addresses from nft metadata
+   */
+  async NftGetPolicyAndPermissions({ address }) {
+
+    if (address.startsWith("iq")){
+      address =  Utils.HashToAddress(address);
+    }
+
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+
+    let policy = await elvFabric.GetContractMeta({
+      address: address,
+      key: "_ELV"
+    });
+
+    if (this.debug){
+      console.log("Get _ELV response: ", policy);
+    }
+
+    let addressesString = await elvFabric.GetContractMeta({
+      address: address,
+      key: "_NFT_ACCESS"
+    });
+
+    if (this.debug){
+      console.log("Get _NFT_ACCESS response: ", addressesString);
+    }
+
+    let addresses = [];
+    try {
+      addresses = JSON.parse(addressesString);
+    } catch (e){
+      if (this.debug){
+        console.error("Couldn't parse _NFT_ACCESS response ", e);
+      }
+    }
+
+    return {"policy": policy, "permissions": addresses};
   }
 
   /**

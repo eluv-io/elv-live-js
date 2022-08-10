@@ -3,6 +3,8 @@ const { ElvUtils } = require("./Utils");
 const dot = require("dot-object");
 const fs = require("fs");
 const { parse } = require("csv-parse");
+const path = require("path");
+const Ethers = require("ethers");
 
 /**
  * Tools for operating content on the Content Fabric
@@ -318,6 +320,72 @@ class ElvFabric {
 
     return ids;
   }
+
+  /**
+   * GetContractMeta
+   * @param {string} address  contract address
+   * @param {string} key  metadata key
+   * @returns value stored in the contract metadata
+   */
+  async GetContractMeta({address, key}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseContent.abi")
+    );
+
+    if (address.startsWith("iq")){
+      address = this.client.utils.HashToAddress(address);
+    }
+
+    if (this.debug){
+      console.log("Address", address);
+    }
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "getMeta",
+      methodArgs: [key],
+      formatArguments: true,
+    });
+
+    if (this.debug){
+      console.log("Raw response: ", res);
+    }
+
+    return Ethers.utils.toUtf8String(res);
+  }
+
+  /**
+   * SetContractMeta
+   * @param {string} address  contract address
+   * @param {string} key  metadata key
+   * @returns result of contract method call
+   */
+  async SetContractMeta({address, key, value}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseContent.abi")
+    );
+
+    if (address.startsWith("iq")){
+      address = this.client.utils.HashToAddress(address);
+    }
+
+    if (this.debug){
+      console.log("Address", address);
+    }
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "putMeta",
+      methodArgs: [key, value],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
 }
+
 
 exports.ElvFabric = ElvFabric;
