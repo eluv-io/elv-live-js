@@ -132,10 +132,10 @@ class ElvAccount {
     }
 
     let address = await this.client.signer.address;
-    let tenantAmdinsId = "";
+    let tenantAdminsId = "";
     let userMetadata = "";
     try {
-      tenantAmdinsId = await this.client.userProfileClient.TenantId();
+      tenantAdminsId = await this.client.userProfileClient.TenantId();
     } catch (e){ console.log("No tenantAdminsId set."); }
 
     try {
@@ -148,7 +148,7 @@ class ElvAccount {
     let wallet = this.client.GenerateWallet();
     let balance = await wallet.GetAccountBalance({ signer: this.client.signer });
 
-    return { address, tenantAmdinsId, walletAddress, userWalletObject, userMetadata, balance };
+    return { address, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
   }
 
   async SetAccountTenantAdminsAddress({ tenantAdminsAddress }) {

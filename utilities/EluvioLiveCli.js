@@ -16,7 +16,7 @@ const prompt = require("prompt-sync")({ sigint: true });
 let elvlv;
 let marketplace;
 
-const Init = async ({debugLogging = false}) => {
+const Init = async ({debugLogging = false}={}) => {
   console.log("Network: " + Config.net);
 
   const config = {

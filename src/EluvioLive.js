@@ -32,7 +32,7 @@ class EluvioLive {
     this.debug = false;
   }
 
-  async Init({debugLogging = false}) {
+  async Init({debugLogging = false}={}) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
@@ -87,6 +87,21 @@ class EluvioLive {
 
         if (item.nft_template == "") {
           warns.push("No NFT Template sku: " + sku);
+          continue;
+        }
+
+        if (!item.nft_template.mint){
+          warns.push("No nft_template.mint: " + sku);
+          continue;
+        }
+
+        if (!item.nft_template.mint){
+          warns.push("No nft_template.mint sku: " + sku);
+          continue;
+        }
+
+        if (!item.nft_template.nft){
+          warns.push("No nft_template.nft sku: " + sku);
           continue;
         }
 
