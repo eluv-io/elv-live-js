@@ -90,6 +90,21 @@ class EluvioLive {
           continue;
         }
 
+        if (!item.nft_template.mint){
+          warns.push("No nft_template.mint: " + sku);
+          continue;
+        }
+
+        if (!item.nft_template.mint){
+          warns.push("No nft_template.mint sku: " + sku);
+          continue;
+        }
+
+        if (!item.nft_template.nft){
+          warns.push("No nft_template.nft sku: " + sku);
+          continue;
+        }
+
         tenantInfo.marketplaces[key].items[sku] = {};
         tenantInfo.marketplaces[key].items[sku].name = item.name;
         tenantInfo.marketplaces[key].items[sku].description = item.description;
