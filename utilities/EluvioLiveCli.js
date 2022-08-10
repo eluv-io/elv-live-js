@@ -938,13 +938,13 @@ const CmdTenantAddConsumerGroup = async ({ argv }) => {
 
 const CmdNFTGetPolicyPermissions = async ({ argv }) => {
   console.log("NFT Get Policy and Permissions");
-  console.log(`NFT Address: ${argv.addr}`);
+  console.log(`Object ID: ${argv.object}`);
   console.log(`verbose: ${argv.verbose}`);
 
   try {
     await Init({debugLogging: argv.verbose});
 
-    res = await elvlv.NftGetPolicyAndPermissions({address: argv.addr});
+    res = await elvlv.NftGetPolicyAndPermissions({address: argv.object});
 
     console.log("\n" + yaml.dump(res));
   } catch (e) {
@@ -954,7 +954,7 @@ const CmdNFTGetPolicyPermissions = async ({ argv }) => {
 
 const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   console.log("NFT Set Policy and Permissions");
-  console.log(`NFT Address: ${argv.nftAddress}`);
+  console.log(`Object ID: ${argv.object}`);
   console.log(`Policy file path: ${argv.policy_path}`);
   console.log(`Addresses: ${argv.addrs}`);
   console.log(`verbose: ${argv.verbose}`);
@@ -963,7 +963,7 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
     await Init({debugLogging: argv.verbose});
 
     res = await elvlv.NftSetPolicyAndPermissions({
-      nftAddress: argv.nftAddress,
+      nftAddress: argv.object,
       policyPath: argv.policy_path,
       addresses: argv.addrs
     });
@@ -1899,11 +1899,11 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_get_policy_permissions <addr>",
-    "Gets the policy and permissions from an NFT contract.",
+    "nft_get_policy_permissions <object>",
+    "Gets the policy and permissions of a content object.",
     (yargs) => {
-      yargs.positional("addr", {
-        describe: "NFT Contract Address. Can also be the Fabric Object ID of the NFT object.",
+      yargs.positional("object", {
+        describe: "ID of the content fabric object",
         type: "string",
       });
     },
@@ -1913,16 +1913,16 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_set_policy_permissions <nftAddress> <policy_path> [addrs..]",
-    "Gets the policy and permissions from an NFT contract.",
+    "nft_set_policy_permissions <object> <policy_path> [addrs..]",
+    "Sets the policy and permissions granting NFT owners access to a content object.",
     (yargs) => {
       yargs
-        .positional("nftAddress", {
-          describe: "NFT Contract Address. Can also be the Fabric Object ID of the NFT object.",
+        .positional("object", {
+          describe: "ID of the content object to grant access to",
           type: "string",
         })
-        .positional("nftAddress", {
-          describe: "NFT Contract Address. Can also be the Fabric Object ID of the NFT object.",
+        .positional("policy_path", {
+          describe: "Path of policy object file",
           type: "string",
         })
         .option("addrs", {
