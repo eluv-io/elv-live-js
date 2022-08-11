@@ -257,7 +257,7 @@ const CmdTenantShow = async ({ argv }) => {
   console.log("check_nfts", argv.check_nfts);
   try {
     await Init();
-
+    //FIXME:
     let res = await elvlv.TenantShow({
       tenantId: argv.tenant,
       cauth: argv.check_cauth,
@@ -724,12 +724,30 @@ const CmdTenantAddConsumers = async ({ argv }) => {
 
   try {
     await Init();
-    await elvlv.TenantAddConsumers({
+    let res = await elvlv.TenantAddConsumers({
       groupId: argv.group_id,
       accountAddresses: argv.addrs,
     });
 
-    console.log("Success!");
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantRemoveConsumer = async ({ argv }) => {
+  console.log("Tenant Remove Consumer");
+  console.log(`Group ID: ${argv.group_id}`);
+  console.log(`Account Address: ${argv.addr}`);
+
+  try {
+    await Init();
+    let res = await elvlv.TenantRemoveConsumer({
+      groupId: argv.group_id,
+      accountAddress: argv.addr,
+    });
+
+    console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1736,6 +1754,26 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantAddConsumers({ argv });
+    }
+  )
+
+  .command(
+    "tenant_remove_consumer <group_id> <addr>",
+    "Removes consumer from tenant consumer group",
+    (yargs) => {
+      yargs
+        .positional("group_id", {
+          describe: "Tenant consumer group ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe:
+            "Address the to add",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantRemoveConsumer({ argv });
     }
   )
 
