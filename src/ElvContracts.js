@@ -165,7 +165,7 @@ class ElvContracts {
    */
   async ClaimerListAllocations({ address }){
     const abi = fs.readFileSync(
-        path.resolve(__dirname, "../contracts/v4/Claimer.abi")
+      path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
           
     await this.ClaimerClearAllocations({address});
@@ -179,27 +179,27 @@ class ElvContracts {
     });
 
     let listAllocations = [];
-    for(let i ; i<lengthList; i++){
-        var idx = i.toString();
-        try {
-            var elemAmount = await this.client.CallContractMethod({
-                contractAddress: Config.consts.main.claimerAddress,
-                abi: JSON.parse(abi),
-                methodName: "getAmount",
-                methodArgs: [ address, idx ],
-                formatArguments: true,
-            });
-            var elemExpirationDate = await this.client.CallContractMethod({
-                contractAddress: Config.consts.main.claimerAddress,
-                abi: JSON.parse(abi),
-                methodName: "getExpirationDate",
-                methodArgs: [ address, idx ],
-                formatArguments: true,
-            });
-            listAllocations.push('amount : ' + elemAmount + ' - expiration : ' + elemExpirationDate);
-        } catch(e){
-            break;
-        }
+    for (let i ; i<lengthList; i++){
+      var idx = i.toString();
+      try {
+        var elemAmount = await this.client.CallContractMethod({
+          contractAddress: Config.consts.main.claimerAddress,
+          abi: JSON.parse(abi),
+          methodName: "getAmount",
+          methodArgs: [ address, idx ],
+          formatArguments: true,
+        });
+        var elemExpirationDate = await this.client.CallContractMethod({
+          contractAddress: Config.consts.main.claimerAddress,
+          abi: JSON.parse(abi),
+          methodName: "getExpirationDate",
+          methodArgs: [ address, idx ],
+          formatArguments: true,
+        });
+        listAllocations.push("amount : " + elemAmount + " - expiration : " + elemExpirationDate);
+      } catch (e){
+        break;
+      }
     }
     /**
      * questions :
