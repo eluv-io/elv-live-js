@@ -3,6 +3,7 @@ const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { Config } = require("./Config.js");
 const { ElvAccount } = require("./ElvAccount");
 const { ElvFabric } = require("../src/ElvFabric.js");
+const { ElvUtils } = require("./Utils");
 const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
@@ -46,6 +47,39 @@ class EluvioLive {
   }
 
   /**
+   * Show group info about this tenant.
+   */
+  async TenantGroupInfo({ tenantId }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+
+    var tenant_admin_address = await this.client.CallContractMethod({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "groupsMapping",
+      methodArgs: ["tenant_admin", 0],
+      formatArguments: true,
+    });
+
+    var tenant_consumer_address = await this.client.CallContractMethod({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "groupsMapping",
+      methodArgs: ["tenant_consumer", 0],
+      formatArguments: true,
+    });
+
+    return {tenant_admin_address, 
+      tenant_admin_id: ElvUtils.AddressToId({prefix:"igrp", address:tenant_admin_address}),
+      tenant_consumer_address,
+      tenant_consumer_id: ElvUtils.AddressToId({prefix:"igrp", address:tenant_consumer_address}),
+    };
+  }
+
+  /**
    * Show info about this tenant.
    * Currently only listing NFT marketplaces.
    *
@@ -57,6 +91,7 @@ class EluvioLive {
    */
   async TenantShow({ tenantId, cauth, mintHelper, checkNft = false }) {
     var tenantInfo = {};
+
     let m = await this.List({ tenantId });
 
     tenantInfo.marketplaces = {};
@@ -195,9 +230,11 @@ class EluvioLive {
       );
     }
 
+    tenantInfo.groups = await this.TenantGroupInfo({tenantId});
     tenantInfo.sites = {};
     tenantInfo.warns = warns;
 
+  
     return tenantInfo;
   }
 
@@ -2287,6 +2324,23 @@ class EluvioLive {
       contractAddress: address,
       abi: JSON.parse(abi),
       methodName: "hasAccess",
+      methodArgs: [accountAddress],
+      formatArguments: true,
+    });
+
+    return response;
+  }
+
+  async TenantRemoveConsumer({groupId, accountAddress}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantConsumerGroup.abi")
+    );
+    const address = Utils.HashToAddress(groupId);
+
+    var response = await this.client.CallContractMethodAndWait({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "revokeAccess",
       methodArgs: [accountAddress],
       formatArguments: true,
     });
