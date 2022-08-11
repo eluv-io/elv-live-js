@@ -1,7 +1,7 @@
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { ElvUtils } = require("../src/Utils");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
-const { InitializeTenant, AddConsumerGroup }  = require("../src/Provision");
+const { InitializeTenant, AddConsumerGroup } = require("../src/Provision");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
 const { Marketplace } = require("../src/Marketplace");
@@ -16,7 +16,7 @@ const prompt = require("prompt-sync")({ sigint: true });
 let elvlv;
 let marketplace;
 
-const Init = async ({debugLogging = false}={}) => {
+const Init = async ({ debugLogging = false } = {}) => {
   console.log("Network: " + Config.net);
 
   const config = {
@@ -24,10 +24,10 @@ const Init = async ({debugLogging = false}={}) => {
     mainObjectId: Config.mainObjects[Config.net],
   };
   elvlv = new EluvioLive(config);
-  await elvlv.Init({debugLogging});
+  await elvlv.Init({ debugLogging });
 
   marketplace = new Marketplace(config);
-  await marketplace.Init({debugLogging});
+  await marketplace.Init({ debugLogging });
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
@@ -230,7 +230,7 @@ const CmdNftTransfer = async ({ argv }) => {
     await Init();
 
     let res;
-    if (argv.auth_service)  {
+    if (argv.auth_service) {
       res = await elvlv.AsNftTransfer({
         addr: argv.addr,
         tokenId: argv.token_id,
@@ -257,7 +257,7 @@ const CmdTenantShow = async ({ argv }) => {
   console.log("check_nfts", argv.check_nfts);
   try {
     await Init();
-    //FIXME:
+
     let res = await elvlv.TenantShow({
       tenantId: argv.tenant,
       cauth: argv.check_cauth,
@@ -420,7 +420,7 @@ const CmdTenantWallets = async ({ argv }) => {
 };
 
 const CmdNFTRefresh = async ({ argv }) => {
-  console.log( "NFT Refresh");
+  console.log("NFT Refresh");
   console.log(`NFT Refresh\ntenant: ${argv.tenant}}`);
   console.log(`address: ${argv.addr}}`);
 
@@ -901,7 +901,7 @@ const CmdNftGetTransferFee = async ({ argv }) => {
   try {
     await Init();
 
-    res = await elvlv.NftGetTransferFee({address: argv.addr});
+    res = await elvlv.NftGetTransferFee({ address: argv.addr });
 
     console.log(yaml.dump(res));
   } catch (e) {
@@ -917,14 +917,16 @@ const CmdTenantProvision = async ({ argv }) => {
   try {
     await Init();
     let client = elvlv.client;
-    let kmsId = ElvUtils.AddressToId({prefix:"ikms",
-      address:Config.consts[Config.net].kmsAddress});
+    let kmsId = ElvUtils.AddressToId({
+      prefix: "ikms",
+      address: Config.consts[Config.net].kmsAddress
+    });
     console.log(`kmsId: ${kmsId}`);
 
     res = await InitializeTenant({
       client,
       kmsId,
-      tenantName:argv.tenant_name,
+      tenantName: argv.tenant_name,
       debug: argv.verbose
     });
 
@@ -946,7 +948,7 @@ const CmdTenantAddConsumerGroup = async ({ argv }) => {
     let tenantAddress = Utils.HashToAddress(argv.tenant);
     console.log(`Tenant Contract Address: ${tenantAddress}`);
 
-    res = await AddConsumerGroup({client, tenantAddress, debug:argv.verbose});
+    res = await AddConsumerGroup({ client, tenantAddress, debug: argv.verbose });
 
     console.log(yaml.dump(res));
   } catch (e) {
@@ -960,9 +962,9 @@ const CmdNFTGetPolicyPermissions = async ({ argv }) => {
   console.log(`verbose: ${argv.verbose}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose });
 
-    res = await elvlv.NftGetPolicyAndPermissions({address: argv.object});
+    res = await elvlv.NftGetPolicyAndPermissions({ address: argv.object });
 
     console.log("\n" + yaml.dump(res));
   } catch (e) {
@@ -978,7 +980,7 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   console.log(`verbose: ${argv.verbose}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose });
 
     res = await elvlv.NftSetPolicyAndPermissions({
       nftAddress: argv.object,
@@ -1612,7 +1614,7 @@ yargs(hideBin(process.argv))
       CmdTenantSecondarySales({ argv });
     }
   )
-  
+
   .command(
     "tenant_sales <tenant> <processor>",
     "Show tenant sales history",
