@@ -62,7 +62,6 @@ class ElvContracts {
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
 
-        
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: Config.consts.main.claimerAddress,
       abi: JSON.parse(abi),
@@ -96,15 +95,59 @@ class ElvContracts {
   }
 
   /**
-     * Call the method clearAllocations of the smart contract Claimer.sol
-     * @param {string} address : clear the allocations of this address
-     */
-  async ClaimerClearAllocations({ address }){
+   * Call the method addAuthorizedAdr of the smart contract Claimer.sol
+   * @param {string} address : the address to add to the list
+   */
+  async ClaimerAddAuthAdr({ address }){
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
         
 
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: Config.consts.main.claimerAddress,
+      abi: JSON.parse(abi),
+      methodName: "addAuthorizedAdr",
+      methodArgs: [ address ],
+      formatArguments: true,
+    });
+        
+    return res;
+  }
+
+  /**
+   * Call the method rmAuthorizedAdr of the smart contract Claimer.sol
+   * @param {string} address : the address to remove from the list
+   */
+  async ClaimerRmAuthAdr({ address }){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Claimer.abi")
+    );
+        
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: Config.consts.main.claimerAddress,
+      abi: JSON.parse(abi),
+      methodName: "rmAuthorizedAdr",
+      methodArgs: [ address ],
+      formatArguments: true,
+    });
+        
+    return res;
+  }
+
+
+
+
+  /**
+  * Call the method clearAllocations of the smart contract Claimer.sol
+  * @param {string} address : clear the allocations of this address
+  * */
+  async ClaimerClearAllocations({ address }){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Claimer.abi")
+    );
+        
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: Config.consts.main.claimerAddress,
       abi: JSON.parse(abi),
@@ -116,10 +159,57 @@ class ElvContracts {
     return res;
   }
 
-  //question for list allocations
+  /**
+   * First clear the list and then create a list by pushing all the allocations into it
+   * @param {string} address : list the allocations of this list
+   */
+  async ClaimerListAllocations({ address }){
+    const abi = fs.readFileSync(
+        path.resolve(__dirname, "../contracts/v4/Claimer.abi")
+    );
+          
+    await this.ClaimerClearAllocations({address});
 
+    var lengthList = await this.client.CallContractMethod({
+      contractAddress: Config.consts.main.claimerAddress,
+      abi: JSON.parse(abi),
+      methodName: "getNrAllocations",
+      methodArgs: [ address ],
+      formatArguments: true,
+    });
+
+    let listAllocations = [];
+    for(let i ; i<lengthList; i++){
+        var idx = i.toString();
+        try {
+            var elemAmount = await this.client.CallContractMethod({
+                contractAddress: Config.consts.main.claimerAddress,
+                abi: JSON.parse(abi),
+                methodName: "getAmount",
+                methodArgs: [ address, idx ],
+                formatArguments: true,
+            });
+            var elemExpirationDate = await this.client.CallContractMethod({
+                contractAddress: Config.consts.main.claimerAddress,
+                abi: JSON.parse(abi),
+                methodName: "getExpirationDate",
+                methodArgs: [ address, idx ],
+                formatArguments: true,
+            });
+            listAllocations.push('amount : ' + elemAmount + ' - expiration : ' + elemExpirationDate);
+        } catch(e){
+            break;
+        }
+    }
+    /**
+     * questions :
+     * -we return a string ?
+     */
+    return listAllocations.toString();
+  }
 
 
 }
+
 
 exports.ElvContracts = ElvContracts;

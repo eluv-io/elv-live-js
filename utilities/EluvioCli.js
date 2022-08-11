@@ -368,6 +368,81 @@ const CmdClaimerClearAllocations = async ({ argv }) => {
 
 }
 
+const CmdClaimerListAllocations = async ({ argv }) => {
+  console.log("Claimer List Allocations\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.ClaimerListAllocations({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+}
+
+const CmdClaimerAddAuthAdr = async ({ argv }) => {
+  console.log("Claimer Add Authorized Address\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.ClaimerAddAuthAdr({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+}
+
+const CmdClaimerRmAuthAdr = async ({ argv }) => {
+  console.log("Claimer Remove Authorized Address\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.ClaimerRmAuthAdr({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+}
+
 
 
 yargs(hideBin(process.argv))
@@ -643,6 +718,48 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdClaimerClearAllocations({ argv });
+    }
+  )
+  .command(
+    "claimer_list_allocations <address>",
+    "List the allocations of an address",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "the allocations of this address would be listed",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerListAllocations({ argv });
+    }
+  )
+  .command(
+    "claimer_add_auth_address <address>",
+    "Add an address to the authorized address list",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "this address would be added to the authorized address list",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerAddAuthAdr({ argv });
+    }
+  )
+  .command(
+    "claimer_rm_auth_address <address>",
+    "Remove an address from the authorized address list",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "this address would be remove from the authorized address list",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerRmAuthAdr({ argv });
     }
   )
 
