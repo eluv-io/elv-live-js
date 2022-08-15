@@ -388,32 +388,35 @@ class ElvFabric {
   /**
    * AccessGroupMemeber
    * Check if an address is a member of the access group
-   * @param {string} group  Group ID (hex of igrp format)
+   * @param {string} group  Group ID (hex or igrp format)
    * @param {string} addr  User address
    * @returns result of contract method call
    */
-   async AccessGroupMember({group, addr}) {
-    const abi = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/BaseAccessControlGroup.abi")
-    );
+  async AccessGroupMember({group, addr}) {
+    var members = await this.AccessGroupMembers({group});
+    return members.includes(addr);
+  }
 
-    if (addr.startsWith("igrp")){
-      addr = this.client.utils.HashToAddress(addr);
+  /**
+   * AccessGroupMembers
+   * Returns a list of group members
+   * @param {string} group  Group ID (hex or igrp format)
+   * @param {string} addr  User address
+   * @returns {Array} group members
+   */
+  async AccessGroupMembers({group}) {
+  
+    if (group.startsWith("igrp")){
+      group = this.client.utils.HashToAddress(group);
     }
 
     if (this.debug){
-      console.log("Group", group, "Address", addr);
+      console.log("Group", group);
     }
 
-    var res = await this.client.CallContractMethodAndWait({
-      contractAddress: group,
-      abi: JSON.parse(abi),
-      methodName: "hasAccess",
-      methodArgs: [addr],
-      formatArguments: true,
-    });
+    var members = await this.client.AccessGroupMembers({contractAddress:group});
 
-    return res;
+    return members;
   }
 
 }
