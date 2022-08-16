@@ -370,6 +370,56 @@ const CmdContractSetMeta = async ({ argv }) => {
   }
 };
 
+const CmdAccessGroupMember = async ({ argv }) => {
+  console.log("AccessGroupMember", 
+    `group: ${argv.group}`,
+    `addr: ${argv.addr}`);
+
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    let res = await elvFabric.AccessGroupMember({
+      group: argv.group,
+      addr: argv.addr
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdAccessGroupMembers = async ({ argv }) => {
+  console.log("AccessGroupMembers", 
+    `group: ${argv.group}`);
+
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    let res = await elvFabric.AccessGroupMembers({
+      group: argv.group
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -667,6 +717,40 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdContractSetMeta({ argv });
+    }
+  )
+
+  .command(
+    "access_group_member <group> <addr>",
+    "Checks if the user address is a member of the access group.",
+    (yargs) => {
+      yargs
+        .positional("group", {
+          describe: "Access control group ID or address (igrp or hex format)",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "User address (hex format)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAccessGroupMember({ argv });
+    }
+  )
+
+  .command(
+    "access_group_members <group>",
+    "Returns a list of group members.",
+    (yargs) => {
+      yargs
+        .positional("group", {
+          describe: "Access control group ID or address (igrp or hex format)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAccessGroupMembers({ argv });
     }
   )
 

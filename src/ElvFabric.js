@@ -385,6 +385,40 @@ class ElvFabric {
     return res;
   }
 
+  /**
+   * AccessGroupMemeber
+   * Check if an address is a member of the access group
+   * @param {string} group  Group ID (hex or igrp format)
+   * @param {string} addr  User address
+   * @returns result of contract method call
+   */
+  async AccessGroupMember({group, addr}) {
+    var members = await this.AccessGroupMembers({group});
+    return members.includes(addr);
+  }
+
+  /**
+   * AccessGroupMembers
+   * Returns a list of group members
+   * @param {string} group  Group ID (hex or igrp format)
+   * @param {string} addr  User address
+   * @returns {Array} group members
+   */
+  async AccessGroupMembers({group}) {
+  
+    if (group.startsWith("igrp")){
+      group = this.client.utils.HashToAddress(group);
+    }
+
+    if (this.debug){
+      console.log("Group", group);
+    }
+
+    var members = await this.client.AccessGroupMembers({contractAddress:group});
+
+    return members;
+  }
+
 }
 
 
