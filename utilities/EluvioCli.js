@@ -271,16 +271,16 @@ const CmdClaimerAllocate = async ({ argv }) => {
   console.log("args", argv);
 
   try {
-    let elvAccount = new ElvContracts({
+    let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
     });
 
-    await elvAccount.Init({
+    await elvContract.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let res = await elvAccount.ClaimerAllocate({
+    let res = await elvContract.ClaimerAllocate({
       address: argv.address,
       amount: argv.amount,
       expirationDate: argv.expiration_date
@@ -298,16 +298,16 @@ const CmdClaimerClaim = async ({ argv }) => {
   console.log("args", argv);
 
   try {
-    let elvAccount = new ElvContracts({
+    let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
     });
 
-    await elvAccount.Init({
+    await elvContract.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let res = await elvAccount.ClaimerClaim({
+    let res = await elvContract.ClaimerClaim({
       amount: argv.amount
     });
 
@@ -323,16 +323,16 @@ const CmdClaimerBurn = async ({ argv }) => {
   console.log("args", argv);
 
   try {
-    let elvAccount = new ElvContracts({
+    let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
     });
 
-    await elvAccount.Init({
+    await elvContract.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let res = await elvAccount.ClaimerBurn({
+    let res = await elvContract.ClaimerBurn({
       amount: argv.amount
     });
 
@@ -348,16 +348,16 @@ const CmdClaimerClearAllocations = async ({ argv }) => {
   console.log("args", argv);
 
   try {
-    let elvAccount = new ElvContracts({
+    let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
     });
 
-    await elvAccount.Init({
+    await elvContract.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let res = await elvAccount.ClaimerClearAllocations({
+    let res = await elvContract.ClaimerClearAllocations({
       address: argv.address
     });
 
@@ -373,16 +373,16 @@ const CmdClaimerListAllocations = async ({ argv }) => {
   console.log("args", argv);
 
   try {
-    let elvAccount = new ElvContracts({
+    let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
     });
 
-    await elvAccount.Init({
+    await elvContract.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let res = await elvAccount.ClaimerListAllocations({
+    let res = await elvContract.ClaimerListAllocations({
       address: argv.address
     });
 
@@ -398,16 +398,16 @@ const CmdClaimerAddAuthAdr = async ({ argv }) => {
   console.log("args", argv);
 
   try {
-    let elvAccount = new ElvContracts({
+    let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
     });
 
-    await elvAccount.Init({
+    await elvContract.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let res = await elvAccount.ClaimerAddAuthAdr({
+    let res = await elvContract.ClaimerAddAuthAdr({
       address: argv.address
     });
 
@@ -423,16 +423,16 @@ const CmdClaimerRmAuthAdr = async ({ argv }) => {
   console.log("args", argv);
 
   try {
-    let elvAccount = new ElvContracts({
+    let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
     });
 
-    await elvAccount.Init({
+    await elvContract.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let res = await elvAccount.ClaimerRmAuthAdr({
+    let res = await elvContract.ClaimerRmAuthAdr({
       address: argv.address
     });
 

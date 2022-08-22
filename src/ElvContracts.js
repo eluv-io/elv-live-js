@@ -179,7 +179,7 @@ class ElvContracts {
     });
 
     let listAllocations = [];
-    for (let i ; i<lengthList; i++){
+    for (let i = 0 ; i<lengthList; i++){
       var idx = i.toString();
       try {
         var elemAmount = await this.client.CallContractMethod({
@@ -196,16 +196,13 @@ class ElvContracts {
           methodArgs: [ address, idx ],
           formatArguments: true,
         });
-        listAllocations.push("amount : " + elemAmount + " - expiration : " + elemExpirationDate);
+        listAllocations.push({amount: elemAmount, expiration: elemExpirationDate});
       } catch (e){
         break;
       }
     }
-    /**
-     * questions :
-     * -we return a string ?
-     */
-    return listAllocations.toString();
+
+    return listAllocations;
   }
 
 }
