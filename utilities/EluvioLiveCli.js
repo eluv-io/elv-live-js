@@ -909,6 +909,21 @@ const CmdNftGetTransferFee = async ({ argv }) => {
   }
 };
 
+const CmdNftAddRedeemableOffer = async ({ argv }) => {
+  console.log("NFT Add Redeemable Offer");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NFTAddRedeemableOffer({ addr: argv.addr });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdTenantProvision = async ({ argv }) => {
   console.log("Tenant Provision");
   console.log(`tenantName: ${argv.tenant_name}`);
@@ -1296,6 +1311,21 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNftGetTransferFee({ argv });
+    }
+  )
+
+  .command(
+    "nft_add_offer <addr>",
+    "Add a redeemable offer to the NFT contract as the contract owner or minter",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftAddRedeemableOffer({ argv });
     }
   )
 

@@ -1236,6 +1236,27 @@ class EluvioLive {
   }
 
   /**
+   * Add a redeemable offer to the NFT contract
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   */
+  async NFTAddRedeemableOffer({addr}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "addRedeemableOffer",
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
    * Sets the nft policy and permissions for a given contract
    *
    * @namedParams
