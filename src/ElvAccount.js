@@ -236,7 +236,9 @@ class ElvAccount {
       packedData
     );
 
-    const signedData = await this.client.signer.signMessage(encodedData);
+    let messageHashBytes = ethers.utils.arrayify(encodedData);
+
+    const signedData = await this.client.signer.signMessage(messageHashBytes);
     const signature = ethers.utils.splitSignature(signedData);
     return {encodedData, packedData, signedData, signature};
   }
