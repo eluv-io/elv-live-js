@@ -1257,7 +1257,7 @@ class EluvioLive {
   }
 
   /**
-   * Add a redeemable offer to the NFT contract
+   * Remove a redeemable offer from the NFT contract
    *
    * @namedParams
    * @param {string} addr - The NFT contract address
@@ -1277,6 +1277,53 @@ class EluvioLive {
 
     return res;
   }
+
+  /**
+   * Returns true if offer is active (has not been removed)
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {string} offerId - The Offer ID
+   */
+  async NFTIsOfferActive({addr, offerId}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "isOfferActive",
+      methodArgs: [offerId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Returns true if offer is redeemed
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {string} offerId - The Offer ID
+   */
+  async NFTIsOfferRedeemed({addr, tokenId, offerId}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "isOfferRedeemed",
+      methodArgs: [tokenId, offerId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+  
 
   /**
    * Sets the nft policy and permissions for a given contract
