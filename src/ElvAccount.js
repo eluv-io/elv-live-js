@@ -227,16 +227,18 @@ class ElvAccount {
     const mintAddressBytes = ethers.utils.arrayify(mintHelperAddress);
     const tokenIdBigInt = ethers.BigNumber.from(tokenId).toHexString();
 
-    const message = ethers.utils.keccak256(
-      ethers.utils.solidityPack(
-        ["bytes", "bytes", "uint256", "uint8"],
-        [nftAddressBytes, mintAddressBytes, tokenIdBigInt, offerId]
-      )
+    const packedData = ethers.utils.solidityPack(
+      ["bytes", "bytes", "uint256", "uint8"],
+      [nftAddressBytes, mintAddressBytes, tokenIdBigInt, offerId]
     );
 
-    const signature = await this.client.signer.signMessage(message);
-    const components = ethers.utils.splitSignature(signature);
-    return {message, signature, components};
+    const encodedData = ethers.utils.keccak256(
+      packedData
+    );
+
+    const signedData = await this.client.signer.signMessage(encodedData);
+    const signature = ethers.utils.splitSignature(signedData);
+    return {encodedData, packedData, signedData, signature};
   }
 
 }
