@@ -909,6 +909,76 @@ const CmdNftGetTransferFee = async ({ argv }) => {
   }
 };
 
+const CmdNftAddRedeemableOffer = async ({ argv }) => {
+  console.log("NFT Add Redeemable Offer");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NFTAddRedeemableOffer({ addr: argv.addr });
+
+    console.log(yaml.dump(res));
+    console.log("Offer ID: ",res.logs[0].values.offerId);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftRemoveRedeemableOffer = async ({ argv }) => {
+  console.log("NFT Remove Redeemable Offer");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Offer ID: ${argv.id}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NFTRemoveRedeemableOffer({ addr: argv.addr, 
+      offerId:argv.id });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftIsOfferActive = async ({ argv }) => {
+  console.log("NFT Is Offer Active");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Offer ID: ${argv.offer_id}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NFTIsOfferActive({ addr: argv.addr, 
+      offerId:argv.offer_id });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftIsOfferRedeemed = async ({ argv }) => {
+  console.log("NFT Is Offer Redeemed");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Token ID: ${argv.token_id}`);
+  console.log(`Offer ID: ${argv.offer_id}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NFTIsOfferRedeemed({ addr: argv.addr,
+      tokenId: argv.token_id,
+      offerId: argv.offer_id});
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 const CmdTenantProvision = async ({ argv }) => {
   console.log("Tenant Provision");
   console.log(`tenantName: ${argv.tenant_name}`);
@@ -1296,6 +1366,82 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNftGetTransferFee({ argv });
+    }
+  )
+
+  .command(
+    "nft_add_offer <addr>",
+    "Add a redeemable offer to the NFT contract as the contract owner or minter",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftAddRedeemableOffer({ argv });
+    }
+  )
+
+  .command(
+    "nft_remove_offer <addr> <offer_id>",
+    "Remove (disable) a redeemable offer from the NFT contract as the contract owner or minter",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("offer_id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdNftRemoveRedeemableOffer({ argv });
+    }
+  )
+
+  .command(
+    "nft_offer_redeemed <addr> <token_id> <offer_id>",
+    "Returns true if offer is redeemed",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "Offer ID",
+          type: "integer",
+        })
+        .positional("offer_id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdNftIsOfferRedeemed({ argv });
+    }
+  )
+
+  .command(
+    "nft_offer_active <addr> <offer_id>",
+    "Returns true if offer is active",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("offer_id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdNftIsOfferActive({ argv });
     }
   )
 

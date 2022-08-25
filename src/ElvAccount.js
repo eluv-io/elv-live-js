@@ -1,4 +1,5 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
+const ethers = require("ethers");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 
 const TOKEN_DURATION = 120000; //2 min
@@ -21,11 +22,11 @@ class ElvAccount {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
-    let wallet = this.client.GenerateWallet();
-    let signer = wallet.AddAccount({
+    this.wallet = this.client.GenerateWallet();
+    this.signer = this.wallet.AddAccount({
       privateKey,
     });
-    this.client.SetSigner({ signer });
+    this.client.SetSigner({ signer:this.signer });
     this.client.ToggleLogging(this.debug);
   }
 
@@ -219,6 +220,23 @@ class ElvAccount {
 
   async CreateFabricToken({duration=TOKEN_DURATION}){
     return await this.client.CreateFabricToken({duration});
+  }
+
+  async CreateOfferSignature({nftAddress, mintHelperAddress, tokenId, offerId}){
+    const nftAddressBytes = ethers.utils.arrayify(nftAddress);
+    const mintAddressBytes = ethers.utils.arrayify(mintHelperAddress);
+    const tokenIdBigInt = ethers.BigNumber.from(tokenId).toHexString();
+
+    const message = ethers.utils.keccak256(
+      ethers.utils.solidityPack(
+        ["bytes", "bytes", "uint256", "uint8"],
+        [nftAddressBytes, mintAddressBytes, tokenIdBigInt, offerId]
+      )
+    );
+
+    const signature = await this.client.signer.signMessage(message);
+    const components = ethers.utils.splitSignature(signature);
+    return {message, signature, components};
   }
 
 }
