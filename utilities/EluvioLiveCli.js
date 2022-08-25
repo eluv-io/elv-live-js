@@ -919,6 +919,24 @@ const CmdNftAddRedeemableOffer = async ({ argv }) => {
     res = await elvlv.NFTAddRedeemableOffer({ addr: argv.addr });
 
     console.log(yaml.dump(res));
+    console.log("Offer ID: ",res.logs[0].values.offerId);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftRemoveRedeemableOffer = async ({ argv }) => {
+  console.log("NFT Add Redeemable Offer");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Offer ID: ${argv.id}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NFTRemoveRedeemableOffer({ addr: argv.addr, 
+      offerId:argv.id });
+
+    console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1328,6 +1346,26 @@ yargs(hideBin(process.argv))
       CmdNftAddRedeemableOffer({ argv });
     }
   )
+
+  .command(
+    "nft_remove_offer <addr> <id>",
+    "Remove (disable) a redeemable offer from the NFT contract as the contract owner or minter",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdNftRemoveRedeemableOffer({ argv });
+    }
+  )
+
 
 
   .command(
