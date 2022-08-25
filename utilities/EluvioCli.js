@@ -204,6 +204,33 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
   }
 };
 
+const CmdAccountOfferSignature = async ({ argv }) => {
+  console.log("Account Offer Signature\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.CreateOfferSignature({
+      nftAddress: argv.nft_addr, 
+      mintHelperAddress: argv.mint_helper_addr, 
+      tokenId: argv.token_id, 
+      offerId: argv.offer_id
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdAccountFabricToken = async ({ argv }) => {
   console.log("Account Fabric Token\n");
   console.log("args", argv);
@@ -474,7 +501,7 @@ yargs(hideBin(process.argv))
     (yargs) => {
       yargs
         .positional("address", {
-          describe: "Account Name",
+          describe: "Account address to send",
           type: "string",
         })
         .positional("funds", {
@@ -485,6 +512,33 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAccountSend({ argv });
+    }
+  )
+
+  .command(
+    "account_offer_signature <nft_addr> <mint_helper_addr> <token_id> <offer_id>",
+    "Creates an offer signature for use by the minter to redeem and nft offer. Note the current key must be a token owner of the nft.",
+    (yargs) => {
+      yargs
+        .positional("nft_addr", {
+          describe: "NFT contract address (hex)",
+          type: "string",
+        })
+        .positional("mint_helper_addr", {
+          describe: "Address of the mint helper (hex)",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "Token ID of the offer",
+          type: "integer",
+        })
+        .positional("offer_id", {
+          describe: "Offer_id",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdAccountOfferSignature({ argv });
     }
   )
 
