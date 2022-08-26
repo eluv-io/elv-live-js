@@ -31,6 +31,20 @@ class ElvUtils {
   static AddressToId({prefix, address}){
     return prefix + Utils.AddressToHash(address);
   }
+
+  static async epochToDate(epoch){
+    let response = await fetch("https://showcase.api.linx.twenty57.net/UnixTime/fromunix?timestamp=" + epoch);
+    let data = await response.json();
+    return data;
+  }
+
+  static async dateToEpoch(date){
+    let response = await fetch("https://showcase.api.linx.twenty57.net/UnixTime/tounix?date=" + date);
+    let data = await response.json();
+    return data;
+  }
+
 }
+
 
 exports.ElvUtils = ElvUtils;

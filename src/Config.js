@@ -1,4 +1,4 @@
-const net = "main"; // Set to "main" or "demov3"
+const net = "test"; // Set to "main" or "demov3"
 
 const networks = {
   main: "https://main.net955305.contentfabric.io",
@@ -33,7 +33,7 @@ const consts = {
     tokenUriEnd: "/meta/public/nft",
     kmsAddress: "0x567f76e552cfea5a81945a87133867f45fafc418",
     spaceAddress: "0x8e5935ca87ad11779e3aec4adcb48a5cb7c2abb4",
-    claimerAddress: "0x",
+    claimerAddress: "0x3672147f9669837A0309e580196D8667aCea3d52",
   },
 };
 

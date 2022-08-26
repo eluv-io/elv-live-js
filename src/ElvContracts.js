@@ -2,6 +2,8 @@ const { ElvClient } = require("@eluvio/elv-client-js");
 const { Config } = require("./Config.js");
 const fs = require("fs");
 const path = require("path");
+const Ethers = require("ethers");
+const { ElvUtils }  = require("./Utils.js");
 
 class ElvContracts {
 
@@ -41,12 +43,14 @@ class ElvContracts {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
+    
+    var epochTime = await ElvUtils.dateToEpoch(String(expirationDate).replaceAll("_", "/"));
 
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: Config.consts[Config.net].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "allocate",
-      methodArgs: [address, amount, expirationDate],
+      methodArgs: [address, amount, epochTime],
       formatArguments: true,
     });
 
@@ -167,36 +171,40 @@ class ElvContracts {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
-
+    
     await this.ClaimerClearAllocations({address});
 
-    var lengthList = await this.client.CallContractMethodAndWait({
+    var lengthList = await this.client.CallContractMethod({
       contractAddress: Config.consts[Config.net].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "getNrAllocations",
       methodArgs: [ address ],
       formatArguments: true,
     });
+    lengthList = Ethers.BigNumber.from(lengthList._hex).toNumber();
 
     let listAllocations = [];
     for (let i = 0 ; i<lengthList; i++){
       var idx = i.toString();
       try {
-        var elemAmount = await this.client.CallContractMethodAndWait({
+        var elemAmount = await this.client.CallContractMethod({
           contractAddress: Config.consts[Config.net].claimerAddress,
           abi: JSON.parse(abi),
           methodName: "getAmount",
           methodArgs: [ address, idx ],
           formatArguments: true,
         });
-        var elemExpirationDate = await this.client.CallContractMethodAndWait({
+
+        var elemExpirationDate = await this.client.CallContractMethod({
           contractAddress: Config.consts[Config.net].claimerAddress,
           abi: JSON.parse(abi),
           methodName: "getExpirationDate",
           methodArgs: [ address, idx ],
           formatArguments: true,
         });
-        listAllocations.push({amount: elemAmount, expiration: elemExpirationDate});
+        elemExpirationDate = await ElvUtils.epochToDate(Ethers.BigNumber.from(elemExpirationDate).toNumber());
+        listAllocations.push({amount: Ethers.BigNumber.from(elemAmount._hex).toNumber()
+          , expiration: elemExpirationDate});
       } catch (e){
         break;
       }

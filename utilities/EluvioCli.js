@@ -7,6 +7,7 @@ const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 
+
 const CmdAccountCreate = async ({ argv }) => {
   console.log("Account Create\n");
   console.log(`funds: ${argv.funds}`);
@@ -283,7 +284,7 @@ const CmdClaimerAllocate = async ({ argv }) => {
     let res = await elvContract.ClaimerAllocate({
       address: argv.address,
       amount: argv.amount,
-      expirationDate: argv.expiration_date
+      expirationDate: argv.yyyy_mm_dd
     });
 
     console.log(yaml.dump(res));
@@ -656,7 +657,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "claimer_allocate <address> <amount> <expiration_date>",
+    "claimer_allocate <address> <amount> <yyyy_mm_dd>",
     "Allocate an allocation to an user, an allocation contains an amount and an expiration date",
     (yargs) => {
       yargs
