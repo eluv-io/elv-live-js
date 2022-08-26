@@ -170,7 +170,7 @@ class ElvContracts {
 
     await this.ClaimerClearAllocations({address});
 
-    var lengthList = await this.client.CallContractMethod({
+    var lengthList = await this.client.CallContractMethodAndWait({
       contractAddress: Config.consts[Config.net].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "getNrAllocations",
@@ -182,14 +182,14 @@ class ElvContracts {
     for (let i = 0 ; i<lengthList; i++){
       var idx = i.toString();
       try {
-        var elemAmount = await this.client.CallContractMethod({
+        var elemAmount = await this.client.CallContractMethodAndWait({
           contractAddress: Config.consts[Config.net].claimerAddress,
           abi: JSON.parse(abi),
           methodName: "getAmount",
           methodArgs: [ address, idx ],
           formatArguments: true,
         });
-        var elemExpirationDate = await this.client.CallContractMethod({
+        var elemExpirationDate = await this.client.CallContractMethodAndWait({
           contractAddress: Config.consts[Config.net].claimerAddress,
           abi: JSON.parse(abi),
           methodName: "getExpirationDate",
