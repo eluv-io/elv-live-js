@@ -213,6 +213,50 @@ class ElvContracts {
     return listAllocations;
   }
 
+  /**
+     * Call the method getClaim of the smart contract Claimer.sol
+     * @param {string} address : get the balance of this address 
+     */
+   async ClaimerBalanceOf({ address }){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Claimer.abi")
+    );
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: Config.consts[Config.net].claimerAddress,
+      abi: JSON.parse(abi),
+      methodName: "balanceOf",
+      methodArgs: [ address ],
+      formatArguments: true,
+    });
+
+    return {balance: Ethers.BigNumber.from(res._hex).toNumber()};
+  }
+
+  /**
+     * Call the method getBurn of the smart contract Claimer.sol
+     * @param {string} address : get the burn balance of this address 
+     */
+   async ClaimerBurnOf({ address }){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Claimer.abi")
+    );
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: Config.consts[Config.net].claimerAddress,
+      abi: JSON.parse(abi),
+      methodName: "burnOf",
+      methodArgs: [ address ],
+      formatArguments: true,
+    });
+
+    return {total: Ethers.BigNumber.from(res._hex).toNumber()};
+  }
+
+
+
 }
+
+
 
 exports.ElvContracts = ElvContracts;

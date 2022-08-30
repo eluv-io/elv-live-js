@@ -344,30 +344,6 @@ const CmdClaimerBurn = async ({ argv }) => {
 
 }
 
-const CmdClaimerClearAllocations = async ({ argv }) => {
-  console.log("Claimer Clear Allocations\n");
-  console.log("args", argv);
-
-  try {
-    let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
-    });
-
-    await elvContract.Init({
-      privateKey: process.env.PRIVATE_KEY,
-    });
-
-    let res = await elvContract.ClaimerClearAllocations({
-      address: argv.address
-    });
-
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-
-}
 
 const CmdClaimerListAllocations = async ({ argv }) => {
   console.log("Claimer List Allocations\n");
@@ -434,6 +410,56 @@ const CmdClaimerRmAuthAdr = async ({ argv }) => {
     });
 
     let res = await elvContract.ClaimerRmAuthAdr({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+}
+
+const CmdClaimerBalanceOf = async ({ argv }) => {
+  console.log("Claimer Balance Of\n");
+  console.log("args", argv);
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvContract.ClaimerBalanceOf({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+}
+
+const CmdClaimerBurnOf = async ({ argv }) => {
+  console.log("Claimer Balance Of\n");
+  console.log("args", argv);
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvContract.ClaimerBurnOf({
       address: argv.address
     });
 
@@ -658,7 +684,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "claimer_allocate <address> <amount> <yyyy_mm_dd>",
-    "Allocate an allocation to an user, an allocation contains an amount and an expiration date",
+    "Allocate an allocation to an user, an allocation contains an amount and an expiration date (in UTC)",
     (yargs) => {
       yargs
         .positional("address", {
@@ -670,7 +696,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("expiration_date", {
-          describe: "Expiration date of the allocation",
+          describe: "Expiration date of the allocation (in UTC)",
           type: "string",
         })
     },
@@ -705,20 +731,6 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdClaimerBurn({ argv });
-    }
-  )
-  .command(
-    "claimer_clear_allocations <address>",
-    "Clear the expired allocations of an address",
-    (yargs) => {
-      yargs
-        .positional("address", {
-          describe: "the expired allocations of this address would be cleared",
-          type: "string",
-        })
-    },
-    (argv) => {
-      CmdClaimerClearAllocations({ argv });
     }
   )
   .command(
@@ -761,6 +773,34 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdClaimerRmAuthAdr({ argv });
+    }
+  )
+  .command(
+    "claimer_balance_of <address>",
+    "Get the balance of an address",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "the balance of this address would be given",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerBalanceOf({ argv });
+    }
+  )
+  .command(
+    "claimer_burn_of <address>",
+    "Get the burn of an address",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "the burn of this address would be given",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerBurnOf({ argv });
     }
   )
 
