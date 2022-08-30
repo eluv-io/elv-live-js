@@ -217,7 +217,7 @@ class ElvContracts {
      * Call the method getClaim of the smart contract Claimer.sol
      * @param {string} address : get the balance of this address 
      */
-   async ClaimerBalanceOf({ address }){
+  async ClaimerBalanceOf({ address }){
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
@@ -237,7 +237,7 @@ class ElvContracts {
      * Call the method getBurn of the smart contract Claimer.sol
      * @param {string} address : get the burn balance of this address 
      */
-   async ClaimerBurnOf({ address }){
+  async ClaimerBurnOf({ address }){
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
