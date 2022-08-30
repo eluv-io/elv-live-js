@@ -31,6 +31,9 @@ class ElvAccount {
   }
 
   InitWithClient({ elvClient }) {
+    if (!elvClient){
+      throw Error("ElvAccount InitWithClient with null");
+    }
     this.client = elvClient;
   }
 
