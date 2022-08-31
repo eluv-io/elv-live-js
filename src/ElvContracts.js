@@ -177,7 +177,7 @@ class ElvContracts {
     var lengthList = await this.client.CallContractMethod({
       contractAddress: Config.consts[Config.net].claimerAddress,
       abi: JSON.parse(abi),
-      methodName: "getNrAllocations",
+      methodName: "getNumAllocations",
       methodArgs: [ address ],
       formatArguments: true,
     });
@@ -190,7 +190,7 @@ class ElvContracts {
         var elemAmount = await this.client.CallContractMethod({
           contractAddress: Config.consts[Config.net].claimerAddress,
           abi: JSON.parse(abi),
-          methodName: "getAmount",
+          methodName: "getAllocationAmount",
           methodArgs: [ address, idx ],
           formatArguments: true,
         });
@@ -198,7 +198,7 @@ class ElvContracts {
         var elemExpirationDate = await this.client.CallContractMethod({
           contractAddress: Config.consts[Config.net].claimerAddress,
           abi: JSON.parse(abi),
-          methodName: "getExpirationDate",
+          methodName: "getAllocationExpirationDate",
           methodArgs: [ address, idx ],
           formatArguments: true,
         });

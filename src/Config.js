@@ -33,7 +33,7 @@ const consts = {
     tokenUriEnd: "/meta/public/nft",
     kmsAddress: "0x567f76e552cfea5a81945a87133867f45fafc418",
     spaceAddress: "0x8e5935ca87ad11779e3aec4adcb48a5cb7c2abb4",
-    claimerAddress: "0x3672147f9669837A0309e580196D8667aCea3d52",
+    claimerAddress: "0xD41294a7AfA9b1C0248DD0F9B93A478edC76AB7f",
   },
 };
 
