@@ -1362,6 +1362,11 @@ class EluvioLive {
     let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
     elvAccount.InitWithClient({elvClient:this.client});
     let sig = await elvAccount.CreateOfferSignature({nftAddress:addr, mintHelperAddress:mintHelperAddr,tokenId,offerId});
+
+    let address = Ethers.utils.verifyMessage(sig.messageHashBytes, sig.signature);
+    console.log("Recovered address: ", address);
+    console.log("Signed return value: ", sig);
+
     let refId = crypto.randomUUID();
 
     let body = {
@@ -2193,7 +2198,10 @@ class EluvioLive {
 
     let token = "";
     if ( useFabricToken ) {
-      token = await this.client.CreateFabricToken({duration:ElvAccount.TOKEN_DURATION});
+      token = await this.client.CreateFabricToken({
+        duration:ElvAccount.TOKEN_DURATION
+      });
+
     } else {
       const { multiSig } = await this.TenantSign({
         message: JSON.stringify(body),

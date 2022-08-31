@@ -1,7 +1,6 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const ethers = require("ethers");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
-
 const TOKEN_DURATION = 120000; //2 min
 class ElvAccount {
 
@@ -235,6 +234,8 @@ class ElvAccount {
       [nftAddressBytes, mintAddressBytes, tokenIdBigInt, offerId]
     );
 
+    console.log(mintHelperAddress);
+
     const encodedData = ethers.utils.keccak256(
       packedData
     );
@@ -243,7 +244,7 @@ class ElvAccount {
 
     const signedData = await this.client.signer.signMessage(messageHashBytes);
     const signature = ethers.utils.splitSignature(signedData);
-    return {encodedData, packedData, signedData, signature};
+    return {encodedData, messageHashBytes, packedData, signedData, signature};
   }
 
 }
