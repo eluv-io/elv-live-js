@@ -1332,18 +1332,16 @@ class EluvioLive {
    * @param {string} addr - The NFT contract address
    * @param {string} offerId - The Offer ID
    */
-  async NFTRedeemOffer({addr, tokenId, offerId}){
+  async NFTRedeemOffer({addr, redeemerAddr, tokenId, offerId}){
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
-
-    console.log("ADDR: ", addr);
 
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: addr,
       abi: JSON.parse(abi),
       methodName: "redeemOffer",
-      methodArgs: [tokenId, offerId],
+      methodArgs: [redeemerAddr, tokenId, offerId],
       formatArguments: true,
     });
 

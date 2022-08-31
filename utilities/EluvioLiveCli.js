@@ -981,6 +981,7 @@ const CmdNftIsOfferRedeemed = async ({ argv }) => {
 const CmdNftRedeemOffer = async ({ argv }) => {
   console.log("NFT Redeem Offer");
   console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Redeemer Address: ${argv.redeemer}`);
   console.log(`Token ID: ${argv.token_id}`);
   console.log(`Offer ID: ${argv.offer_id}`);
 
@@ -989,6 +990,7 @@ const CmdNftRedeemOffer = async ({ argv }) => {
 
     let res = await elvlv.NFTRedeemOffer({ 
       addr: argv.addr,
+      redeemerAddr: argv.redeemer,
       tokenId: argv.token_id,
       offerId: argv.offer_id,
     });
@@ -1493,12 +1495,16 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_redeem_offer <addr> <token_id> <offer_id> [options]",
+    "nft_redeem_offer <addr> <redeemer> <token_id> <offer_id>",
     "Redeem an nft offer",
     (yargs) => {
       yargs
         .positional("addr", {
           describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("redeemer", {
+          describe: "Redeemer address",
           type: "string",
         })
         .positional("token_id", {
@@ -1508,13 +1514,6 @@ yargs(hideBin(process.argv))
         .positional("offer_id", {
           describe: "Offer ID",
           type: "integer",
-        })
-        .option("auth_service", {
-          describe: "Use the Authority Service for the operation",
-        })
-        .option("mint_helper_addr", {
-          describe: "Address of the mint helper (hex), used with --auth_service",
-          type: "string",
         });
     },
     (argv) => {
