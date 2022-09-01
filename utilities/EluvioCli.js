@@ -370,7 +370,7 @@ const CmdClaimerListAllocations = async ({ argv }) => {
 
 }
 
-const CmdClaimerAddAuthAdr = async ({ argv }) => {
+const CmdClaimerAddAuthAddr = async ({ argv }) => {
   console.log("Claimer Add Authorized Address\n");
   console.log("args", argv);
 
@@ -384,7 +384,7 @@ const CmdClaimerAddAuthAdr = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let res = await elvContract.ClaimerAddAuthAdr({
+    let res = await elvContract.ClaimerAddAuthAddr({
       address: argv.address
     });
 
@@ -395,7 +395,7 @@ const CmdClaimerAddAuthAdr = async ({ argv }) => {
 
 }
 
-const CmdClaimerRmAuthAdr = async ({ argv }) => {
+const CmdClaimerRmAuthAddr = async ({ argv }) => {
   console.log("Claimer Remove Authorized Address\n");
   console.log("args", argv);
 
@@ -409,7 +409,7 @@ const CmdClaimerRmAuthAdr = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let res = await elvContract.ClaimerRmAuthAdr({
+    let res = await elvContract.ClaimerRmAuthAddr({
       address: argv.address
     });
 
@@ -758,7 +758,7 @@ yargs(hideBin(process.argv))
         })
     },
     (argv) => {
-      CmdClaimerAddAuthAdr({ argv });
+      CmdClaimerAddAuthAddr({ argv });
     }
   )
   .command(
@@ -772,7 +772,7 @@ yargs(hideBin(process.argv))
         })
     },
     (argv) => {
-      CmdClaimerRmAuthAdr({ argv });
+      CmdClaimerRmAuthAddr({ argv });
     }
   )
   .command(

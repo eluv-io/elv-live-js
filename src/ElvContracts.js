@@ -102,7 +102,7 @@ class ElvContracts {
    * Call the method addAuthorizedAdr of the smart contract Claimer.sol
    * @param {string} address : the address to add to the list
    */
-  async ClaimerAddAuthAdr({ address }){
+  async ClaimerAddAuthAddr({ address }){
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
@@ -111,7 +111,7 @@ class ElvContracts {
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: Config.consts[Config.net].claimerAddress,
       abi: JSON.parse(abi),
-      methodName: "addAuthorizedAdr",
+      methodName: "addAuthorizedAddr",
       methodArgs: [ address ],
       formatArguments: true,
     });
@@ -123,7 +123,7 @@ class ElvContracts {
    * Call the method rmAuthorizedAdr of the smart contract Claimer.sol
    * @param {string} address : the address to remove from the list
    */
-  async ClaimerRmAuthAdr({ address }){
+  async ClaimerRmAuthAddr({ address }){
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
@@ -132,7 +132,7 @@ class ElvContracts {
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: Config.consts[Config.net].claimerAddress,
       abi: JSON.parse(abi),
-      methodName: "rmAuthorizedAdr",
+      methodName: "rmAuthorizedAddr",
       methodArgs: [ address ],
       formatArguments: true,
     });
