@@ -808,5 +808,3 @@ yargs(hideBin(process.argv))
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")
   .scriptName("")
   .demandCommand(1).argv;
-
-

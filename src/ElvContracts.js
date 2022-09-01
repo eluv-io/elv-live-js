@@ -43,7 +43,7 @@ class ElvContracts {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
-    
+
     var epochTime = await ElvUtils.dateToEpoch(String(expirationDate).replaceAll("_", "/"));
 
     var res = await this.client.CallContractMethodAndWait({
@@ -86,7 +86,6 @@ class ElvContracts {
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
 
-
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: Config.consts[Config.net].claimerAddress,
       abi: JSON.parse(abi),
@@ -106,7 +105,6 @@ class ElvContracts {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
-
 
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: Config.consts[Config.net].claimerAddress,
@@ -128,7 +126,6 @@ class ElvContracts {
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
 
-
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: Config.consts[Config.net].claimerAddress,
       abi: JSON.parse(abi),
@@ -139,8 +136,6 @@ class ElvContracts {
 
     return res;
   }
-
-
 
 
   /**
@@ -171,7 +166,7 @@ class ElvContracts {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
-    
+
     await this.ClaimerClearAllocations({address});
 
     var lengthList = await this.client.CallContractMethod({
@@ -215,7 +210,7 @@ class ElvContracts {
 
   /**
      * Call the method getClaim of the smart contract Claimer.sol
-     * @param {string} address : get the balance of this address 
+     * @param {string} address : get the balance of this address
      */
   async ClaimerBalanceOf({ address }){
     const abi = fs.readFileSync(
@@ -235,7 +230,7 @@ class ElvContracts {
 
   /**
      * Call the method getBurn of the smart contract Claimer.sol
-     * @param {string} address : get the burn balance of this address 
+     * @param {string} address : get the burn balance of this address
      */
   async ClaimerBurnOf({ address }){
     const abi = fs.readFileSync(
@@ -253,10 +248,6 @@ class ElvContracts {
     return {total: Ethers.BigNumber.from(res._hex).toNumber()};
   }
 
-
-
 }
-
-
 
 exports.ElvContracts = ElvContracts;
