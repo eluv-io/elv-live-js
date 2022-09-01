@@ -234,8 +234,6 @@ class ElvAccount {
       [nftAddressBytes, mintAddressBytes, tokenIdBigInt, offerId]
     );
 
-    console.log(mintHelperAddress);
-
     const encodedData = ethers.utils.keccak256(
       packedData
     );
