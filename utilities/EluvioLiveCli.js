@@ -1,7 +1,7 @@
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { ElvUtils } = require("../src/Utils");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
-const { InitializeTenant, AddConsumerGroup }  = require("../src/Provision");
+const { InitializeTenant, AddConsumerGroup } = require("../src/Provision");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
 const { Marketplace } = require("../src/Marketplace");
@@ -16,7 +16,7 @@ const prompt = require("prompt-sync")({ sigint: true });
 let elvlv;
 let marketplace;
 
-const Init = async () => {
+const Init = async ({debugLogging = false}={}) => {
   console.log("Network: " + Config.net);
 
   const config = {
@@ -24,10 +24,10 @@ const Init = async () => {
     mainObjectId: Config.mainObjects[Config.net],
   };
   elvlv = new EluvioLive(config);
-  await elvlv.Init();
+  await elvlv.Init({ debugLogging });
 
   marketplace = new Marketplace(config);
-  await marketplace.Init();
+  await marketplace.Init({ debugLogging });
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
@@ -230,7 +230,7 @@ const CmdNftTransfer = async ({ argv }) => {
     await Init();
 
     let res;
-    if (argv.auth_service)  {
+    if (argv.auth_service) {
       res = await elvlv.AsNftTransfer({
         addr: argv.addr,
         tokenId: argv.token_id,
@@ -420,7 +420,7 @@ const CmdTenantWallets = async ({ argv }) => {
 };
 
 const CmdNFTRefresh = async ({ argv }) => {
-  console.log( "NFT Refresh");
+  console.log("NFT Refresh");
   console.log(`NFT Refresh\ntenant: ${argv.tenant}}`);
   console.log(`address: ${argv.addr}}`);
 
@@ -506,6 +506,31 @@ const CmdTenantSecondarySales = async ({ argv }) => {
     await Init();
 
     let res = await elvlv.TenantSecondarySales({
+      tenant: argv.tenant,
+      processor: argv.processor,
+      csv: argv.csv,
+      offset: argv.offset,
+    });
+
+    if (argv.csv && argv.csv != "") {
+      fs.writeFileSync(argv.csv, res);
+    } else {
+      console.log(yaml.dump(res));
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantUnifiedSales = async ({ argv }) => {
+  console.log(`Tenant Unified Sales: ${argv.tenant} ${argv.processor}`);
+  console.log(`Offset: ${argv.offset}`);
+  console.log(`CSV: ${argv.csv}`);
+
+  try {
+    await Init();
+
+    let res = await elvlv.TenantUnifiedSales({
       tenant: argv.tenant,
       processor: argv.processor,
       csv: argv.csv,
@@ -699,12 +724,30 @@ const CmdTenantAddConsumers = async ({ argv }) => {
 
   try {
     await Init();
-    await elvlv.TenantAddConsumers({
+    let res = await elvlv.TenantAddConsumers({
       groupId: argv.group_id,
       accountAddresses: argv.addrs,
     });
 
-    console.log("Success!");
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantRemoveConsumer = async ({ argv }) => {
+  console.log("Tenant Remove Consumer");
+  console.log(`Group ID: ${argv.group_id}`);
+  console.log(`Account Address: ${argv.addr}`);
+
+  try {
+    await Init();
+    let res = await elvlv.TenantRemoveConsumer({
+      groupId: argv.group_id,
+      accountAddress: argv.addr,
+    });
+
+    console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -858,13 +901,83 @@ const CmdNftGetTransferFee = async ({ argv }) => {
   try {
     await Init();
 
-    res = await elvlv.NftGetTransferFee({address: argv.addr});
+    res = await elvlv.NftGetTransferFee({ address: argv.addr });
 
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
+
+const CmdNftAddRedeemableOffer = async ({ argv }) => {
+  console.log("NFT Add Redeemable Offer");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NFTAddRedeemableOffer({ addr: argv.addr });
+
+    console.log(yaml.dump(res));
+    console.log("Offer ID: ",res.logs[0].values.offerId);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftRemoveRedeemableOffer = async ({ argv }) => {
+  console.log("NFT Remove Redeemable Offer");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Offer ID: ${argv.id}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NFTRemoveRedeemableOffer({ addr: argv.addr, 
+      offerId:argv.id });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftIsOfferActive = async ({ argv }) => {
+  console.log("NFT Is Offer Active");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Offer ID: ${argv.offer_id}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NFTIsOfferActive({ addr: argv.addr, 
+      offerId:argv.offer_id });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftIsOfferRedeemed = async ({ argv }) => {
+  console.log("NFT Is Offer Redeemed");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Token ID: ${argv.token_id}`);
+  console.log(`Offer ID: ${argv.offer_id}`);
+
+  try {
+    await Init();
+
+    res = await elvlv.NFTIsOfferRedeemed({ addr: argv.addr,
+      tokenId: argv.token_id,
+      offerId: argv.offer_id});
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 
 const CmdTenantProvision = async ({ argv }) => {
   console.log("Tenant Provision");
@@ -874,14 +987,16 @@ const CmdTenantProvision = async ({ argv }) => {
   try {
     await Init();
     let client = elvlv.client;
-    let kmsId = ElvUtils.AddressToId({prefix:"ikms",
-      address:Config.consts[Config.net].kmsAddress});
+    let kmsId = ElvUtils.AddressToId({
+      prefix: "ikms",
+      address: Config.consts[Config.net].kmsAddress
+    });
     console.log(`kmsId: ${kmsId}`);
 
     res = await InitializeTenant({
       client,
       kmsId,
-      tenantName:argv.tenant_name,
+      tenantName: argv.tenant_name,
       debug: argv.verbose
     });
 
@@ -903,9 +1018,47 @@ const CmdTenantAddConsumerGroup = async ({ argv }) => {
     let tenantAddress = Utils.HashToAddress(argv.tenant);
     console.log(`Tenant Contract Address: ${tenantAddress}`);
 
-    res = await AddConsumerGroup({client, tenantAddress, debug:argv.verbose});
+    res = await AddConsumerGroup({ client, tenantAddress, debug: argv.verbose });
 
     console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNFTGetPolicyPermissions = async ({ argv }) => {
+  console.log("NFT Get Policy and Permissions");
+  console.log(`Object ID: ${argv.object}`);
+  console.log(`verbose: ${argv.verbose}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.NftGetPolicyAndPermissions({ address: argv.object });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNFTSetPolicyPermissions = async ({ argv }) => {
+  console.log("NFT Set Policy and Permissions");
+  console.log(`Object ID: ${argv.object}`);
+  console.log(`Policy file path: ${argv.policy_path}`);
+  console.log(`Addresses: ${argv.addrs}`);
+  console.log(`verbose: ${argv.verbose}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.NftSetPolicyAndPermissions({
+      nftAddress: argv.object,
+      policyPath: argv.policy_path,
+      addresses: argv.addrs
+    });
+
+    console.log("\n" + yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1213,6 +1366,82 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNftGetTransferFee({ argv });
+    }
+  )
+
+  .command(
+    "nft_add_offer <addr>",
+    "Add a redeemable offer to the NFT contract as the contract owner or minter",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftAddRedeemableOffer({ argv });
+    }
+  )
+
+  .command(
+    "nft_remove_offer <addr> <offer_id>",
+    "Remove (disable) a redeemable offer from the NFT contract as the contract owner or minter",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("offer_id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdNftRemoveRedeemableOffer({ argv });
+    }
+  )
+
+  .command(
+    "nft_offer_redeemed <addr> <token_id> <offer_id>",
+    "Returns true if offer is redeemed",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "Offer ID",
+          type: "integer",
+        })
+        .positional("offer_id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdNftIsOfferRedeemed({ argv });
+    }
+  )
+
+  .command(
+    "nft_offer_active <addr> <offer_id>",
+    "Returns true if offer is active",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("offer_id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdNftIsOfferActive({ argv });
     }
   )
 
@@ -1533,6 +1762,35 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "tenant_sales <tenant> <processor>",
+    "Show tenant sales history",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
+          type: "string",
+        })
+        .option("offset", {
+          describe:
+            "Offset in months to dump data where 0 is the current month",
+          type: "number",
+          default: 1,
+        });
+    },
+    (argv) => {
+      CmdTenantUnifiedSales({ argv });
+    }
+  )
+
+  .command(
     "transfer_errors <tenant>",
     "Show tenant transfer failures. Used to identify payments collected on failed transfers.",
     (yargs) => {
@@ -1638,12 +1896,32 @@ yargs(hideBin(process.argv))
         })
         .option("addrs", {
           describe:
-            "Addresses the to add",
+            "Addresses to add",
           type: "string",
         });
     },
     (argv) => {
       CmdTenantAddConsumers({ argv });
+    }
+  )
+
+  .command(
+    "tenant_remove_consumer <group_id> <addr>",
+    "Removes consumer from tenant consumer group",
+    (yargs) => {
+      yargs
+        .positional("group_id", {
+          describe: "Tenant consumer group ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe:
+            "Address the to add",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantRemoveConsumer({ argv });
     }
   )
 
@@ -1803,6 +2081,44 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantAddConsumerGroup({ argv });
+    }
+  )
+
+  .command(
+    "nft_get_policy_permissions <object>",
+    "Gets the policy and permissions of a content object.",
+    (yargs) => {
+      yargs.positional("object", {
+        describe: "ID of the content fabric object",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdNFTGetPolicyPermissions({ argv });
+    }
+  )
+
+  .command(
+    "nft_set_policy_permissions <object> <policy_path> [addrs..]",
+    "Sets the policy and permissions granting NFT owners access to a content object.",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object to grant access to",
+          type: "string",
+        })
+        .positional("policy_path", {
+          describe: "Path of policy object file",
+          type: "string",
+        })
+        .option("addrs", {
+          describe:
+            "Addresses to add",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNFTSetPolicyPermissions({ argv });
     }
   )
 

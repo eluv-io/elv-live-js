@@ -2,6 +2,8 @@ const { ElvClient } = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { Config } = require("./Config.js");
 const { ElvAccount } = require("./ElvAccount");
+const { ElvFabric } = require("../src/ElvFabric.js");
+const { ElvUtils } = require("./Utils");
 const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
@@ -31,7 +33,7 @@ class EluvioLive {
     this.debug = false;
   }
 
-  async Init() {
+  async Init({debugLogging = false}={}) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
@@ -40,7 +42,41 @@ class EluvioLive {
       privateKey: process.env.PRIVATE_KEY,
     });
     this.client.SetSigner({ signer });
-    this.client.ToggleLogging(false);
+    this.client.ToggleLogging(debugLogging);
+    this.debug = debugLogging;
+  }
+
+  /**
+   * Show group info about this tenant.
+   */
+  async TenantGroupInfo({ tenantId }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+
+    var tenant_admin_address = await this.client.CallContractMethod({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "groupsMapping",
+      methodArgs: ["tenant_admin", 0],
+      formatArguments: true,
+    });
+
+    var tenant_consumer_address = await this.client.CallContractMethod({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "groupsMapping",
+      methodArgs: ["tenant_consumer", 0],
+      formatArguments: true,
+    });
+
+    return {tenant_admin_address, 
+      tenant_admin_id: ElvUtils.AddressToId({prefix:"igrp", address:tenant_admin_address}),
+      tenant_consumer_address,
+      tenant_consumer_id: ElvUtils.AddressToId({prefix:"igrp", address:tenant_consumer_address}),
+    };
   }
 
   /**
@@ -55,6 +91,7 @@ class EluvioLive {
    */
   async TenantShow({ tenantId, cauth, mintHelper, checkNft = false }) {
     var tenantInfo = {};
+
     let m = await this.List({ tenantId });
 
     tenantInfo.marketplaces = {};
@@ -85,6 +122,21 @@ class EluvioLive {
 
         if (item.nft_template == "") {
           warns.push("No NFT Template sku: " + sku);
+          continue;
+        }
+
+        if (!item.nft_template.mint){
+          warns.push("No nft_template.mint: " + sku);
+          continue;
+        }
+
+        if (!item.nft_template.mint){
+          warns.push("No nft_template.mint sku: " + sku);
+          continue;
+        }
+
+        if (!item.nft_template.nft){
+          warns.push("No nft_template.nft sku: " + sku);
           continue;
         }
 
@@ -178,9 +230,11 @@ class EluvioLive {
       );
     }
 
+    tenantInfo.groups = await this.TenantGroupInfo({tenantId});
     tenantInfo.sites = {};
     tenantInfo.warns = warns;
 
+  
     return tenantInfo;
   }
 
@@ -1182,6 +1236,208 @@ class EluvioLive {
   }
 
   /**
+   * Add a redeemable offer to the NFT contract
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   */
+  async NFTAddRedeemableOffer({addr}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "addRedeemableOffer",
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Remove a redeemable offer from the NFT contract
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   */
+  async NFTRemoveRedeemableOffer({addr, offerId}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "removeRedeemableOffer",
+      methodArgs: [offerId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Returns true if offer is active (has not been removed)
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {string} offerId - The Offer ID
+   */
+  async NFTIsOfferActive({addr, offerId}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "isOfferActive",
+      methodArgs: [offerId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Returns true if offer is redeemed
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {string} offerId - The Offer ID
+   */
+  async NFTIsOfferRedeemed({addr, tokenId, offerId}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "isOfferRedeemed",
+      methodArgs: [tokenId, offerId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+  
+
+  /**
+   * Sets the nft policy and permissions for a given contract
+   *
+   * @namedParams
+   * @param {string} nftAddress - The NFT contract address
+   * @param {string} policyPath - Path to the policy file (eg. nft_owner_minter.yaml). Note that the policy must contain the minter address
+   * @param {[string]} addresses - Array of addresses to set the policy permissions
+   */
+  async NftSetPolicyAndPermissions({ nftAddress, policyPath, addresses=[] }) {
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+
+    //Set Policy
+    const policyString = fs.readFileSync(
+      policyPath
+    ).toString();
+
+    if (!policyString){
+      throw Error("Policy file contents is empty.");
+    }
+
+    if (this.debug){
+      console.log("Policy file contents: ", policyString);
+    }
+
+    let res = await elvFabric.SetContractMeta({
+      address: nftAddress,
+      key: "_ELV",
+      value: policyString
+    });
+
+
+    let addressesString = JSON.stringify(addresses);
+
+    if (this.debug){
+      console.log("Set Policy response: ", res);
+      console.log("Addresses string: ", addressesString);
+    }
+
+    let res2 = await elvFabric.SetContractMeta({
+      address: nftAddress,
+      key: "_NFT_ACCESS",
+      value: addressesString
+    });
+
+    if (this.debug){
+      console.log("Set Policy response: ", res);
+    }
+
+    return {policyResponse: res, permissionsResponse: res2};
+  }
+
+  /**
+   * Sets the nft policy and permissions for a given contract
+   *
+   * @namedParams
+   * @param {string} nftAddress - The NFT contract address. Can also be iqXXX format.
+   * @return {object} object containing the policy string and the list of addresses from nft metadata
+   */
+  async NftGetPolicyAndPermissions({ address }) {
+
+    if (address.startsWith("iq")){
+      address =  Utils.HashToAddress(address);
+    }
+
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+
+    let policy = await elvFabric.GetContractMeta({
+      address: address,
+      key: "_ELV"
+    });
+
+    if (this.debug){
+      console.log("Get _ELV response: ", policy);
+    }
+
+    let addressesString = await elvFabric.GetContractMeta({
+      address: address,
+      key: "_NFT_ACCESS"
+    });
+
+    if (this.debug){
+      console.log("Get _NFT_ACCESS response: ", addressesString);
+    }
+
+    let addresses = [];
+    try {
+      addresses = JSON.parse(addressesString);
+    } catch (e){
+      if (this.debug){
+        console.error("Couldn't parse _NFT_ACCESS response ", e);
+      }
+    }
+
+    return {"policy": policy, "permissions": addresses};
+  }
+
+  /**
    * Create a new NFT contract and set it in the NFT Template object's metadata.
    *
    * @namedParams
@@ -2083,7 +2339,7 @@ class EluvioLive {
   }
 
   /**
-   * Get primary sales history for the tenant
+   * Get secondary sales history for the tenant
    *
    * @namedParams
    * @param {string} tenant - The Tenant ID
@@ -2099,6 +2355,30 @@ class EluvioLive {
 
     let res = await this.GetServiceRequest({
       path: urljoin("/tnt/payments/", tenant, processor),
+      queryParams: { offset },
+      headers,
+    });
+
+    return toJson ? await res.json() : await res.text();
+  }
+
+  /**
+   * Get unified primary&secondary sales history for the tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response containing primary sales info
+   */
+  async TenantUnifiedSales({ tenant, processor, csv, offset }) {
+    let headers = {};
+    let toJson = true;
+    if (csv && csv != "") {
+      headers = { Accept: "text/csv" };
+      toJson = false;
+    }
+
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/report/", tenant, processor),
       queryParams: { offset },
       headers,
     });
@@ -2134,6 +2414,23 @@ class EluvioLive {
       contractAddress: address,
       abi: JSON.parse(abi),
       methodName: "hasAccess",
+      methodArgs: [accountAddress],
+      formatArguments: true,
+    });
+
+    return response;
+  }
+
+  async TenantRemoveConsumer({groupId, accountAddress}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantConsumerGroup.abi")
+    );
+    const address = Utils.HashToAddress(groupId);
+
+    var response = await this.client.CallContractMethodAndWait({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "revokeAccess",
       methodArgs: [accountAddress],
       formatArguments: true,
     });

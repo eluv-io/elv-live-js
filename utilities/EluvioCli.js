@@ -1,5 +1,6 @@
 const { ElvSpace } = require("../src/ElvSpace.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
+const { ElvFabric } = require("../src/ElvFabric.js");
 const { ElvContracts } = require("../src/ElvContracts.js");
 const { Config } = require("../src/Config.js");
 
@@ -171,7 +172,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
-    
+
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -196,6 +197,33 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
       tenantName: argv.tenant_name,
       ownerAddress: argv.owner_addr,
       adminGroupAddress: argv.tenant_admin_addr,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdAccountOfferSignature = async ({ argv }) => {
+  console.log("Account Offer Signature\n");
+  console.log("args", argv);
+
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.CreateOfferSignature({
+      nftAddress: argv.nft_addr, 
+      mintHelperAddress: argv.mint_helper_addr, 
+      tokenId: argv.token_id, 
+      offerId: argv.offer_id
     });
 
     console.log(yaml.dump(res));
@@ -266,6 +294,160 @@ const CmdAccountSignedToken = async ({ argv }) => {
   }
 };
 
+const CmdFabricGetMetaBatch = async ({ argv }) => {
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvFabric.GetMetaBatch({
+      csvFile: argv.csv_file,
+      libraryId: argv.library,
+      limit: argv.limit
+    });
+
+    console.log(res); // CSV output
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdFabricSetMetaBatch = async ({ argv }) => {
+  console.log("Set Meta Batch", "duplicate", argv.duplicate);
+
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY,
+      update: true
+    });
+
+    let res = await elvFabric.SetMetaBatch({
+      csvFile: argv.csv_file,
+      duplicate: argv.duplicate
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdContractGetMeta = async ({ argv }) => {
+  console.log("Get Contract Metadata", 
+    `address: ${argv.addr}`,
+    `key: ${argv.key}`,
+    `verbose: ${argv.verbose}`);
+
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    let res = await elvFabric.GetContractMeta({
+      address: argv.addr,
+      key: argv.key
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdContractSetMeta = async ({ argv }) => {
+  console.log("Set Contract Metadata", 
+    `address: ${argv.addr}`,
+    `key: ${argv.key}`,
+    `value: ${argv.value}`,
+    `verbose: ${argv.verbose}`);
+
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    let res = await elvFabric.SetContractMeta({
+      address: argv.addr,
+      key: argv.key,
+      value: argv.value
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdAccessGroupMember = async ({ argv }) => {
+  console.log("AccessGroupMember", 
+    `group: ${argv.group}`,
+    `addr: ${argv.addr}`);
+
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    let res = await elvFabric.AccessGroupMember({
+      group: argv.group,
+      addr: argv.addr
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdAccessGroupMembers = async ({ argv }) => {
+  console.log("AccessGroupMembers", 
+    `group: ${argv.group}`);
+
+  try {
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    let res = await elvFabric.AccessGroupMembers({
+      group: argv.group
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdClaimerAllocate = async ({ argv }) => {
   console.log("Claimer Allocate\n");
   console.log("args", argv);
@@ -290,7 +472,6 @@ const CmdClaimerAllocate = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-
 }
 
 const CmdClaimerClaim = async ({ argv }) => {
@@ -315,7 +496,6 @@ const CmdClaimerClaim = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-
 }
 
 const CmdClaimerBurn = async ({ argv }) => {
@@ -340,7 +520,6 @@ const CmdClaimerBurn = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-
 }
 
 
@@ -366,7 +545,6 @@ const CmdClaimerListAllocations = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-
 }
 
 const CmdClaimerAddAuthAddr = async ({ argv }) => {
@@ -391,7 +569,6 @@ const CmdClaimerAddAuthAddr = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-
 }
 
 const CmdClaimerRmAuthAddr = async ({ argv }) => {
@@ -416,7 +593,6 @@ const CmdClaimerRmAuthAddr = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-
 }
 
 const CmdClaimerBalanceOf = async ({ argv }) => {
@@ -441,7 +617,6 @@ const CmdClaimerBalanceOf = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-
 }
 
 const CmdClaimerBurnOf = async ({ argv }) => {
@@ -466,10 +641,7 @@ const CmdClaimerBurnOf = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-
 }
-
-
 
 yargs(hideBin(process.argv))
   .option("verbose", {
@@ -525,7 +697,7 @@ yargs(hideBin(process.argv))
     (yargs) => {
       yargs
         .positional("address", {
-          describe: "Account Name",
+          describe: "Account address to send",
           type: "string",
         })
         .positional("funds", {
@@ -536,6 +708,33 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAccountSend({ argv });
+    }
+  )
+
+  .command(
+    "account_offer_signature <nft_addr> <mint_helper_addr> <token_id> <offer_id>",
+    "Creates an offer signature for use by the minter to redeem and nft offer. Note the current key must be a token owner of the nft.",
+    (yargs) => {
+      yargs
+        .positional("nft_addr", {
+          describe: "NFT contract address (hex)",
+          type: "string",
+        })
+        .positional("mint_helper_addr", {
+          describe: "Address of the mint helper (hex)",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "Token ID of the offer",
+          type: "integer",
+        })
+        .positional("offer_id", {
+          describe: "Offer_id",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdAccountOfferSignature({ argv });
     }
   )
 
@@ -553,7 +752,7 @@ yargs(hideBin(process.argv))
       CmdAccountFabricToken({ argv });
     }
   )
-  
+
   .command(
     "account_signed_token [Options]",
     "Creates a client signed token using this key",
@@ -662,7 +861,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "space_tenant_create <tenant_name> <funds> [",
+    "space_tenant_create <tenant_name> <funds>",
     "Creates a new tenant account including all supporting access groups and deployment of contracts. PRIVATE_KEY must be set for the space owner.",
     (yargs) => {
       yargs
@@ -678,6 +877,130 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdSpaceTenantCreate({ argv });
+    }
+  )
+
+  .command(
+    "content_meta_get_batch <csv_file> [options]",
+    "Get metadata fields for the list of content object IDs in the CSV file or library.",
+    (yargs) => {
+      yargs
+        .positional("csv_file", {
+          describe: "CSV file",
+          type: "string",
+        })
+        .option("library", {
+          describe: "Libary ID",
+          type: "string",
+        })
+        .option("limit", {
+          describe: "Max number of objects",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdFabricGetMetaBatch({ argv });
+    }
+  )
+
+  .command(
+    "content_meta_set_batch <csv_file>",
+    "Set metadata fields for the list of content object IDs in the CSV fle.",
+    (yargs) => {
+      yargs
+        .positional("csv_file", {
+          describe: "CSV file",
+          type: "string",
+        })
+        .option("duplicate", {
+          describe:
+            "Clone the content objects instead of editing them directly.",
+          type: "boolean",
+        })
+        .option("dryrun", {
+          describe:
+            "Print resulting metadata but don't actually edit the objects.",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdFabricSetMetaBatch({ argv });
+    }
+  )
+
+  .command(
+    "contract_get_meta <addr> <key>",
+    "Get contract metadata.",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "Contract address. NFT object ID also accepted eg. iqxxx.",
+          type: "string",
+        })
+        .positional("key", {
+          describe: "Metadata key to retrieve.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContractGetMeta({ argv });
+    }
+  )
+
+  .command(
+    "contract_set_meta <addr> <key> <value>",
+    "Set contract metadata using key/value.",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "Contract address. NFT object ID also accepted eg. iqxxx.",
+          type: "string",
+        })
+        .positional("key", {
+          describe: "Metadata key.",
+          type: "string",
+        })
+        .positional("value", {
+          describe: "Metadata value.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContractSetMeta({ argv });
+    }
+  )
+
+  .command(
+    "access_group_member <group> <addr>",
+    "Checks if the user address is a member of the access group.",
+    (yargs) => {
+      yargs
+        .positional("group", {
+          describe: "Access control group ID or address (igrp or hex format)",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "User address (hex format)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAccessGroupMember({ argv });
+    }
+  )
+
+  .command(
+    "access_group_members <group>",
+    "Returns a list of group members.",
+    (yargs) => {
+      yargs
+        .positional("group", {
+          describe: "Access control group ID or address (igrp or hex format)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAccessGroupMembers({ argv });
     }
   )
 
