@@ -35,6 +35,18 @@ class ElvUtils {
     return prefix + Utils.AddressToHash(address);
   }
 
+  static async epochToDate(epoch){
+    let response = await fetch("https://showcase.api.linx.twenty57.net/UnixTime/fromunix?timestamp=" + epoch);
+    let data = await response.json();
+    return data;
+  }
+
+  static async dateToEpoch(date){
+    let response = await fetch("https://showcase.api.linx.twenty57.net/UnixTime/tounix?date=" + date);
+    let data = await response.json();
+    return data;
+  }
+
   static UUID() {
     return Utils.B58(UUID.parse(UUID.v4()));
   }
@@ -118,5 +130,6 @@ class ElvUtils {
   }
 
 }
+
 
 exports.ElvUtils = ElvUtils;

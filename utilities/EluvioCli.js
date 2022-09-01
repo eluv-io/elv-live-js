@@ -1,6 +1,7 @@
 const { ElvSpace } = require("../src/ElvSpace.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
 const { ElvFabric } = require("../src/ElvFabric.js");
+const { ElvContracts } = require("../src/ElvContracts.js");
 const { Config } = require("../src/Config.js");
 
 const yargs = require("yargs/yargs");
@@ -447,6 +448,201 @@ const CmdAccessGroupMembers = async ({ argv }) => {
   }
 };
 
+const CmdClaimerAllocate = async ({ argv }) => {
+  console.log("Claimer Allocate\n");
+  console.log("args", argv);
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvContract.ClaimerAllocate({
+      address: argv.address,
+      amount: argv.amount,
+      expirationDate: argv.yyyy_mm_dd
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+const CmdClaimerClaim = async ({ argv }) => {
+  console.log("Claimer Claim\n");
+  console.log("args", argv);
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvContract.ClaimerClaim({
+      amount: argv.amount
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+const CmdClaimerBurn = async ({ argv }) => {
+  console.log("Claimer Burn\n");
+  console.log("args", argv);
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvContract.ClaimerBurn({
+      amount: argv.amount
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+
+const CmdClaimerListAllocations = async ({ argv }) => {
+  console.log("Claimer List Allocations\n");
+  console.log("args", argv);
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvContract.ClaimerListAllocations({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+const CmdClaimerAddAuthAddr = async ({ argv }) => {
+  console.log("Claimer Add Authorized Address\n");
+  console.log("args", argv);
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvContract.ClaimerAddAuthAddr({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+const CmdClaimerRmAuthAddr = async ({ argv }) => {
+  console.log("Claimer Remove Authorized Address\n");
+  console.log("args", argv);
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvContract.ClaimerRmAuthAddr({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+const CmdClaimerBalanceOf = async ({ argv }) => {
+  console.log("Claimer Balance Of\n");
+  console.log("args", argv);
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvContract.ClaimerBalanceOf({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+const CmdClaimerBurnOf = async ({ argv }) => {
+  console.log("Claimer Balance Of\n");
+  console.log("args", argv);
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvContract.ClaimerBurnOf({
+      address: argv.address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -556,7 +752,7 @@ yargs(hideBin(process.argv))
       CmdAccountFabricToken({ argv });
     }
   )
-  
+
   .command(
     "account_signed_token [Options]",
     "Creates a client signed token using this key",
@@ -805,6 +1001,128 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAccessGroupMembers({ argv });
+    }
+  )
+
+  .command(
+    "claimer_allocate <address> <amount> <yyyy_mm_dd>",
+    "Allocate an allocation to an user, an allocation contains an amount and an expiration date (in UTC)",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "Address to allocate",
+          type: "string",
+        })
+        .positional("amount", {
+          describe: "Amount to allocate",
+          type: "string",
+        })
+        .positional("expiration_date", {
+          describe: "Expiration date of the allocation (in UTC)",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerAllocate({ argv });
+    }
+  )
+
+  .command(
+    "claimer_claim <amount>",
+    "Claim an amount of your allocations",
+    (yargs) => {
+      yargs
+        .positional("amount", {
+          describe: "Amount to claim",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerClaim({ argv });
+    }
+  )
+  .command(
+    "claimer_burn <amount>",
+    "Burn an amount of your allocations",
+    (yargs) => {
+      yargs
+        .positional("amount", {
+          describe: "Amount to burn",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerBurn({ argv });
+    }
+  )
+  .command(
+    "claimer_list_allocations <address>",
+    "List the allocations of an address",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "the allocations of this address would be listed",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerListAllocations({ argv });
+    }
+  )
+  .command(
+    "claimer_add_auth_address <address>",
+    "Add an address to the authorized address list",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "this address would be added to the authorized address list",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerAddAuthAddr({ argv });
+    }
+  )
+  .command(
+    "claimer_rm_auth_address <address>",
+    "Remove an address from the authorized address list",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "this address would be remove from the authorized address list",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerRmAuthAddr({ argv });
+    }
+  )
+  .command(
+    "claimer_balance_of <address>",
+    "Get the balance of an address",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "the balance of this address would be given",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerBalanceOf({ argv });
+    }
+  )
+  .command(
+    "claimer_burn_of <address>",
+    "Get the burn of an address",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "the burn of this address would be given",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdClaimerBurnOf({ argv });
     }
   )
 
