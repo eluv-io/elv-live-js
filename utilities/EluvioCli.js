@@ -7,7 +7,6 @@ const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 
-process.env.PRIVATE_KEY = 'c3b3e1110f7eebe16849fdc5e936d6a30f0211b69a6055d29fb3cef24dd94118'
 const CmdAccountCreate = async ({ argv }) => {
   console.log("Account Create\n");
   console.log(`funds: ${argv.funds}`);
