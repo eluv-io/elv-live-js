@@ -1357,10 +1357,31 @@ class EluvioLive {
       console.log("Policy file contents: ", policyString);
     }
 
+    let account = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+    account.InitWithClient({elvClient: this.client});
+    let signer = (await account.Show())["userId"];
+    let signature = await this.client.Sign(policyString);
+
+    let policyFormat = {
+      auth_policy: {
+        id:"",
+        description:"",
+        type:"epl-ast",
+        version:"1.0",
+        body: policyString,
+        signer,
+        signature
+      }
+    };
+
+    if (this.debug){
+      console.log("Policy Value To Set: ", policyFormat);
+    }
+
     let res = await elvFabric.SetContractMeta({
       address: nftAddress,
       key: "_ELV",
-      value: policyString
+      value: JSON.stringify(policyFormat)
     });
 
 
