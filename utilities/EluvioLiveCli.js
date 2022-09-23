@@ -1048,14 +1048,16 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   console.log(`Policy file path: ${argv.policy_path}`);
   console.log(`Addresses: ${argv.addrs}`);
   console.log(`verbose: ${argv.verbose}`);
+  console.log(`clear: ${argv.clear}`);
 
   try {
     await Init({ debugLogging: argv.verbose });
 
     res = await elvlv.NftSetPolicyAndPermissions({
-      nftAddress: argv.object,
+      objectId: argv.object,
       policyPath: argv.policy_path,
-      addresses: argv.addrs
+      addresses: argv.addrs,
+      clearAddresses: argv.clear
     });
 
     console.log("\n" + yaml.dump(res));
@@ -2110,6 +2112,11 @@ yargs(hideBin(process.argv))
         .positional("policy_path", {
           describe: "Path of policy object file",
           type: "string",
+        })
+        .option("clear", {
+          describe: "clear the nft owners",
+          type: "boolean",
+          default: false
         })
         .option("addrs", {
           describe:

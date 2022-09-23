@@ -829,7 +829,7 @@ yargs(hideBin(process.argv))
         })
         .option("is_manager", {
           describe: "Set new address as group manager",
-          type: "bool",
+          type: "boolean",
         });
     },
     (argv) => {
