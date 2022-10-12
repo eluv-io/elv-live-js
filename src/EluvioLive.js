@@ -1879,7 +1879,7 @@ class EluvioLive {
    * @param {integer} tokenId - External NFT token ID
    * @return {Promise<Object>} - NFT info JSON
    */
-  async NftLookup({ addr, tokenId }) {
+  async NftLookup(/* addr, */ tokenId) {
 
     console.log("tokenId", tokenId);
 
