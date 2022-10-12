@@ -179,12 +179,12 @@ const CmdNftBuild = async ({ argv }) => {
   }
 };
 
-const CmdNftLookup = async ({ argv }) => {
-  console.log("NFT - lookup", argv.addr, argv.token_id);
+const CmdNftShowToken = async ({ argv }) => {
+  console.log("NFT - show token", argv.addr, argv.token_id);
   try {
     await Init();
 
-    let res = await elvlv.NftLookup({
+    let res = await elvlv.NftShowToken({
       addr: argv.addr,
       tokenId: argv.token_id,
     });
@@ -1281,7 +1281,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_lookup <addr> <token_id>",
+    "nft_show_token <addr> <token_id>",
     "Decode and look up a local NFT by external token ID",
     (yargs) => {
       yargs
@@ -1295,7 +1295,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdNftLookup({ argv });
+      CmdNftShowToken({ argv });
     }
   )
 
