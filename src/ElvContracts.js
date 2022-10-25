@@ -196,7 +196,7 @@ class ElvContracts {
           methodArgs: [ address, idx ],
           formatArguments: true,
         });
-        elemExpirationDate = new Date(Ethers.BigNumber.from(elemExpirationDate).toNumber()).toString();
+        elemExpirationDate = new Date(Ethers.BigNumber.from(elemExpirationDate).toNumber() * 1000).toString();
         listAllocations.push({amount: Ethers.BigNumber.from(elemAmount._hex).toNumber(), expiration: elemExpirationDate});
       } catch (e){
         break;
