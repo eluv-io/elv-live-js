@@ -740,7 +740,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "account_fabric_token [Options]",
-    "Creates a client signed token using this key",
+    "Creates a fabric token using this key",
     (yargs) => {
       yargs
         .option("duration", {

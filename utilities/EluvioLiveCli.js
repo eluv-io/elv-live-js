@@ -1066,6 +1066,106 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   }
 };
 
+const CmdTenantGetMinter = async ({ argv }) => {
+  console.log("Tenant Minter Get Config");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Host: ${argv.host}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.TenantGetMinterConfig({
+      tenant: argv.tenant,
+      host: argv.host
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantCreateMinter = async ({ argv }) => {
+  console.log("Tenant Minter Create Config");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Host: ${argv.host}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.TenantCreateMinterConfig({
+      tenant: argv.tenant,
+      host: argv.host
+    });
+
+    console.log("\n" + res.statusText);
+    console.log("\n" + yaml.dump(await res.json()));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantReplaceMinter = async ({ argv }) => {
+  console.log("Tenant Minter Replace Config");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Host: ${argv.host}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.TenantReplaceMinterConfig({
+      tenant: argv.tenant,
+      host: argv.host
+    });
+
+    console.log("\n" + res.statusText);
+    console.log("\n" + yaml.dump(await res.json()));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantDeleteMinter = async ({ argv }) => {
+  console.log("Tenant Delete Minter");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Host: ${argv.host}`);
+  console.log(`Force: ${argv.force}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.TenantDeleteMinterConfig({
+      tenant: argv.tenant,
+      host: argv.host,
+      force: argv.force
+    });
+
+    console.log("\n" + res.statusText);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantDeployMinterHelper = async ({ argv }) => {
+  console.log("Tenant Deploy Minter Helper");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Host: ${argv.host}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.TenantDeployMinterHelper({
+      tenant: argv.tenant,
+      host: argv.host
+    });
+
+    console.log("\n" + res.statusText);
+    console.log("\n" + yaml.dump(await res.json()));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -2126,6 +2226,105 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNFTSetPolicyPermissions({ argv });
+    }
+  )
+
+  .command(
+    "tenant_get_minter_config <tenant> [options]",
+    "Gets the minter configuration for this tenant key",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantGetMinter({ argv });
+    }
+  )
+
+  .command(
+    "tenant_create_minter_config <tenant> [options]",
+    "Creates the minter configuration for this tenant key",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantCreateMinter({ argv });
+    }
+  )
+
+  .command(
+    "tenant_replace_minter_config <tenant> [options]",
+    "Creates the minter configuration for this tenant key",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantReplaceMinter({ argv });
+    }
+  )
+
+  .command(
+    "tenant_deploy_minter_helper <tenant> [options]",
+    "Deploys the minter helper contract using the authority service as the minter",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantDeployMinterHelper({ argv });
+    }
+  )
+
+  .command(
+    "tenant_delete_minter_config <tenant> [options]",
+    "Creates the minter configuration for this tenant key",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        })
+        .option("force", {
+          describe: "Attempt to delete all keys even on error",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdTenantDeleteMinter({ argv });
     }
   )
 

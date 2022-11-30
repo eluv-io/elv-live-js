@@ -44,7 +44,6 @@
     "dot-object": "^2.1.4",
     "ethers": "^5.5.4",
     "fraction.js": "^4.1.1",
-    "got": "^11.8.2",
     "js-yaml": "^3.14.1",
     "keccak256": "^1.0.6",
     "prompt-sync": "^4.2.0",
