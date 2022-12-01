@@ -2561,11 +2561,51 @@ class EluvioLive {
    * @param {string} tenant - The Tenant ID
    * @return {Promise<Object>} - The API Response for the request
    */
-  async TenantCreateMinterConfig({ tenant, host }) {
+  async TenantCreateMinterConfig({ tenant, host, funds=0, deploy=false }) {
     let res = await this.PostServiceRequest({
       path: urljoin("/tnt/config/minter/", tenant),
       host
     });
+
+    let tenantConfigResult = await res.json();
+
+    if (this.debug){
+      console.log("Create response: ", tenantConfigResult);
+    }
+
+    if (tenantConfigResult.errors && tenantConfigResult.errors.length != 0){
+      return res;
+    }
+
+    if (funds > 0){
+      console.log ("Funding minter and proxy addresses.");
+      let minterAddress = tenantConfigResult.config.minter;
+
+      let account = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+      account.InitWithClient({elvClient: this.client});
+
+      await account.Send({
+        address: minterAddress,
+        funds
+      });
+
+      console.log("Funds Sent to minter address: ", minterAddress);
+
+      let proxyAddress = tenantConfigResult.config.proxy;
+
+      await account.Send({
+        address: proxyAddress,
+        funds
+      });
+
+      console.log("Funds Sent to proxy address: ", proxyAddress);
+    }
+
+    if (deploy){
+      console.log("Deploying minter helper contract");
+      res = this.TenantDeployMinterHelper({tenant, host});
+    }
+
     return res;
   }
 

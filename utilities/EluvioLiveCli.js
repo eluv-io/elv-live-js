@@ -1089,13 +1089,16 @@ const CmdTenantCreateMinter = async ({ argv }) => {
   console.log("Tenant Minter Create Config");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Host: ${argv.host}`);
+  console.log(`Funds: ${argv.funds}`);
 
   try {
     await Init({ debugLogging: argv.verbose });
 
     res = await elvlv.TenantCreateMinterConfig({
       tenant: argv.tenant,
-      host: argv.host
+      host: argv.host,
+      funds: argv.funds,
+      deploy: argv.deploy
     });
 
     console.log("\n" + res.statusText);
@@ -2260,6 +2263,14 @@ yargs(hideBin(process.argv))
         .option("host", {
           describe: "Use this authority service url instead.",
           type: "string",
+        })
+        .option("funds", {
+          describe: "How much to fund the minter and proxy addresses. Default: 0 (do not fund)",
+          type: "integer",
+        })
+        .option("deploy", {
+          describe: "Deploy a new minter helper contract as the minter using the Authority Service. Default: false",
+          type: "boolean",
         });
     },
     (argv) => {
