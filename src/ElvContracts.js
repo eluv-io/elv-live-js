@@ -3,7 +3,6 @@ const { Config } = require("./Config.js");
 const fs = require("fs");
 const path = require("path");
 const Ethers = require("ethers");
-const { ElvUtils }  = require("./Utils.js");
 
 class ElvContracts {
 
@@ -44,7 +43,7 @@ class ElvContracts {
       path.resolve(__dirname, "../contracts/v4/Claimer.abi")
     );
 
-    var epochTime = await ElvUtils.dateToEpoch(String(expirationDate).replaceAll("_", "/"));
+    var epochTime = new Date(String(expirationDate).replaceAll("_", "/")).getTime() / 1000;
 
     var res = await this.client.CallContractMethodAndWait({
       contractAddress: Config.consts[Config.net].claimerAddress,
@@ -197,9 +196,8 @@ class ElvContracts {
           methodArgs: [ address, idx ],
           formatArguments: true,
         });
-        elemExpirationDate = await ElvUtils.epochToDate(Ethers.BigNumber.from(elemExpirationDate).toNumber());
-        listAllocations.push({amount: Ethers.BigNumber.from(elemAmount._hex).toNumber()
-          , expiration: elemExpirationDate});
+        elemExpirationDate = new Date(Ethers.BigNumber.from(elemExpirationDate).toNumber() * 1000).toString();
+        listAllocations.push({amount: Ethers.BigNumber.from(elemAmount._hex).toNumber(), expiration: elemExpirationDate});
       } catch (e){
         break;
       }

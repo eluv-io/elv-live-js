@@ -19,7 +19,8 @@ const consts = {
     tokenUriEnd: "/meta/public/nft",
     kmsAddress: "0xd962aff088ca845de83ce0db0c91b9a0b93d294f",
     spaceAddress: "0x6612d94a31fab146b4c7ace60ddf3a1e5e40e500",
-    claimerAddress: "0x",
+    claimerAddressTest: "0x2c0a54f3f2b4c95d162bbb7696bd161125222a26",
+    claimerAddress: "0x27fdfa3a50de40b79cbfa3dd5921715c51db93c4"
   },
   demov3: {
     tokenUriStart: "https://demov3.net955210.contentfabric.io/s/demov3/q/",
