@@ -1101,8 +1101,7 @@ const CmdTenantCreateMinter = async ({ argv }) => {
       deploy: argv.deploy
     });
 
-    console.log("\n" + res.statusText);
-    console.log("\n" + yaml.dump(await res.json()));
+    console.log("\n" + yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1121,8 +1120,7 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
       host: argv.host
     });
 
-    console.log("\n" + res.statusText);
-    console.log("\n" + yaml.dump(await res.json()));
+    console.log("\n" + yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }

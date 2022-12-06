@@ -2603,10 +2603,11 @@ class EluvioLive {
 
     if (deploy){
       console.log("Deploying minter helper contract");
-      res = this.TenantDeployMinterHelper({tenant, host});
+      res = await this.TenantDeployMinterHelper({tenant, host});
+      return await res.json();
+    } else {
+      return tenantConfigResult;
     }
-
-    return res;
   }
 
   /**
@@ -2621,7 +2622,7 @@ class EluvioLive {
       path: urljoin("/tnt/config/minter/", tenant),
       host
     });
-    return res;
+    return res.json();
   }
 
   /**
