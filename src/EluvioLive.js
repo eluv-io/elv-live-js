@@ -2579,7 +2579,7 @@ class EluvioLive {
 
     if (funds > 0){
       console.log ("Funding minter and proxy addresses.");
-      let minterAddress = tenantConfigResult.config.minter;
+      let minterAddress = tenantConfigResult.config.minter_address;
 
       let account = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
       account.InitWithClient({elvClient: this.client});
@@ -2591,7 +2591,7 @@ class EluvioLive {
 
       console.log("Funds Sent to minter address: ", minterAddress);
 
-      let proxyAddress = tenantConfigResult.config.proxy_owner;
+      let proxyAddress = tenantConfigResult.config.proxy_owner_address;
 
       await account.Send({
         address: proxyAddress,
