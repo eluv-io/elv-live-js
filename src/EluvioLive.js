@@ -2532,7 +2532,7 @@ class EluvioLive {
    */
   async TenantDeployMinterHelper({ tenant, host }) {
     let res = await this.PostServiceRequest({
-      path: urljoin("/tnt/config/deploy/", tenant),
+      path: urljoin("/tnt/config", tenant, "deploy"),
       host
     });
     return res;
@@ -2548,7 +2548,7 @@ class EluvioLive {
    */
   async TenantGetMinterConfig({ tenant, host }) {
     let res = await this.GetServiceRequest({
-      path: urljoin("/tnt/config/minter/", tenant),
+      path: urljoin("/tnt/config", tenant, "minter"),
       host
     });
     return res.json();
@@ -2563,7 +2563,7 @@ class EluvioLive {
    */
   async TenantCreateMinterConfig({ tenant, host, funds=0, deploy=false }) {
     let res = await this.PostServiceRequest({
-      path: urljoin("/tnt/config/minter/", tenant),
+      path: urljoin("/tnt/config", tenant, "minter"),
       host
     });
 
@@ -2591,7 +2591,7 @@ class EluvioLive {
 
       console.log("Funds Sent to minter address: ", minterAddress);
 
-      let proxyAddress = tenantConfigResult.config.proxy;
+      let proxyAddress = tenantConfigResult.config.proxy_owner;
 
       await account.Send({
         address: proxyAddress,
@@ -2619,7 +2619,7 @@ class EluvioLive {
    */
   async TenantReplaceMinterConfig({ tenant, host }) {
     let res = await this.PutServiceRequest({
-      path: urljoin("/tnt/config/minter/", tenant),
+      path: urljoin("/tnt/config", tenant, "minter"),
       host
     });
     return res.json();
@@ -2634,7 +2634,7 @@ class EluvioLive {
    */
   async TenantDeleteMinterConfig({ tenant, host, force=false }) {
     let res = await this.DeleteServiceRequest({
-      path: urljoin("/tnt/config/minter/", tenant),
+      path: urljoin("/tnt/config", tenant, "minter"),
       host,
       queryParams: {force}
     });
