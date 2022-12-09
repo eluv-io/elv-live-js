@@ -2531,7 +2531,7 @@ class EluvioLive {
    * @param {string} tenant - The Tenant ID
    * @return {Promise<Object>} - The API Response for the request
    */
-  async TenantDeployMinterHelper({ tenant, host }) {
+  async TenantDeployHelperContracts({ tenant, host }) {
     let res = await this.PostServiceRequest({
       path: urljoin("/tnt/config", tenant, "deploy"),
       host
@@ -2603,8 +2603,8 @@ class EluvioLive {
     }
 
     if (deploy){
-      console.log("Deploying minter helper contract");
-      res = await this.TenantDeployMinterHelper({tenant, host});
+      console.log("Deploying helper contracts");
+      res = await this.TenantDeployHelperContracts({tenant, host});
       return await res.json();
     } else {
       return tenantConfigResult;

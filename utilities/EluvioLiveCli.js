@@ -1152,15 +1152,15 @@ const CmdTenantDeleteMinter = async ({ argv }) => {
   }
 };
 
-const CmdTenantDeployMinterHelper = async ({ argv }) => {
-  console.log("Tenant Deploy Minter Helper");
+const CmdTenantDeployHelpers = async ({ argv }) => {
+  console.log("Tenant Deploy Helper Contracts");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Host: ${argv.host}`);
 
   try {
     await Init({ debugLogging: argv.verbose });
 
-    res = await elvlv.TenantDeployMinterHelper({
+    res = await elvlv.TenantDeployHelperContracts({
       tenant: argv.tenant,
       host: argv.host
     });
@@ -2309,8 +2309,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_deploy_minter_helper <tenant> [options]",
-    "Deploys the minter helper contract using the authority service as the minter",
+    "tenant_deploy_helper_contracts <tenant> [options]",
+    "Deploys the minter helper and transfer proxy contracts using the authority service as the minter",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -2323,7 +2323,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdTenantDeployMinterHelper({ argv });
+      CmdTenantDeployHelpers({ argv });
     }
   )
 
