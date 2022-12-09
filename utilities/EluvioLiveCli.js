@@ -11,6 +11,7 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
+const { isArrayBufferView } = require("util/types");
 const prompt = require("prompt-sync")({ sigint: true });
 
 let elvlv;
@@ -1111,13 +1112,17 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
   console.log("Tenant Minter Replace Config");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Host: ${argv.host}`);
+  console.log(`Proxy Owner: ${argv.proxyowner}`);
+  console.log(`Minter: ${argv.minter}`);
 
   try {
     await Init({ debugLogging: argv.verbose });
 
     res = await elvlv.TenantReplaceMinterConfig({
       tenant: argv.tenant,
-      host: argv.host
+      host: argv.host,
+      proxyOwner: argv.proxyowner,
+      minter: argv.minter
     });
 
     console.log("\n" + yaml.dump(res));
@@ -2287,6 +2292,14 @@ yargs(hideBin(process.argv))
         })
         .option("host", {
           describe: "Use this authority service url instead.",
+          type: "string",
+        })
+        .option("proxyowner", {
+          describe: "Replace proxy owner ID. Note that the key must already be stored in the Authority Service to use this.",
+          type: "string",
+        })
+        .option("minter", {
+          describe: "Replace minter ID. Note that the key must already be stored in the Authority Service to use this.",
           type: "string",
         });
     },

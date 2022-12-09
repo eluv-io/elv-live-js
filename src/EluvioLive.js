@@ -2144,23 +2144,23 @@ class EluvioLive {
     return { signature, multiSig };
   }
 
-  async PutServiceRequest({ path, body={}, headers = {}, host, useFabricToken=false }) {
-    return await this.TenantAuthServiceRequest({path, method: "PUT", body, headers, host, useFabricToken});
+  async PutServiceRequest({ path, body={}, headers = {}, queryParams={}, host, useFabricToken=false }) {
+    return await this.TenantAuthServiceRequest({path, method: "PUT", queryParams, body, headers, host, useFabricToken});
   }
 
-  async PostServiceRequest({ path, body={}, headers = {}, host, useFabricToken=false }) {
-    return await this.TenantAuthServiceRequest({path, method: "POST", body, headers, host, useFabricToken});
+  async PostServiceRequest({ path, body={}, headers = {}, queryParams={}, host, useFabricToken=false }) {
+    return await this.TenantAuthServiceRequest({path, method: "POST", queryParams, body, headers, host, useFabricToken});
   }
 
-  async GetServiceRequest({ path, queryParams, headers = {}, host}) {
+  async GetServiceRequest({ path, queryParams={}, headers = {}, host}) {
     return await this.TenantPathAuthServiceRequest({path, method:"GET", queryParams, headers, host});
   }
 
-  async DeleteServiceRequest({ path, queryParams, headers = {}, host}) {
+  async DeleteServiceRequest({ path, queryParams={}, headers = {}, host}) {
     return await this.TenantPathAuthServiceRequest({path, method:"DELETE", queryParams, headers, host});
   }
 
-  async TenantAuthServiceRequest({ path, method, body={}, headers = {}, host, useFabricToken=false }) {
+  async TenantAuthServiceRequest({ path, method, queryParams={}, body={}, headers = {}, host, useFabricToken=false }) {
     if (!body) {
       body = {};
     }
@@ -2196,6 +2196,7 @@ class EluvioLive {
         Authorization: `Bearer ${token}`,
         ...headers,
       },
+      queryParams,
     });
     return res;
   }
@@ -2617,10 +2618,11 @@ class EluvioLive {
    * @param {string} tenant - The Tenant ID
    * @return {Promise<Object>} - The API Response for the request
    */
-  async TenantReplaceMinterConfig({ tenant, host }) {
+  async TenantReplaceMinterConfig({ tenant, host, proxyOwner, minter}) {
     let res = await this.PutServiceRequest({
       path: urljoin("/tnt/config", tenant, "minter"),
-      host
+      host,
+      queryParams: {proxyowner:proxyOwner,minter}
     });
     return res.json();
   }
