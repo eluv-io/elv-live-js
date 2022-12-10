@@ -2618,11 +2618,11 @@ class EluvioLive {
    * @param {string} tenant - The Tenant ID
    * @return {Promise<Object>} - The API Response for the request
    */
-  async TenantReplaceMinterConfig({ tenant, host, proxyOwner, minter}) {
+  async TenantReplaceMinterConfig({ tenant, host, proxyOwner, minter, purge=false}) {
     let res = await this.PutServiceRequest({
       path: urljoin("/tnt/config", tenant, "minter"),
       host,
-      queryParams: {proxyowner:proxyOwner,minter}
+      queryParams: {proxyowner:proxyOwner,minter,purge}
     });
     return res.json();
   }

@@ -1114,6 +1114,7 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
   console.log(`Host: ${argv.host}`);
   console.log(`Proxy Owner: ${argv.proxyowner}`);
   console.log(`Minter: ${argv.minter}`);
+  console.log(`Purge: ${argv.purge}`);
 
   try {
     await Init({ debugLogging: argv.verbose });
@@ -1122,7 +1123,8 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
       tenant: argv.tenant,
       host: argv.host,
       proxyOwner: argv.proxyowner,
-      minter: argv.minter
+      minter: argv.minter,
+      purge: argv.purge
     });
 
     console.log("\n" + yaml.dump(res));
@@ -2301,6 +2303,10 @@ yargs(hideBin(process.argv))
         .option("minter", {
           describe: "Replace minter ID. Note that the key must already be stored in the Authority Service to use this.",
           type: "string",
+        })
+        .option("purge", {
+          describe: "Purge will delete the keys first before replacing",
+          type: "bool",
         });
     },
     (argv) => {
