@@ -20,7 +20,9 @@ const consts = {
     kmsAddress: "0xd962aff088ca845de83ce0db0c91b9a0b93d294f",
     spaceAddress: "0x6612d94a31fab146b4c7ace60ddf3a1e5e40e500",
     claimerAddressTest: "0x2c0a54f3f2b4c95d162bbb7696bd161125222a26",
-    claimerAddress: "0x27fdfa3a50de40b79cbfa3dd5921715c51db93c4"
+    claimerAddress: "0x27fdfa3a50de40b79cbfa3dd5921715c51db93c4",
+    notificationService: "https://appsvc.svc.eluv.io/push/main"
+
   },
   demov3: {
     tokenUriStart: "https://demov3.net955210.contentfabric.io/s/demov3/q/",
@@ -28,6 +30,7 @@ const consts = {
     kmsAddress: "0x501382e5f15501427d1fc3d93e949c96b25a2224",
     spaceAddress: "0x9b29360efb1169c801bbcbe8e50d0664dcbc78d3",
     claimerAddress: "0x",
+    notificationService: "https://appsvc.svc.eluv.io/push/dv3"
   },
   test: {
     tokenUriStart: "https://test.net955205.contentfabric.io/s/test/q/",

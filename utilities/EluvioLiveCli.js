@@ -5,6 +5,7 @@ const { InitializeTenant, AddConsumerGroup } = require("../src/Provision");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
 const { Marketplace } = require("../src/Marketplace");
+const { Notifier } = require ("../src/Notifier");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -1058,6 +1059,27 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
       policyPath: argv.policy_path,
       addresses: argv.addrs,
       clearAddresses: argv.clear
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNotifSend = async ({ argv }) => {
+  console.log("Send notification", argv.userAddr, argv.tenant, argv.event);
+
+  try {
+    let notifier = new Notifier({notifUrl: argv.notif_url});
+    await notifier.Init();
+
+    let res = await notifier.Send({
+      userAddr: argv.user_addr,
+      tenantId: argv.tenant,
+      eventType: argv.event,
+      nftAddr: argv.nft_addr,
+      tokenId: argv.token_id
     });
 
     console.log("\n" + yaml.dump(res));
@@ -2126,6 +2148,44 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNFTSetPolicyPermissions({ argv });
+    }
+  )
+
+  .command(
+    "notif_send <user_addr> <tenant> <event>",
+    "Sends a notification (using the notification service).",
+    (yargs) => {
+      yargs
+      .positional("user_addr", {
+        describe: "User address",
+        type: "string",
+      })
+      .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("event", {
+          describe: "One of: TOKEN_UPDATED",
+          type: "string",
+        })
+        .option("nft_addr", {
+          describe: "NFT contract address (hex)",
+          type: "string",
+          default: ""
+        })
+        .option("token_id", {
+          describe: "NFT token ID",
+          type: "string",
+          default: ""
+        })
+        .option("notif_url", {
+          describe: "Notification service URL",
+          type: "string",
+          default: ""
+        });
+    },
+    (argv) => {
+      CmdNotifSend({ argv });
     }
   )
 
