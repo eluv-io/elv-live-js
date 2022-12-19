@@ -1109,7 +1109,7 @@ const CmdNotifSendTokenUpdate = async ({ argv }) => {
       let res = await notifier.Send({
         userAddr: tokens[i].owner,
         tenantId: argv.tenant,
-        eventType: "TOKEN_UPDATE",
+        eventType: "TOKEN_UPDATED",
         nftAddr: argv.nft_addr,
         tokenId: tokens[i].tokenId
       });
@@ -2226,7 +2226,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "notif_send_token_update <nft_addr> <tenant>",
-    "Sends a TOKEN_UPDATE notification to all owners of this NFT.",
+    "Sends a TOKEN_UPDATED notification to all owners of this NFT.",
     (yargs) => {
       yargs
       .positional("nft_addr", {
