@@ -44,14 +44,14 @@ class Notifier {
 
   async Send({userAddr, tenantId, eventType, nftAddr, tokenId}) {
 
-    userAddr = userAddr.toLowerCase();
-    nftAddr = nftAddr.toLowerCase();
+    let userAddrLC = userAddr.toLowerCase();
+    let nftAddrLC = nftAddr.toLowerCase();
 
     let body = {
-      contract: nftAddr,
+      contract: nftAddrLC,
       token: tokenId
     };
-    let path = urljoin("/notify_user/", userAddr, tenantId, eventType);
+    let path = urljoin("/notify_user/", userAddrLC, tenantId, eventType);
     let res = this.Post({path, body});
     return res;
   }
