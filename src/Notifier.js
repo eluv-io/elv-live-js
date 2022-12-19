@@ -44,8 +44,8 @@ class Notifier {
 
   async Send({userAddr, tenantId, eventType, nftAddr, tokenId}) {
 
-    let userAddrLC = userAddr.toLowerCase();
-    let nftAddrLC = nftAddr.toLowerCase();
+    const userAddrLC = userAddr.toLowerCase();
+    const nftAddrLC = nftAddr.toLowerCase();
 
     let body = {
       contract: nftAddrLC,
