@@ -205,6 +205,55 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
   }
 };
 
+const CmdSpaceTenantInfo = async ({ argv }) => {
+  console.log("Tenant info");
+  console.log(`Tenant: ${argv.tenant}`);
+
+  try {
+    let space = new ElvSpace({
+      configUrl: Config.networks[Config.net],
+      spaceAddress: Config.consts[Config.net].spaceAddress,
+      kmsAddress: Config.consts[Config.net].kmsAddress,
+      debugLogging: argv.verbose
+    });
+    await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
+
+    res = await space.TenantInfo({
+      tenantId: argv.tenant
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
+  console.log("Tenant set Eluvio Live ID");
+  console.log(`Tenant: ${argv.tenant}`);
+  console.log(`Eluvio Live ID: ${argv.eluvio_live_id}`);
+
+  try {
+    let space = new ElvSpace({
+      configUrl: Config.networks[Config.net],
+      spaceAddress: Config.consts[Config.net].spaceAddress,
+      kmsAddress: Config.consts[Config.net].kmsAddress,
+      debugLogging: argv.verbose
+    });
+    await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
+
+    res = await space.TenantSetEluvioLiveId({
+      tenantId: argv.tenant,
+      eluvioLiveId: argv.eluvio_live_id
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+};
+
 const CmdAccountOfferSignature = async ({ argv }) => {
   console.log("Account Offer Signature\n");
   console.log("args", argv);
@@ -220,9 +269,9 @@ const CmdAccountOfferSignature = async ({ argv }) => {
     });
 
     let res = await elvAccount.CreateOfferSignature({
-      nftAddress: argv.nft_addr, 
-      mintHelperAddress: argv.mint_helper_addr, 
-      tokenId: argv.token_id, 
+      nftAddress: argv.nft_addr,
+      mintHelperAddress: argv.mint_helper_addr,
+      tokenId: argv.token_id,
       offerId: argv.offer_id
     });
 
@@ -838,6 +887,21 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "space_tenant_info <tenant>",
+    "Shot tenant information.",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID (iten)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdSpaceTenantInfo({ argv });
+    }
+  )
+
+  .command(
     "space_tenant_deploy <tenant_name> <owner_addr> <tenant_admin_addr>",
     "Deploys a tenant contract",
     (yargs) => {
@@ -877,6 +941,25 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdSpaceTenantCreate({ argv });
+    }
+  )
+
+  .command(
+    "space_tenant_set_eluvio_live_id <tenant> <eluvio_live_id>",
+    "Set the tenant-leve Eluvio Live object ID in the tenant contract.",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID (iten)",
+          type: "string",
+        })
+        .positional("eluvio_live_id", {
+          describe: "Object ID of the tenant-leve Eluvio Live object (iq)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdSpaceTenantSetEluvioLiveId({ argv });
     }
   )
 
