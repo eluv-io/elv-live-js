@@ -518,7 +518,7 @@ const CmdClaimerAllocate = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
 
 const CmdClaimerClaim = async ({ argv }) => {
   console.log("Claimer Claim\n");
@@ -542,7 +542,7 @@ const CmdClaimerClaim = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
 
 const CmdClaimerBurn = async ({ argv }) => {
   console.log("Claimer Burn\n");
@@ -566,7 +566,7 @@ const CmdClaimerBurn = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
 
 
 const CmdClaimerListAllocations = async ({ argv }) => {
@@ -591,7 +591,7 @@ const CmdClaimerListAllocations = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
 
 const CmdClaimerAddAuthAddr = async ({ argv }) => {
   console.log("Claimer Add Authorized Address\n");
@@ -615,7 +615,7 @@ const CmdClaimerAddAuthAddr = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
 
 const CmdClaimerRmAuthAddr = async ({ argv }) => {
   console.log("Claimer Remove Authorized Address\n");
@@ -639,7 +639,7 @@ const CmdClaimerRmAuthAddr = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
 
 const CmdClaimerBalanceOf = async ({ argv }) => {
   console.log("Claimer Balance Of\n");
@@ -663,7 +663,7 @@ const CmdClaimerBalanceOf = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
 
 const CmdClaimerBurnOf = async ({ argv }) => {
   console.log("Claimer Balance Of\n");
@@ -687,7 +687,7 @@ const CmdClaimerBurnOf = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
 
 yargs(hideBin(process.argv))
   .option("verbose", {
@@ -1100,7 +1100,7 @@ yargs(hideBin(process.argv))
         .positional("expiration_date", {
           describe: "Expiration date of the allocation (in UTC)",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdClaimerAllocate({ argv });
@@ -1115,7 +1115,7 @@ yargs(hideBin(process.argv))
         .positional("amount", {
           describe: "Amount to claim",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdClaimerClaim({ argv });
@@ -1129,7 +1129,7 @@ yargs(hideBin(process.argv))
         .positional("amount", {
           describe: "Amount to burn",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdClaimerBurn({ argv });
@@ -1143,7 +1143,7 @@ yargs(hideBin(process.argv))
         .positional("address", {
           describe: "the allocations of this address would be listed",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdClaimerListAllocations({ argv });
@@ -1157,7 +1157,7 @@ yargs(hideBin(process.argv))
         .positional("address", {
           describe: "this address would be added to the authorized address list",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdClaimerAddAuthAddr({ argv });
@@ -1171,7 +1171,7 @@ yargs(hideBin(process.argv))
         .positional("address", {
           describe: "this address would be remove from the authorized address list",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdClaimerRmAuthAddr({ argv });
@@ -1185,7 +1185,7 @@ yargs(hideBin(process.argv))
         .positional("address", {
           describe: "the balance of this address would be given",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdClaimerBalanceOf({ argv });
@@ -1199,7 +1199,7 @@ yargs(hideBin(process.argv))
         .positional("address", {
           describe: "the burn of this address would be given",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdClaimerBurnOf({ argv });

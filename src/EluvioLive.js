@@ -9,6 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const BigNumber = require("big-number");
 var urljoin = require("url-join");
+const crypto = require("crypto");
 const ethers = require("ethers");
 
 /**
@@ -1324,7 +1325,69 @@ class EluvioLive {
 
     return res;
   }
-  
+
+  /**
+   * Redeem an nft offer using the contract directly
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {string} offerId - The Offer ID
+   */
+  async NFTRedeemOffer({addr, redeemerAddr, tokenId, offerId}){
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    var res = await this.client.CallContractMethodAndWait({
+      contractAddress: addr,
+      abi: JSON.parse(abi),
+      methodName: "redeemOffer",
+      methodArgs: [redeemerAddr, tokenId, offerId],
+      formatArguments: true,
+    });
+
+    return res;
+  }
+
+  /**
+   * Redeem an nft offer using the Authority Service
+   *
+   * @namedParams
+   * @param {string} addr - The NFT contract address
+   * @param {string} offerId - The Offer ID
+   */
+  async ASNFTRedeemOffer({addr, tenantId, tokenId, offerId, mintHelperAddr}){
+
+    let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+    elvAccount.InitWithClient({elvClient:this.client});
+    let sig = await elvAccount.CreateOfferSignature({nftAddress:addr, mintHelperAddress:mintHelperAddr,tokenId,offerId});
+
+    let address = Ethers.utils.verifyMessage(sig.messageHashBytes, sig.signature);
+    if (this.debug){
+      console.log("Recovered address: ", address);
+      console.log("Signed return value: ", sig);
+    }
+
+    let refId = crypto.randomUUID();
+
+    let body = {
+      "op": "nft-offer-redeem",
+      "client_reference_id": refId,
+      "tok_addr": addr,
+      "tok_id": `${tokenId}`,
+      "offer_id": offerId,
+      "sig_hex": sig.signedData,
+    };
+
+    let res = await this.PostServiceRequest({
+      path: `/wlt/act/${tenantId}`,
+      body,
+      useFabricToken:true
+    });
+
+    return {request_id: refId, status: res.status};
+  }
+    
 
   /**
    * Sets the nft policy and permissions for a given object
@@ -2172,7 +2235,10 @@ class EluvioLive {
 
     let token = "";
     if ( useFabricToken ) {
-      token = await this.client.CreateFabricToken({duration:ElvAccount.TOKEN_DURATION});
+      token = await this.client.CreateFabricToken({
+        duration:ElvAccount.TOKEN_DURATION
+      });
+
     } else {
       const { multiSig } = await this.TenantSign({
         message: JSON.stringify(body),

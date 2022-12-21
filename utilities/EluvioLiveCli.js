@@ -979,6 +979,55 @@ const CmdNftIsOfferRedeemed = async ({ argv }) => {
   }
 };
 
+const CmdNftRedeemOffer = async ({ argv }) => {
+  console.log("NFT Redeem Offer");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Redeemer Address: ${argv.redeemer}`);
+  console.log(`Token ID: ${argv.token_id}`);
+  console.log(`Offer ID: ${argv.offer_id}`);
+
+  try {
+    await Init();
+
+    let res = await elvlv.NFTRedeemOffer({ 
+      addr: argv.addr,
+      redeemerAddr: argv.redeemer,
+      tokenId: argv.token_id,
+      offerId: argv.offer_id,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdASNftRedeemOffer = async ({ argv }) => {
+  console.log("AS NFT Redeem Offer");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Tenant ID: ${argv.tenant}`);
+  console.log(`Mint Helper Address: ${argv.mint_helper_addr}`);
+  console.log(`Token ID: ${argv.token_id}`);
+  console.log(`Offer ID: ${argv.offer_id}`);
+
+
+  try {
+    await Init();
+
+    let res = await elvlv.ASNFTRedeemOffer({ 
+      addr: argv.addr,
+      tenantId: argv.tenant,
+      tokenId: argv.token_id,
+      offerId: argv.offer_id,
+      mintHelperAddr: argv.mint_helper_addr
+    });  
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 
 const CmdTenantProvision = async ({ argv }) => {
   console.log("Tenant Provision");
@@ -1504,6 +1553,63 @@ yargs(hideBin(process.argv))
     }
   )
 
+  .command(
+    "nft_redeem_offer <addr> <redeemer> <token_id> <offer_id>",
+    "Redeem an nft offer",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("redeemer", {
+          describe: "Redeemer address",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "Offer ID",
+          type: "integer",
+        })
+        .positional("offer_id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdNftRedeemOffer({ argv });
+    }
+  )
+
+  .command(
+    "as_nft_redeem_offer <addr> <tenant> <mint_helper_addr> <token_id> <offer_id>",
+    "Redeem an nft offer using the authority service",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("mint_helper_addr", {
+          describe: "Address of the mint helper (hex), used with --auth_service",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "Offer ID",
+          type: "integer",
+        })
+        .positional("offer_id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdASNftRedeemOffer({ argv });
+    }
+  )
 
   .command(
     "tenant_show <tenant> [options]",
