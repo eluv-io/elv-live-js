@@ -5,6 +5,7 @@ const { InitializeTenant, AddConsumerGroup } = require("../src/Provision");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
 const { Marketplace } = require("../src/Marketplace");
+const { Notifier } = require ("../src/Notifier");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -1097,17 +1098,75 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   console.log(`Policy file path: ${argv.policy_path}`);
   console.log(`Addresses: ${argv.addrs}`);
   console.log(`verbose: ${argv.verbose}`);
+  console.log(`clear: ${argv.clear}`);
 
   try {
     await Init({ debugLogging: argv.verbose });
 
     res = await elvlv.NftSetPolicyAndPermissions({
-      nftAddress: argv.object,
+      objectId: argv.object,
       policyPath: argv.policy_path,
-      addresses: argv.addrs
+      addresses: argv.addrs,
+      clearAddresses: argv.clear
     });
 
     console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNotifSend = async ({ argv }) => {
+  console.log("Send notification", argv.user_addr, argv.tenant, argv.event);
+
+  try {
+    let notifier = new Notifier({notifUrl: argv.notif_url});
+    await notifier.Init();
+
+    let res = await notifier.Send({
+      userAddr: argv.user_addr,
+      tenantId: argv.tenant,
+      eventType: argv.event,
+      nftAddr: argv.nft_addr,
+      tokenId: argv.token_id
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNotifSendTokenUpdate = async ({ argv }) => {
+  console.log("Send token update notification to all owners", argv.nft_addr, argv.tenant);
+
+  try {
+
+    await Init({ debugLogging: argv.verbose });
+    let nftInfo = await elvlv.NftShow({
+      addr: argv.nft_addr,
+      showOwners: 10000000 // 10 mil is code for 'unlimited'
+    })
+
+    let tokens = nftInfo.tokens;
+
+    let notifier = new Notifier({notifUrl: argv.notif_url});
+    await notifier.Init();
+
+    for (let i = 0; i < tokens.length; i ++) {
+      console.log("- token:", tokens[i].tokenId, "owner", tokens[i].owner, );
+      let res = await notifier.Send({
+        userAddr: tokens[i].owner,
+        tenantId: argv.tenant,
+        eventType: "TOKEN_UPDATED",
+        nftAddr: argv.nft_addr,
+        tokenId: tokens[i].tokenId
+      });
+      if (argv.verbose) {
+        console.log(res);
+      }
+    }
+
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -2217,6 +2276,11 @@ yargs(hideBin(process.argv))
           describe: "Path of policy object file",
           type: "string",
         })
+        .option("clear", {
+          describe: "clear the nft owners",
+          type: "boolean",
+          default: false
+        })
         .option("addrs", {
           describe:
             "Addresses to add",
@@ -2225,6 +2289,68 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNFTSetPolicyPermissions({ argv });
+    }
+  )
+
+  .command(
+    "notif_send <user_addr> <tenant> <event>",
+    "Sends a notification (using the notification service).",
+    (yargs) => {
+      yargs
+      .positional("user_addr", {
+        describe: "User address",
+        type: "string",
+      })
+      .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("event", {
+          describe: "One of: TOKEN_UPDATED",
+          type: "string",
+        })
+        .option("nft_addr", {
+          describe: "NFT contract address (hex)",
+          type: "string",
+          default: ""
+        })
+        .option("token_id", {
+          describe: "NFT token ID",
+          type: "string",
+          default: ""
+        })
+        .option("notif_url", {
+          describe: "Notification service URL",
+          type: "string",
+          default: ""
+        });
+    },
+    (argv) => {
+      CmdNotifSend({ argv });
+    }
+  )
+
+  .command(
+    "notif_send_token_update <nft_addr> <tenant>",
+    "Sends a TOKEN_UPDATED notification to all owners of this NFT.",
+    (yargs) => {
+      yargs
+      .positional("nft_addr", {
+        describe: "NFT contract address (hex)",
+        type: "string",
+      })
+      .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+      .option("notif_url", {
+        describe: "Notification service URL",
+        type: "string",
+        default: ""
+      });
+    },
+    (argv) => {
+      CmdNotifSendTokenUpdate({ argv });
     }
   )
 

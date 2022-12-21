@@ -1,0 +1,20 @@
+name: policy nft-owner v1.1
+desc: |
+  Contract policy for access control based on NFT ownership. The policy permits any read operation if the user is the
+  owner of a non-fungible token governed by a linked ERC-721 smart contract.
+type: ast
+expr:
+  rule: main
+rules:
+
+  main:
+    or:
+      - fn.isOwnerOfLinkedNft:
+          - env: call/subject
+      - and:
+          - eq:
+              - env: api_call/action
+              - q.read.decrypt
+          - fn.ids.Equivalent:
+              - env: call/node_id
+              - env: call/subject

@@ -10,6 +10,7 @@ const path = require("path");
 const BigNumber = require("big-number");
 var urljoin = require("url-join");
 const crypto = require("crypto");
+const ethers = require("ethers");
 
 /**
  * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
@@ -1387,14 +1388,15 @@ class EluvioLive {
     
 
   /**
-   * Sets the nft policy and permissions for a given contract
+   * Sets the nft policy and permissions for a given object
    *
    * @namedParams
-   * @param {string} nftAddress - The NFT contract address
+   * @param {string} objectId - The NFT object ID
    * @param {string} policyPath - Path to the policy file (eg. nft_owner_minter.yaml). Note that the policy must contain the minter address
    * @param {[string]} addresses - Array of addresses to set the policy permissions
+   * @param {bool} clear - Clear
    */
-  async NftSetPolicyAndPermissions({ nftAddress, policyPath, addresses=[] }) {
+  async NftSetPolicyAndPermissions({ objectId, policyPath, addresses=[], clearAddresses=false}) {
     let elvFabric = new ElvFabric({
       configUrl: this.configUrl,
       debugLogging: this.debug
@@ -1418,22 +1420,57 @@ class EluvioLive {
       console.log("Policy file contents: ", policyString);
     }
 
+    let account = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+    account.InitWithClient({elvClient: this.client});
+    let signer = (await account.Show())["userId"];
+
+    let auth_policy =  {
+      id:"",
+      description:"",
+      type:"epl-ast",
+      version:"1.0",
+      body: policyString
+    };
+
+    let encoded = `${auth_policy.type}|${auth_policy.version}|${auth_policy.body}|`;
+
+    let signature = await this.client.Sign(encoded);
+    auth_policy.signer = signer;
+    auth_policy.signature = signature;
+
+
+    let policyFormat = {
+      auth_policy
+    };
+
+    if (this.debug){
+      console.log("Policy Value To Set: ", policyFormat);
+    }
+
     let res = await elvFabric.SetContractMeta({
-      address: nftAddress,
+      address: objectId,
       key: "_ELV",
-      value: policyString
+      value: JSON.stringify(policyFormat)
     });
 
+    if (!clearAddresses && addresses.length == 0) {
+      return {policyResponse: res};
+    }
+
+    if (clearAddresses){
+      addresses = [];
+    }
+
+    for (const address of addresses){
+      if (!ethers.utils.isAddress(address)){
+        throw Error(`"${address}" is not a valid ethereum address.`);
+      }
+    }
 
     let addressesString = JSON.stringify(addresses);
 
-    if (this.debug){
-      console.log("Set Policy response: ", res);
-      console.log("Addresses string: ", addressesString);
-    }
-
     let res2 = await elvFabric.SetContractMeta({
-      address: nftAddress,
+      address: objectId,
       key: "_NFT_ACCESS",
       value: addressesString
     });
@@ -1441,8 +1478,8 @@ class EluvioLive {
     if (this.debug){
       console.log("Set Policy response: ", res);
     }
-
     return {policyResponse: res, permissionsResponse: res2};
+
   }
 
   /**

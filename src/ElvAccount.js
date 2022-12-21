@@ -1,6 +1,8 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const ethers = require("ethers");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
+const { ElvUtils } = require("./Utils");
+
 const TOKEN_DURATION = 120000; //2 min
 class ElvAccount {
 
@@ -23,7 +25,7 @@ class ElvAccount {
     });
     this.wallet = this.client.GenerateWallet();
     this.signer = this.wallet.AddAccount({
-      privateKey,
+      privateKey, 
     });
     this.client.SetSigner({ signer:this.signer });
     this.client.ToggleLogging(this.debug);
@@ -150,8 +152,8 @@ class ElvAccount {
       await this.client.userProfileClient.UserWalletObjectInfo() || "";
     let wallet = this.client.GenerateWallet();
     let balance = await wallet.GetAccountBalance({ signer: this.client.signer });
-
-    return { address, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
+    let userId = ElvUtils.AddressToId({prefix:"iusr", address});
+    return { address, userId, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
   }
 
   async SetAccountTenantAdminsAddress({ tenantAdminsAddress }) {
