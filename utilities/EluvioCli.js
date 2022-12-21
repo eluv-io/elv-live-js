@@ -1,4 +1,5 @@
 const { ElvSpace } = require("../src/ElvSpace.js");
+const { ElvTenant } = require("../src/ElvTenant.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
 const { ElvFabric } = require("../src/ElvFabric.js");
 const { ElvContracts } = require("../src/ElvContracts.js");
@@ -210,15 +211,13 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
   console.log(`Tenant: ${argv.tenant}`);
 
   try {
-    let space = new ElvSpace({
+    let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      spaceAddress: Config.consts[Config.net].spaceAddress,
-      kmsAddress: Config.consts[Config.net].kmsAddress,
       debugLogging: argv.verbose
     });
-    await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    res = await space.TenantInfo({
+    res = await t.TenantInfo({
       tenantId: argv.tenant
     });
 
@@ -234,15 +233,13 @@ const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
   console.log(`Eluvio Live ID: ${argv.eluvio_live_id}`);
 
   try {
-    let space = new ElvSpace({
+    let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      spaceAddress: Config.consts[Config.net].spaceAddress,
-      kmsAddress: Config.consts[Config.net].kmsAddress,
       debugLogging: argv.verbose
     });
-    await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    res = await space.TenantSetEluvioLiveId({
+    res = await t.TenantSetEluvioLiveId({
       tenantId: argv.tenant,
       eluvioLiveId: argv.eluvio_live_id
     });
