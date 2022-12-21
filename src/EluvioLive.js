@@ -1363,8 +1363,10 @@ class EluvioLive {
     let sig = await elvAccount.CreateOfferSignature({nftAddress:addr, mintHelperAddress:mintHelperAddr,tokenId,offerId});
 
     let address = Ethers.utils.verifyMessage(sig.messageHashBytes, sig.signature);
-    console.log("Recovered address: ", address);
-    console.log("Signed return value: ", sig);
+    if (this.debug){
+      console.log("Recovered address: ", address);
+      console.log("Signed return value: ", sig);
+    }
 
     let refId = crypto.randomUUID();
 
