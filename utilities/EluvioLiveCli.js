@@ -143,7 +143,11 @@ const CmdNftProxyBurn = async ({ argv }) => {
 };
 
 const CmdNftShow = async ({ argv }) => {
-  console.log("NFT - show", argv.addr, argv.show_owners);
+  console.log("NFT - show");
+  console.log("addr ", argv.addr);
+  console.log("check_minter ", argv.check_minter);
+  console.log("show_owners ", argv.show_owners);
+  console.log("token_id ", argv.token_id);
   try {
     await Init();
 
@@ -151,6 +155,7 @@ const CmdNftShow = async ({ argv }) => {
       addr: argv.addr,
       mintHelper: argv.check_minter,
       showOwners: argv.show_owners,
+      tokenId: argv.token_id
     });
 
     console.log(yaml.dump(res));
@@ -171,22 +176,6 @@ const CmdNftBuild = async ({ argv }) => {
       libraryId: argv.library,
       objectId: argv.object,
       nftDir: argv.nft_dir,
-    });
-
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
-const CmdNftShowToken = async ({ argv }) => {
-  console.log("NFT - show token", argv.addr, argv.token_id);
-  try {
-    await Init();
-
-    let res = await elvlv.NftShowToken({
-      addr: argv.addr,
-      tokenId: argv.token_id,
     });
 
     console.log(yaml.dump(res));
@@ -1181,7 +1170,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_show <addr>",
+    "nft_show <addr> [options]",
     "Show info on this NFT",
     (yargs) => {
       yargs
@@ -1193,8 +1182,12 @@ yargs(hideBin(process.argv))
           describe: "Check that all NFTs use this mint helper",
         })
         .option("show_owners", {
-          describe: "Show up to these many owners (default 0)",
+          describe: "Show up to these many owners (default 0). Only used when token_id is not specified.",
           type: "integer",
+        })
+        .option("token_id", {
+          describe: "External token ID. This will take precedence over show_owners.",
+          type: "string", // BigNumber as string
         });
     },
     (argv) => {
@@ -1277,25 +1270,6 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNftBuild({ argv });
-    }
-  )
-
-  .command(
-    "nft_show_token <addr> <token_id>",
-    "Decode and look up a local NFT by external token ID",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "Local NFT contract address",
-          type: "string",
-        })
-        .positional("token_id", {
-          describe: "External token ID",
-          type: "string", // BigNumber as string
-        });
-    },
-    (argv) => {
-      CmdNftShowToken({ argv });
     }
   )
 
