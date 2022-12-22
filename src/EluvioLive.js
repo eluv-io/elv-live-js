@@ -1035,9 +1035,11 @@ class EluvioLive {
    * @param {string} addr - The NFT contract address
    * @param {string} mintHelper - Warn if this is not a minter for the NFT contract (hex)
    * @param {string} minter - Warn if this is not the owner of the mint helper contract (hex)
+   * @param {integer} showOwners - Also enumerate all token info up to showOwners amount. Only used if tokenId is undefined.
+   * @param {integer} tokenId - The token ID to show info for. This will take precedence over showOwners
    * @return {Promise<Object>} - An object containing NFT info, including 'warnings'
    */
-  async NftShow({ addr, mintHelper, minterAddr, showOwners }) {
+  async NftShow({ addr, mintHelper, minterAddr, showOwners, tokenId }) {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
@@ -1162,14 +1164,23 @@ class EluvioLive {
     nftInfo.tokens = [];
 
     var maxWarnsTokenUri = 1;
+    if (tokenId != undefined) {
+      try {
+        var tokenInfo = await this.NftShowToken({ addr, tokenId });
+        nftInfo.token = tokenInfo;
+        if (tokenInfo.warns && tokenInfo.warns.length > 0) {
+          warns.push(...tokenInfo.warns);
+        }
+      } catch (e){
+        warns.push(`Could not get token info for addr: ${addr} - ${e}`);
+      }
 
-    if (showOwners && showOwners > 0) {
+    } else if (showOwners && showOwners > 0) {
       var maxShowOwners = showOwners;
 
       for (var i = 0; i < maxShowOwners && i < nftInfo.totalSupply; i++) {
         nftInfo.tokens[i] = {};
 
-        var tokenId;
         try {
           tokenId = await this.client.CallContractMethod({
             contractAddress: addr,
@@ -1184,7 +1195,7 @@ class EluvioLive {
           continue;
         }
 
-        var tokenInfo = await this.NftShowToken({ addr, tokenId });
+        tokenInfo = await this.NftShowToken({ addr, tokenId });
 
         if (tokenInfo.warns.length > 0) {
           warns.push(...tokenInfo.warns);
@@ -1942,7 +1953,8 @@ class EluvioLive {
    * @param {integer} tokenId - External NFT token ID
    * @return {Promise<Object>} - NFT info JSON
    */
-  async NftLookup({ /* addr, */ tokenId }) {
+  async NftLookup(/* addr, */ tokenId) {
+
     console.log("tokenId", tokenId);
 
     var x = new BigNumber(tokenId, 10);
