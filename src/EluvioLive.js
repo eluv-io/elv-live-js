@@ -2643,6 +2643,35 @@ class EluvioLive {
     return res;
   }
 
+  /**
+    * Submits a new content version hash of this account's Tenant Object for updating to the Eluvio Live Tree.
+    * @namedParams
+    * @param {string} tenant - The Tenant ID
+    * @param {string} host - Authority Service url (Optional)
+    * @param {string} contentHash - Version hash of the new Tenant Object to submit
+    * @return {Promise<Object>} - The API Response for the request
+    */
+  async TenantConfigUpdate({tenant, host, contentHash}) {
+    
+    var body = {
+      content_hash: contentHash
+    };
+
+    let res = await this.PostServiceRequest({
+      path: urljoin("/tnt/config", tenant, "metadata"),
+      host,
+      body
+    });
+
+    let tenantConfigResult = await res.json();
+
+    if (this.debug){
+      console.log("Create response: ", tenantConfigResult);
+    }
+    return tenantConfigResult;
+  }
+
+
   FilterTenant({ object }) {
     let result = {};
     result.marketplaces = object.marketplaces;

@@ -1174,6 +1174,27 @@ const CmdTenantDeployHelpers = async ({ argv }) => {
   }
 };
 
+const CmdTenantConfigUpdate  = async ({ argv }) => {
+  console.log("Tenant Config Update");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Content Hash: ${argv.content_hash}`);
+  console.log(`Host: ${argv.host}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    let res = await elvlv.TenantConfigUpdate({
+      tenant: argv.tenant,
+      contentHash: argv.content_hash,
+      host: argv.host
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -2353,6 +2374,29 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantDeleteMinter({ argv });
+    }
+  )
+
+  .command(
+    "tenant_config_update <tenant> <content_hash> [options]",
+    "Submits the new version hash of the tenant Fabric object for validation. The top level Eluvio Live object link will be updated if there are no errors.",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("content_hash", {
+          describe: "Version hash of the new tenant Fabric object",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantConfigUpdate({ argv });
     }
   )
 
