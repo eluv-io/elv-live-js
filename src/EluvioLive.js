@@ -2651,7 +2651,7 @@ class EluvioLive {
     * @param {string} contentHash - Version hash of the new Tenant Object to submit
     * @return {Promise<Object>} - The API Response for the request
     */
-  async TenantConfigUpdate({tenant, host, contentHash}) {
+  async TenantPublishData({tenant, host, contentHash}) {
     
     var body = {
       content_hash: contentHash

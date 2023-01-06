@@ -1174,7 +1174,7 @@ const CmdTenantDeployHelpers = async ({ argv }) => {
   }
 };
 
-const CmdTenantConfigUpdate  = async ({ argv }) => {
+const CmdTenantPublishData  = async ({ argv }) => {
   console.log("Tenant Config Update");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Content Hash: ${argv.content_hash}`);
@@ -1183,7 +1183,7 @@ const CmdTenantConfigUpdate  = async ({ argv }) => {
   try {
     await Init({ debugLogging: argv.verbose });
 
-    let res = await elvlv.TenantConfigUpdate({
+    let res = await elvlv.TenantPublishData({
       tenant: argv.tenant,
       contentHash: argv.content_hash,
       host: argv.host
@@ -2378,7 +2378,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_config_update <tenant> <content_hash> [options]",
+    "tenant_publish_data <tenant> <content_hash> [options]",
     "Submits the new version hash of the tenant Fabric object for validation. The top level Eluvio Live object link will be updated if there are no errors.",
     (yargs) => {
       yargs
@@ -2396,7 +2396,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdTenantConfigUpdate({ argv });
+      CmdTenantPublishData({ argv });
     }
   )
 
