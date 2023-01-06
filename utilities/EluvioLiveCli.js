@@ -5,13 +5,13 @@ const { InitializeTenant, AddConsumerGroup } = require("../src/Provision");
 const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
 const { Marketplace } = require("../src/Marketplace");
+const { Notifier } = require ("../src/Notifier");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
-const { isArrayBufferView } = require("util/types");
 const prompt = require("prompt-sync")({ sigint: true });
 
 let elvlv;
@@ -144,7 +144,11 @@ const CmdNftProxyBurn = async ({ argv }) => {
 };
 
 const CmdNftShow = async ({ argv }) => {
-  console.log("NFT - show", argv.addr, argv.show_owners);
+  console.log("NFT - show");
+  console.log("addr ", argv.addr);
+  console.log("check_minter ", argv.check_minter);
+  console.log("show_owners ", argv.show_owners);
+  console.log("token_id ", argv.token_id);
   try {
     await Init();
 
@@ -152,6 +156,7 @@ const CmdNftShow = async ({ argv }) => {
       addr: argv.addr,
       mintHelper: argv.check_minter,
       showOwners: argv.show_owners,
+      tokenId: argv.token_id
     });
 
     console.log(yaml.dump(res));
@@ -172,22 +177,6 @@ const CmdNftBuild = async ({ argv }) => {
       libraryId: argv.library,
       objectId: argv.object,
       nftDir: argv.nft_dir,
-    });
-
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
-const CmdNftLookup = async ({ argv }) => {
-  console.log("NFT - lookup", argv.addr, argv.token_id);
-  try {
-    await Init();
-
-    let res = await elvlv.NftLookup({
-      addr: argv.addr,
-      tokenId: argv.token_id,
     });
 
     console.log(yaml.dump(res));
@@ -979,6 +968,55 @@ const CmdNftIsOfferRedeemed = async ({ argv }) => {
   }
 };
 
+const CmdNftRedeemOffer = async ({ argv }) => {
+  console.log("NFT Redeem Offer");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Redeemer Address: ${argv.redeemer}`);
+  console.log(`Token ID: ${argv.token_id}`);
+  console.log(`Offer ID: ${argv.offer_id}`);
+
+  try {
+    await Init();
+
+    let res = await elvlv.NFTRedeemOffer({ 
+      addr: argv.addr,
+      redeemerAddr: argv.redeemer,
+      tokenId: argv.token_id,
+      offerId: argv.offer_id,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdASNftRedeemOffer = async ({ argv }) => {
+  console.log("AS NFT Redeem Offer");
+  console.log(`NFT Contract Address: ${argv.addr}`);
+  console.log(`Tenant ID: ${argv.tenant}`);
+  console.log(`Mint Helper Address: ${argv.mint_helper_addr}`);
+  console.log(`Token ID: ${argv.token_id}`);
+  console.log(`Offer ID: ${argv.offer_id}`);
+
+
+  try {
+    await Init();
+
+    let res = await elvlv.ASNFTRedeemOffer({ 
+      addr: argv.addr,
+      tenantId: argv.tenant,
+      tokenId: argv.token_id,
+      offerId: argv.offer_id,
+      mintHelperAddr: argv.mint_helper_addr
+    });  
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 
 const CmdTenantProvision = async ({ argv }) => {
   console.log("Tenant Provision");
@@ -1078,6 +1116,27 @@ const CmdTenantGetMinter = async ({ argv }) => {
     res = await elvlv.TenantGetMinterConfig({
       tenant: argv.tenant,
       host: argv.host
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNotifSend = async ({ argv }) => {
+  console.log("Send notification", argv.user_addr, argv.tenant, argv.event);
+
+  try {
+    let notifier = new Notifier({notifUrl: argv.notif_url});
+    await notifier.Init();
+
+    let res = await notifier.Send({
+      userAddr: argv.user_addr,
+      tenantId: argv.tenant,
+      eventType: argv.event,
+      nftAddr: argv.nft_addr,
+      tokenId: argv.token_id
     });
 
     console.log("\n" + yaml.dump(res));
@@ -1190,6 +1249,41 @@ const CmdTenantPublishData  = async ({ argv }) => {
     });
 
     console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNotifSendTokenUpdate = async ({ argv }) => {
+  console.log("Send token update notification to all owners", argv.nft_addr, argv.tenant);
+
+  try {
+
+    await Init({ debugLogging: argv.verbose });
+    let nftInfo = await elvlv.NftShow({
+      addr: argv.nft_addr,
+      showOwners: 10000000 // 10 mil is code for 'unlimited'
+    });
+
+    let tokens = nftInfo.tokens;
+
+    let notifier = new Notifier({notifUrl: argv.notif_url});
+    await notifier.Init();
+
+    for (let i = 0; i < tokens.length; i ++) {
+      console.log("- token:", tokens[i].tokenId, "owner", tokens[i].owner, );
+      let res = await notifier.Send({
+        userAddr: tokens[i].owner,
+        tenantId: argv.tenant,
+        eventType: "TOKEN_UPDATED",
+        nftAddr: argv.nft_addr,
+        tokenId: tokens[i].tokenId
+      });
+      if (argv.verbose) {
+        console.log(res);
+      }
+    }
+
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1310,7 +1404,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_show <addr>",
+    "nft_show <addr> [options]",
     "Show info on this NFT",
     (yargs) => {
       yargs
@@ -1322,8 +1416,12 @@ yargs(hideBin(process.argv))
           describe: "Check that all NFTs use this mint helper",
         })
         .option("show_owners", {
-          describe: "Show up to these many owners (default 0)",
+          describe: "Show up to these many owners (default 0). Only used when token_id is not specified.",
           type: "integer",
+        })
+        .option("token_id", {
+          describe: "External token ID. This will take precedence over show_owners.",
+          type: "string", // BigNumber as string
         });
     },
     (argv) => {
@@ -1406,25 +1504,6 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNftBuild({ argv });
-    }
-  )
-
-  .command(
-    "nft_lookup <addr> <token_id>",
-    "Decode and look up a local NFT by external token ID",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "Local NFT contract address",
-          type: "string",
-        })
-        .positional("token_id", {
-          describe: "External token ID",
-          type: "string", // BigNumber as string
-        });
-    },
-    (argv) => {
-      CmdNftLookup({ argv });
     }
   )
 
@@ -1576,6 +1655,63 @@ yargs(hideBin(process.argv))
     }
   )
 
+  .command(
+    "nft_redeem_offer <addr> <redeemer> <token_id> <offer_id>",
+    "Redeem an nft offer",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("redeemer", {
+          describe: "Redeemer address",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "Offer ID",
+          type: "integer",
+        })
+        .positional("offer_id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdNftRedeemOffer({ argv });
+    }
+  )
+
+  .command(
+    "as_nft_redeem_offer <addr> <tenant> <mint_helper_addr> <token_id> <offer_id>",
+    "Redeem an nft offer using the authority service",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("mint_helper_addr", {
+          describe: "Address of the mint helper (hex), used with --auth_service",
+          type: "string",
+        })
+        .positional("token_id", {
+          describe: "Offer ID",
+          type: "integer",
+        })
+        .positional("offer_id", {
+          describe: "Offer ID",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdASNftRedeemOffer({ argv });
+    }
+  )
 
   .command(
     "tenant_show <tenant> [options]",
@@ -2397,6 +2533,68 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantPublishData({ argv });
+    }
+  )
+
+  .command(
+    "notif_send <user_addr> <tenant> <event>",
+    "Sends a notification (using the notification service).",
+    (yargs) => {
+      yargs
+        .positional("user_addr", {
+          describe: "User address",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("event", {
+          describe: "One of: TOKEN_UPDATED",
+          type: "string",
+        })
+        .option("nft_addr", {
+          describe: "NFT contract address (hex)",
+          type: "string",
+          default: ""
+        })
+        .option("token_id", {
+          describe: "NFT token ID",
+          type: "string",
+          default: ""
+        })
+        .option("notif_url", {
+          describe: "Notification service URL",
+          type: "string",
+          default: ""
+        });
+    },
+    (argv) => {
+      CmdNotifSend({ argv });
+    }
+  )
+
+  .command(
+    "notif_send_token_update <nft_addr> <tenant>",
+    "Sends a TOKEN_UPDATED notification to all owners of this NFT.",
+    (yargs) => {
+      yargs
+        .positional("nft_addr", {
+          describe: "NFT contract address (hex)",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("notif_url", {
+          describe: "Notification service URL",
+          type: "string",
+          default: ""
+        });
+    },
+    (argv) => {
+      CmdNotifSendTokenUpdate({ argv });
     }
   )
 

@@ -1,7 +1,9 @@
-const { ElvClient } = require("@eluvio/elv-client-js");
 const { ElvUtils } = require("./Utils");
-const Ethers = require("ethers");
 const { ElvAccount } = require("./ElvAccount");
+
+const { ElvClient } = require("@eluvio/elv-client-js");
+
+const Ethers = require("ethers");
 
 class ElvSpace {
   /**
@@ -133,11 +135,11 @@ class ElvSpace {
       methodArgs: [array4Bytes, tenantFuncsContract.address],
       formatArguments: false,
     });
-    
+
     if (this.debug){
       console.log("Result addFuncs", res);
     }
-    
+
     if (adminGroupAddress) {
       let contractAdminGroup = await this.client.CallContractMethod({
         contractAddress: tenantContract.address,
@@ -198,6 +200,7 @@ class ElvSpace {
       adminGroupAddress,
     };
   }
+
 }
 
 exports.ElvSpace = ElvSpace;
