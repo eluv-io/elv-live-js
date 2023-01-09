@@ -1105,6 +1105,25 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   }
 };
 
+const CmdTenantGetMinter = async ({ argv }) => {
+  console.log("Tenant Minter Get Config");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Host: ${argv.host}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.TenantGetMinterConfig({
+      tenant: argv.tenant,
+      host: argv.host
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdNotifSend = async ({ argv }) => {
   console.log("Send notification", argv.user_addr, argv.tenant, argv.event);
 
@@ -1126,6 +1145,115 @@ const CmdNotifSend = async ({ argv }) => {
   }
 };
 
+const CmdTenantCreateMinter = async ({ argv }) => {
+  console.log("Tenant Minter Create Config");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Host: ${argv.host}`);
+  console.log(`Funds: ${argv.funds}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.TenantCreateMinterConfig({
+      tenant: argv.tenant,
+      host: argv.host,
+      funds: argv.funds,
+      deploy: argv.deploy
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantReplaceMinter = async ({ argv }) => {
+  console.log("Tenant Minter Replace Config");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Host: ${argv.host}`);
+  console.log(`Proxy Owner: ${argv.proxyowner}`);
+  console.log(`Minter: ${argv.minter}`);
+  console.log(`Purge: ${argv.purge}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.TenantReplaceMinterConfig({
+      tenant: argv.tenant,
+      host: argv.host,
+      proxyOwner: argv.proxyowner,
+      minter: argv.minter,
+      purge: argv.purge
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantDeleteMinter = async ({ argv }) => {
+  console.log("Tenant Delete Minter");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Host: ${argv.host}`);
+  console.log(`Force: ${argv.force}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.TenantDeleteMinterConfig({
+      tenant: argv.tenant,
+      host: argv.host,
+      force: argv.force
+    });
+
+    console.log("\n" + res.statusText);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantDeployHelpers = async ({ argv }) => {
+  console.log("Tenant Deploy Helper Contracts");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Host: ${argv.host}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.TenantDeployHelperContracts({
+      tenant: argv.tenant,
+      host: argv.host
+    });
+
+    console.log("\n" + res.statusText);
+    console.log("\n" + yaml.dump(await res.json()));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantPublishData  = async ({ argv }) => {
+  console.log("Tenant Config Update");
+  console.log(`TenantId: ${argv.tenant}`);
+  console.log(`Content Hash: ${argv.content_hash}`);
+  console.log(`Host: ${argv.host}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    let res = await elvlv.TenantPublishData({
+      tenant: argv.tenant,
+      contentHash: argv.content_hash,
+      host: argv.host
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdNotifSendTokenUpdate = async ({ argv }) => {
   console.log("Send token update notification to all owners", argv.nft_addr, argv.tenant);
 
@@ -1135,7 +1263,7 @@ const CmdNotifSendTokenUpdate = async ({ argv }) => {
     let nftInfo = await elvlv.NftShow({
       addr: argv.nft_addr,
       showOwners: 10000000 // 10 mil is code for 'unlimited'
-    })
+    });
 
     let tokens = nftInfo.tokens;
 
@@ -2267,15 +2395,157 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "tenant_get_minter_config <tenant> [options]",
+    "Gets the minter configuration for this tenant key",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantGetMinter({ argv });
+    }
+  )
+
+  .command(
+    "tenant_create_minter_config <tenant> [options]",
+    "Creates the minter configuration for this tenant key",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        })
+        .option("funds", {
+          describe: "How much to fund the minter and proxy addresses. Default: 0 (do not fund)",
+          type: "integer",
+        })
+        .option("deploy", {
+          describe: "Deploy a new minter helper contract as the minter using the Authority Service. Default: false",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdTenantCreateMinter({ argv });
+    }
+  )
+
+  .command(
+    "tenant_replace_minter_config <tenant> [options]",
+    "Creates the minter configuration for this tenant key",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        })
+        .option("proxyowner", {
+          describe: "Replace proxy owner ID. Note that the key must already be stored in the Authority Service to use this.",
+          type: "string",
+        })
+        .option("minter", {
+          describe: "Replace minter ID. Note that the key must already be stored in the Authority Service to use this.",
+          type: "string",
+        })
+        .option("purge", {
+          describe: "Purge will delete the keys first before replacing",
+          type: "bool",
+        });
+    },
+    (argv) => {
+      CmdTenantReplaceMinter({ argv });
+    }
+  )
+
+  .command(
+    "tenant_deploy_helper_contracts <tenant> [options]",
+    "Deploys the minter helper and transfer proxy contracts using the authority service as the minter",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantDeployHelpers({ argv });
+    }
+  )
+
+  .command(
+    "tenant_delete_minter_config <tenant> [options]",
+    "Creates the minter configuration for this tenant key",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        })
+        .option("force", {
+          describe: "Attempt to delete all keys even on error",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdTenantDeleteMinter({ argv });
+    }
+  )
+
+  .command(
+    "tenant_publish_data <tenant> <content_hash> [options]",
+    "Submits the new version hash of the tenant Fabric object for validation. The top level Eluvio Live object link will be updated if there are no errors.",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("content_hash", {
+          describe: "Version hash of the new tenant Fabric object",
+          type: "string",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantPublishData({ argv });
+    }
+  )
+
+  .command(
     "notif_send <user_addr> <tenant> <event>",
     "Sends a notification (using the notification service).",
     (yargs) => {
       yargs
-      .positional("user_addr", {
-        describe: "User address",
-        type: "string",
-      })
-      .positional("tenant", {
+        .positional("user_addr", {
+          describe: "User address",
+          type: "string",
+        })
+        .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
         })
@@ -2309,19 +2579,19 @@ yargs(hideBin(process.argv))
     "Sends a TOKEN_UPDATED notification to all owners of this NFT.",
     (yargs) => {
       yargs
-      .positional("nft_addr", {
-        describe: "NFT contract address (hex)",
-        type: "string",
-      })
-      .positional("tenant", {
+        .positional("nft_addr", {
+          describe: "NFT contract address (hex)",
+          type: "string",
+        })
+        .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
         })
-      .option("notif_url", {
-        describe: "Notification service URL",
-        type: "string",
-        default: ""
-      });
+        .option("notif_url", {
+          describe: "Notification service URL",
+          type: "string",
+          default: ""
+        });
     },
     (argv) => {
       CmdNotifSendTokenUpdate({ argv });

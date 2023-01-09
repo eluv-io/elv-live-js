@@ -2219,32 +2219,29 @@ class EluvioLive {
     return { signature, multiSig };
   }
 
-  async PutServiceRequest({ path }) {
-    let ts = Date.now();
-    var body = {
-      ts
-    };
-    const { multiSig } = await this.TenantSign({
-      message: JSON.stringify(body),
-    });
-
-    let res = await this.client.authClient.MakeAuthServiceRequest({
-      method: "PUT",
-      path: urljoin("/as", path),
-      body,
-      headers: {
-        Authorization: `Bearer ${multiSig}`,
-      },
-    });
-
-    return res;
+  async PutServiceRequest({ path, body={}, headers = {}, queryParams={}, host, useFabricToken=false }) {
+    return await this.TenantAuthServiceRequest({path, method: "PUT", queryParams, body, headers, host, useFabricToken});
   }
 
-  async PostServiceRequest({ path, body, useFabricToken=false }) {
+  async PostServiceRequest({ path, body={}, headers = {}, queryParams={}, host, useFabricToken=false }) {
+    return await this.TenantAuthServiceRequest({path, method: "POST", queryParams, body, headers, host, useFabricToken});
+  }
+
+  async GetServiceRequest({ path, queryParams={}, headers = {}, host}) {
+    return await this.TenantPathAuthServiceRequest({path, method:"GET", queryParams, headers, host});
+  }
+
+  async DeleteServiceRequest({ path, queryParams={}, headers = {}, host}) {
+    return await this.TenantPathAuthServiceRequest({path, method:"DELETE", queryParams, headers, host});
+  }
+
+  async TenantAuthServiceRequest({ path, method, queryParams={}, body={}, headers = {}, host, useFabricToken=false }) {
     if (!body) {
       body = {};
     }
-
+    let ts = Date.now();
+    body.ts = ts;
+    
     let token = "";
     if ( useFabricToken ) {
       token = await this.client.CreateFabricToken({
@@ -2258,19 +2255,41 @@ class EluvioLive {
       token = multiSig;
     }
 
-    let res = await this.client.authClient.MakeAuthServiceRequest({
-      method: "POST",
-      path: urljoin("/as", path),
+    let res;
+    
+    if (host !== undefined) {
+      this.client.SetNodes({
+        authServiceURIs:[
+          host
+        ]
+      });
+    } else {
+      path = urljoin("/as", path);
+    }
+    res = await this.client.authClient.MakeAuthServiceRequest({
+      method,
+      path,
       body,
       headers: {
         Authorization: `Bearer ${token}`,
+        ...headers,
       },
+      queryParams,
     });
-
     return res;
   }
 
-  async GetServiceRequest({ path, queryParams, headers = {} }) {
+  /**
+   * Authority Service API request using path auth. Typically used for GET and DELETE
+   *
+   * @namedParams
+   * @param {string} path - The request endpoint
+   * @param {string} method - The rquest method
+   * @param {Object} queryParams - The query parameters
+   * @param {Object} headers - The headers
+   * @return {Promise<Object>} - The API Response
+   */
+  async TenantPathAuthServiceRequest({ path, method, queryParams={}, headers = {}, host}) {
     let ts = Date.now();
     let params = { ts, ...queryParams };
     const paramString = new URLSearchParams(params).toString();
@@ -2281,9 +2300,25 @@ class EluvioLive {
       message: newPath,
     });
 
-    let res = await this.client.authClient.MakeAuthServiceRequest({
-      method: "GET",
-      path: urljoin("/as", path),
+    if (this.debug) {
+      console.log(`Authorization: Bearer ${multiSig}`);
+    }
+
+    let res = {};
+
+    if (host !== undefined) {
+      this.client.SetNodes({
+        authServiceURIs:[
+          host
+        ]
+      });
+    } else {
+      path = urljoin("/as", path);
+    }
+
+    res = await this.client.authClient.MakeAuthServiceRequest({
+      method,
+      path,
       headers: {
         Authorization: `Bearer ${multiSig}`,
         ...headers,
@@ -2291,7 +2326,7 @@ class EluvioLive {
       queryParams: { ts, ...queryParams },
     });
 
-    return await res;
+    return res;
   }
 
   /**
@@ -2471,7 +2506,7 @@ class EluvioLive {
     let res = await this.GetServiceRequest({
       path: urljoin("/tnt/payments/", tenant, processor),
       queryParams: { offset },
-      headers,
+      headers
     });
 
     return toJson ? await res.json() : await res.text();
@@ -2495,7 +2530,7 @@ class EluvioLive {
     let res = await this.GetServiceRequest({
       path: urljoin("/tnt/report/", tenant, processor),
       queryParams: { offset },
-      headers,
+      headers
     });
 
     return toJson ? await res.json() : await res.text();
@@ -2566,6 +2601,154 @@ class EluvioLive {
     });
     return await res.json();
   }
+
+  /**
+   * Deploy minter helper contract using the authority service
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response for the request
+   */
+  async TenantDeployHelperContracts({ tenant, host }) {
+    let res = await this.PostServiceRequest({
+      path: urljoin("/tnt/config", tenant, "deploy"),
+      host
+    });
+    return res;
+  }
+  
+
+  /**
+   * Get minter configuration from authority service
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response for the tenant's minter configuration
+   */
+  async TenantGetMinterConfig({ tenant, host }) {
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/config", tenant, "minter"),
+      host
+    });
+    return res.json();
+  }
+
+  /**
+   * Create minter configuration using the authority service
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response for the request
+   */
+  async TenantCreateMinterConfig({ tenant, host, funds=0, deploy=false }) {
+    let res = await this.PostServiceRequest({
+      path: urljoin("/tnt/config", tenant, "minter"),
+      host
+    });
+
+    let tenantConfigResult = await res.json();
+
+    if (this.debug){
+      console.log("Create response: ", tenantConfigResult);
+    }
+
+    if (tenantConfigResult.errors && tenantConfigResult.errors.length != 0){
+      return res;
+    }
+
+    if (funds > 0){
+      console.log ("Funding minter and proxy addresses.");
+      let minterAddress = tenantConfigResult.config.minter_address;
+
+      let account = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+      account.InitWithClient({elvClient: this.client});
+
+      await account.Send({
+        address: minterAddress,
+        funds
+      });
+
+      console.log("Funds Sent to minter address: ", minterAddress);
+
+      let proxyAddress = tenantConfigResult.config.proxy_owner_address;
+
+      await account.Send({
+        address: proxyAddress,
+        funds
+      });
+
+      console.log("Funds Sent to proxy address: ", proxyAddress);
+    }
+
+    if (deploy){
+      console.log("Deploying helper contracts");
+      res = await this.TenantDeployHelperContracts({tenant, host});
+      return await res.json();
+    } else {
+      return tenantConfigResult;
+    }
+  }
+
+  /**
+   * Replaces minter configuration using the authority service
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response for the request
+   */
+  async TenantReplaceMinterConfig({ tenant, host, proxyOwner, minter, purge=false}) {
+    let res = await this.PutServiceRequest({
+      path: urljoin("/tnt/config", tenant, "minter"),
+      host,
+      queryParams: {proxyowner:proxyOwner,minter,purge}
+    });
+    return res.json();
+  }
+
+  /**
+   * Delete minter configuration using the authority service
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @return {Promise<Object>} - The API Response for the request
+   */
+  async TenantDeleteMinterConfig({ tenant, host, force=false }) {
+    let res = await this.DeleteServiceRequest({
+      path: urljoin("/tnt/config", tenant, "minter"),
+      host,
+      queryParams: {force}
+    });
+    return res;
+  }
+
+  /**
+    * Submits a new content version hash of this account's Tenant Object for updating to the Eluvio Live Tree.
+    * @namedParams
+    * @param {string} tenant - The Tenant ID
+    * @param {string} host - Authority Service url (Optional)
+    * @param {string} contentHash - Version hash of the new Tenant Object to submit
+    * @return {Promise<Object>} - The API Response for the request
+    */
+  async TenantPublishData({tenant, host, contentHash}) {
+    
+    var body = {
+      content_hash: contentHash
+    };
+
+    let res = await this.PostServiceRequest({
+      path: urljoin("/tnt/config", tenant, "metadata"),
+      host,
+      body
+    });
+
+    let tenantConfigResult = await res.json();
+
+    if (this.debug){
+      console.log("Create response: ", tenantConfigResult);
+    }
+    return tenantConfigResult;
+  }
+
 
   FilterTenant({ object }) {
     let result = {};
