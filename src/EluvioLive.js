@@ -737,6 +737,46 @@ class EluvioLive {
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.bin")
     );
 
+    let minterConfigResp = {};
+
+    try {
+      minterConfigResp = await this.TenantGetMinterConfig({tenant: tenantId});
+
+      if (this.debug){
+        console.log("minterConfig: ", minterConfigResp);
+      }
+    } catch (e) {
+      console.log("Warning: ", e);
+    }
+
+    if (proxyAddress == null || proxyAddress == "") {
+      try {
+        proxyAddress = minterConfigResp.config.proxy_owner_address;
+        console.log("Using tenant config proxy address: ", proxyAddress);
+      } catch (e){
+        console.warn("tenant config proxy_owner_address error: ", e);
+      }
+    }
+
+    if (minterAddr == null || minterAddr == "") {
+      try {
+        minterAddr = minterConfigResp.config.minter_address;
+        console.log("Using tenant config minter address: ", minterAddr);
+      } catch (e){
+        console.warn("tenant config minter_address error: ", e);
+      }
+    }
+
+    if (mintHelperAddr == null || mintHelperAddr == "") {
+      try {
+        mintHelperAddr = minterConfigResp.config.minter_helper;
+        console.log("Using tenant config minter helper address: ", mintHelperAddr);
+      } catch (e){
+        console.warn("tenant config minter_helper error: ", e);
+      }
+    }
+
+    //Create new Transfer Proxy if config and command line does not exist.
     if (proxyAddress == null || proxyAddress == "") {
       proxyAddress = await this.CreateNftTransferProxy({});
     }
