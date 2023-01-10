@@ -87,11 +87,9 @@ class EluvioLive {
    *
    * @namedParams
    * @param {string} tenantId - The ID of the tenant (iten***)
-   * @cauth {string} cauth - Warn if any NFTs have a different cauth ID (optional)
-   * @cauth {string} mintHelper - Warn if any NFTs don't have this as minter
    * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
-  async TenantShow({ tenantId, cauth, mintHelper, checkNft = false }) {
+  async TenantShow({ tenantId, checkNft = false }) {
     var tenantInfo = {};
 
     let m = await this.List({ tenantId });
@@ -103,6 +101,40 @@ class EluvioLive {
     if (checkNft) {
       tenantNftList = await this.TenantNftList({ tenantId });
     }
+
+    let minterConfigResp = {};
+    let minterAddr = null;
+    let minterID = null;
+    let mintHelper = null; 
+    let proxyAddr = null;
+
+    try {
+      minterConfigResp = await this.TenantGetMinterConfig({tenant: tenantId});
+      console.log("minterConfig: ", minterConfigResp);
+
+      try {
+        minterAddr = minterConfigResp.config.minter_address;
+        minterID = minterConfigResp.config.minter;
+      } catch (e){
+        console.warn("tenant config minter_address error: ", e);
+      }
+
+      try {
+        mintHelper = minterConfigResp.config.minter_helper;
+      } catch (e){
+        console.warn("tenant config minter_helper error: ", e);
+      }
+
+      try {
+        proxyAddr = minterConfigResp.config.proxy_owner_address;
+      } catch (e){
+        console.warn("tenant config proxy_owner_address error: ", e);
+      }
+
+    } catch (e) {
+      console.log("Warning: ", e);
+    }
+
 
     for (var key in m.marketplaces) {
       tenantInfo.marketplaces[key] = {};
@@ -154,20 +186,19 @@ class EluvioLive {
         tenantInfo.marketplaces[key].items[sku].nft_template =
           item.nft_template["."].source;
 
-        if (cauth && cauth != item.nft_template.mint.cauth_id) {
-          warns.push("Wrong cauth_id sku: " + sku);
+        if (minterID && minterID != item.nft_template.mint.cauth_id) {
+          warns.push("Wrong cauth_id for sku: " + sku + ". Config minter Id: " + minterID + ", item nft_template.mint.cauth_id: " + item.nft_template.mint.cauth_id);
         }
 
         if (item.nft_template.nft.address === "") {
           warns.push("No NFT address sku: " + sku);
         } else {
-          const minterAddr = cauth ? Utils.HashToAddress(cauth) : null;
-
           // Check NFT contract parameters
           const nftInfo = await this.NftShow({
             addr: item.nft_template.nft.address,
             mintHelper,
             minterAddr,
+            proxyAddr
           });
 
           if (checkNft) {
@@ -1079,7 +1110,7 @@ class EluvioLive {
    * @param {integer} tokenId - The token ID to show info for. This will take precedence over showOwners
    * @return {Promise<Object>} - An object containing NFT info, including 'warnings'
    */
-  async NftShow({ addr, mintHelper, minterAddr, showOwners, tokenId }) {
+  async NftShow({ addr, mintHelper, minterAddr, proxyAddr, showOwners, tokenId }) {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
@@ -1143,9 +1174,12 @@ class EluvioLive {
     nftInfo.proxy = proxy;
 
     if (proxy == "0x0000000000000000000000000000000000000000") {
-      warns.push("No proxy: " + addr);
+      warns.push("No proxy registered for nft address: " + addr);
     } else {
       nftInfo.proxyInfo = await this.ShowNftTransferProxy({ addr: proxy });
+      if (proxyAddr && proxy.toLowerCase() != proxyAddr.toLowerCase()){
+        warns.push("Bad proxy owner address for nft address: " + addr + ". expected: " + proxyAddr + " registered: " + proxy);
+      }
     }
 
     if (mintHelper) {
@@ -1157,7 +1191,7 @@ class EluvioLive {
         formatArguments: true,
       });
       if (!isMinter) {
-        warns.push("Mint helper not set up addr: " + addr);
+        warns.push("Mint helper not set up for nft address: " + addr);
       }
 
       nftInfo.mintHelperInfo = await this.ShowMintHelper({ addr: mintHelper });
@@ -1171,7 +1205,10 @@ class EluvioLive {
         minterAddr &&
         nftInfo.mintHelperInfo.owner.toLowerCase() != minterAddr.toLowerCase()
       ) {
-        warns.push("Bad mint helper owner " + addr);
+        warns.push("Bad mint helper owner for nft address: " + addr 
+        + " config mint helper: " + mintHelper 
+        + " config minter address: " + minterAddr 
+        + " mint helper owner: " + nftInfo.mintHelperInfo.owner);
       }
     }
 
@@ -1184,7 +1221,9 @@ class EluvioLive {
         formatArguments: true,
       });
       if (!isMinter) {
-        warns.push("Minter not set up addr: " + addr);
+        warns.push("Minter not set up for nft address: " + addr
+        + " config minter address: " + minterAddr 
+        );
       }
     }
 

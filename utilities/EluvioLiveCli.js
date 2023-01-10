@@ -244,16 +244,12 @@ const CmdNftTransfer = async ({ argv }) => {
 
 const CmdTenantShow = async ({ argv }) => {
   console.log("Tenant - show", argv.tenant);
-  console.log("check_cauth", argv.check_cauth);
-  console.log("check_minter", argv.check_minter);
   console.log("check_nfts", argv.check_nfts);
   try {
     await Init({debugLogging: argv.verbose});
 
     let res = await elvlv.TenantShow({
       tenantId: argv.tenant,
-      cauth: argv.check_cauth,
-      mintHelper: argv.check_minter,
       checkNft: argv.check_nfts,
     });
 
@@ -1726,15 +1722,6 @@ yargs(hideBin(process.argv))
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
-          type: "string",
-        })
-        .option("check_cauth", {
-          describe:
-            "Check that all NFTs use this minter address in ikms format",
-          type: "string",
-        })
-        .option("check_minter", {
-          describe: "Check that all NFTs use this mint helper",
           type: "string",
         })
         .option("check_nfts", {
