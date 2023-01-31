@@ -34,34 +34,25 @@ const Init = async ({debugLogging = false}={}) => {
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
   console.log(
     "\nNFT Template - set contract",
-    "\nLibrary ID " + argv.library,
     "\nObject ID " + argv.object,
     "\nCollection Name " + argv.name,
     "\nCollection Symbol " + argv.symbol,
-    "\nNFT Address " + argv.nftaddr,
     "\nTenant ID " + argv.tenant,
-    "\nMinter Helper " + argv.minthelper,
-    "\nMinter Address " + argv.minter,
     "\nCap " + argv.cap,
-    "\nProxy Address " + argv.proxyaddr,
+    "\nHold " + argv.hold,
     "\nVerbose ", argv.verbose
   );
   try {
     await Init({debugLogging: argv.verbose});
 
     await elvlv.NftTemplateAddNftContract({
-      libraryId: argv.library,
       objectId: argv.object,
-      nftAddr: argv.nftaddr,
       tenantId: argv.tenant,
-      mintHelperAddr: argv.minthelper,
-      minterAddr: argv.minter,
       totalSupply: argv.cap,
       collectionName: argv.name,
       collectionSymbol: argv.symbol,
       hold: argv.hold,
       contractUri: "",
-      proxyAddress: argv.proxyaddr,
     });
   } catch (e) {
     console.error("ERROR:", e);
@@ -1294,48 +1285,28 @@ yargs(hideBin(process.argv))
     alias: "v"
   })
   .command(
-    "nft_add_contract <library> <object> <tenant> [options]",
+    "nft_add_contract <tenant> <object> <cap> <name> <symbol> [options]",
     "Add a new or existing NFT contract to an NFT Template object",
     (yargs) => {
       yargs
-        .positional("library", {
-          describe: "NFT Template library ID",
+        .positional("tenant", {
+          describe: "Tenant ID",
           type: "string",
         })
         .positional("object", {
           describe: "NFT Template object ID",
           type: "string",
         })
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("minthelper", {
-          describe: "Mint helper address (hex). Default from tenant configuration.",
-          type: "string",
-        })
-        .option("minter", {
-          describe: "Minter address (hex). Default from tenant configuration.",
-          type: "string",
-        })
-        .option("cap", {
+        .positional("cap", {
           describe: "NFT total supply cap",
           type: "number",
         })
-        .option("name", {
+        .positional("name", {
           describe: "NFT collection name",
           type: "string",
         })
-        .option("symbol", {
+        .positional("symbol", {
           describe: "NFT collection symbol",
-          type: "string",
-        })
-        .option("nftaddr", {
-          describe: "NFT contract address (will not create a new one)",
-          type: "string",
-        })
-        .option("proxyaddr", {
-          describe: "Proxy Address (hex). Default from tenant configuration.",
           type: "string",
         })
         .option("hold", {

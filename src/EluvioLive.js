@@ -741,11 +741,12 @@ class EluvioLive {
    *
    * @namedParams
    * @param {string} tenantId - The tenant ID
-   * @param {string} mintHelperAddr - Address of the mint helper (hex format)
+   * @param {string} minterAddr - Address of the minter (hex format) (Optional, Default uses tenant minter config)
+   * @param {string} mintHelperAddr - Address of the mint helper (hex format) (Optional,  Default uses tenant minter config)
    * @param {string} collectionName - Short name for the ERC-721 contract
    * @param {string} collectionSymbol - Short string for the ERC-721 contract
    * @param {string} contractUri - URI for the ERC-721 contract
-   * @param {string} proxyAddress - Proxy address for the ERC721 contract
+   * @param {string} proxyAddress - Proxy address for the ERC721 contract (Optional, Default uses tenant minter config)
    * @param {number} totalSupply - the mint cap for this template (should be called 'cap')
    * @param {number} hold - the hold period (seconds)
    * @return {Promise<Object>} - New contract address
@@ -780,38 +781,41 @@ class EluvioLive {
       console.log("Warning: ", e);
     }
 
-    if (proxyAddress == null || proxyAddress == "") {
-      try {
-        proxyAddress = minterConfigResp.config.proxy_owner_address;
+    if (!proxyAddress || proxyAddress == "") {
+      proxyAddress = minterConfigResp.config.transfer_proxy_address;
+      if (proxyAddress == ""){
+        throw Error("Tenant configuration has no proxy_owner_address");
+      }
+      if (this.debug){
         console.log("Using tenant config proxy address: ", proxyAddress);
-      } catch (e){
-        console.warn("tenant config proxy_owner_address error: ", e);
-      }
-    }
-
-    if (minterAddr == null || minterAddr == "") {
-      try {
-        minterAddr = minterConfigResp.config.minter_address;
-        console.log("Using tenant config minter address: ", minterAddr);
-      } catch (e){
-        console.warn("tenant config minter_address error: ", e);
-      }
-    }
-
-    if (mintHelperAddr == null || mintHelperAddr == "") {
-      try {
-        mintHelperAddr = minterConfigResp.config.minter_helper;
-        console.log("Using tenant config minter helper address: ", mintHelperAddr);
-      } catch (e){
-        console.warn("tenant config minter_helper error: ", e);
       }
     }
 
     //Create new Transfer Proxy if config and command line does not exist.
-    if (proxyAddress == null || proxyAddress == "") {
+    if (!proxyAddress || proxyAddress == "") {
       proxyAddress = await this.CreateNftTransferProxy({});
     }
     console.log("TransferProxy addr:", proxyAddress);
+
+    if (!minterAddr || minterAddr == "") {
+      minterAddr = minterConfigResp.config.minter_address;
+      if (minterAddr == ""){
+        throw Error("Tenant configuration has no minter_address");
+      }
+      if (this.debug){
+        console.log("Using tenant config minter address: ", minterAddr);
+      }
+    }
+
+    if (!mintHelperAddr || mintHelperAddr == "") {
+      mintHelperAddr = minterConfigResp.config.minter_helper;
+      if (mintHelperAddr == ""){
+        throw Error("Tenant configuration has no minter_helper");
+      }
+      if (this.debug){
+        console.log("Using tenant config minter helper address: ", mintHelperAddr);
+      }
+    }
 
     if (hold == null || hold == 0) {
       hold = 604800;
@@ -1631,46 +1635,36 @@ class EluvioLive {
    * Create a new NFT contract and set it in the NFT Template object's metadata.
    *
    * @namedParams
-   * @param {string} libraryIgd - The 'properties' library ID
    * @param {string} objectId - The ID of the NFT Template
    * @param {string} nftAddr - The NFT contract address (optional; by default create one)
-   * @param {string} mintHelperAddr - The address of the mint helper contract (for batch mint)
-   * @param {string} minterAddr - The address of the minter
    * @param {string} collectionName - Short name for the ERC-721 contract
    * @param {string} collectionSymbol - Short string for the ERC-721 contract
    * @param {string} hold - Hold period in seconds
    * @param {string} contractUri - URI for the ERC-721 contract
-   * @param {string} proxyAddress - Proxy address for the ERC721 contract
    * @param {string} totalSupply - the mint cap for this template (should be called 'cap')
    * @return {Promise<Object>} - An object containing info about the new NFT
    */
   async NftTemplateAddNftContract({
-    libraryId,
     objectId,
-    nftAddr,
     tenantId,
-    mintHelperAddr,
-    minterAddr,
     collectionName,
     collectionSymbol,
     hold,
     contractUri,
-    proxyAddress,
     totalSupply,
   }) {
-    if (nftAddr == null) {
-      nftAddr = await this.CreateNftContract({
-        tenantId,
-        mintHelperAddr,
-        minterAddr,
-        totalSupply,
-        collectionName,
-        collectionSymbol,
-        hold,
-        contractUri,
-        proxyAddress,
-      });
-    }
+
+    const nftAddr = await this.CreateNftContract({
+      tenantId,
+      totalSupply,
+      collectionName,
+      collectionSymbol,
+      hold,
+      contractUri,
+    });
+    
+
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
 
     // Update object metadata
     var m = await this.client.ContentObjectMetadata({

@@ -251,6 +251,8 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     metadata: STANDARD_DRM_CERT
   });
 
+  // NFT Templates library not used for now
+  /*
   const nftLibraryId = await client.CreateContentLibrary({
     name: `${tenantName} - NFT Templates`,
     kmsId,
@@ -258,20 +260,20 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
   });
 
   await SetLibraryPermissions(client, nftLibraryId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
-
+*/
   if (debug) {
     console.log("\nTenant Libraries:\n");
     console.log(`\t${tenantName} - Properties: ${propertiesLibraryId}`);
     console.log(`\t${tenantName} - Title Masters: ${mastersLibraryId}`);
     console.log(`\t${tenantName} - Title Mezzanines: ${mezzanineLibraryId}`);
-    console.log(`\t${tenantName} - NFT Templates: ${nftLibraryId}`);
+    //console.log(`\t${tenantName} - NFT Templates: ${nftLibraryId}`);
   }
 
   let libraries = {
     propertiesLibraryId,
     mastersLibraryId,
     mezzanineLibraryId,
-    nftLibraryId
+    //nftLibraryId
   };
 
   /* Create a site object */
