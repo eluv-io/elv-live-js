@@ -1009,7 +1009,8 @@ const CmdASNftRedeemOffer = async ({ argv }) => {
 
 const CmdTenantProvision = async ({ argv }) => {
   console.log("Tenant Provision");
-  console.log(`tenantName: ${argv.tenant_name}`);
+  console.log(`Tenant ID: ${argv.tenant}`);
+  console.log(`Tenant Name: ${argv.tenant_name}`);
   console.log(`verbose: ${argv.verbose}`);
 
   try {
@@ -1025,7 +1026,8 @@ const CmdTenantProvision = async ({ argv }) => {
       client,
       kmsId,
       tenantName: argv.tenant_name,
-      debug: argv.verbose
+      tenantId: argv.tenant,
+      debug: true
     });
 
     console.log(yaml.dump(res));
@@ -2288,9 +2290,13 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_provision <tenant_name>",
+    "tenant_provision <tenant> <tenant_name>",
     "Provisions a new tenant account with standard media libraries and content types. Note this account must be created using space_tenant_create.",
     (yargs) => {
+      yargs.positional("tenant", {
+        describe: "Tenant ID",
+        type: "string",
+      });
       yargs.positional("tenant_name", {
         describe: "Name of the tenant (without the elv-admin postfix). Used to create access groups name",
         type: "string",
