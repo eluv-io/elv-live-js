@@ -3,12 +3,18 @@ const fs = require("fs");
 const path = require("path");
 const { ElvUtils } = require("../src/Utils");
 
+const TYPE_LIVE_DROP_EVENT_SITE = "Eluvio LIVE Drop Event Site";
+const TYPE_LIVE_TENANT = "Eluvio LIVE Tenant";
+const TYPE_LIVE_MARKETPLACE = "Eluvio LIVE Marketplace";
+const TYPE_LIVE_NFT_COLLECTION = "NFT Collection";
+const TYPE_LIVE_NFT_TEMPLATE = "NFT Template";
+
 const liveTypes = [
-  { name: "Eluvio LIVE Drop Event Site", spec: require("@eluvio/elv-client-js/typeSpecs/DropEventSite") },
-  { name: "Eluvio LIVE Marketplace", spec: require("@eluvio/elv-client-js/typeSpecs/Marketplace") },
-  { name: "Eluvio LIVE Tenant", spec: require("@eluvio/elv-client-js/typeSpecs/EventTenant") },
-  { name: "NFT Collection", spec: require("@eluvio/elv-client-js/typeSpecs/NFTCollection") },
-  { name: "NFT Template", spec: require("@eluvio/elv-client-js/typeSpecs/NFTTemplate") }
+  { name: TYPE_LIVE_DROP_EVENT_SITE, spec: require("@eluvio/elv-client-js/typeSpecs/DropEventSite") },
+  { name: TYPE_LIVE_MARKETPLACE, spec: require("@eluvio/elv-client-js/typeSpecs/Marketplace") },
+  { name: TYPE_LIVE_TENANT, spec: require("@eluvio/elv-client-js/typeSpecs/EventTenant") },
+  { name: TYPE_LIVE_NFT_COLLECTION, spec: require("@eluvio/elv-client-js/typeSpecs/NFTCollection") },
+  { name: TYPE_LIVE_NFT_TEMPLATE, spec: require("@eluvio/elv-client-js/typeSpecs/NFTTemplate") }
 ];
 
 const STANDARD_DRM_CERT={
@@ -55,7 +61,7 @@ const SetObjectPermissions = async (client, objectId, tenantAdmins, contentAdmin
   await Promise.all(promises);
 };
 
-const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
+const InitializeTenant = async ({client, kmsId, tenantName, tenantId, debug=false}) => {
   let tenantAdminId = await client.userProfileClient.TenantId();
   let tenantAdminSigner = client.signer;
 
@@ -209,6 +215,8 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     streamTypeId
   };
 
+  let liveTypeIds = {};
+
   for (let i = 0; i < liveTypes.length; i++) {
     const typeId = await client.CreateContentType({
       name: `${tenantName} - ${liveTypes[i].name}`,
@@ -226,6 +234,7 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     if (debug) {
       console.log(`\t${tenantName} - ${liveTypes[i].name}: ${typeId}`);
     }
+    liveTypeIds[liveTypes[i].name] = typeId;
   }
 
 
@@ -251,6 +260,8 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
     metadata: STANDARD_DRM_CERT
   });
 
+  // NFT Templates library not used for now
+  /*
   const nftLibraryId = await client.CreateContentLibrary({
     name: `${tenantName} - NFT Templates`,
     kmsId,
@@ -258,64 +269,191 @@ const InitializeTenant = async ({client, kmsId, tenantName, debug=false}) => {
   });
 
   await SetLibraryPermissions(client, nftLibraryId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
-
+*/
   if (debug) {
     console.log("\nTenant Libraries:\n");
     console.log(`\t${tenantName} - Properties: ${propertiesLibraryId}`);
     console.log(`\t${tenantName} - Title Masters: ${mastersLibraryId}`);
     console.log(`\t${tenantName} - Title Mezzanines: ${mezzanineLibraryId}`);
-    console.log(`\t${tenantName} - NFT Templates: ${nftLibraryId}`);
+    //console.log(`\t${tenantName} - NFT Templates: ${nftLibraryId}`);
   }
 
   let libraries = {
     propertiesLibraryId,
     mastersLibraryId,
     mezzanineLibraryId,
-    nftLibraryId
+    //nftLibraryId
   };
 
   /* Create a site object */
+
+  let objectName = `Site - ${tenantName}`;
+
+  publicMetadata = {
+    name: objectName,
+    asset_metadata: {
+      title: objectName,
+      display_title: objectName,
+      slug: `site-${tenantSlug}`,
+      title_type: "site",
+      asset_type: "primary"
+    }
+  };
+
+  let siteId = await CreateFabricObject({client, 
+    libraryId: propertiesLibraryId, 
+    typeId: titleCollectionTypeId, 
+    publicMetadata, 
+    tenantAdminGroupAddress, 
+    contentAdminGroupAddress, 
+    contentViewersGroupAddress});
+
+  if (debug) {
+    console.log("\nSite Object: \n");
+    console.log(`\t${objectName}: ${siteId}\n\n`);
+  }
+
+  /* Create a marketplace object */
+
+  objectName = `${TYPE_LIVE_MARKETPLACE} - ${tenantName}`;
+
+  publicMetadata = {
+    name: objectName,
+    asset_metadata: {
+      slug: `${tenantSlug}-marketplace`,
+      info: {
+        tenant_id: tenantId,
+        tenant_slug: tenantSlug,
+        tenant_name: tenantName,
+        branding: {
+          color_scheme: "Dark"
+        }
+      }
+    }
+  };
+
+  let marketplaceId = await CreateFabricObject({client, 
+    libraryId: propertiesLibraryId, 
+    typeId: liveTypeIds[TYPE_LIVE_MARKETPLACE], 
+    publicMetadata, 
+    tenantAdminGroupAddress, 
+    contentAdminGroupAddress, 
+    contentViewersGroupAddress});
+
+  if (debug) {
+    console.log("\nMaketplace Object: \n");
+    console.log(`\t${objectName}: ${marketplaceId}\n\n`);
+  }
+
+  let marketplaceHash = await client.LatestVersionHash({objectId: marketplaceId});
+
+  /* Create a drop event object */
+
+  objectName = `${TYPE_LIVE_DROP_EVENT_SITE} - ${tenantName}`;
+
+  publicMetadata = {
+    name: objectName,
+    asset_metadata: {
+      info: {
+        tenant_id: tenantId,
+        tenant_slug: tenantSlug,
+        marketplace_info: {
+          tenant_slug: tenantSlug,
+          marketplace_slug: `${tenantSlug}-marketplace`
+        }
+      }
+    }
+  };
+
+  let dropEventId = await CreateFabricObject({client, 
+    libraryId: propertiesLibraryId, 
+    typeId: liveTypeIds[TYPE_LIVE_DROP_EVENT_SITE], 
+    publicMetadata, 
+    tenantAdminGroupAddress, 
+    contentAdminGroupAddress, 
+    contentViewersGroupAddress});
+
+  let dropEventHash = await client.LatestVersionHash({objectId: dropEventId});
+
+  if (debug) {
+    console.log("\nDrop Event Site Object: \n");
+    console.log(`\t${objectName}: ${dropEventId}\n\n`);
+  }
+
+  /* Create the tenant object */
+
+  objectName = `${TYPE_LIVE_TENANT} - ${tenantName}`;
+
+  publicMetadata = {
+    name: objectName,
+    asset_metadata: {
+      info: {
+        tenant_id: tenantId
+      },
+      slug: tenantSlug,
+      marketplaces:{
+        [`${tenantSlug}-marketplace`]: {
+          "/":`/qfab/${marketplaceHash}/meta/public/asset_metadata`,
+          "order": 0
+        }
+      },
+      sites: {
+        [`${tenantSlug}-drop-event`]: {
+          "/":`/qfab/${dropEventHash}/meta/public/asset_metadata`,
+          "order": 0
+        }
+      }
+    }
+  };
+
+  let tenantObjectId = await CreateFabricObject({client, 
+    libraryId: propertiesLibraryId, 
+    typeId: liveTypeIds[TYPE_LIVE_TENANT], 
+    publicMetadata, 
+    tenantAdminGroupAddress, 
+    contentAdminGroupAddress, 
+    contentViewersGroupAddress});
+
+  if (debug) {
+    console.log("\nDrop Event Site Object: \n");
+    console.log(`\t${objectName}: ${tenantObjectId}\n\n`);
+  }
+
+
+  return {
+    tenantTypes,
+    libraries,
+    groups,
+    siteId,
+    marketplaceId,
+    dropEventId,
+    tenantObjectId
+  };
+};
+
+const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress}) => {
   const {id, write_token} = await client.CreateContentObject({
-    libraryId: propertiesLibraryId,
-    options: {type: titleCollectionTypeId}
+    libraryId,
+    options: {type: typeId}
   });
 
   await client.ReplaceMetadata({
-    libraryId: propertiesLibraryId,
+    libraryId,
     objectId: id,
     writeToken: write_token,
     metadataSubtree: "public",
-    metadata: {
-      name: `Site - ${tenantName}`,
-      asset_metadata: {
-        title: `Site - ${tenantName}`,
-        display_title: `Site - ${tenantName}`,
-        slug: `site-${tenantSlug}`,
-        title_type: "site",
-        asset_type: "primary"
-      }
-    }
+    metadata: publicMetadata
   });
 
   await client.FinalizeContentObject({
-    libraryId: propertiesLibraryId,
+    libraryId,
     objectId: id,
     writeToken: write_token
   });
 
   await SetObjectPermissions(client, id, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
 
-  if (debug) {
-    console.log("\nSite Object: \n");
-    console.log(`\tSite - ${tenantName}: ${id}\n\n`);
-  }
-
-  return {
-    tenantTypes,
-    libraries,
-    groups,
-    siteId: id
-  };
+  return id;
 };
 
 const AddConsumerGroup = async ({client, tenantAddress, debug = false}) => {
