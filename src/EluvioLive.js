@@ -2689,7 +2689,6 @@ class EluvioLive {
     });
     return res;
   }
-  
 
   /**
    * Get minter configuration from authority service
@@ -2822,6 +2821,20 @@ class EluvioLive {
     return tenantConfigResult;
   }
 
+  /**
+   * Get Admin API status from Authority Service
+   *
+   * @namedParams
+   * @param {string} host - Authority Service url (Optional)
+   * @return {Promise<Object>} - The API Response for the adm/health api
+   */
+  async AdminHealth({ host }) {
+    let res = await this.GetServiceRequest({
+      path: "/adm/health",
+      host
+    });
+    return res.text();
+  }
 
   FilterTenant({ object }) {
     let result = {};

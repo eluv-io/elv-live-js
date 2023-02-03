@@ -1136,6 +1136,23 @@ const CmdNotifSend = async ({ argv }) => {
   }
 };
 
+const CmdAdminHealth = async ({ argv }) => {
+  console.log("Admin Health");
+  console.log(`Host: ${argv.host}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.AdminHealth({
+      host: argv.host,
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdTenantCreateMinter = async ({ argv }) => {
   console.log("Tenant Minter Create Config");
   console.log(`TenantId: ${argv.tenant}`);
@@ -2565,6 +2582,21 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNotifSendTokenUpdate({ argv });
+    }
+  )
+
+  .command(
+    "admin_health [options]",
+    "Checks the health of the Authority Service APIs. Note the current key must be a system admin configured in the AuthD servers.",
+    (yargs) => {
+      yargs
+        .option("host", {
+          describe: "Use this authority service url instead of config.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAdminHealth({ argv });
     }
   )
 
