@@ -1230,7 +1230,7 @@ const CmdTenantDeployHelpers = async ({ argv }) => {
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Host: ${argv.host}`);
   console.log(`Proxy: ${argv.proxy}`);
-  console.log(`Mint Helper: ${argv.mint_helper}`);
+  console.log(`Mint Helper: ${argv.minthelper}`);
 
   try {
     await Init({ debugLogging: argv.verbose });
@@ -1239,7 +1239,7 @@ const CmdTenantDeployHelpers = async ({ argv }) => {
       tenant: argv.tenant,
       host: argv.host,
       proxy: argv.proxy,
-      mintHelper: argv.mint_helper
+      mintHelper: argv.minthelper
     });
 
     console.log("\n" + res.statusText);
@@ -2476,7 +2476,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_deploy_helper_contracts <tenant> [options]",
-    "Deploys the minter helper and transfer proxy contracts using the authority service as the minter. Specify option proxy or mint_helper to only deploy that specific contract.",
+    "Deploys the minter helper and transfer proxy contracts using the authority service as the minter. Specify option proxy or minthelper to only deploy that specific contract.",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -2487,7 +2487,7 @@ yargs(hideBin(process.argv))
           describe: "Use this authority service url instead.",
           type: "string",
         })
-        .option("mint_helper", {
+        .option("minthelper", {
           describe: "Deploy mint helper contract.",
           type: "bool",
         })
