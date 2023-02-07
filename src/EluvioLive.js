@@ -2682,10 +2682,11 @@ class EluvioLive {
    * @param {string} tenant - The Tenant ID
    * @return {Promise<Object>} - The API Response for the request
    */
-  async TenantDeployHelperContracts({ tenant, host }) {
+  async TenantDeployHelperContracts({ tenant, host, proxy=false, mintHelper=false }) {
     let res = await this.PostServiceRequest({
       path: urljoin("/tnt/config", tenant, "deploy"),
-      host
+      host,
+      queryParams: {proxy,mint_helper:mintHelper}
     });
     return res;
   }
@@ -2768,11 +2769,11 @@ class EluvioLive {
    * @param {string} tenant - The Tenant ID
    * @return {Promise<Object>} - The API Response for the request
    */
-  async TenantReplaceMinterConfig({ tenant, host, proxyOwner, minter, purge=false}) {
+  async TenantReplaceMinterConfig({ tenant, host, proxyOwner, minter, mintHelper, proxy, purge=false}) {
     let res = await this.PutServiceRequest({
       path: urljoin("/tnt/config", tenant, "minter"),
       host,
-      queryParams: {proxyowner:proxyOwner,minter,purge}
+      queryParams: {proxyowner:proxyOwner,minter, mint_helper: mintHelper, proxy, purge}
     });
     return res.json();
   }

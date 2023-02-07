@@ -1181,6 +1181,8 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
   console.log(`Host: ${argv.host}`);
   console.log(`Proxy Owner: ${argv.proxyowner}`);
   console.log(`Minter: ${argv.minter}`);
+  console.log(`Mint helper: ${argv.minthelper}`);
+  console.log(`Proxy: ${argv.proxy}`);
   console.log(`Purge: ${argv.purge}`);
 
   try {
@@ -1191,6 +1193,8 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
       host: argv.host,
       proxyOwner: argv.proxyowner,
       minter: argv.minter,
+      mintHelper: argv.minthelper,
+      proxy: argv.proxy,
       purge: argv.purge
     });
 
@@ -1225,13 +1229,17 @@ const CmdTenantDeployHelpers = async ({ argv }) => {
   console.log("Tenant Deploy Helper Contracts");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Host: ${argv.host}`);
+  console.log(`Proxy: ${argv.proxy}`);
+  console.log(`Mint Helper: ${argv.mint_helper}`);
 
   try {
     await Init({ debugLogging: argv.verbose });
 
     res = await elvlv.TenantDeployHelperContracts({
       tenant: argv.tenant,
-      host: argv.host
+      host: argv.host,
+      proxy: argv.proxy,
+      mintHelper: argv.mint_helper
     });
 
     console.log("\n" + res.statusText);
@@ -2448,6 +2456,14 @@ yargs(hideBin(process.argv))
           describe: "Replace minter ID. Note that the key must already be stored in the Authority Service to use this.",
           type: "string",
         })
+        .option("minthelper", {
+          describe: "Replace minter helper address. The minter must be the owner of this contract.",
+          type: "string",
+        })
+        .option("proxy", {
+          describe: "Replace the transfer proxy address. The proxy owner must be the owner of this contract.",
+          type: "string",
+        })
         .option("purge", {
           describe: "Purge will delete the keys first before replacing",
           type: "bool",
@@ -2460,7 +2476,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_deploy_helper_contracts <tenant> [options]",
-    "Deploys the minter helper and transfer proxy contracts using the authority service as the minter",
+    "Deploys the minter helper and transfer proxy contracts using the authority service as the minter. Specify option proxy or mint_helper to only deploy that specific contract.",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -2470,6 +2486,14 @@ yargs(hideBin(process.argv))
         .option("host", {
           describe: "Use this authority service url instead.",
           type: "string",
+        })
+        .option("mint_helper", {
+          describe: "Deploy mint helper contract.",
+          type: "bool",
+        })
+        .option("proxy", {
+          describe: "Deploy Proxy contract.",
+          type: "bool",
         });
     },
     (argv) => {
