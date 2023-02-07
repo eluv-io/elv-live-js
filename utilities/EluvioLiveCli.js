@@ -1179,9 +1179,9 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
   console.log("Tenant Minter Replace Config");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Host: ${argv.host}`);
-  console.log(`Proxy Owner: ${argv.proxyowner}`);
+  console.log(`Proxy Owner: ${argv.proxy_owner}`);
   console.log(`Minter: ${argv.minter}`);
-  console.log(`Mint helper: ${argv.minthelper}`);
+  console.log(`Mint helper: ${argv.mint_helper}`);
   console.log(`Proxy: ${argv.proxy}`);
   console.log(`Purge: ${argv.purge}`);
 
@@ -1191,9 +1191,9 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
     res = await elvlv.TenantReplaceMinterConfig({
       tenant: argv.tenant,
       host: argv.host,
-      proxyOwner: argv.proxyowner,
+      proxyOwner: argv.proxy_owner,
       minter: argv.minter,
-      mintHelper: argv.minthelper,
+      mintHelper: argv.mint_helper,
       proxy: argv.proxy,
       purge: argv.purge
     });
@@ -1230,7 +1230,7 @@ const CmdTenantDeployHelpers = async ({ argv }) => {
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Host: ${argv.host}`);
   console.log(`Proxy: ${argv.proxy}`);
-  console.log(`Mint Helper: ${argv.minthelper}`);
+  console.log(`Mint Helper: ${argv.mint_helper}`);
 
   try {
     await Init({ debugLogging: argv.verbose });
@@ -1239,7 +1239,7 @@ const CmdTenantDeployHelpers = async ({ argv }) => {
       tenant: argv.tenant,
       host: argv.host,
       proxy: argv.proxy,
-      mintHelper: argv.minthelper
+      mintHelper: argv.mint_helper
     });
 
     console.log("\n" + res.statusText);
@@ -2448,20 +2448,20 @@ yargs(hideBin(process.argv))
           describe: "Use this authority service url instead.",
           type: "string",
         })
-        .option("proxyowner", {
-          describe: "Replace proxy owner ID. Note that the key must already be stored in the Authority Service to use this.",
+        .option("proxy_owner", {
+          describe: "Replace proxy owner ID (eg. ikms..). Note that the key must already be stored in the Authority Service to use this.",
           type: "string",
         })
         .option("minter", {
-          describe: "Replace minter ID. Note that the key must already be stored in the Authority Service to use this.",
+          describe: "Replace minter ID (eg. ikms..). Note that the key must already be stored in the Authority Service to use this.",
           type: "string",
         })
-        .option("minthelper", {
-          describe: "Replace minter helper address. The minter must be the owner of this contract.",
+        .option("mint_helper", {
+          describe: "Replace minter helper address (hex). The minter must be the owner of this contract.",
           type: "string",
         })
         .option("proxy", {
-          describe: "Replace the transfer proxy address. The proxy owner must be the owner of this contract.",
+          describe: "Replace the transfer proxy address (hex). The proxy owner must be the owner of this contract.",
           type: "string",
         })
         .option("purge", {
@@ -2487,7 +2487,7 @@ yargs(hideBin(process.argv))
           describe: "Use this authority service url instead.",
           type: "string",
         })
-        .option("minthelper", {
+        .option("mint_helper", {
           describe: "Deploy mint helper contract.",
           type: "bool",
         })
