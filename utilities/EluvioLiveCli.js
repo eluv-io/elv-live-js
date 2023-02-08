@@ -1136,6 +1136,23 @@ const CmdNotifSend = async ({ argv }) => {
   }
 };
 
+const CmdAdminHealth = async ({ argv }) => {
+  console.log("Admin Health");
+  console.log(`Host: ${argv.host}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.AdminHealth({
+      host: argv.host,
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdTenantCreateMinter = async ({ argv }) => {
   console.log("Tenant Minter Create Config");
   console.log(`TenantId: ${argv.tenant}`);
@@ -1162,8 +1179,10 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
   console.log("Tenant Minter Replace Config");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Host: ${argv.host}`);
-  console.log(`Proxy Owner: ${argv.proxyowner}`);
+  console.log(`Proxy Owner: ${argv.proxy_owner}`);
   console.log(`Minter: ${argv.minter}`);
+  console.log(`Mint helper: ${argv.mint_helper}`);
+  console.log(`Proxy: ${argv.proxy}`);
   console.log(`Purge: ${argv.purge}`);
 
   try {
@@ -1172,8 +1191,10 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
     res = await elvlv.TenantReplaceMinterConfig({
       tenant: argv.tenant,
       host: argv.host,
-      proxyOwner: argv.proxyowner,
+      proxyOwner: argv.proxy_owner,
       minter: argv.minter,
+      mintHelper: argv.mint_helper,
+      proxy: argv.proxy,
       purge: argv.purge
     });
 
@@ -1208,13 +1229,17 @@ const CmdTenantDeployHelpers = async ({ argv }) => {
   console.log("Tenant Deploy Helper Contracts");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Host: ${argv.host}`);
+  console.log(`Proxy: ${argv.proxy}`);
+  console.log(`Mint Helper: ${argv.mint_helper}`);
 
   try {
     await Init({ debugLogging: argv.verbose });
 
     res = await elvlv.TenantDeployHelperContracts({
       tenant: argv.tenant,
-      host: argv.host
+      host: argv.host,
+      proxy: argv.proxy,
+      mintHelper: argv.mint_helper
     });
 
     console.log("\n" + res.statusText);
@@ -2423,12 +2448,20 @@ yargs(hideBin(process.argv))
           describe: "Use this authority service url instead.",
           type: "string",
         })
-        .option("proxyowner", {
-          describe: "Replace proxy owner ID. Note that the key must already be stored in the Authority Service to use this.",
+        .option("proxy_owner", {
+          describe: "Replace proxy owner ID (eg. ikms..). Note that the key must already be stored in the Authority Service to use this.",
           type: "string",
         })
         .option("minter", {
-          describe: "Replace minter ID. Note that the key must already be stored in the Authority Service to use this.",
+          describe: "Replace minter ID (eg. ikms..). Note that the key must already be stored in the Authority Service to use this.",
+          type: "string",
+        })
+        .option("mint_helper", {
+          describe: "Replace minter helper address (hex). The minter must be the owner of this contract.",
+          type: "string",
+        })
+        .option("proxy", {
+          describe: "Replace the transfer proxy address (hex). The proxy owner must be the owner of this contract.",
           type: "string",
         })
         .option("purge", {
@@ -2443,7 +2476,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_deploy_helper_contracts <tenant> [options]",
-    "Deploys the minter helper and transfer proxy contracts using the authority service as the minter",
+    "Deploys the minter helper and transfer proxy contracts using the authority service as the minter. Specify option proxy or minthelper to only deploy that specific contract.",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -2453,6 +2486,14 @@ yargs(hideBin(process.argv))
         .option("host", {
           describe: "Use this authority service url instead.",
           type: "string",
+        })
+        .option("mint_helper", {
+          describe: "Deploy mint helper contract.",
+          type: "bool",
+        })
+        .option("proxy", {
+          describe: "Deploy Proxy contract.",
+          type: "bool",
         });
     },
     (argv) => {
@@ -2565,6 +2606,21 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNotifSendTokenUpdate({ argv });
+    }
+  )
+
+  .command(
+    "admin_health [options]",
+    "Checks the health of the Authority Service APIs. Note the current key must be a system admin configured in the AuthD servers.",
+    (yargs) => {
+      yargs
+        .option("host", {
+          describe: "Use this authority service url instead of config.",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAdminHealth({ argv });
     }
   )
 
