@@ -105,7 +105,7 @@ class EluvioLive {
     let minterConfigResp = {};
     let minterAddr = null;
     let minterID = null;
-    let mintHelper = null; 
+    let mintHelper = null;
     let proxyAddr = null;
 
     try {
@@ -186,7 +186,7 @@ class EluvioLive {
         tenantInfo.marketplaces[key].items[sku].nft_template =
           item.nft_template["."].source;
 
-        if (minterID && minterID != item.nft_template.mint.cauth_id) {
+        if (minterID && item.nft_template.mint.cauth_id && minterID != item.nft_template.mint.cauth_id) {
           warns.push("Wrong cauth_id for sku: " + sku + ". Config minter Id: " + minterID + ", item nft_template.mint.cauth_id: " + item.nft_template.mint.cauth_id);
         }
 
@@ -242,12 +242,6 @@ class EluvioLive {
 
           if (nftInfo.cap != item.nft_template.nft.total_supply) {
             warns.push("NFT cap mismatch sku: " + sku);
-          }
-          if (
-            nftInfo.proxyInfo != null &&
-            nftInfo.owner != nftInfo.proxyInfo.owner
-          ) {
-            warns.push("NFT owner not proxy owner: " + sku);
           }
           if (nftInfo.warns.length > 0) {
             warns.push(...nftInfo.warns);
@@ -1110,6 +1104,7 @@ class EluvioLive {
    * @param {string} addr - The NFT contract address
    * @param {string} mintHelper - Warn if this is not a minter for the NFT contract (hex)
    * @param {string} minter - Warn if this is not the owner of the mint helper contract (hex)
+   * @param {string} proxyAddr - proxy owner address
    * @param {integer} showOwners - Also enumerate all token info up to showOwners amount. Only used if tokenId is undefined.
    * @param {integer} tokenId - The token ID to show info for. This will take precedence over showOwners
    * @return {Promise<Object>} - An object containing NFT info, including 'warnings'
@@ -1181,7 +1176,9 @@ class EluvioLive {
       warns.push("No proxy registered for nft address: " + addr);
     } else {
       nftInfo.proxyInfo = await this.ShowNftTransferProxy({ addr: proxy });
-      if (proxyAddr && proxy.toLowerCase() != proxyAddr.toLowerCase()){
+      // proxyAddr is the proxy owner address
+      const actualProxyOwner = nftInfo.proxyInfo.owner;
+      if (proxyAddr && actualProxyOwner.toLowerCase() != proxyAddr.toLowerCase()){
         warns.push("Bad proxy owner address for nft address: " + addr + ". expected: " + proxyAddr + " registered: " + proxy);
       }
     }
