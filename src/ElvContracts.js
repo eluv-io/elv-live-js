@@ -246,6 +246,136 @@ class ElvContracts {
     return {total: Ethers.BigNumber.from(res._hex).toNumber()};
   }
 
+  /**
+   * Deploy Payment contract (revenue splitter - commerce/Payment.sol)
+   * @param {string} addresses : list of stakeholder addresses
+   * @param {string} shares: list of stakeholder shares, in the order of addresses
+   */
+  async PaymentDeploy({ addresses, shares }){
+    const abistr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Payment.abi")
+    );
+    const bytecode = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Payment.bin")
+    );
+
+    if (addresses.length != shares.length) {
+      throw Error("Bad arguments - address and share lists have different lenghts");
+    }
+    var c = await this.client.DeployContract({
+      abi: JSON.parse(abistr),
+      bytecode: bytecode.toString("utf8").replace("\n", ""),
+      constructorArgs: [
+        addresses,
+        shares,
+      ],
+    });
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: c.contractAddress,
+      abi: JSON.parse(abistr),
+      methodName: "totalShares",
+      methodArgs: [],
+      formatArguments: true,
+    });
+
+    return {
+      contract_address: c.contractAddress,
+      shares: Ethers.BigNumber.from(res._hex).toNumber()
+    };
+  }
+
+  /**
+   * Show status of payment contract stakeholders
+   * @param {string} addr: address of the payment contract
+   * @param {string} tokenContractAddress: address of the token contract (ERC20)
+   */
+  async PaymentShow({ contractAddress, tokenContractAddress }){
+    const abistr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Payment.abi")
+    );
+
+    const totalShares = await this.client.CallContractMethod({
+      contractAddress: contractAddress,
+      abi: JSON.parse(abistr),
+      methodName: "totalShares",
+      methodArgs: [],
+      formatArguments: true,
+    });
+    const totalReleased = await this.client.CallContractMethod({
+      contractAddress: contractAddress,
+      abi: JSON.parse(abistr),
+      methodName: "totalReleased",
+      methodArgs: [tokenContractAddress],
+      formatArguments: true,
+    });
+
+    var payees = {};
+
+    // Number of stakeholders is not available - try up to 10
+    const maxPayees = 10;
+    for (var i = 0; i < maxPayees; i++) {
+      try {
+        const payeeAddr = await this.client.CallContractMethod({
+          contractAddress: contractAddress,
+          abi: JSON.parse(abistr),
+          methodName: "payee",
+          methodArgs: [i],
+          formatArguments: true,
+        });
+        payees[payeeAddr] = {};
+
+        const shares = await this.client.CallContractMethod({
+          contractAddress: contractAddress,
+          abi: JSON.parse(abistr),
+          methodName: "shares",
+          methodArgs: [payeeAddr],
+          formatArguments: true,
+        });
+        payees[payeeAddr].shares = Ethers.BigNumber.from(shares._hex).toNumber();
+
+        const released = await this.client.CallContractMethod({
+          contractAddress: contractAddress,
+          abi: JSON.parse(abistr),
+          methodName: "released",
+          methodArgs: [contractAddress, payeeAddr],
+          formatArguments: true,
+        });
+        payees[payeeAddr].released = released;
+
+        /*
+          * This call fails - to be investigated
+          *
+        const releasable = await this.client.CallContractMethod({
+          contractAddress: contractAddress,
+          abi: JSON.parse(abistr),
+          methodName: "releasable",
+          methodArgs: [contractAddress, payeeAddr],
+          formatArguments: true,
+        });
+        console.log(releasable);
+        payees[payeeAddr].releasable = releasable;
+        */
+
+      } catch (e) {
+        // Stop here when we reach the end of the payee list
+        if (e.code == 3) {
+          break;
+        } else {
+          console.log(e);
+        }
+      }
+    }
+
+    return {
+      contract_address: contractAddress,
+      shares: Ethers.BigNumber.from(totalShares._hex).toNumber(),
+      released: Ethers.BigNumber.from(totalReleased._hex).toNumber(),
+      payees
+    };
+
+  }
+
 }
 
 exports.ElvContracts = ElvContracts;
