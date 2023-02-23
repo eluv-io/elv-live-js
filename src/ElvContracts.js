@@ -338,24 +338,20 @@ class ElvContracts {
           contractAddress: contractAddress,
           abi: JSON.parse(abistr),
           methodName: "released",
-          methodArgs: [contractAddress, payeeAddr],
+          methodArgs: [tokenContractAddress, payeeAddr],
           formatArguments: true,
         });
-        payees[payeeAddr].released = released;
+        payees[payeeAddr].released = Ethers.BigNumber.from(released._hex).toNumber();
 
-        /*
-          * This call fails - to be investigated
-          *
         const releasable = await this.client.CallContractMethod({
           contractAddress: contractAddress,
           abi: JSON.parse(abistr),
-          methodName: "releasable",
-          methodArgs: [contractAddress, payeeAddr],
-          formatArguments: true,
+          methodName: "releasable(address,address)",
+          methodArgs: [tokenContractAddress, payeeAddr],
+          formatArguments: false,
         });
-        console.log(releasable);
-        payees[payeeAddr].releasable = releasable;
-        */
+        payees[payeeAddr].releasable = Ethers.BigNumber.from(releasable._hex).toNumber();
+
 
       } catch (e) {
         // Stop here when we reach the end of the payee list
