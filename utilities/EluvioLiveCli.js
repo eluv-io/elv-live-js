@@ -6,6 +6,7 @@ const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
 const { Marketplace } = require("../src/Marketplace");
 const { Notifier } = require ("../src/Notifier");
+const { ElvContracts } = require ("../src/ElvContracts.js");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -1322,6 +1323,53 @@ const CmdNotifSendTokenUpdate = async ({ argv }) => {
       }
     }
 
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdPaymentCreate = async ({ argv }) => {
+  console.log("Deploy new payment contract");
+
+  const addresses = argv.addresses.split(",");
+  const shares = argv.shares.split(",");
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    res = await elvContract.PaymentDeploy({addresses, shares});
+
+    console.log("\n" + yaml.dump(await res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdPaymentShow = async ({ argv }) => {
+  console.log("Show payment contract status");
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    res = await elvContract.PaymentShow({
+      contractAddress: argv.addr,
+      tokenContractAddress: argv.token_addr
+    });
+
+    console.log("\n" + yaml.dump(await res));
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -2666,6 +2714,44 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAdminHealth({ argv });
+    }
+  )
+
+  .command(
+    "payment_contract_create addresses shares",
+    "Deploy a payment contract for revenue split.",
+    (yargs) => {
+      yargs
+        .positional("addresses", {
+          describe: "List of stake holder addresses (hex), comma separated",
+          type: "string"
+        })
+        .positional("shares", {
+          describe: "List of stake holder shares, comma separated (one for each address)",
+          type: "string"
+        })
+    },
+    (argv) => {
+      CmdPaymentCreate({ argv });
+    }
+  )
+
+  .command(
+    "payment_contract_show addr token_addr",
+    "Show status of payment contract stakeholders.",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "Address of the payment contract (hex)",
+          type: "string"
+        })
+        .positional("token_addr", {
+          describe: "Address of the ERC20 token contract (hex)",
+          type: "string"
+        })
+    },
+    (argv) => {
+      CmdPaymentShow({ argv });
     }
   )
 
