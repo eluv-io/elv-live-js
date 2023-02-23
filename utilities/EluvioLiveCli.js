@@ -60,7 +60,7 @@ const CmfNftTemplateAddNftContract = async ({ argv }) => {
   }
 };
 
-const CmdNftOrElvTokenAddMinter = async ({ argv }) => {
+const CmdNftOrTokenAddMinter = async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
@@ -74,7 +74,7 @@ const CmdNftOrElvTokenAddMinter = async ({ argv }) => {
   }
 };
 
-const CmdNFTorElvTokenRenounceMinter= async ({ argv }) => {
+const CmdNFTorTokenRenounceMinter= async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
@@ -87,7 +87,7 @@ const CmdNFTorElvTokenRenounceMinter= async ({ argv }) => {
   }
 };
 
-const CmdNFTorElvTokenIsMinter= async ({ argv }) => {
+const CmdNFTorTokenIsMinter= async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
@@ -1429,12 +1429,12 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_or_elv_token_add_minter <addr> <minter>",
-    "Add minter or mint helper address to NFT or ElvToken",
+    "nft_or_token_add_minter <addr> <minter>",
+    "Add minter or mint helper address to NFT or Token",
     (yargs) => {
       yargs
         .positional("addr", {
-          describe: "NFT or ElvToken address (hex)",
+          describe: "NFT or Token address (hex)",
           type: "string",
         })
         .option("minter", {
@@ -1443,32 +1443,32 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdNftOrElvTokenAddMinter({ argv });
+      CmdNftOrTokenAddMinter({ argv });
     }
   )
 
   .command(
-    "nft_or_elv_token_renounce_minter <addr>",
-    "Renounce the minter(msg.sender) from NFT or ElvToken",
+    "nft_or_token_renounce_minter <addr>",
+    "Renounce the minter(msg.sender) from NFT or Token",
     (yargs) => {
       yargs
         .positional("addr", {
-          describe: "NFT or ElvToken address (hex)",
+          describe: "NFT or Token address (hex)",
           type: "string",
         });
     },
     (argv) => {
-      CmdNFTorElvTokenRenounceMinter({ argv });
+      CmdNFTorTokenRenounceMinter({ argv });
     }
   )
 
   .command(
-    "nft_or_elv_token_is_minter <addr> <minter>",
-    "check if minter to NFT or ElvToken",
+    "nft_or_token_is_minter <addr> <minter>",
+    "check if minter to NFT or Token",
     (yargs) => {
       yargs
         .positional("addr", {
-          describe: "NFT or ElvToken address (hex)",
+          describe: "NFT or Token address (hex)",
           type: "string",
         })
         .option("minter", {
@@ -1477,7 +1477,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdNFTorElvTokenIsMinter({ argv });
+      CmdNFTorTokenIsMinter({ argv });
     }
   )
 
