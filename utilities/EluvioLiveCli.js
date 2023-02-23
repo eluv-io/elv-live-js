@@ -353,6 +353,30 @@ const CmdShuffle = async ({ argv }) => {
   }
 };
 
+const CmdTenantTicektsGenerate = async ({ argv }) => {
+  console.log(
+    "Tenant tickets generation",
+    argv.tenant,
+    argv.otp,
+    argv.quantity
+  );
+
+  try {
+    await Init({debugLogging: argv.verbose});
+
+    let res = await elvlv.TenantTicketsGenerate({
+      tenant: argv.tenant,
+      otp: argv.otp,
+      quantity: argv.quantity,
+      host: argv.host
+    });
+
+    console.log("Tickets: ", res);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdTenantMint = async ({ argv }) => {
   console.log(
     "Tenant mint",
@@ -1311,6 +1335,10 @@ yargs(hideBin(process.argv))
     type: "boolean",
     alias: "v"
   })
+  .option("host", {
+    describe: "Alternate URL endpoint",
+    type: "string"
+  })
   .command(
     "nft_add_contract <tenant> <object> <cap> <name> <symbol> [options]",
     "Add a new or existing NFT contract to an NFT Template object",
@@ -1866,6 +1894,29 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdShuffle({ argv });
+    }
+  )
+
+  .command(
+    "tenant_tickets_generate <tenant> <otp>",
+    "Generate tickets for a given tenant OTP ID",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("otp", {
+          describe: "OTP ID (including prefix)",
+          type: "string",
+        })
+        .option("quantity", {
+          describe: "Specify how many to generate (default 1)",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdTenantTicektsGenerate({ argv });
     }
   )
 
