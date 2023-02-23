@@ -353,7 +353,7 @@ const CmdShuffle = async ({ argv }) => {
   }
 };
 
-const CmdTenantTicektsGenerate = async ({ argv }) => {
+const CmdTenantTicketsGenerate = async ({ argv }) => {
   console.log(
     "Tenant tickets generation",
     argv.tenant,
@@ -1916,7 +1916,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdTenantTicektsGenerate({ argv });
+      CmdTenantTicketsGenerate({ argv });
     }
   )
 
