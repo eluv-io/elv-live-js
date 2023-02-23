@@ -1,4 +1,5 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { Config } = require("./Config.js");
 const fs = require("fs");
 const path = require("path");
@@ -262,6 +263,15 @@ class ElvContracts {
     if (addresses.length != shares.length) {
       throw Error("Bad arguments - address and share lists have different lenghts");
     }
+    for (let i = 0; i < shares.length; i ++) {
+      if (!Number.isInteger(parseFloat(shares[i]))) {
+        throw Error("Bad arguments - shares must be integers")
+      }
+      if (!Utils.ValidAddress(addresses[i])) {
+        throw Error("Bad arguments - invalid address")
+      }
+    }
+
     var c = await this.client.DeployContract({
       abi: JSON.parse(abistr),
       bytecode: bytecode.toString("utf8").replace("\n", ""),
