@@ -2,6 +2,7 @@
 const fs = require("fs");
 const path = require("path");
 const { ElvUtils } = require("../src/Utils");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 
 const TYPE_LIVE_DROP_EVENT_SITE = "Eluvio LIVE Drop Event Site";
 const TYPE_LIVE_TENANT = "Eluvio LIVE Tenant";
@@ -61,13 +62,26 @@ const SetObjectPermissions = async (client, objectId, tenantAdmins, contentAdmin
   await Promise.all(promises);
 };
 
-const InitializeTenant = async ({client, kmsId, tenantName, tenantId, debug=false}) => {
+const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   let tenantAdminId = await client.userProfileClient.TenantId();
   let tenantAdminSigner = client.signer;
 
   if (!tenantAdminId){
     throw Error("No tenant admin group set for account.");
   }
+
+  const tenantAddr = Utils.HashToAddress(tenantId);
+  const abi = fs.readFileSync(
+    path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+  );
+
+  const tenantName = await client.CallContractMethod({
+    contractAddress: tenantAddr,
+    abi: JSON.parse(abi),
+    methodName: "name",
+    methodArgs: [],
+    formatArguments: true,
+  });
 
   let tenantAdminGroupAddress = client.utils.HashToAddress(tenantAdminId);
 
