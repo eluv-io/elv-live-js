@@ -2311,7 +2311,7 @@ class EluvioLive {
     }
     let ts = Date.now();
     body.ts = ts;
-    
+
     let token = "";
     if ( useFabricToken ) {
       token = await this.client.CreateFabricToken({
@@ -2326,7 +2326,7 @@ class EluvioLive {
     }
 
     let res;
-    
+
     if (host !== undefined) {
       this.client.SetNodes({
         authServiceURIs:[
@@ -2457,6 +2457,35 @@ class EluvioLive {
     });
     return await res.json();
   }
+
+  /**
+   * Generate tickets (NTP) as a tenant.
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {string} otp - The OTP ID
+   * @param {integer} quantity - Number of tickets to generate
+   * @return {Promise<Object>} - Tickets API Response Object
+   */
+  async TenantTicketsGenerate({ tenant, otp, host, quantity = 1 }) {
+    let now = Date.now();
+
+    let body = {
+      tickets: {
+        quantity: quantity,
+      },
+      ts: now
+    };
+
+    let res = await this.PostServiceRequest({
+      path: urljoin("/tnt/tix", tenant, otp),
+      host,
+      body,
+    });
+    return await res.json();
+
+  }
+
 
   /**
    * Get the list of Tenant marketplaces/sites from the Main Live Object

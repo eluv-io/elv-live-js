@@ -122,15 +122,6 @@ class ElvTenant {
       formatArguments: true,
     });
 
-    // Tenant consumer group (should be deprecated)
-    tenant.consumerGroup = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
-      abi: JSON.parse(abi),
-      methodName: "groupsMapping",
-      methodArgs: ["tenant_consumer", 0],
-      formatArguments: true,
-    });
-
     // Fabric object information
     tenant.fabric_object_visibility = await this.client.CallContractMethod({
       contractAddress: tenantAddr,
