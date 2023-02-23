@@ -6,6 +6,7 @@ const { Config } = require("../src/Config.js");
 const { Shuffler } = require("../src/Shuffler");
 const { Marketplace } = require("../src/Marketplace");
 const { Notifier } = require ("../src/Notifier");
+const { ElvToken } = require ("../src/ElvToken.js");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -59,19 +60,48 @@ const CmfNftTemplateAddNftContract = async ({ argv }) => {
   }
 };
 
-const CmfNftAddMintHelper = async ({ argv }) => {
-  console.log("NFT - add mint helper", argv.addr, argv.minter);
+const CmdNftOrElvTokenAddMinter = async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
-    await elvlv.NftAddMinter({
+    res = await elvlv.AddMinter({
       addr: argv.addr,
       minterAddr: argv.minter,
     });
+    console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
+
+const CmdNFTorElvTokenRenounceMinter= async ({ argv }) => {
+  try {
+    await Init({debugLogging: argv.verbose});
+
+    res = await elvlv.RenounceMinter({
+      addr: argv.addr,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNFTorElvTokenIsMinter= async ({ argv }) => {
+  try {
+    await Init({debugLogging: argv.verbose});
+
+    res = await elvlv.IsMinter({
+      addr: argv.addr,
+      minterAddr: argv.minter,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 
 const CmfNftSetProxy = async ({ argv }) => {
   console.log("NFT - set proxy", argv.addr, argv.proxy_addr);
@@ -936,7 +966,7 @@ const CmdNftRemoveRedeemableOffer = async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
-    res = await elvlv.NFTRemoveRedeemableOffer({ addr: argv.addr, 
+    res = await elvlv.NFTRemoveRedeemableOffer({ addr: argv.addr,
       offerId:argv.id });
 
     console.log(yaml.dump(res));
@@ -953,7 +983,7 @@ const CmdNftIsOfferActive = async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
-    res = await elvlv.NFTIsOfferActive({ addr: argv.addr, 
+    res = await elvlv.NFTIsOfferActive({ addr: argv.addr,
       offerId:argv.offer_id });
 
     console.log(yaml.dump(res));
@@ -991,7 +1021,7 @@ const CmdNftRedeemOffer = async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
-    let res = await elvlv.NFTRedeemOffer({ 
+    let res = await elvlv.NFTRedeemOffer({
       addr: argv.addr,
       redeemerAddr: argv.redeemer,
       tokenId: argv.token_id,
@@ -1016,13 +1046,13 @@ const CmdASNftRedeemOffer = async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
-    let res = await elvlv.ASNFTRedeemOffer({ 
+    let res = await elvlv.ASNFTRedeemOffer({
       addr: argv.addr,
       tenantId: argv.tenant,
       tokenId: argv.token_id,
       offerId: argv.offer_id,
       mintHelperAddr: argv.mint_helper_addr
-    });  
+    });
 
     console.log(yaml.dump(res));
   } catch (e) {
@@ -1327,6 +1357,32 @@ const CmdNotifSendTokenUpdate = async ({ argv }) => {
   }
 };
 
+const CmdElvTokenCreate = async ({ argv }) => {
+  console.log("Deploy ElvToken contract");
+  try {
+    let elvToken = new ElvToken({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvToken.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    res = await elvToken.ElvTokenDeploy({
+      cap: argv.cap,
+      name: argv.name,
+      symbol: argv.symbol,
+      decimals: argv.decimals,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -1373,12 +1429,12 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_add_minter <addr> <minter>",
-    "Add a new or existing NFT contract to an NFT Template object",
+    "nft_or_elv_token_add_minter <addr> <minter>",
+    "Add minter or mint helper address to NFT or ElvToken",
     (yargs) => {
       yargs
         .positional("addr", {
-          describe: "NFT address (hex)",
+          describe: "NFT or ElvToken address (hex)",
           type: "string",
         })
         .option("minter", {
@@ -1387,7 +1443,41 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmfNftAddMintHelper({ argv });
+      CmdNftOrElvTokenAddMinter({ argv });
+    }
+  )
+
+  .command(
+    "nft_or_elv_token_renounce_minter <addr>",
+    "Renounce the minter(msg.sender) from NFT or ElvToken",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT or ElvToken address (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNFTorElvTokenRenounceMinter({ argv });
+    }
+  )
+
+  .command(
+    "nft_or_elv_token_is_minter <addr> <minter>",
+    "check if minter to NFT or ElvToken",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT or ElvToken address (hex)",
+          type: "string",
+        })
+        .option("minter", {
+          describe: "Minter address (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNFTorElvTokenIsMinter({ argv });
     }
   )
 
@@ -2666,6 +2756,33 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAdminHealth({ argv });
+    }
+  )
+
+  .command(
+    "elv_token_create <cap> <name> <symbol> <decimals> [options]",
+    "Deploy elv token",
+    (yargs) => {
+      yargs
+        .positional("cap", {
+          describe: "elv_token supply cap",
+          type: "number",
+        })
+        .positional("name", {
+          describe: "elv_token name",
+          type: "string",
+        })
+        .positional("symbol", {
+          describe: "elv_token symbol",
+          type: "string",
+        })
+        .positional("decimals", {
+          describe: "elv_token decimals",
+          type: "number",
+        });
+    },
+    (argv) => {
+      CmdElvTokenCreate({ argv });
     }
   )
 
