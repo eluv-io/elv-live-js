@@ -265,10 +265,10 @@ class ElvContracts {
     }
     for (let i = 0; i < shares.length; i ++) {
       if (!Number.isInteger(parseFloat(shares[i]))) {
-        throw Error("Bad arguments - shares must be integers")
+        throw Error("Bad arguments - shares must be integers");
       }
       if (!Utils.ValidAddress(addresses[i])) {
-        throw Error("Bad arguments - invalid address")
+        throw Error("Bad arguments - invalid address");
       }
     }
 
