@@ -1326,6 +1326,9 @@ class EluvioLive {
     });
 
     var res = await this.IsMinter({addr, minterAddr});
+    if (!res.is_minter) {
+      throw new Error("minter address is not set");
+    }
     return res;
   }
 
@@ -1348,6 +1351,9 @@ class EluvioLive {
 
     var minterAddr = this.client.CurrentAccountAddress();
     var res = await this.IsMinter({addr, minterAddr});
+    if (res.is_minter) {
+      throw Error("minter address is not removed");
+    }
     return res;
   }
 
