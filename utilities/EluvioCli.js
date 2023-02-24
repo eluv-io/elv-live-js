@@ -9,6 +9,14 @@ const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 
+const originalEmit = process.emit;
+process.emit = function (name, data, ...args) {
+  if(name === `warning` && typeof data === `object` && data.name === `ExperimentalWarning`) {
+    return false;
+  }
+  return originalEmit.apply(process, arguments);
+};
+
 const CmdAccountCreate = async ({ argv }) => {
   console.log("Account Create\n");
   console.log(`funds: ${argv.funds}`);

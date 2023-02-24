@@ -15,6 +15,14 @@ const fs = require("fs");
 const path = require("path");
 const prompt = require("prompt-sync")({ sigint: true });
 
+const originalEmit = process.emit;
+process.emit = function (name, data, ...args) {
+  if(name === `warning` && typeof data === `object` && data.name === `ExperimentalWarning`) {
+    return false;
+  }
+  return originalEmit.apply(process, arguments);
+};
+
 let elvlv;
 let marketplace;
 

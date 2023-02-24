@@ -7,6 +7,14 @@ const { Shuffler } = require("../src/Shuffler");
 const fs = require("fs");
 const path = require("path");
 
+const originalEmit = process.emit;
+process.emit = function (name, data, ...args) {
+  if(name === `warning` && typeof data === `object` && data.name === `ExperimentalWarning`) {
+    return false;
+  }
+  return originalEmit.apply(process, arguments);
+};
+
 function checkShuffled() {
   let f = Shuffler.shuffledPath(__dirname + "/../test/shuffle.in.txt");
   expect(fs.readFileSync(f, "utf8")).toEqual(
