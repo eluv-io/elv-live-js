@@ -1,4 +1,5 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { Config } = require("./Config.js");
 const fs = require("fs");
 const path = require("path");
@@ -244,6 +245,141 @@ class ElvContracts {
     });
 
     return {total: Ethers.BigNumber.from(res._hex).toNumber()};
+  }
+
+  /**
+   * Deploy Payment contract (revenue splitter - commerce/Payment.sol)
+   * @param {string} addresses : list of stakeholder addresses
+   * @param {string} shares: list of stakeholder shares, in the order of addresses
+   */
+  async PaymentDeploy({ addresses, shares }){
+    const abistr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Payment.abi")
+    );
+    const bytecode = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Payment.bin")
+    );
+
+    if (addresses.length != shares.length) {
+      throw Error("Bad arguments - address and share lists have different lenghts");
+    }
+    for (let i = 0; i < shares.length; i ++) {
+      if (!Number.isInteger(parseFloat(shares[i]))) {
+        throw Error("Bad arguments - shares must be integers")
+      }
+      if (!Utils.ValidAddress(addresses[i])) {
+        throw Error("Bad arguments - invalid address")
+      }
+    }
+
+    var c = await this.client.DeployContract({
+      abi: JSON.parse(abistr),
+      bytecode: bytecode.toString("utf8").replace("\n", ""),
+      constructorArgs: [
+        addresses,
+        shares,
+      ],
+    });
+
+    var res = await this.client.CallContractMethod({
+      contractAddress: c.contractAddress,
+      abi: JSON.parse(abistr),
+      methodName: "totalShares",
+      methodArgs: [],
+      formatArguments: true,
+    });
+
+    return {
+      contract_address: c.contractAddress,
+      shares: Ethers.BigNumber.from(res._hex).toNumber()
+    };
+  }
+
+  /**
+   * Show status of payment contract stakeholders
+   * @param {string} addr: address of the payment contract
+   * @param {string} tokenContractAddress: address of the token contract (ERC20)
+   */
+  async PaymentShow({ contractAddress, tokenContractAddress }){
+    const abistr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Payment.abi")
+    );
+
+    const totalShares = await this.client.CallContractMethod({
+      contractAddress: contractAddress,
+      abi: JSON.parse(abistr),
+      methodName: "totalShares",
+      methodArgs: [],
+      formatArguments: true,
+    });
+    const totalReleased = await this.client.CallContractMethod({
+      contractAddress: contractAddress,
+      abi: JSON.parse(abistr),
+      methodName: "totalReleased",
+      methodArgs: [tokenContractAddress],
+      formatArguments: true,
+    });
+
+    var payees = {};
+
+    // Number of stakeholders is not available - try up to 10
+    const maxPayees = 10;
+    for (var i = 0; i < maxPayees; i++) {
+      try {
+        const payeeAddr = await this.client.CallContractMethod({
+          contractAddress: contractAddress,
+          abi: JSON.parse(abistr),
+          methodName: "payee",
+          methodArgs: [i],
+          formatArguments: true,
+        });
+        payees[payeeAddr] = {};
+
+        const shares = await this.client.CallContractMethod({
+          contractAddress: contractAddress,
+          abi: JSON.parse(abistr),
+          methodName: "shares",
+          methodArgs: [payeeAddr],
+          formatArguments: true,
+        });
+        payees[payeeAddr].shares = Ethers.BigNumber.from(shares._hex).toNumber();
+
+        const released = await this.client.CallContractMethod({
+          contractAddress: contractAddress,
+          abi: JSON.parse(abistr),
+          methodName: "released",
+          methodArgs: [tokenContractAddress, payeeAddr],
+          formatArguments: true,
+        });
+        payees[payeeAddr].released = Ethers.BigNumber.from(released._hex).toNumber();
+
+        const releasable = await this.client.CallContractMethod({
+          contractAddress: contractAddress,
+          abi: JSON.parse(abistr),
+          methodName: "releasable(address,address)",
+          methodArgs: [tokenContractAddress, payeeAddr],
+          formatArguments: false,
+        });
+        payees[payeeAddr].releasable = Ethers.BigNumber.from(releasable._hex).toNumber();
+
+
+      } catch (e) {
+        // Stop here when we reach the end of the payee list
+        if (e.code == 3) {
+          break;
+        } else {
+          console.log(e);
+        }
+      }
+    }
+
+    return {
+      contract_address: contractAddress,
+      shares: Ethers.BigNumber.from(totalShares._hex).toNumber(),
+      released: Ethers.BigNumber.from(totalReleased._hex).toNumber(),
+      payees
+    };
+
   }
 
 }
