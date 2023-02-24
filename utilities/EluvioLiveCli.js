@@ -61,7 +61,7 @@ const CmfNftTemplateAddNftContract = async ({ argv }) => {
   }
 };
 
-const CmdNftOrTokenAddMinter = async ({ argv }) => {
+const CmdTokenAddMinter = async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
@@ -75,7 +75,7 @@ const CmdNftOrTokenAddMinter = async ({ argv }) => {
   }
 };
 
-const CmdNFTorTokenRenounceMinter= async ({ argv }) => {
+const CmdTokenRenounceMinter= async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
@@ -88,7 +88,7 @@ const CmdNFTorTokenRenounceMinter= async ({ argv }) => {
   }
 };
 
-const CmdNFTorTokenIsMinter= async ({ argv }) => {
+const CmdTokenIsMinter= async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose});
 
@@ -1405,7 +1405,7 @@ const CmdPaymentShow = async ({ argv }) => {
   }
 };
 
-const CmdElvTokenCreate = async ({ argv }) => {
+const CmdTokenCreate = async ({ argv }) => {
   console.log("Deploy ElvToken contract");
   try {
     let elvToken = new ElvToken({
@@ -1476,7 +1476,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_or_token_add_minter <addr> <minter>",
+    "token_add_minter <addr> <minter>",
     "Add minter or mint helper address to NFT or Token",
     (yargs) => {
       yargs
@@ -1490,12 +1490,12 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdNftOrTokenAddMinter({ argv });
+      CmdTokenAddMinter({ argv });
     }
   )
 
   .command(
-    "nft_or_token_renounce_minter <addr>",
+    "token_renounce_minter <addr>",
     "Renounce the minter(msg.sender) from NFT or Token",
     (yargs) => {
       yargs
@@ -1505,12 +1505,12 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdNFTorTokenRenounceMinter({ argv });
+      CmdTokenRenounceMinter({ argv });
     }
   )
 
   .command(
-    "nft_or_token_is_minter <addr> <minter>",
+    "token_is_minter <addr> <minter>",
     "check if minter to NFT or Token",
     (yargs) => {
       yargs
@@ -1524,7 +1524,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdNFTorTokenIsMinter({ argv });
+      CmdTokenIsMinter({ argv });
     }
   )
 
@@ -2818,7 +2818,7 @@ yargs(hideBin(process.argv))
         .positional("shares", {
           describe: "List of stake holder shares, comma separated (one for each address)",
           type: "string"
-        })
+        });
     },
     (argv) => {
       CmdPaymentCreate({ argv });
@@ -2837,7 +2837,7 @@ yargs(hideBin(process.argv))
         .positional("token_addr", {
           describe: "Address of the ERC20 token contract (hex)",
           type: "string"
-        })
+        });
     },
     (argv) => {
       CmdPaymentShow({ argv });
@@ -2846,8 +2846,8 @@ yargs(hideBin(process.argv))
 
 
   .command(
-    "elv_token_create <cap> <name> <symbol> <decimals> [options]",
-    "Deploy elv token",
+    "token_contract_create <cap> <name> <symbol> <decimals> [options]",
+    "Deploy elv token  contract",
     (yargs) => {
       yargs
         .positional("cap", {
@@ -2868,7 +2868,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdElvTokenCreate({ argv });
+      CmdTokenCreate({ argv });
     }
   )
 
