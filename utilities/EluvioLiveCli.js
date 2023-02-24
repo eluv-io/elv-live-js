@@ -15,6 +15,9 @@ const fs = require("fs");
 const path = require("path");
 const prompt = require("prompt-sync")({ sigint: true });
 
+# hack that quiets this msg:
+#  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
+#  (Use `node --trace-warnings ...` to show where the warning was created)
 const originalEmit = process.emit;
 process.emit = function (name, data, ...args) {
   if(name === `warning` && typeof data === `object` && data.name === `ExperimentalWarning`) {
