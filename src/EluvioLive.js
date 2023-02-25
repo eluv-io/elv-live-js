@@ -2499,9 +2499,10 @@ class EluvioLive {
    * @namedParams
    * @param {string} tenant - The Tenant ID
    * @param {integer} maxNumber - The address to mint to
+   * @param {integer} mapFile - Store addr->email mapping as CSV (optional)
    * @return {Promise<Object>} - The API Response containing list of Wallet Info
    */
-  async TenantWallets({ tenant, maxNumber = Number.MAX_SAFE_INTEGER }) {
+  async TenantWallets({ tenant, maxNumber = Number.MAX_SAFE_INTEGER, mapFile }) {
     if (maxNumber < 1) {
       maxNumber = Number.MAX_SAFE_INTEGER;
     }
@@ -2510,7 +2511,22 @@ class EluvioLive {
       path: urljoin("/tnt/wlt/", tenant),
       queryParams: { limit: maxNumber },
     });
-    return await res.json();
+
+    var j = await res.json();
+    var contents = j.contents;
+
+    if (mapFile) {
+      for (let i = 0; i < contents.length; i++ ) {
+        fs.appendFile(mapFile, contents[i].addr + "," + contents[i].ident + "\n",
+          err => {
+            if (err) {
+              throw err;
+            }
+          });
+      }
+    }
+
+    return await j;
   }
 
   /**

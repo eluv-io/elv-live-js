@@ -456,6 +456,7 @@ const CmdTenantWallets = async ({ argv }) => {
     let res = await elvlv.TenantWallets({
       tenant: argv.tenant,
       maxNumber: argv.max_results,
+      mapFile: argv.map_file
     });
 
     console.log(yaml.dump(res));
@@ -2109,6 +2110,10 @@ yargs(hideBin(process.argv))
         .option("max_results", {
           describe: "Show up to these many results (default 0 = unlimited)",
           type: "integer",
+        })
+        .option("map_file", {
+          describe: "Optional CSV file to store addr/email mapping",
+          type: "string",
         });
     },
     (argv) => {
