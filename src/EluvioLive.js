@@ -1554,6 +1554,11 @@ class EluvioLive {
       privateKey: process.env.PRIVATE_KEY
     });
 
+    // Policy can only be set by object owner
+    const objectOwner = await this.client.authClient.Owner({id: objectId});
+    if (objectOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
+      throw Error("Policy must be set by object owner " + objectOwner);
+    }
 
     //Set Policy
     const policyString = fs.readFileSync(
