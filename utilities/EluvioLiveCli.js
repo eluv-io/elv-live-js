@@ -1156,7 +1156,7 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
 
     console.log("\n" + yaml.dump(res));
   } catch (e) {
-    console.error("ERROR:", e);
+    console.error("ERROR:", argv.verbose ? e : e.message);
   }
 };
 
