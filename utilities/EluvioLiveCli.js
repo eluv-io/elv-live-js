@@ -1392,6 +1392,30 @@ const CmdPaymentCreate = async ({ argv }) => {
   }
 };
 
+const CmdPaymentRelease = async ({ argv }) => {
+  console.log("Payment release");
+
+  try {
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    res = await elvContract.PaymentRelease({
+      contractAddress: argv.addr,
+      tokenContractAddress: argv.token_addr
+    });
+
+    console.log("\n" + yaml.dump(await res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose ? e : e.message);
+  }
+};
+
 const CmdPaymentShow = async ({ argv }) => {
   console.log("Show payment contract status");
 
@@ -2855,6 +2879,24 @@ yargs(hideBin(process.argv))
     }
   )
 
+  .command(
+    "payment_release addr token_addr",
+    "Retrieve payment from payment splitter contract as a payee",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "Address of the payment contract (hex)",
+          type: "string"
+        })
+        .positional("token_addr", {
+          describe: "Address of the ERC20 token contract (hex)",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdPaymentRelease({ argv });
+    }
+  )
 
   .command(
     "token_contract_create <cap> <name> <symbol> <decimals> [options]",
