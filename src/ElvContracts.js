@@ -305,7 +305,7 @@ class ElvContracts {
       path.resolve(__dirname, "../contracts/v4/Payment.abi")
     );
     const abistrToken = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/ElvToken.abi")
+      path.resolve(__dirname, "../contracts/v4/IERC20.abi")
     );
 
     const decimals = await this.client.CallContractMethod({
@@ -398,25 +398,25 @@ class ElvContracts {
    * @param {string} addr: address of the payment contract
    * @param {string} tokenContractAddress: address of the token contract (ERC20)
    */
-    async PaymentRelease({ contractAddress, tokenContractAddress }){
-      const abistr = fs.readFileSync(
-        path.resolve(__dirname, "../contracts/v4/Payment.abi")
-      );
+  async PaymentRelease({ contractAddress, tokenContractAddress }){
+    const abistr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Payment.abi")
+    );
 
-      const payee = await this.client.signer.address;
-      const res = await this.client.CallContractMethod({
-        contractAddress: contractAddress,
-        abi: JSON.parse(abistr),
-        methodName: "release(address,address)",
-        methodArgs: [
-          tokenContractAddress,
-          payee
-        ],
-        formatArguments: false,
-      });
+    const payee = await this.client.signer.address;
+    const res = await this.client.CallContractMethod({
+      contractAddress: contractAddress,
+      abi: JSON.parse(abistr),
+      methodName: "release(address,address)",
+      methodArgs: [
+        tokenContractAddress,
+        payee
+      ],
+      formatArguments: false,
+    });
 
-      return res;
-    }
+    return res;
+  }
 
 }
 
