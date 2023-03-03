@@ -304,6 +304,17 @@ class ElvContracts {
     const abistr = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Payment.abi")
     );
+    const abistrToken = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/IERC20.abi")
+    );
+
+    const decimals = await this.client.CallContractMethod({
+      contractAddress: tokenContractAddress,
+      abi: JSON.parse(abistrToken),
+      methodName: "decimals",
+      methodArgs: [],
+      formatArguments: true,
+    });
 
     const totalShares = await this.client.CallContractMethod({
       contractAddress: contractAddress,
@@ -351,7 +362,7 @@ class ElvContracts {
           methodArgs: [tokenContractAddress, payeeAddr],
           formatArguments: true,
         });
-        payees[payeeAddr].released = Ethers.BigNumber.from(released._hex).toNumber();
+        payees[payeeAddr].released = Ethers.utils.formatUnits(released, decimals);
 
         const releasable = await this.client.CallContractMethod({
           contractAddress: contractAddress,
@@ -360,7 +371,7 @@ class ElvContracts {
           methodArgs: [tokenContractAddress, payeeAddr],
           formatArguments: false,
         });
-        payees[payeeAddr].releasable = Ethers.BigNumber.from(releasable._hex).toNumber();
+        payees[payeeAddr].releasable = Ethers.utils.formatUnits(releasable, decimals);
 
 
       } catch (e) {
@@ -376,10 +387,35 @@ class ElvContracts {
     return {
       contract_address: contractAddress,
       shares: Ethers.BigNumber.from(totalShares._hex).toNumber(),
-      released: Ethers.BigNumber.from(totalReleased._hex).toNumber(),
+      released: Ethers.utils.formatUnits(totalReleased, decimals),
       payees
     };
 
+  }
+
+  /**
+   * Retrieve funds from payment splitter contract, as a payee
+   * @param {string} addr: address of the payment contract
+   * @param {string} tokenContractAddress: address of the token contract (ERC20)
+   */
+  async PaymentRelease({ contractAddress, tokenContractAddress }){
+    const abistr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/Payment.abi")
+    );
+
+    const payee = await this.client.signer.address;
+    const res = await this.client.CallContractMethod({
+      contractAddress: contractAddress,
+      abi: JSON.parse(abistr),
+      methodName: "release(address,address)",
+      methodArgs: [
+        tokenContractAddress,
+        payee
+      ],
+      formatArguments: false,
+    });
+
+    return res;
   }
 
 }
