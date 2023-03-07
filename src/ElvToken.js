@@ -29,33 +29,34 @@ class ElvToken {
   }
 
   /**
-   * Deploy ElvToken contract (tradable/elv_token.sol)
-   * @param {number} cap : elv_token cap
+   * Deploy ElvToken contract (src/token/elv_token.sol)
    * @param {string} name: elv_token name
    * @param {string} symbol: elv_token symbol
    * @param {number} decimals: elv_token decimals
+   * @param {number} amount : elv_token premint amount
    */
   async ElvTokenDeploy({
-    cap,
     name,
     symbol,
-    decimals }){
+    decimals,
+    amount ,
+  }){
 
     const abistr = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/ElvToken.abi")
+      path.resolve(__dirname, "../contracts/v4/ElvToken.abi")
     );
     const bytecode = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/ElvToken.bin")
+      path.resolve(__dirname, "../contracts/v4/ElvToken.bin")
     );
 
     var c = await this.client.DeployContract({
       abi: JSON.parse(abistr),
       bytecode: bytecode.toString("utf8").replace("\n", ""),
       constructorArgs: [
-        cap,
         name,
         symbol,
-        decimals
+        decimals,
+        amount
       ],
     });
     console.log("ElvToken contract address:", c.contractAddress);

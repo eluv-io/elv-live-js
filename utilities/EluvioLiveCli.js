@@ -1453,10 +1453,10 @@ const CmdTokenCreate = async ({ argv }) => {
     });
 
     res = await elvToken.ElvTokenDeploy({
-      cap: argv.cap,
       name: argv.name,
       symbol: argv.symbol,
       decimals: argv.decimals,
+      amount: argv.amount,
     });
 
     console.log(yaml.dump(res));
@@ -2899,14 +2899,10 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "token_contract_create <cap> <name> <symbol> <decimals> [options]",
+    "token_contract_create <name> <symbol> <decimals> <amount> [options]",
     "Deploy elv token  contract",
     (yargs) => {
       yargs
-        .positional("cap", {
-          describe: "elv_token supply cap",
-          type: "number",
-        })
         .positional("name", {
           describe: "elv_token name",
           type: "string",
@@ -2917,6 +2913,10 @@ yargs(hideBin(process.argv))
         })
         .positional("decimals", {
           describe: "elv_token decimals",
+          type: "number",
+        })
+        .positional("amount", {
+          describe: "elv_token premint amount",
           type: "number",
         });
     },
