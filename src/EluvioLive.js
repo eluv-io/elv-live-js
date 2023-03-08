@@ -66,18 +66,8 @@ class EluvioLive {
       formatArguments: true,
     });
 
-    var tenant_consumer_address = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
-      abi: JSON.parse(abi),
-      methodName: "groupsMapping",
-      methodArgs: ["tenant_consumer", 0],
-      formatArguments: true,
-    });
-
     return {tenant_admin_address,
-      tenant_admin_id: ElvUtils.AddressToId({prefix:"igrp", address:tenant_admin_address}),
-      tenant_consumer_address,
-      tenant_consumer_id: ElvUtils.AddressToId({prefix:"igrp", address:tenant_consumer_address}),
+      tenant_admin_id: ElvUtils.AddressToId({prefix:"igrp", address:tenant_admin_address})
     };
   }
 
