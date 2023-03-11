@@ -849,7 +849,7 @@ class EluvioLive {
    * @return {Promise<Object>} - New contract address
    */
   async NftSetTransferProxy({ addr, proxyAddr }) {
-    if (proxyAddr == null || proxyAddr.length() == 0) {
+    if (proxyAddr == null || proxyAddr.length == 0) {
       proxyAddr = await this.CreateNftTransferProxy({});
     }
 

@@ -305,7 +305,7 @@ class ElvContracts {
       path.resolve(__dirname, "../contracts/v4/Payment.abi")
     );
     const abistrToken = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v4/IERC20.abi")
+      path.resolve(__dirname, "../contracts/v4/ElvToken.abi")
     );
 
     const decimals = await this.client.CallContractMethod({
@@ -331,6 +331,7 @@ class ElvContracts {
       formatArguments: true,
     });
 
+    var total = Ethers.BigNumber.from(0);
     var payees = {};
 
     // Number of stakeholders is not available - try up to 10
@@ -373,6 +374,10 @@ class ElvContracts {
         });
         payees[payeeAddr].releasable = Ethers.utils.formatUnits(releasable, decimals);
 
+        let payeeTotal = Ethers.BigNumber.from(released)
+        payeeTotal = payeeTotal.add(Ethers.BigNumber.from(releasable));
+        payees[payeeAddr].total = Ethers.utils.formatUnits(payeeTotal, decimals);
+        total = total.add(payeeTotal);
 
       } catch (e) {
         // Stop here when we reach the end of the payee list
@@ -388,6 +393,7 @@ class ElvContracts {
       contract_address: contractAddress,
       shares: Ethers.BigNumber.from(totalShares._hex).toNumber(),
       released: Ethers.utils.formatUnits(totalReleased, decimals),
+      total: Ethers.utils.formatUnits(total, decimals),
       payees
     };
 
