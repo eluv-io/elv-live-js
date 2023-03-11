@@ -374,7 +374,7 @@ class ElvContracts {
         });
         payees[payeeAddr].releasable = Ethers.utils.formatUnits(releasable, decimals);
 
-        let payeeTotal = Ethers.BigNumber.from(released)
+        let payeeTotal = Ethers.BigNumber.from(released);
         payeeTotal = payeeTotal.add(Ethers.BigNumber.from(releasable));
         payees[payeeAddr].total = Ethers.utils.formatUnits(payeeTotal, decimals);
         total = total.add(payeeTotal);
