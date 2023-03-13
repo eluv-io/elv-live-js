@@ -305,7 +305,7 @@ class ElvContracts {
       path.resolve(__dirname, "../contracts/v4/Payment.abi")
     );
     const abistrToken = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v4/ElvToken.abi")
+      path.resolve(__dirname, "../contracts/v4/IERC20Metadata.abi")
     );
 
     const decimals = await this.client.CallContractMethod({
