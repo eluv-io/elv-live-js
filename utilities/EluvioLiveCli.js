@@ -2592,7 +2592,7 @@ yargs(hideBin(process.argv))
         })
         .positional("addrs", {
           describe:
-            "List of space separated owner addresses to add",
+            "List of space separated NFT contract addresses to add",
           type: "string",
         })
         .option("clear", {
