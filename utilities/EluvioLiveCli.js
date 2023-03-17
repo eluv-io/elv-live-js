@@ -2578,8 +2578,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_set_policy_permissions <object> <policy_path> [addrs..]",
-    "Sets the policy and permissions granting NFT owners access to a content object.",
+    "nft_set_policy_permissions <object> <policy_path> <addrs..>",
+    "Sets the policy and permissions granting NFT owners access to a content object. When no addresses are specified, only the policy is set.",
     (yargs) => {
       yargs
         .positional("object", {
@@ -2590,15 +2590,15 @@ yargs(hideBin(process.argv))
           describe: "Path of policy object file",
           type: "string",
         })
+        .positional("addrs", {
+          describe:
+            "List of space separated NFT contract addresses to set. Calling multiple times with a new list will replace the existing.",
+          type: "string",
+        })
         .option("clear", {
           describe: "clear the nft owners",
           type: "boolean",
           default: false
-        })
-        .option("addrs", {
-          describe:
-            "Addresses to add",
-          type: "string",
         });
     },
     (argv) => {
