@@ -90,10 +90,10 @@ class EluvioLive {
       request_type: requestType || "single",  // single, all  TODO: batch -> load from CSV file and transform to our JSON request
       tokens: [
         {
-          'token_id': (requestType == "all") ? null : tokenId || null,
-          'token_id_str': (requestType == "all") ? "" : tokenId.toString() || "",
-          'contract_address': contractAddress,
-          'token_uri': tokenURI
+          "token_id": (requestType == "all") ? null : tokenId || null,
+          "token_id_str": (requestType == "all") ? "" : tokenId.toString() || "",
+          "contract_address": contractAddress,
+          "token_uri": tokenURI
         }
       ]
     };
