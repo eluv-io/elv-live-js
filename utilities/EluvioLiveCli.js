@@ -1465,6 +1465,81 @@ const CmdTokenCreate = async ({ argv }) => {
   }
 };
 
+const CmdContentSetPolicy  = async ({ argv }) => {
+  console.log("Content Set Policy");
+  console.log(`Object: ${argv.object}`);
+  console.log(`Policy Path: ${argv.policy_path}`);
+  console.log(`Data: ${argv.data}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.ContentSetPolicy({
+      objectId: argv.object,
+      policyPath: argv.policy_path,
+      data: argv.data
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdContentSetPolicyDelegate  = async ({ argv }) => {
+  console.log("Content Set Policy Delegate");
+  console.log(`Object: ${argv.object}`);
+  console.log(`Policy Path: ${argv.delegate}`);
+  console.log(`Data: ${argv.data}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.ContentSetPolicyDelegate({
+      objectId: argv.object,
+      delegateId: argv.delegate
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdContentGetPolicy  = async ({ argv }) => {
+  console.log("Content Get Policy");
+  console.log(`Object: ${argv.object}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.ContentGetPolicy({
+      objectId: argv.object
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdContentClearPolicy = async ({ argv }) => {
+  console.log("Content Clear Policy");
+  console.log(`Object: ${argv.object}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.ContentClearPolicy({
+      objectId: argv.object
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -2922,6 +2997,78 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTokenCreate({ argv });
+    }
+  )
+
+  .command(
+    "content_set_policy <object> <policy_path> [data]",
+    "Set the policy on an existing content object. This also sets the delegate on the object contract to itself.",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object",
+          type: "string",
+        })
+        .positional("policy_path", {
+          describe: "Path to the content object policy file (eg. policy.yaml)",
+          type: "string",
+        })
+        .option("data", {
+          describe: "Metadata path within the policy object to link to",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContentSetPolicy({ argv });
+    }
+  )
+
+  .command(
+    "content_set_policy_delegate <object> <delegate>",
+    "Set the policy delegate on the object contract.",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object",
+          type: "string",
+        })
+        .positional("delegate", {
+          describe: "ID of the content object policy delegate",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContentSetPolicyDelegate({ argv });
+    }
+  )
+
+  .command(
+    "content_get_policy <object>",
+    "Get the content object policy from the object metadata and the delegate from the object's contract meta",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContentGetPolicy({ argv });
+    }
+  )
+
+  .command(
+    "content_clear_policy <object>",
+    "Remove content object policy from the object metadata and the delegate from the object's contract meta",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContentClearPolicy({ argv });
     }
   )
 

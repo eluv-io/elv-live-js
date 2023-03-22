@@ -1626,7 +1626,7 @@ class EluvioLive {
   }
 
   /**
-   * Sets the nft policy and permissions for a given contract
+   * Gets the nft policy and permissions for a given contract
    *
    * @namedParams
    * @param {string} nftAddress - The NFT contract address. Can also be iqXXX format.
@@ -1676,6 +1676,152 @@ class EluvioLive {
     }
 
     return {"policy": policy, "permissions": addresses};
+  }
+
+  /**
+   * Sets the content object policy
+   *
+   * @namedParams
+   * @param {string} objectId - The NFT object ID
+   * @param {string} policyPath - Path to the content policy file (eg. policy.yaml).
+   * @param {string} data - Metadata path within the policy object to link to
+   */
+  async ContentSetPolicy({ objectId, policyPath, data}) {
+    console.log("ContentSetPolicy ", policyPath);
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY,
+      update:true
+    });
+
+    const policyString = fs.readFileSync(
+      policyPath
+    ).toString();
+
+    if (!policyString){
+      throw Error("Policy file contents is empty.");
+    }
+
+    //TODO: Parse and validate policy
+
+    if (this.debug){
+      console.log("Policy file contents: ", policyString);
+    }
+
+    let account = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+    account.InitWithClient({elvClient: this.client});
+    var policyFormat = await ElvUtils.parseAndSignPolicy({policyString, data, configUrl:this.configUrl, elvAccount:account});
+    
+    if (this.debug){
+      console.log("Policy format: ", policyFormat);
+    }
+
+    // Set policy in object metadata
+    await elvFabric.setMeta({objectId,meta:policyFormat});
+
+    let contractResp = await this.ContentSetPolicyDelegate({objectId,delegateId:objectId});
+    return contractResp;
+  }
+
+  /**
+   * Sets the content object policy
+   *
+   * @namedParams
+   * @param {string} objectId - The NFT object ID
+   * @param {string} delegateId - Path to the content policy file (eg. policy.yaml).
+   */
+  async ContentSetPolicyDelegate({ objectId, delegateId}) {
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY,
+      update:true
+    });
+    var authContext = {"elv:delegation-id":delegateId};
+
+    //Set delegate in object contract
+    let res = await elvFabric.SetContractMeta({
+      address: objectId,
+      key: "_AUTH_CONTEXT",
+      value: JSON.stringify(authContext)
+    });
+
+    return res;
+  }
+
+  /**
+   * Get the content object policy from the Object metadata and the delegate from the Object's contract meta
+   *
+   * @namedParams
+   * @param {string} objectId - The NFT object ID
+   */
+  async ContentGetPolicy({ objectId }) {
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY,
+      update:true
+    });
+
+    let contentPolicyResponse = await elvFabric.getMeta({objectId, select:"auth_policy"});
+
+    //Get delegate from the object contract
+    let delegateResp = await elvFabric.GetContractMeta({
+      address: objectId,
+      key: "_AUTH_CONTEXT"
+    });
+
+    return {contentPolicyResponse,delegateResp};
+  }
+
+  /**
+ * Get the content object policy from the Object metadata and the delegate from the Object's contract meta
+ *
+ * @namedParams
+ * @param {string} objectId - The NFT object ID
+ */
+  async ContentClearPolicy({ objectId }) {
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY,
+      update:true
+    });
+
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+
+    const editResponse = await this.client.EditContentObject({
+      libraryId,
+      objectId
+    });
+
+    await elvFabric.client.DeleteMetadata({libraryId, objectId, writeToken:editResponse.write_token,metadataSubtree:"/auth_policy"});
+    await this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken: editResponse.write_token
+    });
+
+    let deleteDelegateResp = await elvFabric.SetContractMeta({
+      address: objectId,
+      key: "_AUTH_CONTEXT",
+      value: ""
+    });
+
+    return {deleteDelegateResp};
   }
 
   /**

@@ -117,6 +117,33 @@ class ElvUtils {
     return row;
   }
 
+  static async parseAndSignPolicy({policyString, description="", data="", elvAccount}){
+    
+    let signer = (await elvAccount.Show())["userId"];
+
+    let auth_policy =  {
+      id:"",
+      description,
+      type:"epl-ast",
+      version:"1.0",
+      body: policyString,
+      data
+    };
+
+    let encoded = `${auth_policy.type}|${auth_policy.version}|${auth_policy.body}|${data}`;
+
+    let signature = await elvAccount.client.Sign(encoded);
+    auth_policy.signer = signer;
+    auth_policy.signature = signature;
+
+
+    let policyFormat = {
+      auth_policy
+    };
+
+    return policyFormat;
+  }
+
 }
 
 

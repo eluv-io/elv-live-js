@@ -51,9 +51,16 @@ class ElvFabric {
    * @param {object} meta Metadata tree to merge into the object
    */
   async setMeta({objectId, meta}) {
-    console.log("Set Meta", objectId, "meta", JSON.stringify(meta)); // PENDING debug log
+    if (this.debug){
+      console.log("Set Meta", objectId, "meta", JSON.stringify(meta));
+    }
 
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
+
+    if (this.debug){
+      console.log("Library ID Found ", libraryId);
+    }
+
     const editResponse = await this.client.EditContentObject({
       libraryId,
       objectId
@@ -75,7 +82,7 @@ class ElvFabric {
   }
 
   /**
-   * Set content metadata for an object
+   * Get content metadata for an object
    * @param {string} objectId
    */
   async getMeta({objectId, select, includeHash=false}) {
