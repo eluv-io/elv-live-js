@@ -1565,26 +1565,8 @@ class EluvioLive {
 
     let account = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
     account.InitWithClient({elvClient: this.client});
-    let signer = (await account.Show())["userId"];
 
-    let auth_policy =  {
-      id:"",
-      description:"",
-      type:"epl-ast",
-      version:"1.0",
-      body: policyString
-    };
-
-    let encoded = `${auth_policy.type}|${auth_policy.version}|${auth_policy.body}|`;
-
-    let signature = await this.client.Sign(encoded);
-    auth_policy.signer = signer;
-    auth_policy.signature = signature;
-
-
-    let policyFormat = {
-      auth_policy
-    };
+    let policyFormat = await ElvUtils.parseAndSignPolicy({policyString, configUrl:this.configUrl, elvAccount:account});
 
     if (this.debug){
       console.log("Policy Value To Set: ", policyFormat);
