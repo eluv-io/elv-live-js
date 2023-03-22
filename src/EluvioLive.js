@@ -72,6 +72,48 @@ class EluvioLive {
   }
 
   /**
+   * Set the Token URI for an NFT.
+   * Currently only setting one and a time. Will support types, single, batch and all.
+   *
+   * @namedParams
+   * @param {string} requestType - The type of request: single, batch, all
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} contractAddress - The NFT contract address
+   * @param {string} tokenURI - The new token URI
+   * @param {int} tokenId - The NFT token ID
+   * @param {string} host - The host to use for the request, undefined to use config
+   * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
+   */
+  async TenantSetTokenURI({ requestType, tenantId, contractAddress, tokenURI, tokenId, host }) {
+
+    let body = {
+      request_type: requestType || "single",  // single, all  TODO: batch -> load from CSV file and transform to our JSON request
+      tokens: [
+        {
+          'token_id': (requestType == "all") ? null : tokenId || null,
+          'token_id_str': (requestType == "all") ? "" : tokenId.toString() || "",
+          'contract_address': contractAddress,
+          'token_uri': tokenURI
+        }
+      ]
+    };
+
+    let res = await this.PostServiceRequest({
+      path: urljoin("/tnt/nft/stu", tenantId),  // /tnt/nft/stu/:tid/
+      body, 
+      host 
+    });
+
+    let tenantConfigResult = await res.json();
+
+    if (this.debug){
+      console.log("Create response: ", tenantConfigResult);
+    }
+    return tenantConfigResult;
+
+  }
+
+  /**
    * Show info about this tenant.
    * Currently only listing NFT marketplaces.
    *
