@@ -303,7 +303,10 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
   if (argv?.host) {
     console.log("host ", argv?.host);
   }
-  
+  if (argv?.csv) {
+    console.log("csv ", argv?.csv);
+  }
+
   try {
     await Init({debugLogging: argv.verbose});
 
@@ -314,6 +317,7 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
       tokenURI: argv.new_token_uri,
       tokenId: argv?.token_id,
       host: argv?.host,
+      csv: argv?.csv,
     });
 
     if (res) {
@@ -1986,7 +1990,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("new_token_uri", {
-          describe: "New token URI",
+          describe: "New token URI; may be empty string if batch / CSV",
           type: "string",
         })
         .option("token_id", {
@@ -1997,7 +2001,12 @@ yargs(hideBin(process.argv))
         .option("host", {
           describe: "Use this authority service url instead.",
           type: "string",
+        })
+        .option("csv", {
+          describe: "CSV file for batch request type",
+          type: "string",
         });
+
 
     },
     (argv) => {

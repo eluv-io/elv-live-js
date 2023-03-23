@@ -11,6 +11,7 @@ const BigNumber = require("big-number");
 var urljoin = require("url-join");
 const crypto = require("crypto");
 const ethers = require("ethers");
+const { parse } = require("csv-parse");
 
 /**
  * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
@@ -82,21 +83,41 @@ class EluvioLive {
    * @param {string} tokenURI - The new token URI
    * @param {int} tokenId - The NFT token ID
    * @param {string} host - The host to use for the request, undefined to use config
+   * @param {string} csv - The CSV file to use for the request, undefined to use config
    * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
-  async TenantSetTokenURI({ requestType, tenantId, contractAddress, tokenURI, tokenId, host }) {
+  async TenantSetTokenURI({ requestType, tenantId, contractAddress, tokenURI, tokenId, host, csv }) {
+    let body = {};
 
-    let body = {
-      request_type: requestType || "single",  // single, all  TODO: batch -> load from CSV file and transform to our JSON request
-      tokens: [
-        {
-          "token_id": (requestType == "all") ? null : tokenId || null,
+    body.request_type = requestType;
+    body.tokens = [];
+
+    if (requestType == "batch" && csv) {
+      // transform CSV to array for JSON request
+      const csvFile = fs.readFileSync(csv);
+      const records = parse(csvFile, {columns: true,
+        skip_records_with_empty_values: true});
+
+        // rows should be tentantId, contractAddress, tokenURI, tokenId
+        await records.forEach(row => {
+
+        body.tokens.push({
+          "token_id": Number(row.tokenId),
+          "token_id_str":  row.tokenId.toString(),
+          "contract_address": row.contractAddress,
+          "token_uri": row.tokenURI
+        });
+      });
+
+    } else if (requestType == "all" || requestType == "single") {
+
+      body.tokens.push({
+          "token_id": (requestType == "all") ? null : Number(tokenId) || null,
           "token_id_str": (requestType == "all") ? "" : tokenId.toString() || "",
           "contract_address": contractAddress,
           "token_uri": tokenURI
-        }
-      ]
-    };
+      });   
+    }
 
     let res = await this.PostServiceRequest({
       path: urljoin("/tnt/nft/stu", tenantId),  // /tnt/nft/stu/:tid/
