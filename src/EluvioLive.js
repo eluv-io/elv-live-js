@@ -93,13 +93,21 @@ class EluvioLive {
     body.tokens = [];
 
     if (requestType == "batch" && csv) {
-      // transform CSV to array for JSON request
-      const csvFile = fs.readFileSync(csv);
+      let csvFile;
+      try { 
+        // transform CSV to array for JSON request
+        csvFile = fs.readFileSync(path.resolve(__dirname, csv));
+
+      } catch (e) {
+        console.log("Error reading CSV file: ", e);
+        return;
+      }
+
       const records = parse(csvFile, {columns: true,
         skip_records_with_empty_values: true});
 
-        // rows should be tentantId, contractAddress, tokenURI, tokenId
-        await records.forEach(row => {
+      // rows should be tentantId, contractAddress, tokenURI, tokenId
+      await records.forEach(row => {
 
         body.tokens.push({
           "token_id": Number(row.tokenId),
@@ -112,10 +120,10 @@ class EluvioLive {
     } else if (requestType == "all" || requestType == "single") {
 
       body.tokens.push({
-          "token_id": (requestType == "all") ? null : Number(tokenId) || null,
-          "token_id_str": (requestType == "all") ? "" : tokenId.toString() || "",
-          "contract_address": contractAddress,
-          "token_uri": tokenURI
+        "token_id": (requestType == "all") ? null : Number(tokenId) || null,
+        "token_id_str": (requestType == "all") ? "" : tokenId.toString() || "",
+        "contract_address": contractAddress,
+        "token_uri": tokenURI
       });   
     }
 
