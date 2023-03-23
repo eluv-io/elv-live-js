@@ -1974,11 +1974,11 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]",
-    "Reset the token URI(s) for this NFT contract",
+    "Reset the token URI(s) for tenant NFT contract(s)",
     (yargs) => {
       yargs
         .positional("request_type", {
-          describe: "Request Type (single, all)",
+          describe: "Request Type (single, batch, all)",
           type: "string",
         })
         .positional("tenant", {
@@ -1990,13 +1990,13 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("new_token_uri", {
-          describe: "New token URI; may be empty string if batch / CSV",
+          describe: 'New token URI; ignored if CSV batch, use -',
           type: "string",
         })
         .option("token_id", {
           describe:
-            "Optional Token ID",
-          type: "integer",
+            "Optional Token ID; required for single request type",
+          type: "number",
         })
         .option("host", {
           describe: "Use this authority service url instead.",
