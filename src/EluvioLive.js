@@ -87,44 +87,59 @@ class EluvioLive {
    * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
    */
   async TenantSetTokenURI({ requestType, tenantId, contractAddress, tokenURI, tokenId, host, csv }) {
-    let body = {};
 
+    let body = {};
     body.request_type = requestType;
     body.tokens = [];
-
-    if (requestType == "batch" && csv) {
-      let csvFile;
-      try { 
+  
+    switch (requestType) {
+      case "batch":
+        if (!csv) {
+          console.log("Error: CSV file required for batch request");
+          return;
+        }
+        let csvFile;
+        try {
+          csvFile = fs.readFileSync(path.resolve(__dirname, csv));
+        } catch (e) {
+          console.log("Error reading CSV file: ", e);
+          return;
+        }
         // transform CSV to array for JSON request
-        csvFile = fs.readFileSync(path.resolve(__dirname, csv));
+        const records = parse(csvFile, {columns: true,
+          skip_records_with_empty_values: true});
 
-      } catch (e) {
-        console.log("Error reading CSV file: ", e);
-        return;
-      }
-
-      const records = parse(csvFile, {columns: true,
-        skip_records_with_empty_values: true});
-
-      // rows should be tentantId, contractAddress, tokenURI, tokenId
-      await records.forEach(row => {
-
-        body.tokens.push({
-          "token_id": Number(row.tokenId),
-          "token_id_str":  row.tokenId.toString(),
-          "contract_address": row.contractAddress,
-          "token_uri": row.tokenURI
+        // rows should be tentantId, contractAddress, tokenURI, tokenId
+        // tokenId should always exist
+        await records.forEach(row => {
+          body.tokens.push({
+            "token_id": Number(row.tokenId),
+            "token_id_str":  row.tokenId.toString(),
+            "contract_address": row.contractAddress,
+            "token_uri": row.tokenURI
+          });
         });
-      });
 
-    } else if (requestType == "all" || requestType == "single") {
-
-      body.tokens.push({
-        "token_id": (requestType == "all") ? null : Number(tokenId) || null,
-        "token_id_str": (requestType == "all") ? "" : tokenId.toString() || "",
-        "contract_address": contractAddress,
-        "token_uri": tokenURI
-      });   
+        break;
+      case "all":
+        body.tokens.push({
+          "token_id": null,
+          "token_id_str": "",
+          "contract_address": contractAddress,
+          "token_uri": tokenURI
+        });
+        break;
+      case "single":
+        body.tokens.push({
+          "token_id": tokenId,
+          "token_id_str": tokenId.toString(),
+          "contract_address": contractAddress,
+          "token_uri": tokenURI
+        });
+        break;
+      default:
+        console.log("Error: Invalid request type");
+        return;
     }
 
     let res = await this.PostServiceRequest({
@@ -134,7 +149,6 @@ class EluvioLive {
     });
 
     let tenantConfigResult = await res.json();
-
     if (this.debug){
       console.log("Create response: ", tenantConfigResult);
     }
