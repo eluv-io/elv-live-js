@@ -118,7 +118,7 @@ class ElvUtils {
   }
 
   static async parseAndSignPolicy({policyString, description="", data=null, elvAccount}){
-    
+
     let signer = (await elvAccount.Show())["userId"];
 
     let auth_policy =  {
@@ -133,15 +133,14 @@ class ElvUtils {
     let encoded = `${auth_policy.type}|${auth_policy.version}|${auth_policy.body}|`;
 
     if (data != null) {
-      let link  = {"/": "./" + path.join("meta",data)};
-      auth_policy["data"] = link;
-      encoded = encoded + `${data}`;
+      let link  = "./" + path.join("meta",data);
+      auth_policy["data"] = {"/" : link};
+      encoded = encoded + `${link}`;
     }
 
     let signature = await elvAccount.client.Sign(encoded);
     auth_policy.signer = signer;
     auth_policy.signature = signature;
-
 
     let policyFormat = {
       auth_policy
