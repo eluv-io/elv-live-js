@@ -102,6 +102,8 @@ Batch:
 PRIVATE_KEY=0x00...ZZZ ./elv-live tenant_set_token_uri batch itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca - --host http://127.0.0.1:6546 --csv ../test/testdata/settokenuri_testlist.csv
 ```
 
+[Sample Batch CSV file](test/testdata/settokenuri_testlist.csv)
+
 All:
 ```
 PRIVATE_KEY=0x00...ZZZ ./elv-live tenant_set_token_uri all itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft --host http://127.0.0.1:6546
