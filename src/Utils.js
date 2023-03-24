@@ -133,8 +133,8 @@ class ElvUtils {
     let encoded = `${auth_policy.type}|${auth_policy.version}|${auth_policy.body}|`;
 
     if (data != null) {
-      data = {"/": "./" + path.join("meta",data)};
-      auth_policy["data"] = data;
+      let link  = {"/": "./" + path.join("meta",data)};
+      auth_policy["data"] = link;
       encoded = encoded + `${data}`;
     }
 
