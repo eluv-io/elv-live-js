@@ -1,0 +1,197 @@
+name: Site Policy With Broadcaster Audience Rules
+type: ast
+expr:
+  rule: main
+rules:
+
+  # --- Site access rules ------------------------------------------------------
+
+  # !a or !b or !c  ==> not(a and b and c)
+  # !a and !b and !c  ==> not(a or b or c)
+
+  # if isEntryPoint {
+  #   if ...
+  # } else {
+  #   return true
+  # }
+
+  #  (isEntryPoint and (....)) or (!isEntryPoint and (...))
+  #
+  #  main:
+  #    if:
+  #      condition:
+  #        and:
+  #          - true
+  #          - true
+  #      then:
+  #        - true
+  #      else: true
+
+  main:
+    and:
+      - rule: permittedTitles
+      - or:
+          - rule: publicContent
+          - rule: isContentDecrypt
+
+  permittedTitles:
+    in:
+      - env: call/resource_id
+      - - iq__XXX
+        - iq__YYY
+
+  isContentDecrypt:
+    and:
+      - in:
+          - env: api_call/action
+          - - q.read.part.read
+            - q.read.decrypt
+      - fn.ids.Equivalent:
+          - env: api_call/subject
+          - env: api_call/node_id
+
+  publicContent: # as if title was accessed with a "state-channel token" for the title
+    or:
+      - and:
+          - env: call/is_entry_point
+          - or:
+              - rule: isBcRead
+              - rule: isPublicMeta
+          - not:
+              or:
+                - rule: isEncryptedData
+                - rule: isCryptRead
+                - in:
+                    - env: api_call/action
+                    - - q.read.versions
+                      - q.read.decrypt
+      - not:
+          env: call/is_entry_point
+
+  isBcRead:
+    eq:
+      - env: api_call/action
+      - q.read.bccall
+  isPublicMeta:
+    and:
+      - eq:
+          - env: api_call/action
+          - q.read.meta
+      - or:
+          - fn.strings.StartsWith:
+              - env: api_call/meta_path
+              - /public
+          - not:
+              env: call/is_entry_point
+  isEncryptedData:
+    and:
+      - in:
+          - env: api_call/action
+          - - q.read.part.read
+            - q.read.files.read
+      - env: call/is_encrypted_data
+  isCryptRead:
+    and:
+      - in:
+          - env: api_call/action
+          - q.read.crypt
+      - env: call/is_entry_point
+      - eq:
+          - env: call/grant
+          - read-crypt
+
+  #	if ep.Action.isIn(Actions.QReadBcCall()) {
+  #		return nil
+  #	}
+  #	if ep.Action.isIn(Actions.QReadMeta()) && !pathIn(ep.MetaPath, publicQMetaPath) {
+  #		return e("reason", "illegal metadata path: "+ep.MetaPath)
+  #	}
+  #	if ep.Action.isIn(Actions.QReadPartRead(), Actions.QReadFilesRead()) &&
+  #		ep.isEncryptedData() {
+  #		return e("reason", "access to encrypted data")
+  #	}
+  #	if ep.Action.isIn(Actions.QReadVersions(), Actions.QReadDecrypt()) {
+  #		return e("reason", "invalid action "+ep.Action)
+  #	}
+  #	if ep.Action.isIn(Actions.QReadCrypt()) && ep.Grant != auth.Grants.ReadCrypt {
+  #		return e("reason", fmt.Sprintf("invalid action %s for grant %s", ep.Action, ep.Grant))
+  #	}
+
+  # --- Broadcaster audience rules -----------------------------------------------------
+
+  # action rules
+  broadcaster/policy/any.phone/blackout:
+    extra:
+      lastUpdated: 2016-10-21T15:04:40Z
+    rule: broadcaster/audience/any.phone
+    # action: urn:scte:224:action:blackout
+  broadcaster/policy/fl.all/blackout:
+    extra:
+      lastUpdated: 2016-10-21T15:04:40Z
+    rule: broadcaster/audience/fl.all
+    # action: urn:scte:224:action:blackout
+  broadcaster/policy/any.all/blackout:
+    extra:
+      lastUpdated: 2016-10-21T15:04:40Z
+    rule: broadcaster/audience/any.all
+    # action: urn:scte:224:action:blackout
+
+  # audience rules
+  broadcaster/audience/any.phone:
+    extra:
+      description: Users anywhere and on a phone
+      lastUpdated: 2016-10-21T15:04:40Z
+    and:
+      - rule: "broadcaster/audience/location/any"
+      - rule: "broadcaster/audience/device/phone"
+  broadcaster/audience/fl.all:
+    extra:
+      description: Users in florida
+      lastUpdated: 2016-10-21T15:04:40Z
+    and:
+      - rule: "broadcaster/audience/location/fl"
+      - rule: "broadcaster/audience/device/all"
+  broadcaster/audience/any.all:
+    extra:
+      description: Users anywhere and on all devices
+      lastUpdated: 2016-10-21T15:04:40Z
+    and:
+      - rule: broadcaster/audience/location/any
+      - rule: broadcaster/audience/device/all
+
+  # location rules
+  broadcaster/audience/location/any:
+    extra:
+      description: No geo restrictions
+      lastUpdated: 2016-10-21T15:04:40Z
+    and:
+      - true
+  broadcaster/audience/location/fl:
+    extra:
+      description: Audience in Florida
+      lastUpdated: 2016-10-21T15:04:40Z
+    or:
+      - in:
+          - env: token/ctx/usr/location
+          - - "32003"
+            - "32004"
+
+  # device rules
+  broadcaster/audience/device/phone:
+    extra:
+      description: Audience using phones
+      lastUpdated: 2016-10-21T15:04:40Z
+    equal:
+      - env: token/ctx/usr/device
+      - Phone
+  broadcaster/audience/device/all:
+    extra:
+      description: Audience using any device
+      lastUpdated: 2016-10-21T15:04:40Z
+    and:
+      - true
+
+  # --- Extra test rules -----------------------------------------------------
+
+  testEvalContextFunctionRule:
+    func: testCtxFunction

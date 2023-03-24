@@ -117,6 +117,45 @@ class ElvUtils {
     return row;
   }
 
+  static async parseAndSignPolicy({policyString, description="", data=null, elvAccount}){
+
+    let signer = (await elvAccount.Show())["userId"];
+
+    let auth_policy =  {
+      id:"",
+      description,
+      type:"epl-ast",
+      version:"1.0",
+      body: policyString,
+      data
+    };
+
+    let encoded = `${auth_policy.type}|${auth_policy.version}|${auth_policy.body}|`;
+
+    if (data != null) {
+      let link  = "./" + path.join("meta",data);
+      auth_policy["data"] = {"/" : link};
+      encoded = encoded + `${link}`;
+    }
+
+    let signature = await elvAccount.client.Sign(encoded);
+    auth_policy.signer = signer;
+    auth_policy.signature = signature;
+
+    let policyFormat = {
+      auth_policy
+    };
+
+    return policyFormat;
+  }
+
+  static isTransactionSuccess(tx){
+    if (tx.logs && tx.logs.length != 0){
+      return true;
+    }
+    return false;
+  }
+
 }
 
 

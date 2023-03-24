@@ -12,7 +12,7 @@ class ElvAccount {
    * @namedParams
    * @param {string} configUrl - The Content Fabric configuration URL
    * @param {string} mainObjectId - The top-level Eluvio Live object ID
-   * @return {ElvSpace} - New ElvSpace object connected to the specified content fabric and blockchain
+   * @return {ElvSpace} - New ElvAccount object connected to the specified content fabric and blockchain
    */
   constructor({ configUrl, debugLogging = false }) {
     this.configUrl = configUrl;
