@@ -109,13 +109,13 @@ class EluvioLive {
         const records = parse(csvFile, {columns: true,
           skip_records_with_empty_values: true});
 
-        // rows should be tenantId, contractAddress, tokenURI, tokenId
+        // rows should be tokenURI, tokenId
         // tokenId should always exist
         await records.forEach(row => {
           body.tokens.push({
             "token_id": Number(row.tokenId),
             "token_id_str":  row.tokenId.toString(),
-            "contract_address": row.contractAddress,
+            "contract_address": contractAddress,
             "token_uri": row.tokenURI
           });
         });
