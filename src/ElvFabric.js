@@ -49,8 +49,9 @@ class ElvFabric {
    * Set content metadata for an object
    * @param {string} objectId
    * @param {object} meta Metadata tree to merge into the object
+   * @param {boolean} merge Merge == true will merge instead of replace
    */
-  async setMeta({objectId, meta}) {
+  async setMeta({objectId, meta, merge=false}) {
     if (this.debug){
       console.log("Set Meta", objectId, "meta", JSON.stringify(meta));
     }
@@ -66,13 +67,23 @@ class ElvFabric {
       objectId
     });
 
-    await this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken: editResponse.write_token,
-      metadata: meta,
-      metadataSubtree: "/"
-    });
+    if (!merge) {
+      await this.client.ReplaceMetadata({
+        libraryId,
+        objectId,
+        writeToken: editResponse.write_token,
+        metadata: meta,
+        metadataSubtree: "/"
+      });
+    } else {
+      await this.client.MergeMetadata({
+        libraryId,
+        objectId,
+        writeToken: editResponse.write_token,
+        metadata: meta,
+        metadataSubtree: "/"
+      });
+    }
 
     await this.client.FinalizeContentObject({
       libraryId,

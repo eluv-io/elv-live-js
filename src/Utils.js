@@ -117,7 +117,7 @@ class ElvUtils {
     return row;
   }
 
-  static async parseAndSignPolicy({policyString, description="", data="", elvAccount}){
+  static async parseAndSignPolicy({policyString, description="", data=null, elvAccount}){
     
     let signer = (await elvAccount.Show())["userId"];
 
@@ -130,7 +130,13 @@ class ElvUtils {
       data
     };
 
-    let encoded = `${auth_policy.type}|${auth_policy.version}|${auth_policy.body}|${data}`;
+    let encoded = `${auth_policy.type}|${auth_policy.version}|${auth_policy.body}|`;
+
+    if (data != null) {
+      data = {"/": "./" + path.join("meta",data)};
+      auth_policy["data"] = data;
+      encoded = encoded + `${data}`;
+    }
 
     let signature = await elvAccount.client.Sign(encoded);
     auth_policy.signer = signer;
@@ -142,6 +148,13 @@ class ElvUtils {
     };
 
     return policyFormat;
+  }
+
+  static isTransactionSuccess(tx){
+    if (tx.logs && tx.logs.length != 0){
+      return true;
+    }
+    return false;
   }
 
 }

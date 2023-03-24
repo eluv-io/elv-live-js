@@ -1154,7 +1154,7 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
       clearAddresses: argv.clear
     });
 
-    console.log("\n" + yaml.dump(res));
+    console.log("Success!");
   } catch (e) {
     console.error("ERROR:", argv.verbose ? e : e.message);
   }
@@ -1480,7 +1480,12 @@ const CmdContentSetPolicy  = async ({ argv }) => {
       data: argv.data
     });
 
-    console.log("\n" + yaml.dump(res));
+    if (ElvUtils.isTransactionSuccess(res)){
+      console.log("Success!");
+    } else {
+      console.log("Transaction Error: ", yaml.dump(res));
+    }
+
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1500,7 +1505,11 @@ const CmdContentSetPolicyDelegate  = async ({ argv }) => {
       delegateId: argv.delegate
     });
 
-    console.log("\n" + yaml.dump(res));
+    if (ElvUtils.isTransactionSuccess(res)){
+      console.log("Success!");
+    } else {
+      console.log("Transaction Error: ", yaml.dump(res));
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1534,7 +1543,11 @@ const CmdContentClearPolicy = async ({ argv }) => {
       objectId: argv.object
     });
 
-    console.log("\n" + yaml.dump(res));
+    if (ElvUtils.isTransactionSuccess(res)){
+      console.log("Success!");
+    } else {
+      console.log("Transaction Error: ", yaml.dump(res));
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }

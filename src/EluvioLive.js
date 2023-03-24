@@ -1527,6 +1527,7 @@ class EluvioLive {
 
   /**
    * Sets the nft policy and permissions for a given object
+   * throws error if something goes wrong.
    *
    * @namedParams
    * @param {string} objectId - The NFT object ID
@@ -1578,8 +1579,12 @@ class EluvioLive {
       value: JSON.stringify(policyFormat)
     });
 
+    if (!ElvUtils.isTransactionSuccess(res)) {
+      throw res;
+    }
+
     if (!clearAddresses && addresses.length == 0) {
-      return {policyResponse: res};
+      return;
     }
 
     if (clearAddresses){
@@ -1603,8 +1608,10 @@ class EluvioLive {
     if (this.debug){
       console.log("Set Policy response: ", res);
     }
-    return {policyResponse: res, permissionsResponse: res2};
 
+    if (!ElvUtils.isTransactionSuccess(res)) {
+      throw res2;
+    }
   }
 
   /**
@@ -1703,7 +1710,7 @@ class EluvioLive {
     }
 
     // Set policy in object metadata
-    await elvFabric.setMeta({objectId,meta:policyFormat});
+    await elvFabric.setMeta({objectId,meta:policyFormat, merge:true});
 
     let contractResp = await this.ContentSetPolicyDelegate({objectId,delegateId:objectId});
     return contractResp;
@@ -1803,7 +1810,7 @@ class EluvioLive {
       value: ""
     });
 
-    return {deleteDelegateResp};
+    return deleteDelegateResp;
   }
 
   /**
