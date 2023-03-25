@@ -90,6 +90,7 @@ class EluvioLive {
 
     let body = {};
     body.request_type = requestType;
+    body.contract_address = contractAddress;
     body.tokens = [];
   
     switch (requestType) {
@@ -115,7 +116,6 @@ class EluvioLive {
           body.tokens.push({
             "token_id": Number(row.tokenId),
             "token_id_str":  row.tokenId.toString(),
-            "contract_address": contractAddress,
             "token_uri": row.tokenURI
           });
         });
@@ -125,7 +125,6 @@ class EluvioLive {
         body.tokens.push({
           "token_id": null,
           "token_id_str": "",
-          "contract_address": contractAddress,
           "token_uri": tokenURI
         });
         break;
@@ -133,7 +132,6 @@ class EluvioLive {
         body.tokens.push({
           "token_id": tokenId,
           "token_id_str": tokenId.toString(),
-          "contract_address": contractAddress,
           "token_uri": tokenURI
         });
         break;
