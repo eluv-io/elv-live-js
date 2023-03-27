@@ -35,10 +35,19 @@ class EluvioLive {
     this.debug = false;
   }
 
-  async Init({debugLogging = false}={}) {
+  async Init({debugLogging = false, asUrl}={}) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
+
+    if (asUrl) {
+      this.client.SetNodes({
+        authServiceURIs:[
+          asUrl
+        ]
+      });
+    }
+
     let wallet = this.client.GenerateWallet();
     let signer = wallet.AddAccount({
       privateKey: process.env.PRIVATE_KEY,

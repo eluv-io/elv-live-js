@@ -30,7 +30,7 @@ process.emit = function (name, data, ...args) {
 let elvlv;
 let marketplace;
 
-const Init = async ({debugLogging = false}={}) => {
+const Init = async ({debugLogging = false, asUrl}={}) => {
   console.log("Network: " + Config.net);
 
   const config = {
@@ -38,7 +38,7 @@ const Init = async ({debugLogging = false}={}) => {
     mainObjectId: Config.mainObjects[Config.net],
   };
   elvlv = new EluvioLive(config);
-  await elvlv.Init({ debugLogging });
+  await elvlv.Init({ debugLogging, asUrl });
 
   marketplace = new Marketplace(config);
   await marketplace.Init({ debugLogging });
@@ -520,9 +520,10 @@ const CmdTenantPrimarySales = async ({ argv }) => {
   );
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
+  console.log("All argv", argv);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantPrimarySales({
       tenant: argv.tenant,
@@ -1561,6 +1562,10 @@ yargs(hideBin(process.argv))
   })
   .option("host", {
     describe: "Alternate URL endpoint",
+    type: "string"
+  })
+  .option("as_url", {
+    describe: "Alternate authority service URL (include '/as/' route if necessary)",
     type: "string"
   })
   .command(
