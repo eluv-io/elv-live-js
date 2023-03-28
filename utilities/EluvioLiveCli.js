@@ -520,7 +520,6 @@ const CmdTenantPrimarySales = async ({ argv }) => {
   );
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
-  console.log("All argv", argv);
 
   try {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
