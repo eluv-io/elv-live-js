@@ -30,7 +30,7 @@ process.emit = function (name, data, ...args) {
 let elvlv;
 let marketplace;
 
-const Init = async ({debugLogging = false}={}) => {
+const Init = async ({debugLogging = false, asUrl}={}) => {
   console.log("Network: " + Config.net);
 
   const config = {
@@ -38,7 +38,7 @@ const Init = async ({debugLogging = false}={}) => {
     mainObjectId: Config.mainObjects[Config.net],
   };
   elvlv = new EluvioLive(config);
-  await elvlv.Init({ debugLogging });
+  await elvlv.Init({ debugLogging, asUrl });
 
   marketplace = new Marketplace(config);
   await marketplace.Init({ debugLogging });
@@ -563,7 +563,7 @@ const CmdTenantPrimarySales = async ({ argv }) => {
   console.log(`CSV: ${argv.csv}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantPrimarySales({
       tenant: argv.tenant,
@@ -1195,7 +1195,7 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
       clearAddresses: argv.clear
     });
 
-    console.log("\n" + yaml.dump(res));
+    console.log("Success!");
   } catch (e) {
     console.error("ERROR:", argv.verbose ? e : e.message);
   }
@@ -1506,6 +1506,94 @@ const CmdTokenCreate = async ({ argv }) => {
   }
 };
 
+const CmdContentSetPolicy  = async ({ argv }) => {
+  console.log("Content Set Policy");
+  console.log(`Object: ${argv.object}`);
+  console.log(`Policy Path: ${argv.policy_path}`);
+  console.log(`Data: ${argv.data}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.ContentSetPolicy({
+      objectId: argv.object,
+      policyPath: argv.policy_path,
+      data: argv.data
+    });
+
+    if (ElvUtils.isTransactionSuccess(res)){
+      console.log("Success!");
+    } else {
+      console.log("Transaction Error: ", yaml.dump(res));
+    }
+
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdContentSetPolicyDelegate  = async ({ argv }) => {
+  console.log("Content Set Policy Delegate");
+  console.log(`Object: ${argv.object}`);
+  console.log(`Policy Path: ${argv.delegate}`);
+  console.log(`Data: ${argv.data}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.ContentSetPolicyDelegate({
+      objectId: argv.object,
+      delegateId: argv.delegate
+    });
+
+    if (ElvUtils.isTransactionSuccess(res)){
+      console.log("Success!");
+    } else {
+      console.log("Transaction Error: ", yaml.dump(res));
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdContentGetPolicy  = async ({ argv }) => {
+  console.log("Content Get Policy");
+  console.log(`Object: ${argv.object}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.ContentGetPolicy({
+      objectId: argv.object
+    });
+
+    console.log("\n" + yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdContentClearPolicy = async ({ argv }) => {
+  console.log("Content Clear Policy");
+  console.log(`Object: ${argv.object}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose });
+
+    res = await elvlv.ContentClearPolicy({
+      objectId: argv.object
+    });
+
+    if (ElvUtils.isTransactionSuccess(res)){
+      console.log("Success!");
+    } else {
+      console.log("Transaction Error: ", yaml.dump(res));
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -1514,6 +1602,10 @@ yargs(hideBin(process.argv))
   })
   .option("host", {
     describe: "Alternate URL endpoint",
+    type: "string"
+  })
+  .option("as_url", {
+    describe: "Alternate authority service URL (include '/as/' route if necessary)",
     type: "string"
   })
   .command(
@@ -2662,8 +2754,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_set_policy_permissions <object> <policy_path> [addrs..]",
-    "Sets the policy and permissions granting NFT owners access to a content object.",
+    "nft_set_policy_permissions <object> <policy_path> <addrs..>",
+    "Sets the policy and permissions granting NFT owners access to a content object. When no addresses are specified, only the policy is set.",
     (yargs) => {
       yargs
         .positional("object", {
@@ -2674,15 +2766,15 @@ yargs(hideBin(process.argv))
           describe: "Path of policy object file",
           type: "string",
         })
+        .positional("addrs", {
+          describe:
+            "List of space separated NFT contract addresses to set. Calling multiple times with a new list will replace the existing.",
+          type: "string",
+        })
         .option("clear", {
           describe: "clear the nft owners",
           type: "boolean",
           default: false
-        })
-        .option("addrs", {
-          describe:
-            "Addresses to add",
-          type: "string",
         });
     },
     (argv) => {
@@ -3006,6 +3098,78 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTokenCreate({ argv });
+    }
+  )
+
+  .command(
+    "content_set_policy <object> <policy_path> [data]",
+    "Set the policy on an existing content object. This also sets the delegate on the object contract to itself.",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object",
+          type: "string",
+        })
+        .positional("policy_path", {
+          describe: "Path to the content object policy file (eg. policy.yaml)",
+          type: "string",
+        })
+        .option("data", {
+          describe: "Metadata path within the policy object to link to",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContentSetPolicy({ argv });
+    }
+  )
+
+  .command(
+    "content_set_policy_delegate <object> <delegate>",
+    "Set the policy delegate on the object contract.",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object",
+          type: "string",
+        })
+        .positional("delegate", {
+          describe: "ID of the content object policy delegate",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContentSetPolicyDelegate({ argv });
+    }
+  )
+
+  .command(
+    "content_get_policy <object>",
+    "Get the content object policy from the object metadata and the delegate from the object's contract meta",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContentGetPolicy({ argv });
+    }
+  )
+
+  .command(
+    "content_clear_policy <object>",
+    "Remove content object policy from the object metadata and the delegate from the object's contract meta",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdContentClearPolicy({ argv });
     }
   )
 
