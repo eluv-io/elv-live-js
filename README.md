@@ -24,68 +24,7 @@ EluvioLive CLI
 Usage: elv-live <command>
 
 Commands:
-  nft_add_contract <library> <object>       Add a new or existing NFT contract
-  <tenant> [minthelper] [cap] [name]        to an NFT Template object
-  [symbol] [nftaddr] [hold]
-  nft_add_minter <addr> <minter>            Add a new or existing NFT contract
-                                            to an NFT Template object
-  nft_set_proxy <addr> [proxy_addr]         Set a proxy on an NFT contract
-  nft_balance_of <addr> <owner>             Call NFT ownerOf - determine if this
-                                            is an owner
-  nft_show <addr>                           Show info on this NFT
-  nft_proxy_transfer <addr> <token_id>      Tranfer NFT as a proxy owner
-  <from_addr> <to_addr>
-  nft_build <library> <object> [options]    Build the public/nft section based
-                                            on asset metadata. If --nft_dir is
-                                            specified, will build a generative
-                                            nft based on *.json files inside the
-                                            dir. See README.md for more details.
-  nft_lookup <addr> <token_id>              Decode and look up a local NFT by
-                                            external token ID
-  tenant_show <tenant> [options]            Show info on this tenant
-  tenant_balance_of <tenant> <owner>        Show NFTs owned by this owner in
-                                            this tenant using contracts.
-  fabric_tenant_balance_of <object>         Show NFTs owned by this owner in
-  <owner> [options]                         this tenant by using the Fabric
-                                            EluvioLive object tree.
-  site_show <library> <object>              Show info on this site/event
-  site_set_drop <library> <object> <uuid>   Set drop dates for a site/event
-  <start_date> [options]
-  shuffle <file> [options]                  Sort each line deterministically
-                                            based on the seed
-  tenant_mint <tenant> <marketplace> <sku>  Mint a marketplace NFT by SKU as
-  <addr>                                    tenant admin
-  tenant_wallets <tenant> [options]         Show the wallets associated with
-                                            this tenant
-  list [options]                            List the Eluvio Live Tenants
-  tenant_primary_sales <tenant>             Show tenant primary sales history
-  <marketplace> <processor>
-  tenant_secondary_sales <tenant>           Show tenant secondary sales history
-  <processor>
-  account_create <funds> <account_name>     Create a new account -> mnemonic,
-  <tenant_admins>                           address, private key
-  account_show                              Shows current account information.
-  tenant_nft_remove <tenant> <addr>         Removes the nft address from the
-                                            tenant contract
-  tenant_nft_list <tenant>                  List all tenant_nfts within a tenant
-                                            contract
-  tenant_has_nft <tenant> <addr>            Searches tenant_nfts list in tenant
-                                            contract and returns true if exists
-  marketplace_add_item <marketplace>        Adds an item to a marketplace
-  <object> <price> [forSale]
-  marketplace_add_item_batch <marketplace>  Adds multiple items to a 
-  <csv>                                     marketplace
-  
-  marketplace_remove_item <marketplace>     Removes an item from a marketplace
-  <object>
-  storefront_section_add_item               Adds an item to a marketplace
-  <marketplace> <sku> [section]             storefront section
-  storefront_section_remove_item            Removes an item from a marketplace
-  <marketplace> <sku> [writeToken]          storefront section
-
-Options:
-  --version  Show version number                                       [boolean]
-  --help     Show help                                                 [boolean]
+  ...
 ```
 # Usage Examples
 
