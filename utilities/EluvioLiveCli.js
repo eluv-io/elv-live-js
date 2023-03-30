@@ -404,13 +404,12 @@ const CmdTenantTicketsGenerate = async ({ argv }) => {
   );
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantTicketsGenerate({
       tenant: argv.tenant,
       otp: argv.otp,
-      quantity: argv.quantity,
-      host: argv.host
+      quantity: argv.quantity
     });
 
     console.log("Tickets: ", res);
@@ -1166,14 +1165,13 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
 const CmdTenantGetMinter = async ({ argv }) => {
   console.log("Tenant Minter Get Config");
   console.log(`TenantId: ${argv.tenant}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.TenantGetMinterConfig({
-      tenant: argv.tenant,
-      host: argv.host
+      tenant: argv.tenant
     });
 
     console.log("\n" + yaml.dump(res));
@@ -1205,14 +1203,12 @@ const CmdNotifSend = async ({ argv }) => {
 
 const CmdAdminHealth = async ({ argv }) => {
   console.log("Admin Health");
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
-    res = await elvlv.AdminHealth({
-      host: argv.host,
-    });
+    res = await elvlv.AdminHealth();
 
     console.log("\n" + yaml.dump(res));
   } catch (e) {
@@ -1223,15 +1219,14 @@ const CmdAdminHealth = async ({ argv }) => {
 const CmdTenantCreateMinter = async ({ argv }) => {
   console.log("Tenant Minter Create Config");
   console.log(`TenantId: ${argv.tenant}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
   console.log(`Funds: ${argv.funds}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.TenantCreateMinterConfig({
       tenant: argv.tenant,
-      host: argv.host,
       funds: argv.funds,
       deploy: argv.deploy
     });
@@ -1245,7 +1240,7 @@ const CmdTenantCreateMinter = async ({ argv }) => {
 const CmdTenantReplaceMinter = async ({ argv }) => {
   console.log("Tenant Minter Replace Config");
   console.log(`TenantId: ${argv.tenant}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
   console.log(`Proxy Owner: ${argv.proxy_owner}`);
   console.log(`Minter: ${argv.minter}`);
   console.log(`Mint helper: ${argv.mint_helper}`);
@@ -1253,11 +1248,10 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
   console.log(`Purge: ${argv.purge}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url});
 
     res = await elvlv.TenantReplaceMinterConfig({
       tenant: argv.tenant,
-      host: argv.host,
       proxyOwner: argv.proxy_owner,
       minter: argv.minter,
       mintHelper: argv.mint_helper,
@@ -1274,15 +1268,14 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
 const CmdTenantDeleteMinter = async ({ argv }) => {
   console.log("Tenant Delete Minter");
   console.log(`TenantId: ${argv.tenant}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
   console.log(`Force: ${argv.force}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.TenantDeleteMinterConfig({
       tenant: argv.tenant,
-      host: argv.host,
       force: argv.force
     });
 
@@ -1295,16 +1288,15 @@ const CmdTenantDeleteMinter = async ({ argv }) => {
 const CmdTenantDeployHelpers = async ({ argv }) => {
   console.log("Tenant Deploy Helper Contracts");
   console.log(`TenantId: ${argv.tenant}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
   console.log(`Proxy: ${argv.proxy}`);
   console.log(`Mint Helper: ${argv.mint_helper}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.TenantDeployHelperContracts({
       tenant: argv.tenant,
-      host: argv.host,
       proxy: argv.proxy,
       mintHelper: argv.mint_helper
     });
@@ -1320,15 +1312,14 @@ const CmdTenantPublishData  = async ({ argv }) => {
   console.log("Tenant Config Update");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Content Hash: ${argv.content_hash}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.TenantPublishData({
       tenant: argv.tenant,
-      contentHash: argv.content_hash,
-      host: argv.host
+      contentHash: argv.content_hash
     });
 
     console.log("\n" + yaml.dump(res));
@@ -1561,10 +1552,6 @@ yargs(hideBin(process.argv))
     describe: "Verbose mode",
     type: "boolean",
     alias: "v"
-  })
-  .option("host", {
-    describe: "Alternate URL endpoint",
-    type: "string"
   })
   .option("as_url", {
     describe: "Alternate authority service URL (include '/as/' route if necessary)",
@@ -2712,10 +2699,6 @@ yargs(hideBin(process.argv))
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
-        })
-        .option("host", {
-          describe: "Use this authority service url instead.",
-          type: "string",
         });
     },
     (argv) => {
@@ -2730,10 +2713,6 @@ yargs(hideBin(process.argv))
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
-          type: "string",
-        })
-        .option("host", {
-          describe: "Use this authority service url instead.",
           type: "string",
         })
         .option("funds", {
@@ -2757,10 +2736,6 @@ yargs(hideBin(process.argv))
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
-          type: "string",
-        })
-        .option("host", {
-          describe: "Use this authority service url instead.",
           type: "string",
         })
         .option("proxy_owner", {
@@ -2798,10 +2773,6 @@ yargs(hideBin(process.argv))
           describe: "Tenant ID",
           type: "string",
         })
-        .option("host", {
-          describe: "Use this authority service url instead.",
-          type: "string",
-        })
         .option("mint_helper", {
           describe: "Deploy mint helper contract.",
           type: "bool",
@@ -2825,10 +2796,6 @@ yargs(hideBin(process.argv))
           describe: "Tenant ID",
           type: "string",
         })
-        .option("host", {
-          describe: "Use this authority service url instead.",
-          type: "string",
-        })
         .option("force", {
           describe: "Attempt to delete all keys even on error",
           type: "boolean",
@@ -2850,10 +2817,6 @@ yargs(hideBin(process.argv))
         })
         .positional("content_hash", {
           describe: "Version hash of the new tenant Fabric object",
-          type: "string",
-        })
-        .option("host", {
-          describe: "Use this authority service url instead.",
           type: "string",
         });
     },
@@ -2929,10 +2892,6 @@ yargs(hideBin(process.argv))
     "Checks the health of the Authority Service APIs. Note the current key must be a system admin configured in the AuthD servers.",
     (yargs) => {
       yargs
-        .option("host", {
-          describe: "Use this authority service url instead of config.",
-          type: "string",
-        });
     },
     (argv) => {
       CmdAdminHealth({ argv });
