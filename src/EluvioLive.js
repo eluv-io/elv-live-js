@@ -2527,6 +2527,8 @@ class EluvioLive {
           host
         ]
       });
+    } else {
+      path = urljoin("/as", path);
     }
     res = await this.client.authClient.MakeAuthServiceRequest({
       method,
@@ -2574,6 +2576,8 @@ class EluvioLive {
           host
         ]
       });
+    } else {
+      path = urljoin("/as", path);
     }
 
     res = await this.client.authClient.MakeAuthServiceRequest({
