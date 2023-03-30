@@ -550,7 +550,7 @@ const CmdTenantSecondarySales = async ({ argv }) => {
   console.log(`CSV: ${argv.csv}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantSecondarySales({
       tenant: argv.tenant,
@@ -576,7 +576,7 @@ const CmdTenantUnifiedSales = async ({ argv }) => {
   console.log(`CSV: ${argv.csv}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantUnifiedSales({
       tenant: argv.tenant,
@@ -599,7 +599,7 @@ const CmdTenantTransferFailures = async ({ argv }) => {
   console.log(`Tenant Trasfer Failures: ${argv.tenant}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantTransferFailures({
       tenant: argv.tenant,
