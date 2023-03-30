@@ -516,8 +516,9 @@ const CmdList = async ({ argv }) => {
 
 const CmdTenantPrimarySales = async ({ argv }) => {
   console.log(
-    `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace} ${argv.processor}`
+    `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`
   );
+  console.log(`Processor: ${argv.processor}`);
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
 
@@ -543,12 +544,13 @@ const CmdTenantPrimarySales = async ({ argv }) => {
 };
 
 const CmdTenantSecondarySales = async ({ argv }) => {
-  console.log(`Tenant Secondary Sales: ${argv.tenant} ${argv.processor}`);
+  console.log(`Tenant Secondary Sales: ${argv.tenant}`);
+  console.log(`Processor: ${argv.processor}`);
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantSecondarySales({
       tenant: argv.tenant,
@@ -568,12 +570,13 @@ const CmdTenantSecondarySales = async ({ argv }) => {
 };
 
 const CmdTenantUnifiedSales = async ({ argv }) => {
-  console.log(`Tenant Unified Sales: ${argv.tenant} ${argv.processor}`);
+  console.log(`Tenant Unified Sales: ${argv.tenant}`);
+  console.log(`Processor: ${argv.processor}`);
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantUnifiedSales({
       tenant: argv.tenant,
@@ -596,7 +599,7 @@ const CmdTenantTransferFailures = async ({ argv }) => {
   console.log(`Tenant Trasfer Failures: ${argv.tenant}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantTransferFailures({
       tenant: argv.tenant,
@@ -2271,7 +2274,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_primary_sales <tenant> <marketplace> <processor>",
+    "tenant_primary_sales <tenant> <marketplace>",
     "Show tenant primary sales history",
     (yargs) => {
       yargs
@@ -2283,9 +2286,10 @@ yargs(hideBin(process.argv))
           describe: "Marketplace ID",
           type: "string",
         })
-        .positional("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+        .option("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
           type: "string",
+          default: "",
         })
         .option("csv", {
           describe: "File path to output csv",
@@ -2304,7 +2308,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_secondary_sales <tenant> <processor>",
+    "tenant_secondary_sales <tenant>",
     "Show tenant secondary sales history",
     (yargs) => {
       yargs
@@ -2312,9 +2316,10 @@ yargs(hideBin(process.argv))
           describe: "Tenant ID",
           type: "string",
         })
-        .positional("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+        .option("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
           type: "string",
+          default: "",
         })
         .option("csv", {
           describe: "File path to output csv",
@@ -2333,7 +2338,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_sales <tenant> <processor>",
+    "tenant_sales <tenant>",
     "Show tenant sales history",
     (yargs) => {
       yargs
@@ -2341,9 +2346,10 @@ yargs(hideBin(process.argv))
           describe: "Tenant ID",
           type: "string",
         })
-        .positional("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+        .option("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
           type: "string",
+          default: "",
         })
         .option("csv", {
           describe: "File path to output csv",

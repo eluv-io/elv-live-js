@@ -2773,8 +2773,8 @@ class EluvioLive {
     }
 
     let res = await this.GetServiceRequest({
-      path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
-      queryParams: { offset },
+      path: urljoin("/tnt/purchases/", tenant, marketplace),
+      queryParams: { offset, processor },
       headers,
     });
 
@@ -2797,8 +2797,8 @@ class EluvioLive {
     }
 
     let res = await this.GetServiceRequest({
-      path: urljoin("/tnt/payments/", tenant, processor),
-      queryParams: { offset },
+      path: urljoin("/tnt/payments/", tenant),
+      queryParams: { offset, processor },
       headers
     });
 
@@ -2821,8 +2821,8 @@ class EluvioLive {
     }
 
     let res = await this.GetServiceRequest({
-      path: urljoin("/tnt/report/", tenant, processor),
-      queryParams: { offset },
+      path: urljoin("/tnt/report/", tenant),
+      queryParams: { offset, processor },
       headers
     });
 
