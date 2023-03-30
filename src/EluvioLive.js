@@ -8,7 +8,9 @@ const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const BigNumber = require("big-number");
-var urljoin = require("url-join");
+const urljoin = require("url-join");
+const url = require('url');
+
 const crypto = require("crypto");
 const ethers = require("ethers");
 
@@ -41,11 +43,15 @@ class EluvioLive {
     });
 
     if (asUrl) {
+      // elv-client-js strips the path and only stores the host - save it here
+      this.asUrlPath = url.parse(asUrl).path;
       this.client.SetNodes({
         authServiceURIs:[
           asUrl
         ]
       });
+    } else {
+      this.asUrlPath = "as";
     }
 
     let wallet = this.client.GenerateWallet();
@@ -2483,23 +2489,23 @@ class EluvioLive {
     return { signature, multiSig };
   }
 
-  async PutServiceRequest({ path, body={}, headers = {}, queryParams={}, host, useFabricToken=false }) {
-    return await this.TenantAuthServiceRequest({path, method: "PUT", queryParams, body, headers, host, useFabricToken});
+  async PutServiceRequest({ path, body={}, headers = {}, queryParams={}, useFabricToken=false }) {
+    return await this.TenantAuthServiceRequest({path, method: "PUT", queryParams, body, headers, useFabricToken});
   }
 
-  async PostServiceRequest({ path, body={}, headers = {}, queryParams={}, host, useFabricToken=false }) {
-    return await this.TenantAuthServiceRequest({path, method: "POST", queryParams, body, headers, host, useFabricToken});
+  async PostServiceRequest({ path, body={}, headers = {}, queryParams={}, useFabricToken=false }) {
+    return await this.TenantAuthServiceRequest({path, method: "POST", queryParams, body, headers, useFabricToken});
   }
 
-  async GetServiceRequest({ path, queryParams={}, headers = {}, host}) {
-    return await this.TenantPathAuthServiceRequest({path, method:"GET", queryParams, headers, host});
+  async GetServiceRequest({ path, queryParams={}, headers = {}}) {
+    return await this.TenantPathAuthServiceRequest({path, method:"GET", queryParams, headers});
   }
 
-  async DeleteServiceRequest({ path, queryParams={}, headers = {}, host}) {
-    return await this.TenantPathAuthServiceRequest({path, method:"DELETE", queryParams, headers, host});
+  async DeleteServiceRequest({ path, queryParams={}, headers = {}}) {
+    return await this.TenantPathAuthServiceRequest({path, method:"DELETE", queryParams, headers});
   }
 
-  async TenantAuthServiceRequest({ path, method, queryParams={}, body={}, headers = {}, host, useFabricToken=false }) {
+  async TenantAuthServiceRequest({ path, method, queryParams={}, body={}, headers = {}, useFabricToken=false }) {
     if (!body) {
       body = {};
     }
@@ -2521,15 +2527,8 @@ class EluvioLive {
 
     let res;
 
-    if (host !== undefined) {
-      this.client.SetNodes({
-        authServiceURIs:[
-          host
-        ]
-      });
-    } else {
-      path = urljoin("/as", path);
-    }
+    path = urljoin(this.asUrlPath, path);
+
     res = await this.client.authClient.MakeAuthServiceRequest({
       method,
       path,
@@ -2553,7 +2552,7 @@ class EluvioLive {
    * @param {Object} headers - The headers
    * @return {Promise<Object>} - The API Response
    */
-  async TenantPathAuthServiceRequest({ path, method, queryParams={}, headers = {}, host}) {
+  async TenantPathAuthServiceRequest({ path, method, queryParams={}, headers = {}}) {
     let ts = Date.now();
     let params = { ts, ...queryParams };
     const paramString = new URLSearchParams(params).toString();
@@ -2570,15 +2569,7 @@ class EluvioLive {
 
     let res = {};
 
-    if (host !== undefined) {
-      this.client.SetNodes({
-        authServiceURIs:[
-          host
-        ]
-      });
-    } else {
-      path = urljoin("/as", path);
-    }
+    path = urljoin(this.asUrlPath, path);
 
     res = await this.client.authClient.MakeAuthServiceRequest({
       method,
@@ -3049,10 +3040,9 @@ class EluvioLive {
    * @param {string} host - Authority Service url (Optional)
    * @return {Promise<Object>} - The API Response for the adm/health api
    */
-  async AdminHealth({ host }) {
+  async AdminHealth() {
     let res = await this.GetServiceRequest({
-      path: "/adm/health",
-      host
+      path: "/adm/health"
     });
     return res.text();
   }
