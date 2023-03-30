@@ -2287,7 +2287,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio. Leave empty for all.",
+          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
           type: "string",
           default: "",
         })
@@ -2317,7 +2317,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio. Leave empty for all.",
+          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
           type: "string",
           default: "",
         })
@@ -2347,7 +2347,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio. Leave empty for all.",
+          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
           type: "string",
           default: "",
         })
