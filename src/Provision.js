@@ -210,21 +210,6 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   });
 
   await SetObjectPermissions(client, streamTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
-
-  const indexTypeId = await client.CreateContentType({
-    name: `${tenantName} - Index`,
-    metadata: {
-      ...typeMetadata,
-      show_indexer_settings:true,
-      public:{
-        "eluv.manageApp":"asset-manager",
-        name: `${tenantName} - Index`
-      }
-    }
-  });
-
-  await SetObjectPermissions(client, indexTypeId, tenantAdminGroupAddress, contentAdminGroupAddress, contentViewersGroupAddress);
-
   if (debug) {
     console.log("\nTenant Types:\n");
     console.log(`\t${tenantName} - Title: ${titleTypeId}`);
@@ -233,7 +218,6 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     console.log(`\t${tenantName} - Permissions: ${permissionsTypeId}`);
     console.log(`\t${tenantName} - Channel: ${channelTypeId}`);
     console.log(`\t${tenantName} - Live Stream: ${streamTypeId}`);
-    console.log(`\t${tenantName} - Index Type: ${indexTypeId}`);
   }
 
   let tenantTypes = {
@@ -242,8 +226,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     masterTypeId,
     permissionsTypeId,
     channelTypeId,
-    streamTypeId,
-    indexTypeId
+    streamTypeId
   };
 
   let liveTypeIds = {};
