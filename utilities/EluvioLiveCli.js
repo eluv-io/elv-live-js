@@ -56,7 +56,7 @@ const CmfNftTemplateAddNftContract = async ({ argv }) => {
     "\nVerbose ", argv.verbose
   );
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     await elvlv.NftTemplateAddNftContract({
       objectId: argv.object,
@@ -1256,6 +1256,8 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
       minter: argv.minter,
       mintHelper: argv.mint_helper,
       proxy: argv.proxy,
+      mintShuffleKey: argv.mint_shuffle_key,
+      legacyShuffleSeed: argv.legacy_shuffle_seed,
       purge: argv.purge
     });
 
@@ -2752,6 +2754,14 @@ yargs(hideBin(process.argv))
         })
         .option("proxy", {
           describe: "Replace the transfer proxy address (hex). The proxy owner must be the owner of this contract.",
+          type: "string",
+        })
+        .option("mint_shuffle_key", {
+          describe: "Replace the mint shuffle key (ikms).  The secret must be already stored in the Authority Service",
+          type: "string",
+        })
+        .option("legacy_shuffle_seed", {
+          describe: "Replace the legacy shuffle seed (use '0' to disable).",
           type: "string",
         })
         .option("purge", {
