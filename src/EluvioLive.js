@@ -9,7 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const BigNumber = require("big-number");
 const urljoin = require("url-join");
-const url = require('url');
+const url = require("url");
 
 const crypto = require("crypto");
 const ethers = require("ethers");
@@ -851,7 +851,10 @@ class EluvioLive {
     await this.TenantAddNft({ tenantId, nftAddr: c.contractAddress });
     console.log("- tenant_nfts added", tenantId);
 
-    return c.contractAddress;
+    return {
+      nftAddr: c.contractAddress,
+      mintShuffleKeyId: minterConfigResp.config.mint_shuffle_key_id
+    };
   }
 
   /**
@@ -1851,7 +1854,7 @@ class EluvioLive {
     totalSupply,
   }) {
 
-    const nftAddr = await this.CreateNftContract({
+    const nftInfo = await this.CreateNftContract({
       tenantId,
       totalSupply,
       collectionName,
@@ -1860,6 +1863,7 @@ class EluvioLive {
       contractUri,
     });
 
+    const nftAddr = nftInfo.nftAddr;
 
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
 
@@ -1873,6 +1877,7 @@ class EluvioLive {
     m.permissioned.mint_private.address = nftAddr;
     m.public.asset_metadata.nft.address = nftAddr;
     m.public.asset_metadata.nft.total_supply = totalSupply;
+    m.public.asset_metadata.mint.mint_shuffle_key_id = nftInfo.mintShuffleKeyId;
 
     var e = await this.client.EditContentObject({
       libraryId,
@@ -2980,11 +2985,19 @@ class EluvioLive {
    * @param {string} tenant - The Tenant ID
    * @return {Promise<Object>} - The API Response for the request
    */
-  async TenantReplaceMinterConfig({ tenant, host, proxyOwner, minter, mintHelper, proxy, purge=false}) {
+  async TenantReplaceMinterConfig({ tenant, host, proxyOwner, minter, mintHelper, proxy, mintShuffleKey, legacyShuffleSeed, purge=false}) {
     let res = await this.PutServiceRequest({
       path: urljoin("/tnt/config", tenant, "minter"),
       host,
-      queryParams: {proxyowner:proxyOwner,minter, mint_helper: mintHelper, proxy, purge}
+      queryParams: {
+        proxyowner:proxyOwner,
+        minter,
+        mint_helper: mintHelper,
+        proxy,
+        mint_shuffle_key: mintShuffleKey,
+        legacy_shuffle_seed: legacyShuffleSeed,
+        purge
+      }
     });
     return res.json();
   }
