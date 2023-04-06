@@ -9,7 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const BigNumber = require("big-number");
 const urljoin = require("url-join");
-const url = require('url');
+const url = require("url");
 
 const crypto = require("crypto");
 const ethers = require("ethers");

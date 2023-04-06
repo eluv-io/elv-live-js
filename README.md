@@ -36,6 +36,33 @@ export PRIVATE_KEY=0x11...11
 
 ## Tenant commands
 
+### Minter configuration
+
+For a new tenant - set up all required minter keys and helpers wiht one command:
+
+```
+./elv-live tenant_create_minter_config itenKGHd3iedqtA39krJUPkBTCNoTeX
+```
+
+To retrieve tenant minter configuration:
+
+```
+./elv-live tenant_get_minter_config itenKGHd3iedqtA39krJUPkBTCNoTeX
+
+```
+
+To replace one or more minter resources, first get minter configuration and call the 'replace' command passing in all the existing values that you don't want changed (or else they will be regenerated).
+
+For example to set the legacy_shuffle_seed and not change any of the other settings, pass in the existing values as options:
+
+```
+./elv-live tenant_replace_minter_config itenKGHd3iedqtA39krJUPkBTCNoTeX --minter ikms37TNyoqBKqjbAPS7HMv4gzvkJzTa --mint_helper 0x3AEA63e14e084A87Cf2588Fd0987e12db71f81C1 --proxy 0x41899355fE869c370ED92eaA9f791289c4Da9F9D --proxy_owner ikms4DgAcxHqMyv6pJYqdb8wqUrmUmLk --legacy_shuffle_seed 1000
+
+```
+
+
+### Marketplace info
+
 Show tenant-level marketplace information (including validation):
 
 ``` bash
