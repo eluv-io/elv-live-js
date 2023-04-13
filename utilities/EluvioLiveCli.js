@@ -2950,7 +2950,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "payment_release addr token_addr",
-    "Retrieve payment from payment splitter contract as a payee or for a payee using --payee flag.",
+    "Retrieve payment from payment splitter contract as a payee or for a payee using --payee flag",
     (yargs) => {
       yargs
         .positional("addr", {
