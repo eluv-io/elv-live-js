@@ -1402,11 +1402,13 @@ const CmdPaymentRelease = async ({ argv }) => {
     });
 
     res = await elvContract.PaymentRelease({
-      contractAddress: argv.addr,
-      tokenContractAddress: argv.token_addr
+      addr: argv.addr,
+      tokenContractAddress: argv.token_addr,
+      payeeAddress: argv.payee,
     });
 
     console.log("\n" + yaml.dump(await res));
+    console.log("Payment release successful.");
   } catch (e) {
     console.error("ERROR:", argv.verbose ? e : e.message);
   }
@@ -2948,7 +2950,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "payment_release addr token_addr",
-    "Retrieve payment from payment splitter contract as a payee",
+    "Retrieve payment from payment splitter contract as a payee or for a payee using --payee flag",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -2958,6 +2960,11 @@ yargs(hideBin(process.argv))
         .positional("token_addr", {
           describe: "Address of the ERC20 token contract (hex)",
           type: "string"
+        })
+        .option("payee", {
+          describe: "payee address",
+          type: "string",
+          default: "",
         });
     },
     (argv) => {
