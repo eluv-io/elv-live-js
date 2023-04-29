@@ -870,6 +870,7 @@ async function Run() {
   }
 }
 
+const useOldRunFunction = false;
 if (useOldRunFunction) {
   Run();
 }
