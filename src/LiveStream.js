@@ -3,22 +3,19 @@
  */
 
 const { ElvClient } = require("@eluvio/elv-client-js");
-const { Config } = require("./Config.js");
-
-const https = require("https");
 const got = require("got");
 
-const PRINT_DEBUG = true
+const PRINT_DEBUG = true;
 
-const streams = require('../liveconf.json');
-const channels = require('../channelsconf.json');
+const streams = require("../liveconf.json");
+const channels = require("../channelsconf.json");
 
 const MakeTxLessToken = async({client, libraryId, objectId, versionHash}) => {
   tok = await client.authClient.AuthorizationToken({libraryId, objectId,
 						    versionHash, channelAuth: false, noCache: true,
 						    noAuth: true});
   return tok;
-}
+};
 
 class EluvioLiveStream {
 
@@ -35,7 +32,7 @@ class EluvioLiveStream {
     this.debug = debugLogging;
   }
 
-  async Init({}={}) {
+  async Init() {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
@@ -58,7 +55,7 @@ class EluvioLiveStream {
     const conf = streams[name];
     if (conf == null) {
       console.log("Bad name: ", name);
-      return
+      return;
     }
 
     try {
@@ -85,12 +82,12 @@ class EluvioLiveStream {
    * - stalled
    * - terminated
    */
-  async Status({client, name, stopLro = false}) {
+  async Status({name, stopLro = false}) {
 
     const conf = streams[name];
     if (conf == null) {
       console.log("Bad name: ", name);
-      return
+      return;
     }
 
     let status = {name: name};
@@ -122,7 +119,7 @@ class EluvioLiveStream {
 
       // If a stream has never been started return state 'inactive'
       if (!edgeMeta.live_recording.recordings || !edgeMeta.live_recording.recordings.recording_sequence) {
-        status.state = 'inactive';
+        status.state = "inactive";
         return status;
       }
 
@@ -153,7 +150,7 @@ class EluvioLiveStream {
         libraryId: libraryId,
         objectId: conf.objectId,
         writeToken: edgeWriteToken,
-        call: 'live/status/' + tlro
+        call: "live/status/" + tlro
       });
 
       let state = "stopped";
@@ -171,12 +168,12 @@ class EluvioLiveStream {
       }
       status.state = state;
 
-      if ((state == 'running' || state == 'stalled' || state == 'starting') && stopLro) {
+      if ((state == "running" || state == "stalled" || state == "starting") && stopLro) {
         lroStopUrl = await this.client.FabricUrl({
-        libraryId: libraryId,
-        objectId: conf.objectId,
-        writeToken: edgeWriteToken,
-        call: 'live/stop/' + tlro
+          libraryId: libraryId,
+          objectId: conf.objectId,
+          writeToken: edgeWriteToken,
+          call: "live/stop/" + tlro
         });
 
         try {
@@ -188,13 +185,13 @@ class EluvioLiveStream {
       }
 
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
 
     return status;
   }
 
- /*
+  /*
   * StartSession creates a new edge write token
   */
   async StartSession ({name}) {
@@ -203,7 +200,7 @@ class EluvioLiveStream {
     const conf = streams[name];
     if (conf == null) {
       console.log("Bad name: ", name);
-      return
+      return;
     }
 
     let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
@@ -212,7 +209,7 @@ class EluvioLiveStream {
     let liveRecording = await this.client.ContentObjectMetadata({
       libraryId: libraryId,
       objectId: conf.objectId,
-      metadataSubtree: '/live_recording'
+      metadataSubtree: "/live_recording"
     });
 
     let fabURI = liveRecording.fabric_config.ingress_node_api;
@@ -223,9 +220,9 @@ class EluvioLiveStream {
     let response = await this.client.EditContentObject({
       libraryId: libraryId,
       objectId: conf.objectId
-    })
-    const edgeToken = response.write_token
-    console.log("Edge token:", edgeToken)
+    });
+    const edgeToken = response.write_token;
+    console.log("Edge token:", edgeToken);
 
     /*
     * Set the metadata, including the edge token.
@@ -233,10 +230,10 @@ class EluvioLiveStream {
     response = await this.client.EditContentObject({
       libraryId: libraryId,
       objectId: conf.objectId
-    })
-    let writeToken = response.write_token
+    });
+    let writeToken = response.write_token;
 
-    if (PRINT_DEBUG) console.log("MergeMetadata", libraryId, conf.objectId, writeToken)
+    if (PRINT_DEBUG) console.log("MergeMetadata", libraryId, conf.objectId, writeToken);
     await this.client.MergeMetadata({
       libraryId: libraryId,
       objectId: conf.objectId,
@@ -254,16 +251,16 @@ class EluvioLiveStream {
       }
     });
 
-    if (PRINT_DEBUG) console.log("FinalizeContentObject", libraryId, conf.objectId, writeToken)
+    if (PRINT_DEBUG) console.log("FinalizeContentObject", libraryId, conf.objectId, writeToken);
     response = await this.client.FinalizeContentObject({
       libraryId: libraryId,
       objectId: conf.objectId,
       writeToken: writeToken
-    })
-    const objectHash = response.hash
+    });
+    const objectHash = response.hash;
     console.log("Object hash:", objectHash);
 
-    if (PRINT_DEBUG) console.log("AuthorizationToken", libraryId, conf.objectId)
+    if (PRINT_DEBUG) console.log("AuthorizationToken", libraryId, conf.objectId);
     response = await this.client.authClient.AuthorizationToken({
       libraryId: libraryId,
       objectId: conf.objectId,
@@ -273,35 +270,35 @@ class EluvioLiveStream {
       update: true,
     });
 
-    const curlCmd = "curl -s -H \"$AUTH_HEADER\" "
-    const fabLibHashURI = fabURI + "/qlibs/" + libraryId + "/q/" + objectHash
-    const fabLibTokenURI = fabURI + "/qlibs/" + libraryId + "/q/" + edgeToken
+    const curlCmd = "curl -s -H \"$AUTH_HEADER\" ";
+    const fabLibHashURI = fabURI + "/qlibs/" + libraryId + "/q/" + objectHash;
+    const fabLibTokenURI = fabURI + "/qlibs/" + libraryId + "/q/" + edgeToken;
 
     console.log("\nSet Authorization header:\nexport AUTH_HEADER=\"" +
-      "Authorization: Bearer " + response + "\"")
+      "Authorization: Bearer " + response + "\"");
 
     console.log("\nInspect metadata:\n" +
-      curlCmd + fabLibHashURI + "/meta | jq")
+      curlCmd + fabLibHashURI + "/meta | jq");
 
     console.log("\nInspect edge metadata:\n" +
-      curlCmd + fabLibTokenURI + "/meta | jq")
+      curlCmd + fabLibTokenURI + "/meta | jq");
 
     console.log("\nStart recording (returns HANDLE):\n" +
-      curlCmd + fabLibTokenURI + "/call/live/start | jq")
+      curlCmd + fabLibTokenURI + "/call/live/start | jq");
 
     console.log("\nStop recording (use HANDLE from start):\n" +
-      curlCmd + fabLibTokenURI + "/call/live/stop/HANDLE")
+      curlCmd + fabLibTokenURI + "/call/live/stop/HANDLE");
 
     console.log("\nPlayout options:\n" +
-      curlCmd + fabLibHashURI + "/rep/live/default/options.json | jq")
+      curlCmd + fabLibHashURI + "/rep/live/default/options.json | jq");
 
     console.log("\nHLS playlist:\n" +
-      fabLibHashURI + "/rep/live/default/hls-sample-aes/playlist.m3u8?authorization=" + response)
+      fabLibHashURI + "/rep/live/default/hls-sample-aes/playlist.m3u8?authorization=" + response);
 
   }
 
 
- /*
+  /*
   * Start, stop or reset a stream within the current session (current edge write token)
   * The 'op' parameter can be:
   * - 'start'
@@ -318,7 +315,7 @@ class EluvioLiveStream {
       let status = await this.Status({name});
       console.log("STATUS: ", status);
 
-      if (status.state != 'terminated' && status.state != 'inactive') {
+      if (status.state != "terminated" && status.state != "inactive") {
         if (op == "start") {
           return status;
         }
@@ -338,10 +335,10 @@ class EluvioLiveStream {
 
         // Wait until LRO is terminated
         let tries = 10;
-        while (status.state != 'terminated' && tries-- > 0) {
+        while (status.state != "terminated" && tries-- > 0) {
           console.log("Wait to terminate - ", status.state);
           await sleep(1000);
-            status = await this.Status({name});
+          status = await this.Status({name});
         }
         console.log("Status after terminate - ", status.state);
 
@@ -370,7 +367,7 @@ class EluvioLiveStream {
 
       // Wait until LRO is 'starting'
       let tries = 10;
-      while (status.state != 'starting' && tries-- > 0) {
+      while (status.state != "starting" && tries-- > 0) {
         console.log("Wait to start - ", status.state);
         await sleep(1000);
         status = await this.Status({name});
@@ -380,7 +377,7 @@ class EluvioLiveStream {
       return status;
 
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
   }
 
@@ -396,7 +393,7 @@ class EluvioLiveStream {
       const conf = streams[name];
       if (conf == null) {
         console.log("Bad name: ", name);
-        return
+        return;
       }
 
       let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
@@ -419,7 +416,7 @@ class EluvioLiveStream {
 
       // Stop the LRO if running
       let status = await this.Status({name});
-      if (status.state != 'terminated') {
+      if (status.state != "terminated") {
         console.log("STOPPING");
         try {
           await this.client.CallBitcodeMethod({
@@ -436,10 +433,10 @@ class EluvioLiveStream {
 
         // Wait until LRO is terminated
         let tries = 10;
-        while (status.state != 'terminated' && tries-- > 0) {
+        while (status.state != "terminated" && tries-- > 0) {
           console.log("Wait to terminate - ", status.state);
           await sleep(1000);
-            status = await this.Status({name});
+          status = await this.Status({name});
         }
         console.log("Status after terminate - ", status.state);
 
@@ -461,7 +458,7 @@ class EluvioLiveStream {
 
       edgeMeta.live_recording.status = {state: "closed"};
 
-      let res = await this.client.ReplaceMetadata({
+      await this.client.ReplaceMetadata({
         libraryId: libraryId,
         objectId: conf.objectId,
         writeToken: edgeWriteToken,
@@ -473,10 +470,10 @@ class EluvioLiveStream {
         name: name,
         edge_write_token: edgeWriteToken,
         state: "closed"
-      }
+      };
 
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
   }
 
@@ -485,8 +482,8 @@ class EluvioLiveStream {
     console.log("INIT: ", name);
     const conf = streams[name];
     if (conf == null) {
-    console.log("Bad name: ", name);
-    return
+      console.log("Bad name: ", name);
+      return;
     }
 
     const {GenerateOffering} = require("./LiveObjectSetupStepOne");
@@ -542,9 +539,9 @@ class EluvioLiveStream {
         name,
         object_id: objectId,
         state: "initialized"
-      }
+      };
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
   }
 
@@ -561,8 +558,8 @@ const ChannelStatus = async ({client, name}) => {
 
   const conf = channels[name];
   if (conf == null) {
-	console.log("Bad name: ", name);
-	return
+    console.log("Bad name: ", name);
+    return;
   }
 
   try {
@@ -570,43 +567,43 @@ const ChannelStatus = async ({client, name}) => {
     let meta = await client.ContentObjectMetadata({
       libraryId: conf.libraryId,
       objectId: conf.objectId
-    })
+    });
 
-	status.channel_title = meta.public.asset_metadata.title;
-	let source = meta.channel.offerings.default.items[0].source["/"];
-	let hash = source.split("/")[2];
-	status.stream_hash = hash;
-	latestHash = await client.LatestVersionHash({
+    status.channel_title = meta.public.asset_metadata.title;
+    let source = meta.channel.offerings.default.items[0].source["/"];
+    let hash = source.split("/")[2];
+    status.stream_hash = hash;
+    latestHash = await client.LatestVersionHash({
 	  versionHash: hash
-	});
-	status.stream_latest_hash = latestHash;
+    });
+    status.stream_latest_hash = latestHash;
 
-	if (hash != latestHash) {
+    if (hash != latestHash) {
 	  status.warnings = ["Stream version is not the latest"];
-	}
+    }
 
-	let channelFormatsUrl = await client.FabricUrl({
+    let channelFormatsUrl = await client.FabricUrl({
       libraryId: conf.libraryId,
       objectId: conf.objectId,
 	  rep: "channel/options.json"
-	});
+    });
 
-	try {
+    try {
 	  let offerings = await got(channelFormatsUrl);
 	  status.offerings = JSON.parse(offerings.body);
-	} catch (error) {
+    } catch (error) {
 	  console.log(error);
 	  status.offerings_error = "Failed to retrieve channel offerings";
-	}
+    }
 
-	status.playout = await ChannelPlayout({client, libraryId: conf.libraryId, objectId: conf.objectId});
+    status.playout = await ChannelPlayout({client, libraryId: conf.libraryId, objectId: conf.objectId});
 
   } catch (error) {
-    console.error(error)
+    console.error(error);
   }
 
   return status;
-}
+};
 
 /*
  * Performs client-side playout operations - open the channel, read offerings,
@@ -617,31 +614,29 @@ const ChannelPlayout = async({client, libraryId, objectId}) => {
   let playout = {};
 
   const offerings = await client.AvailableOfferings({
-	libraryId,
-	objectId,
-	handler: "channel",
-	linkPath: "/public/asset_metadata/offerings"
+    libraryId,
+    objectId,
+    handler: "channel",
+    linkPath: "/public/asset_metadata/offerings"
   });
 
   // Choosing offering 'default'
   let offering = offerings.default;
 
   const playoutOptions = await client.PlayoutOptions({
-	libraryId,
-	objectId,
-	offeringURI: offering.uri
+    libraryId,
+    objectId,
+    offeringURI: offering.uri
   });
-
-  const supportedDRM = 'fairplay';
 
   // Retrieve master playlist
   let masterPlaylistUrl = playoutOptions["hls"]["playoutMethods"]["fairplay"]["playoutUrl"];
   playout.master_playlist_url = masterPlaylistUrl;
   try {
-	let masterPlaylist =  await got(masterPlaylistUrl);
-	playout.master_playlist = "success"
+    //let masterPlaylist =  await got(masterPlaylistUrl);
+    playout.master_playlist = "success";
   } catch (error) {
-	playout.master_playlist = "fail";
+    playout.master_playlist = "fail";
   }
 
   let url = new URL(masterPlaylistUrl);
@@ -655,10 +650,10 @@ const ChannelPlayout = async({client, libraryId, objectId}) => {
   playout.media_playlist_url = mediaPlaylistUrl;
   let mediaPlaylist;
   try {
-	mediaPlaylist = await got(mediaPlaylistUrl);
-	playout.media_playlist = "success"
+    mediaPlaylist = await got(mediaPlaylistUrl);
+    playout.media_playlist = "success";
   } catch (error) {
-	playout.media_playlist = "fail";
+    playout.media_playlist = "fail";
   }
 
   // Retrieve init segment
@@ -666,7 +661,7 @@ const ChannelPlayout = async({client, libraryId, objectId}) => {
   var match = regex.exec(mediaPlaylist.body);
   let initQueryParams;
   if (match) {
-	initQueryParams = match[1];
+    initQueryParams = match[1];
   }
 
   p[p.length - 1] = "video/720@14000000/init.m4s";
@@ -675,7 +670,7 @@ const ChannelPlayout = async({client, libraryId, objectId}) => {
   url.search=initQueryParams;
   let initUrl = url.toString();
   playout.init_segment_url = initUrl;
-/*
+  /*
   try {
 	let initSegment = await got(initUrl);
 	playout.init_segment = "success"
@@ -684,7 +679,7 @@ const ChannelPlayout = async({client, libraryId, objectId}) => {
   }
 */
   return playout;
-}
+};
 
 
 const Summary = async ({client}) => {
@@ -692,61 +687,61 @@ const Summary = async ({client}) => {
   let summary = {};
 
   try {
-	for (const [key, value] of Object.entries(streams)) {
+    for (const [key] of Object.entries(streams)) {
 	  conf = streams[key];
-	  summary[key] = await Status({client, name: key, stopLro: false})
-	}
+	  summary[key] = await Status({client, name: key, stopLro: false});
+    }
 
   } catch (error) {
-    console.error(error)
+    console.error(error);
   }
   return summary;
-}
+};
 
 const ChannelSummary = async ({client}) => {
 
   let summary = {};
 
   try {
-	for (const [key, value] of Object.entries(channels)) {
+    for (const [key] of Object.entries(channels)) {
 	  conf = channels[key];
-	  summary[key] = await ChannelStatus({client, name: key})
-	}
+	  summary[key] = await ChannelStatus({client, name: key});
+    }
 
   } catch (error) {
-    console.error(error)
+    console.error(error);
   }
   return summary;
-}
+};
 
 const ConfigStream = async () => {
 
   const t = 1619850660;
 
   try {
-    let client
+    let client;
     if (conf.clientConf.configUrl) {
       client = await ElvClient.FromConfigurationUrl({
         configUrl: conf.clientConf.configUrl
-      })
+      });
     } else {
-      client = new ElvClient(conf.clientConf)
+      client = new ElvClient(conf.clientConf);
     }
-    const wallet = client.GenerateWallet()
-    const signer = wallet.AddAccount({ privateKey: conf.signerPrivateKey })
-    client.SetSigner({ signer })
-    const fabURI = client.fabricURIs[0]
-    console.log("Fabric URI: " + fabURI)
-    const ethURI = client.ethereumURIs[0]
-    console.log("Ethereum URI: " + ethURI)
+    const wallet = client.GenerateWallet();
+    const signer = wallet.AddAccount({ privateKey: conf.signerPrivateKey });
+    client.SetSigner({ signer });
+    const fabURI = client.fabricURIs[0];
+    console.log("Fabric URI: " + fabURI);
+    const ethURI = client.ethereumURIs[0];
+    console.log("Ethereum URI: " + ethURI);
 
     client.ToggleLogging(false);
 
     let mainMeta = await client.ContentObjectMetadata({
       libraryId: conf.libraryId,
       objectId: conf.objectId
-    })
-    console.log("Main meta:", mainMeta)
+    });
+    console.log("Main meta:", mainMeta);
 
     edgeWriteToken = mainMeta.edge_write_token;
     console.log("Edge: ", edgeWriteToken);
@@ -755,17 +750,17 @@ const ConfigStream = async () => {
       libraryId: conf.libraryId,
       objectId: conf.objectId,
       writeToken: edgeWriteToken
-    })
-    console.log("Edge meta:", edgeMeta)
+    });
+    console.log("Edge meta:", edgeMeta);
 
-	//console.log("CONFIG: ", edgeMeta.live_recording_parameters.live_playout_config);
-	console.log("recording_start_time: ", edgeMeta.recording_start_time);
-	console.log("recording_stop_time:  ", edgeMeta.recording_stop_time);
+    //console.log("CONFIG: ", edgeMeta.live_recording_parameters.live_playout_config);
+    console.log("recording_start_time: ", edgeMeta.recording_start_time);
+    console.log("recording_stop_time:  ", edgeMeta.recording_stop_time);
 
-	// Set rebroadcast start
-	edgeMeta.live_recording_parameters.live_playout_config.rebroadcast_start_time_sec_epoch = t;
+    // Set rebroadcast start
+    edgeMeta.live_recording_parameters.live_playout_config.rebroadcast_start_time_sec_epoch = t;
 
-    if (PRINT_DEBUG) console.log("MergeMetadata", conf.libraryId, conf.objectId, writeToken)
+    if (PRINT_DEBUG) console.log("MergeMetadata", conf.libraryId, conf.objectId, writeToken);
     await client.MergeMetadata({
       libraryId: conf.libraryId,
       objectId: conf.objectId,
@@ -773,99 +768,111 @@ const ConfigStream = async () => {
       metadata: {
         "live_recording_parameters": {
 		  "live_playout_config" : edgeMeta.live_recording_parameters.live_playout_config
-		}
+        }
 	  }
     });
 
   } catch (error) {
-    console.error(error)
+    console.error(error);
   }
-}
+};
 
 async function EnsureAll() {
   client = await StatusPrep({name: null});
   let summary = await Summary({client});
 
   var res = {
-	running: 0,
-	stalled: 0,
-	terminated: 0
+    running: 0,
+    stalled: 0,
+    terminated: 0
   };
 
   try {
-	for (const [key, value] of Object.entries(summary)) {
+    for (const [key, value] of Object.entries(summary)) {
 	  if (value.state == "stalled") {
-		console.log("Stream stalled: ", key, " - restarting");
-		console.log("todo ...");
+        console.log("Stream stalled: ", key, " - restarting");
+        console.log("todo ...");
 	  }
 	  res[value.state] = res[value.state] + 1;
-	}
+    }
   } catch (error) {
-    console.error(error)
+    console.error(error);
   }
 
-  return res
+  return res;
 }
 
+/*
+ * Original Run() function - kept for reference
+ */
 async function Run() {
 
   var client;
 
-  switch(command) {
+  switch (command) {
 
-  case 'start':
-	StartStream({name});
-	break;
+    case "start":
+      StartStream({name});
+      break;
 
-  case 'status':
-	client = await StatusPrep({name});
-	let status = await Status({client, name, stopLro: false});
-	console.log(JSON.stringify(status, null, 4));
-	break;
+    case "status":
+      client = await StatusPrep({name});
+      let status = await Status({client, name, stopLro: false});
+      console.log(JSON.stringify(status, null, 4));
+      break;
 
-  case 'stop':
-	client = await UpdatePrep({name});
-	Status({client, name, stopLro: true});
-	break;
+    case "stop":
+      client = await UpdatePrep({name});
+      Status({client, name, stopLro: true});
+      break;
 
-  case 'summary':
-	client = await StatusPrep({name: null});
-	let summary = await Summary({client});
-	console.log(JSON.stringify(summary, null, 4));
-	break;
+    case "summary":
+      client = await StatusPrep({name: null});
+      let summary = await Summary({client});
+      console.log(JSON.stringify(summary, null, 4));
+      break;
 
-  case 'init': // Set up DRM
-	SetOfferingAndDRM();
-	break;
+    case "init": // Set up DRM
+      SetOfferingAndDRM();
+      break;
 
-  case 'reset': // Stop and start LRO recording (same edge write token)
-	client = await StatusPrep({name});
-	let reset = await Reset({client, name, stopLro: false});
-	console.log(JSON.stringify(reset, null, 4));
-	break;
+    case "reset": // Stop and start LRO recording (same edge write token)
+      client = await StatusPrep({name});
+      let reset = await Reset({client, name, stopLro: false});
+      console.log(JSON.stringify(reset, null, 4));
+      break;
 
-  case 'channel':
-	client = await StatusPrep({name});
-	let channelStatus = await ChannelStatus({client, name});
-	console.log(JSON.stringify(channelStatus, null, 4));
-	break;
+    case "channel":
+      client = await StatusPrep({name});
+      let channelStatus = await ChannelStatus({client, name});
+      console.log(JSON.stringify(channelStatus, null, 4));
+      break;
 
-  case 'channel_summary':
-	client = await StatusPrep({name});
-	let channelSummary = await ChannelSummary({client, name});
-	console.log(JSON.stringify(channelSummary, null, 4));
-	break;
+    case "channel_summary":
+      client = await StatusPrep({name});
+      let channelSummary = await ChannelSummary({client, name});
+      console.log(JSON.stringify(channelSummary, null, 4));
+      break;
 
-  case 'ensure_all': // Check all and restart stalled
-	let ensureSummary = await EnsureAll()
-	console.log(JSON.stringify(ensureSummary, null, 4));
-	break;
+    case "ensure_all": // Check all and restart stalled
+      let ensureSummary = await EnsureAll();
+      console.log(JSON.stringify(ensureSummary, null, 4));
+      break;
 
-  default:
-	console.log("Bad command: ", command)
-	break;
+    case "future_use_config":
+      ConfigStream();
+      break;
+
+    default:
+      console.log("Bad command: ", command);
+      break;
 
   }
 }
+
+if (useOldRunFunction) {
+  Run();
+}
+
 
 exports.EluvioLiveStream = EluvioLiveStream;

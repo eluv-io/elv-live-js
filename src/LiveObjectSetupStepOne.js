@@ -133,10 +133,10 @@ const GenerateOffering = async ({
   const sourceStreams = [];
   const maxStreamIndex = Math.max(aStreamIndex, vStreamIndex);
 
-  for(let i = 0; i <= maxStreamIndex; i++) {
-    if(i === aStreamIndex) {
+  for (let i = 0; i <= maxStreamIndex; i++) {
+    if (i === aStreamIndex) {
       sourceStreams.push(sourceAudioStream);
-    } else if(i === vStreamIndex) {
+    } else if (i === vStreamIndex) {
       sourceStreams.push(sourceVideoStream);
     } else {
       sourceStreams.push(DUMMY_STREAM);
@@ -237,12 +237,12 @@ const GenerateOffering = async ({
     abrProfile
   });
 
-  if(createResponse.warnings.length > 0) {
+  if (createResponse.warnings.length > 0) {
     console.log("WARNINGS:");
     console.log(JSON.stringify(createResponse.warnings, null, 2));
   }
 
-  if(createResponse.errors.length > 0) {
+  if (createResponse.errors.length > 0) {
     console.log("ERRORS:");
     console.log(JSON.stringify(createResponse.errors, null, 2));
   }
