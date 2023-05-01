@@ -34,7 +34,7 @@ const CmdInit = async ({ argv }) => {
   }
 };
 
-const CmdSessionStart = async ({ argv }) => {
+const CmdStreamStart = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
       configUrl: Config.networks[Config.net],
@@ -45,14 +45,18 @@ const CmdSessionStart = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StartSession({name: argv.stream});
+    let status = await elvStream.StreamStart({
+      name: argv.stream,
+      start: argv.start,
+      show_curl: argv.show_curl
+    });
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
 
-const CmdSessionStop = async ({ argv }) => {
+const CmdStreamTerminate = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
       configUrl: Config.networks[Config.net],
@@ -115,7 +119,7 @@ yargs(hideBin(process.argv))
   })
   .command(
     "init <stream>",
-    "Initialize media and DRM configuration for the object.",
+    "Initialize media and DRM configuration for the stream object.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -129,8 +133,8 @@ yargs(hideBin(process.argv))
     }
   )
   .command(
-    "session_start <stream>",
-    "Create a new live stream session.",
+    "create <stream>",
+    "Create a new live stream for this stream object.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -138,14 +142,24 @@ yargs(hideBin(process.argv))
             "Stream name or QID (content ID)",
           type: "string",
         })
+        .option("start", {
+          describe:
+            "Optionally start the the new stream (equivalent to calling 'start')",
+          type: "boolean",
+        })
+        .option("show_curl", {
+          describe:
+            "Show 'curl' commands for inspecting metadata, LRO status, etc.",
+          type: "boolean",
+        })
     },
     (argv) => {
-      CmdSessionStart({ argv });
+      CmdStreamStart({ argv });
     }
   )
   .command(
-    "session_stop <stream>",
-    "End the current live stream session.",
+    "terminate <stream>",
+    "End the current live stream for this object.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -155,12 +169,12 @@ yargs(hideBin(process.argv))
         })
     },
     (argv) => {
-      CmdSessionStop({ argv });
+      CmdStreamTerminate({ argv });
     }
   )
   .command(
     "start <stream>",
-    "Start or resume current live stream session if not running.",
+    "Start or resume current live stream if not running.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -175,7 +189,7 @@ yargs(hideBin(process.argv))
   )
   .command(
     "status <stream>",
-    "Status of the currently active live stream session",
+    "Status of the currently active live stream.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -190,7 +204,7 @@ yargs(hideBin(process.argv))
   )
   .command(
     "reset <stream>",
-    "Reset the currently active live stream session",
+    "Reset the currently active live stream.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -205,7 +219,7 @@ yargs(hideBin(process.argv))
   )
   .command(
     "stop <stream>",
-    "Pauses the currently active live stream session",
+    "Pauses the currently active live stream.",
     (yargs) => {
       yargs
         .positional("stream", {

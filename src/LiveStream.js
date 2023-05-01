@@ -5,7 +5,7 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const got = require("got");
 
-const PRINT_DEBUG = true;
+const PRINT_DEBUG = false;
 
 const streams = require("../liveconf.json");
 const channels = require("../channelsconf.json");
@@ -75,12 +75,12 @@ class EluvioLiveStream {
    * Retrive the status of the current live stream session
    *
    * States:
-   * - inactive
-   * - stopped
-   * - starting
-   * - running
-   * - stalled
-   * - terminated
+   * - inactive - stream created but never started
+   * - stopped - stream is stopped (not listening for source feed)
+   * - starting - stream is started and waiting for source feed
+   * - running - stream is running
+   * - stalled - stream is running but source feed is no longer received
+   * - terminated - stream is terminated (must create a new one to restart)
    */
   async Status({name, stopLro = false}) {
 
@@ -118,6 +118,7 @@ class EluvioLiveStream {
       let edgeWriteToken = mainMeta.live_recording.fabric_config.edge_write_token;
 
       status.edge_write_token = edgeWriteToken;
+      status.stream_id = edgeWriteToken; // By convention the stream ID is its write token
       let edgeMeta = await this.client.ContentObjectMetadata({
         libraryId: libraryId,
         objectId: conf.objectId,
@@ -201,9 +202,9 @@ class EluvioLiveStream {
   /*
   * StartSession creates a new edge write token
   */
-  async StartSession ({name}) {
+  async StreamStart ({name, start = false, show_curl = false}) {
 
-    console.log("START: ", name);
+    console.log("START: ", name, "start", start, "show_curl", show_curl);
     const conf = streams[name];
     if (conf == null) {
       console.log("Bad name: ", name);
@@ -283,31 +284,46 @@ class EluvioLiveStream {
       update: true,
     });
 
-    const curlCmd = "curl -s -H \"$AUTH_HEADER\" ";
-    const fabLibHashURI = fabURI + "/qlibs/" + libraryId + "/q/" + objectHash;
-    const fabLibTokenURI = fabURI + "/qlibs/" + libraryId + "/q/" + edgeToken;
+    if (show_curl) {
+      const curlCmd = "curl -s -H \"$AUTH_HEADER\" ";
+      const fabLibHashURI = fabURI + "/qlibs/" + libraryId + "/q/" + objectHash;
+      const fabLibTokenURI = fabURI + "/qlibs/" + libraryId + "/q/" + edgeToken;
 
-    console.log("\nSet Authorization header:\nexport AUTH_HEADER=\"" +
-      "Authorization: Bearer " + response + "\"");
+      console.log("\nSet Authorization header:\nexport AUTH_HEADER=\"" +
+        "Authorization: Bearer " + response + "\"");
 
-    console.log("\nInspect metadata:\n" +
-      curlCmd + fabLibHashURI + "/meta | jq");
+      console.log("\nInspect metadata:\n" +
+        curlCmd + fabLibHashURI + "/meta | jq");
 
-    console.log("\nInspect edge metadata:\n" +
-      curlCmd + fabLibTokenURI + "/meta | jq");
+      console.log("\nInspect edge metadata:\n" +
+        curlCmd + fabLibTokenURI + "/meta | jq");
 
-    console.log("\nStart recording (returns HANDLE):\n" +
-      curlCmd + fabLibTokenURI + "/call/live/start | jq");
+      console.log("\nStart recording (returns HANDLE):\n" +
+        curlCmd + fabLibTokenURI + "/call/live/start | jq");
 
-    console.log("\nStop recording (use HANDLE from start):\n" +
-      curlCmd + fabLibTokenURI + "/call/live/stop/HANDLE");
+      console.log("\nStop recording (use HANDLE from start):\n" +
+        curlCmd + fabLibTokenURI + "/call/live/stop/HANDLE");
 
-    console.log("\nPlayout options:\n" +
-      curlCmd + fabLibHashURI + "/rep/live/default/options.json | jq");
+      console.log("\nPlayout options:\n" +
+        curlCmd + fabLibHashURI + "/rep/live/default/options.json | jq");
 
-    console.log("\nHLS playlist:\n" +
-      fabLibHashURI + "/rep/live/default/hls-sample-aes/playlist.m3u8?authorization=" + response);
+      console.log("\nHLS playlist:\n" +
+        fabLibHashURI + "/rep/live/default/hls-sample-aes/playlist.m3u8?authorization=" + response);
+    }
 
+    let status = {
+      object_id: conf.objectId,
+      hash: objectHash,
+      library_id: libraryId,
+      stream_id: edgeToken,
+      edge_write_token: edgeToken,
+      fabric_api: fabURI,
+      state: "stopped"
+    };
+    if (start) {
+      status = this.StartOrStopOrReset({name, op: start});
+    }
+    return status;
   }
 
 
