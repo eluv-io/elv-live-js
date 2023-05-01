@@ -104,7 +104,14 @@ class EluvioLiveStream {
       });
 
       let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
+
+      // Support both hostname and URL ingress_node_api
+      if (!fabURI.startsWith("http")) {
+        // Assume https
+        fabURI = "https://" + fabURI;
+      }
       this.client.SetNodes({fabricURIs: [fabURI]});
+
       status.fabric_api = fabURI;
       status.url = mainMeta.live_recording.recording_config.recording_params.origin_url;
 
@@ -213,6 +220,12 @@ class EluvioLiveStream {
     });
 
     let fabURI = liveRecording.fabric_config.ingress_node_api;
+    // Support both hostname and URL ingress_node_api
+    if (!fabURI.startsWith("http")) {
+      // Assume https
+      fabURI = "https://" + fabURI;
+    }
+
     this.client.SetNodes({fabricURIs: [fabURI]});
 
     console.log("Node URI", fabURI, "ID", liveRecording.fabric_config.ingress_node_id);
@@ -404,6 +417,12 @@ class EluvioLiveStream {
       });
 
       let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
+      // Support both hostname and URL ingress_node_api
+      if (!fabURI.startsWith("http")) {
+        // Assume https
+        fabURI = "https://" + fabURI;
+      }
+
       this.client.SetNodes({fabricURIs: [fabURI]});
 
       let edgeWriteToken = mainMeta.live_recording.fabric_config.edge_write_token;
@@ -516,6 +535,12 @@ class EluvioLiveStream {
       });
 
       let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
+      // Support both hostname and URL ingress_node_api
+      if (!fabURI.startsWith("http")) {
+        // Assume https
+        fabURI = "https://" + fabURI;
+      }
+
       this.client.SetNodes({fabricURIs: [fabURI]});
 
       let streamUrl = mainMeta.live_recording.recording_config.recording_params.origin_url;
