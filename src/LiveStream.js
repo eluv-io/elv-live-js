@@ -3,12 +3,12 @@
  */
 
 const { ElvClient } = require("@eluvio/elv-client-js");
+
+const fs = require("fs");
+const path = require("path");
 const got = require("got");
 
 const PRINT_DEBUG = false;
-
-const streams = require("../liveconf.json");
-const channels = require("../channelsconf.json");
 
 const MakeTxLessToken = async({client, libraryId, objectId, versionHash}) => {
   tok = await client.authClient.AuthorizationToken({libraryId, objectId,
@@ -47,16 +47,7 @@ class EluvioLiveStream {
 
   async StatusPrep({name}) {
 
-    // Pick the first object if name not specified
-    if (name == null) {
-      name = Object.keys(streams)[0];
-    }
-
-    const conf = streams[name];
-    if (conf == null) {
-      console.log("Bad name: ", name);
-      return;
-    }
+    let conf = await this.LoadConf({name});
 
     try {
 
@@ -84,11 +75,7 @@ class EluvioLiveStream {
    */
   async Status({name, stopLro = false}) {
 
-    const conf = streams[name];
-    if (conf == null) {
-      console.log("Bad name: ", name);
-      return;
-    }
+    let conf = await this.LoadConf({name});
 
     let status = {name: name};
 
@@ -205,11 +192,7 @@ class EluvioLiveStream {
   async StreamStart ({name, start = false, show_curl = false}) {
 
     console.log("START: ", name, "start", start, "show_curl", show_curl);
-    const conf = streams[name];
-    if (conf == null) {
-      console.log("Bad name: ", name);
-      return;
-    }
+    let conf = await this.LoadConf({name});
 
     let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
 
@@ -418,12 +401,9 @@ class EluvioLiveStream {
 
     try {
 
-      console.log("START: ", name);
-      const conf = streams[name];
-      if (conf == null) {
-        console.log("Bad name: ", name);
-        return;
-      }
+      console.log("TERMINATE: ", name);
+
+      let conf = await this.LoadConf({name});
 
       let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
 
@@ -491,7 +471,7 @@ class EluvioLiveStream {
       console.log("recording_start_time: ", edgeMeta.recording_start_time);
       console.log("recording_stop_time:  ", edgeMeta.recording_stop_time);
 
-      edgeMeta.live_recording.status = {state: "closed"};
+      edgeMeta.live_recording.status = {state: "terminated"};
 
       await this.client.ReplaceMetadata({
         libraryId: libraryId,
@@ -504,7 +484,7 @@ class EluvioLiveStream {
       return {
         name: name,
         edge_write_token: edgeWriteToken,
-        state: "closed"
+        state: "terminated"
       };
 
     } catch (error) {
@@ -515,11 +495,8 @@ class EluvioLiveStream {
   async SetOfferingAndDRM({name}) {
 
     console.log("INIT: ", name);
-    const conf = streams[name];
-    if (conf == null) {
-      console.log("Bad name: ", name);
-      return;
-    }
+
+    let conf = await this.LoadConf({name});
 
     const {GenerateOffering} = require("./LiveObjectSetupStepOne");
 
@@ -584,6 +561,35 @@ class EluvioLiveStream {
     } catch (error) {
       console.error(error);
     }
+  }
+
+  async LoadConf({name}) {
+
+    if (name.startsWith('iq__')) {
+      return {
+        name: name,
+        objectId: name
+      }
+    }
+
+    // If name is not a QID, load liveconf.json
+    let streamsBuf;
+    try {
+      streamsBuf = fs.readFileSync(
+        path.resolve(__dirname, "../liveconf.json")
+      );
+    } catch(error) {
+      console.log("Stream name must be a QID or a label in liveconf.json")
+      return {}
+    }
+    const streams = JSON.parse(streamsBuf);
+    const conf = streams[name];
+    if (conf == null) {
+      console.log("Bad name: ", name);
+      return {};
+    }
+
+    return conf;
   }
 
 } // End class
