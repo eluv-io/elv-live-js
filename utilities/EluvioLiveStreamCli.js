@@ -30,7 +30,7 @@ const CmdInit = async ({ argv }) => {
     let status = await elvStream.SetOfferingAndDRM({
       name: argv.stream,
       drm: argv.drm,
-      format: argv.format
+      format: argv.formats
     });
     console.log(yaml.dump(status));
   } catch (e) {
@@ -136,7 +136,7 @@ yargs(hideBin(process.argv))
             "Specify if playout should be DRM protected (default: false)",
           type: "boolean",
         })
-        .option("format", {
+        .option("formats", {
           describe:
             "Specify the list of playout formats and DRM to support, comma-separated (hls-clear, hls-aes128, hls-sample-aes, hls-fairplay)",
           type: "string",
