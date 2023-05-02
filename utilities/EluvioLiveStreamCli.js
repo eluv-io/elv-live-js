@@ -27,7 +27,7 @@ const CmdInit = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.SetOfferingAndDRM({
+    let status = await elvStream.Initialize({
       name: argv.stream,
       drm: argv.drm,
       format: argv.formats
