@@ -519,7 +519,7 @@ class EluvioLiveStream {
     }
   }
 
-  async SetOfferingAndDRM({name, drm=false}) {
+  async SetOfferingAndDRM({name, drm=false, format}) {
 
     let status = await this.Status({name});
     if (status.state != "inactive" && status.state != "terminated") {
@@ -551,9 +551,28 @@ class EluvioLiveStream {
     const vTimeBase = "1/30000"; // "1/16000";
 
     const abrProfile = require("./abr_profile_live_drm.json");
-    if (!drm) {
+
+    let playoutFormats = abrProfile.playout_formats;
+    if (format) {
+      drm = true; // Override DRM parameter
+      playoutFormats = {};
+      let formats = format.split(",");
+      for (let i = 0; i < formats.length; i++) {
+        if (formats[i] == "hls-clear") {
+          abrProfile.drm_optional = true;
+          playoutFormats["hls-clear"] = {
+            "drm": null,
+            "protocol": {
+              "type": "ProtoHls"
+            }
+          };
+          continue;
+        }
+        playoutFormats[formats[i]] = abrProfile.playout_formats[formats[i]];
+      }
+    } else if (!drm) {
       abrProfile.drm_optional = true;
-      abrProfile.playout_formats = {
+      playoutFormats = {
         "hls-clear": {
           "drm": null,
           "protocol": {
@@ -562,6 +581,8 @@ class EluvioLiveStream {
         }
       };
     }
+
+    abrProfile.playout_formats = playoutFormats;
 
     let libraryId = await this.client.ContentObjectLibraryId({objectId});
 
