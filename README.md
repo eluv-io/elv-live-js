@@ -14,7 +14,11 @@ You'll need the latest current Nodejs and NPM (Node 17.5.0+ or npm 8.5.1+): http
 npm install
 ```
 
-Then:
+# Tools
+
+# EluvioLive CLI
+
+The EluvioLive CLI (`elv-live`) provides tenant, tokens and marketplace management commands.
 
 ```
 EluvioLive CLI
@@ -43,6 +47,7 @@ Options:
 
 # Usage Examples
 
+
 Environment variables required:
 
 ```bash
@@ -50,6 +55,33 @@ export PRIVATE_KEY=0x11...11
 ```
 
 ## Tenant commands
+
+### Minter configuration
+
+For a new tenant - set up all required minter keys and helpers wiht one command:
+
+```
+./elv-live tenant_create_minter_config itenKGHd3iedqtA39krJUPkBTCNoTeX
+```
+
+To retrieve tenant minter configuration:
+
+```
+./elv-live tenant_get_minter_config itenKGHd3iedqtA39krJUPkBTCNoTeX
+
+```
+
+To replace one or more minter resources, first get minter configuration and call the 'replace' command passing in all the existing values that you don't want changed (or else they will be regenerated).
+
+For example to set the legacy_shuffle_seed and not change any of the other settings, pass in the existing values as options:
+
+```
+./elv-live tenant_replace_minter_config itenKGHd3iedqtA39krJUPkBTCNoTeX --minter ikms37TNyoqBKqjbAPS7HMv4gzvkJzTa --mint_helper 0x3AEA63e14e084A87Cf2588Fd0987e12db71f81C1 --proxy 0x41899355fE869c370ED92eaA9f791289c4Da9F9D --proxy_owner ikms4DgAcxHqMyv6pJYqdb8wqUrmUmLk --legacy_shuffle_seed 1000
+
+```
+
+
+### Marketplace info
 
 Show tenant-level marketplace information (including validation):
 
@@ -80,6 +112,7 @@ Properties > Library Info > Library Id
 Tenant Object Id *
 Properties > Eluvio LIVE Tenant > Object Id
 ```
+
 ## NFT commands
 
 ### Set up an NFT contract 
@@ -113,6 +146,7 @@ PRIVATE_KEY=0x00...ZZZ ./elv-live tenant_set_token_uri all itenKGHd3iedqtA39krJU
 
 
 ## NFT Build for generative images or videos
+
 
 ./elv-live nft_build command assumes the nft_template object has been created and source images and videos have been ingested into the fabric such that image and embedded video urls have been generated and working.
 
@@ -158,3 +192,37 @@ NFT content object's value from /asset_metadata/nft if present.
 The required key 'attributes' is an array of objects {"trait_type": "", "value": ""}
 and is used to calculate trait rarity. If rarity is already present in the attribute,
 it will be used instead.
+
+# EluvioStream CLI
+
+```
+  export PRIVATE_KEY=0x...
+  ./elv-stream
+
+```
+
+The EluvioStream CLI provides commands for managing live streams.
+
+The general flow for managing a live stream is:
+
+1. Create and configure a live stream content object
+
+  This can be performed with the Fabric Browser
+
+2. Create a 'stream'
+
+  A live stream content object is only active once you create a 'stream'.
+
+3. Start the 'stream'
+
+  This is the process by which the stream is listening for input and is ready to stream.
+
+4. Stop or Reset the 'stream'
+
+  During streaming, you can stop (pause) or reset the stream which will discontinue playout until the stream is restarted.
+
+5. Terminate the stream
+
+  The stream is ended and can no longer be restarted.  You can create a new stream within
+  the same content object.
+

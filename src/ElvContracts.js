@@ -400,18 +400,25 @@ class ElvContracts {
   }
 
   /**
-   * Retrieve funds from payment splitter contract, as a payee
+   * Retrieve funds from payment splitter contract, as a payee or for payee address provided
    * @param {string} addr: address of the payment contract
    * @param {string} tokenContractAddress: address of the token contract (ERC20)
+   * @param {string} payeeAddress: address of the payee
    */
-  async PaymentRelease({ contractAddress, tokenContractAddress }){
+  async PaymentRelease({ addr, tokenContractAddress, payeeAddress }){
     const abistr = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v4/Payment.abi")
     );
 
-    const payee = await this.client.signer.address;
+    let payee;
+    if (payeeAddress != "") {
+      payee = payeeAddress;
+    } else {
+      payee = await this.client.signer.address;
+    }
+
     const res = await this.client.CallContractMethod({
-      contractAddress: contractAddress,
+      contractAddress: addr,
       abi: JSON.parse(abistr),
       methodName: "release(address,address)",
       methodArgs: [

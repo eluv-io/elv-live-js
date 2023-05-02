@@ -56,7 +56,7 @@ const CmfNftTemplateAddNftContract = async ({ argv }) => {
     "\nVerbose ", argv.verbose
   );
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     await elvlv.NftTemplateAddNftContract({
       objectId: argv.object,
@@ -445,13 +445,12 @@ const CmdTenantTicketsGenerate = async ({ argv }) => {
   );
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantTicketsGenerate({
       tenant: argv.tenant,
       otp: argv.otp,
-      quantity: argv.quantity,
-      host: argv.host
+      quantity: argv.quantity
     });
 
     console.log("Tickets: ", res);
@@ -557,8 +556,9 @@ const CmdList = async ({ argv }) => {
 
 const CmdTenantPrimarySales = async ({ argv }) => {
   console.log(
-    `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace} ${argv.processor}`
+    `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`
   );
+  console.log(`Processor: ${argv.processor}`);
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
 
@@ -584,12 +584,13 @@ const CmdTenantPrimarySales = async ({ argv }) => {
 };
 
 const CmdTenantSecondarySales = async ({ argv }) => {
-  console.log(`Tenant Secondary Sales: ${argv.tenant} ${argv.processor}`);
+  console.log(`Tenant Secondary Sales: ${argv.tenant}`);
+  console.log(`Processor: ${argv.processor}`);
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantSecondarySales({
       tenant: argv.tenant,
@@ -609,12 +610,13 @@ const CmdTenantSecondarySales = async ({ argv }) => {
 };
 
 const CmdTenantUnifiedSales = async ({ argv }) => {
-  console.log(`Tenant Unified Sales: ${argv.tenant} ${argv.processor}`);
+  console.log(`Tenant Unified Sales: ${argv.tenant}`);
+  console.log(`Processor: ${argv.processor}`);
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantUnifiedSales({
       tenant: argv.tenant,
@@ -637,7 +639,7 @@ const CmdTenantTransferFailures = async ({ argv }) => {
   console.log(`Tenant Trasfer Failures: ${argv.tenant}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantTransferFailures({
       tenant: argv.tenant,
@@ -1204,14 +1206,13 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
 const CmdTenantGetMinter = async ({ argv }) => {
   console.log("Tenant Minter Get Config");
   console.log(`TenantId: ${argv.tenant}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.TenantGetMinterConfig({
-      tenant: argv.tenant,
-      host: argv.host
+      tenant: argv.tenant
     });
 
     console.log("\n" + yaml.dump(res));
@@ -1243,14 +1244,12 @@ const CmdNotifSend = async ({ argv }) => {
 
 const CmdAdminHealth = async ({ argv }) => {
   console.log("Admin Health");
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
-    res = await elvlv.AdminHealth({
-      host: argv.host,
-    });
+    res = await elvlv.AdminHealth();
 
     console.log("\n" + yaml.dump(res));
   } catch (e) {
@@ -1261,15 +1260,14 @@ const CmdAdminHealth = async ({ argv }) => {
 const CmdTenantCreateMinter = async ({ argv }) => {
   console.log("Tenant Minter Create Config");
   console.log(`TenantId: ${argv.tenant}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
   console.log(`Funds: ${argv.funds}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.TenantCreateMinterConfig({
       tenant: argv.tenant,
-      host: argv.host,
       funds: argv.funds,
       deploy: argv.deploy
     });
@@ -1283,7 +1281,7 @@ const CmdTenantCreateMinter = async ({ argv }) => {
 const CmdTenantReplaceMinter = async ({ argv }) => {
   console.log("Tenant Minter Replace Config");
   console.log(`TenantId: ${argv.tenant}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
   console.log(`Proxy Owner: ${argv.proxy_owner}`);
   console.log(`Minter: ${argv.minter}`);
   console.log(`Mint helper: ${argv.mint_helper}`);
@@ -1291,15 +1289,16 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
   console.log(`Purge: ${argv.purge}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url});
 
     res = await elvlv.TenantReplaceMinterConfig({
       tenant: argv.tenant,
-      host: argv.host,
       proxyOwner: argv.proxy_owner,
       minter: argv.minter,
       mintHelper: argv.mint_helper,
       proxy: argv.proxy,
+      mintShuffleKey: argv.mint_shuffle_key,
+      legacyShuffleSeed: argv.legacy_shuffle_seed,
       purge: argv.purge
     });
 
@@ -1312,15 +1311,14 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
 const CmdTenantDeleteMinter = async ({ argv }) => {
   console.log("Tenant Delete Minter");
   console.log(`TenantId: ${argv.tenant}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
   console.log(`Force: ${argv.force}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.TenantDeleteMinterConfig({
       tenant: argv.tenant,
-      host: argv.host,
       force: argv.force
     });
 
@@ -1333,16 +1331,15 @@ const CmdTenantDeleteMinter = async ({ argv }) => {
 const CmdTenantDeployHelpers = async ({ argv }) => {
   console.log("Tenant Deploy Helper Contracts");
   console.log(`TenantId: ${argv.tenant}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
   console.log(`Proxy: ${argv.proxy}`);
   console.log(`Mint Helper: ${argv.mint_helper}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.TenantDeployHelperContracts({
       tenant: argv.tenant,
-      host: argv.host,
       proxy: argv.proxy,
       mintHelper: argv.mint_helper
     });
@@ -1358,15 +1355,14 @@ const CmdTenantPublishData  = async ({ argv }) => {
   console.log("Tenant Config Update");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Content Hash: ${argv.content_hash}`);
-  console.log(`Host: ${argv.host}`);
+  console.log(`Host: ${argv.as_url}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.TenantPublishData({
       tenant: argv.tenant,
-      contentHash: argv.content_hash,
-      host: argv.host
+      contentHash: argv.content_hash
     });
 
     console.log("\n" + yaml.dump(res));
@@ -1447,11 +1443,13 @@ const CmdPaymentRelease = async ({ argv }) => {
     });
 
     res = await elvContract.PaymentRelease({
-      contractAddress: argv.addr,
-      tokenContractAddress: argv.token_addr
+      addr: argv.addr,
+      tokenContractAddress: argv.token_addr,
+      payeeAddress: argv.payee,
     });
 
     console.log("\n" + yaml.dump(await res));
+    console.log("Payment release successful.");
   } catch (e) {
     console.error("ERROR:", argv.verbose ? e : e.message);
   }
@@ -1599,10 +1597,6 @@ yargs(hideBin(process.argv))
     describe: "Verbose mode",
     type: "boolean",
     alias: "v"
-  })
-  .option("host", {
-    describe: "Alternate URL endpoint",
-    type: "string"
   })
   .option("as_url", {
     describe: "Alternate authority service URL (include '/as/' route if necessary)",
@@ -2355,7 +2349,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_primary_sales <tenant> <marketplace> <processor>",
+    "tenant_primary_sales <tenant> <marketplace>",
     "Show tenant primary sales history",
     (yargs) => {
       yargs
@@ -2367,9 +2361,10 @@ yargs(hideBin(process.argv))
           describe: "Marketplace ID",
           type: "string",
         })
-        .positional("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+        .option("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
           type: "string",
+          default: "",
         })
         .option("csv", {
           describe: "File path to output csv",
@@ -2388,7 +2383,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_secondary_sales <tenant> <processor>",
+    "tenant_secondary_sales <tenant>",
     "Show tenant secondary sales history",
     (yargs) => {
       yargs
@@ -2396,9 +2391,10 @@ yargs(hideBin(process.argv))
           describe: "Tenant ID",
           type: "string",
         })
-        .positional("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+        .option("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
           type: "string",
+          default: "",
         })
         .option("csv", {
           describe: "File path to output csv",
@@ -2417,7 +2413,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_sales <tenant> <processor>",
+    "tenant_sales <tenant>",
     "Show tenant sales history",
     (yargs) => {
       yargs
@@ -2425,9 +2421,10 @@ yargs(hideBin(process.argv))
           describe: "Tenant ID",
           type: "string",
         })
-        .positional("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio",
+        .option("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
           type: "string",
+          default: "",
         })
         .option("csv", {
           describe: "File path to output csv",
@@ -2790,10 +2787,6 @@ yargs(hideBin(process.argv))
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
-        })
-        .option("host", {
-          describe: "Use this authority service url instead.",
-          type: "string",
         });
     },
     (argv) => {
@@ -2808,10 +2801,6 @@ yargs(hideBin(process.argv))
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
-          type: "string",
-        })
-        .option("host", {
-          describe: "Use this authority service url instead.",
           type: "string",
         })
         .option("funds", {
@@ -2837,10 +2826,6 @@ yargs(hideBin(process.argv))
           describe: "Tenant ID",
           type: "string",
         })
-        .option("host", {
-          describe: "Use this authority service url instead.",
-          type: "string",
-        })
         .option("proxy_owner", {
           describe: "Replace proxy owner ID (eg. ikms..). Note that the key must already be stored in the Authority Service to use this.",
           type: "string",
@@ -2855,6 +2840,14 @@ yargs(hideBin(process.argv))
         })
         .option("proxy", {
           describe: "Replace the transfer proxy address (hex). The proxy owner must be the owner of this contract.",
+          type: "string",
+        })
+        .option("mint_shuffle_key", {
+          describe: "Replace the mint shuffle key (ikms).  The secret must be already stored in the Authority Service",
+          type: "string",
+        })
+        .option("legacy_shuffle_seed", {
+          describe: "Replace the legacy shuffle seed (use '0' to disable).",
           type: "string",
         })
         .option("purge", {
@@ -2874,10 +2867,6 @@ yargs(hideBin(process.argv))
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
-          type: "string",
-        })
-        .option("host", {
-          describe: "Use this authority service url instead.",
           type: "string",
         })
         .option("mint_helper", {
@@ -2903,10 +2892,6 @@ yargs(hideBin(process.argv))
           describe: "Tenant ID",
           type: "string",
         })
-        .option("host", {
-          describe: "Use this authority service url instead.",
-          type: "string",
-        })
         .option("force", {
           describe: "Attempt to delete all keys even on error",
           type: "boolean",
@@ -2928,10 +2913,6 @@ yargs(hideBin(process.argv))
         })
         .positional("content_hash", {
           describe: "Version hash of the new tenant Fabric object",
-          type: "string",
-        })
-        .option("host", {
-          describe: "Use this authority service url instead.",
           type: "string",
         });
     },
@@ -3007,10 +2988,6 @@ yargs(hideBin(process.argv))
     "Checks the health of the Authority Service APIs. Note the current key must be a system admin configured in the AuthD servers.",
     (yargs) => {
       yargs
-        .option("host", {
-          describe: "Use this authority service url instead of config.",
-          type: "string",
-        });
     },
     (argv) => {
       CmdAdminHealth({ argv });
@@ -3057,7 +3034,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "payment_release addr token_addr",
-    "Retrieve payment from payment splitter contract as a payee",
+    "Retrieve payment from payment splitter contract as a payee or for a payee using --payee flag",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -3067,6 +3044,11 @@ yargs(hideBin(process.argv))
         .positional("token_addr", {
           describe: "Address of the ERC20 token contract (hex)",
           type: "string"
+        })
+        .option("payee", {
+          describe: "payee address",
+          type: "string",
+          default: "",
         });
     },
     (argv) => {

@@ -8,7 +8,9 @@ const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const BigNumber = require("big-number");
-var urljoin = require("url-join");
+const urljoin = require("url-join");
+const url = require("url");
+
 const crypto = require("crypto");
 const ethers = require("ethers");
 const { parse } = require("csv-parse");
@@ -42,11 +44,15 @@ class EluvioLive {
     });
 
     if (asUrl) {
+      // elv-client-js strips the path and only stores the host - save it here
+      this.asUrlPath = url.parse(asUrl).path;
       this.client.SetNodes({
         authServiceURIs:[
           asUrl
         ]
       });
+    } else {
+      this.asUrlPath = "as";
     }
 
     let wallet = this.client.GenerateWallet();
@@ -928,7 +934,10 @@ class EluvioLive {
     await this.TenantAddNft({ tenantId, nftAddr: c.contractAddress });
     console.log("- tenant_nfts added", tenantId);
 
-    return c.contractAddress;
+    return {
+      nftAddr: c.contractAddress,
+      mintShuffleKeyId: minterConfigResp.config.mint_shuffle_key_id
+    };
   }
 
   /**
@@ -1928,7 +1937,7 @@ class EluvioLive {
     totalSupply,
   }) {
 
-    const nftAddr = await this.CreateNftContract({
+    const nftInfo = await this.CreateNftContract({
       tenantId,
       totalSupply,
       collectionName,
@@ -1937,6 +1946,7 @@ class EluvioLive {
       contractUri,
     });
 
+    const nftAddr = nftInfo.nftAddr;
 
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
 
@@ -1950,6 +1960,7 @@ class EluvioLive {
     m.permissioned.mint_private.address = nftAddr;
     m.public.asset_metadata.nft.address = nftAddr;
     m.public.asset_metadata.nft.total_supply = totalSupply;
+    m.public.asset_metadata.mint.mint_shuffle_key_id = nftInfo.mintShuffleKeyId;
 
     var e = await this.client.EditContentObject({
       libraryId,
@@ -2566,23 +2577,23 @@ class EluvioLive {
     return { signature, multiSig };
   }
 
-  async PutServiceRequest({ path, body={}, headers = {}, queryParams={}, host, useFabricToken=false }) {
-    return await this.TenantAuthServiceRequest({path, method: "PUT", queryParams, body, headers, host, useFabricToken});
+  async PutServiceRequest({ path, body={}, headers = {}, queryParams={}, useFabricToken=false }) {
+    return await this.TenantAuthServiceRequest({path, method: "PUT", queryParams, body, headers, useFabricToken});
   }
 
-  async PostServiceRequest({ path, body={}, headers = {}, queryParams={}, host, useFabricToken=false }) {
-    return await this.TenantAuthServiceRequest({path, method: "POST", queryParams, body, headers, host, useFabricToken});
+  async PostServiceRequest({ path, body={}, headers = {}, queryParams={}, useFabricToken=false }) {
+    return await this.TenantAuthServiceRequest({path, method: "POST", queryParams, body, headers, useFabricToken});
   }
 
-  async GetServiceRequest({ path, queryParams={}, headers = {}, host}) {
-    return await this.TenantPathAuthServiceRequest({path, method:"GET", queryParams, headers, host});
+  async GetServiceRequest({ path, queryParams={}, headers = {}}) {
+    return await this.TenantPathAuthServiceRequest({path, method:"GET", queryParams, headers});
   }
 
-  async DeleteServiceRequest({ path, queryParams={}, headers = {}, host}) {
-    return await this.TenantPathAuthServiceRequest({path, method:"DELETE", queryParams, headers, host});
+  async DeleteServiceRequest({ path, queryParams={}, headers = {}}) {
+    return await this.TenantPathAuthServiceRequest({path, method:"DELETE", queryParams, headers});
   }
 
-  async TenantAuthServiceRequest({ path, method, queryParams={}, body={}, headers = {}, host, useFabricToken=false }) {
+  async TenantAuthServiceRequest({ path, method, queryParams={}, body={}, headers = {}, useFabricToken=false }) {
     if (!body) {
       body = {};
     }
@@ -2604,15 +2615,8 @@ class EluvioLive {
 
     let res;
 
-    if (host !== undefined) {
-      this.client.SetNodes({
-        authServiceURIs:[
-          host
-        ]
-      });
-    } else {
-      path = urljoin("/as", path);
-    }
+    path = urljoin(this.asUrlPath, path);
+
     res = await this.client.authClient.MakeAuthServiceRequest({
       method,
       path,
@@ -2636,7 +2640,7 @@ class EluvioLive {
    * @param {Object} headers - The headers
    * @return {Promise<Object>} - The API Response
    */
-  async TenantPathAuthServiceRequest({ path, method, queryParams={}, headers = {}, host}) {
+  async TenantPathAuthServiceRequest({ path, method, queryParams={}, headers = {}}) {
     let ts = Date.now();
     let params = { ts, ...queryParams };
     const paramString = new URLSearchParams(params).toString();
@@ -2653,15 +2657,7 @@ class EluvioLive {
 
     let res = {};
 
-    if (host !== undefined) {
-      this.client.SetNodes({
-        authServiceURIs:[
-          host
-        ]
-      });
-    } else {
-      path = urljoin("/as", path);
-    }
+    path = urljoin(this.asUrlPath, path);
 
     res = await this.client.authClient.MakeAuthServiceRequest({
       method,
@@ -2856,8 +2852,8 @@ class EluvioLive {
     }
 
     let res = await this.GetServiceRequest({
-      path: urljoin("/tnt/purchases/", tenant, marketplace, processor),
-      queryParams: { offset },
+      path: urljoin("/tnt/purchases/", tenant, marketplace),
+      queryParams: { offset, processor },
       headers,
     });
 
@@ -2880,8 +2876,8 @@ class EluvioLive {
     }
 
     let res = await this.GetServiceRequest({
-      path: urljoin("/tnt/payments/", tenant, processor),
-      queryParams: { offset },
+      path: urljoin("/tnt/payments/", tenant),
+      queryParams: { offset, processor },
       headers
     });
 
@@ -2904,8 +2900,8 @@ class EluvioLive {
     }
 
     let res = await this.GetServiceRequest({
-      path: urljoin("/tnt/report/", tenant, processor),
-      queryParams: { offset },
+      path: urljoin("/tnt/report/", tenant),
+      queryParams: { offset, processor },
       headers
     });
 
@@ -3072,11 +3068,19 @@ class EluvioLive {
    * @param {string} tenant - The Tenant ID
    * @return {Promise<Object>} - The API Response for the request
    */
-  async TenantReplaceMinterConfig({ tenant, host, proxyOwner, minter, mintHelper, proxy, purge=false}) {
+  async TenantReplaceMinterConfig({ tenant, host, proxyOwner, minter, mintHelper, proxy, mintShuffleKey, legacyShuffleSeed, purge=false}) {
     let res = await this.PutServiceRequest({
       path: urljoin("/tnt/config", tenant, "minter"),
       host,
-      queryParams: {proxyowner:proxyOwner,minter, mint_helper: mintHelper, proxy, purge}
+      queryParams: {
+        proxyowner:proxyOwner,
+        minter,
+        mint_helper: mintHelper,
+        proxy,
+        mint_shuffle_key: mintShuffleKey,
+        legacy_shuffle_seed: legacyShuffleSeed,
+        purge
+      }
     });
     return res.json();
   }
@@ -3132,10 +3136,9 @@ class EluvioLive {
    * @param {string} host - Authority Service url (Optional)
    * @return {Promise<Object>} - The API Response for the adm/health api
    */
-  async AdminHealth({ host }) {
+  async AdminHealth() {
     let res = await this.GetServiceRequest({
-      path: "/adm/health",
-      host
+      path: "/adm/health"
     });
     return res.text();
   }
