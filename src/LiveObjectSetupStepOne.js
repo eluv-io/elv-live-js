@@ -57,6 +57,7 @@ const DUMMY_DURATION = 1001; // should result in integer duration_ts values for 
 const GenerateOffering = async ({
   client, // elvClient object
   libraryId, objectId, // lib/object ID of new live object
+  typeAbrMaster, typeLiveStream, // content type hashes
   streamUrl,  // live source URL
   abrProfile, // JSON.parse(abr profile json file contents)
   // audio info - integers
@@ -205,7 +206,10 @@ const GenerateOffering = async ({
   console.log("Getting write token...");
   let editResponse = await client.EditContentObject({
     libraryId,
-    objectId
+    objectId,
+    options: {
+      type: typeAbrMaster
+    }
   });
   let writeToken = editResponse.write_token;
   console.log(`New write token: ${writeToken}`);
@@ -268,7 +272,10 @@ const GenerateOffering = async ({
   console.log("Getting write token...");
   editResponse = await client.EditContentObject({
     libraryId,
-    objectId
+    objectId,
+    options: {
+      type: typeLiveStream
+    }
   });
   writeToken = editResponse.write_token;
   console.log(`New write token: ${writeToken}`);

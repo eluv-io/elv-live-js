@@ -519,7 +519,31 @@ class EluvioLiveStream {
     }
   }
 
-  async SetOfferingAndDRM({name, drm=false, format}) {
+  async Initialize({name, drm=false, format}) {
+
+    const contentTypes = await this.client.ContentTypes();
+
+    let typeAbrMaster;
+    let typeLiveStream;
+    for (let i = 0; i < Object.keys(contentTypes).length; i ++) {
+      const key = Object.keys(contentTypes)[i];
+      if (contentTypes[key].name.includes("ABR Master")) {
+        typeAbrMaster = contentTypes[key].hash;
+      }
+      if (contentTypes[key].name.includes("Live Stream")) {
+        typeLiveStream = contentTypes[key].hash;
+      }
+    }
+
+    if (typeAbrMaster == undefined || typeLiveStream == undefined) {
+      console.log("ERROR - unable to find content types", "ABR Master", typeAbrMaster, "Live Stream", typeLiveStream);
+      return {};
+    }
+    let res = await this.SetOfferingAndDRM({name, typeAbrMaster, typeLiveStream, drm, format});
+    return res;
+  }
+
+  async SetOfferingAndDRM({name, typeAbrMaster, typeLiveStream, drm=false, format}) {
 
     let status = await this.Status({name});
     if (status.state != "inactive" && status.state != "terminated") {
@@ -608,6 +632,7 @@ class EluvioLiveStream {
         client: this.client,
         libraryId,
         objectId,
+        typeAbrMaster, typeLiveStream,
         streamUrl,
         abrProfile,
         aBitRate, aChannels, aSampleRate, aStreamIndex,
