@@ -198,7 +198,7 @@ class EluvioLiveStream {
       return {
         state: status.state,
         error: "stream still active - must terminate first"
-      }
+      };
     }
 
     let objectId = status.object_id;
@@ -440,7 +440,7 @@ class EluvioLiveStream {
         return {
           state: "inactive",
           error: "no active streams - must create a stream first"
-        }
+        };
       }
       let edgeMeta = await this.client.ContentObjectMetadata({
         libraryId: libraryId,
@@ -506,7 +506,7 @@ class EluvioLiveStream {
         writeToken: edgeWriteToken,
         commitMessage: "Finalize live stream - stop time " + edgeMeta.recording_stop_time,
         publish: false // Don't publish this version because it is not currently useful
-      })
+      });
 
       return {
         name: name,
@@ -526,7 +526,7 @@ class EluvioLiveStream {
       return {
         state: status.state,
         error: "stream still active - must terminate first"
-      }
+      };
     }
 
     let objectId = status.object_id;
@@ -560,7 +560,7 @@ class EluvioLiveStream {
             "type": "ProtoHls"
           }
         }
-      }
+      };
     }
 
     let libraryId = await this.client.ContentObjectLibraryId({objectId});
