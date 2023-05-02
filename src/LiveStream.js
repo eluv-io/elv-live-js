@@ -565,11 +565,11 @@ class EluvioLiveStream {
 
   async LoadConf({name}) {
 
-    if (name.startsWith('iq__')) {
+    if (name.startsWith("iq__")) {
       return {
         name: name,
         objectId: name
-      }
+      };
     }
 
     // If name is not a QID, load liveconf.json
@@ -578,9 +578,9 @@ class EluvioLiveStream {
       streamsBuf = fs.readFileSync(
         path.resolve(__dirname, "../liveconf.json")
       );
-    } catch(error) {
-      console.log("Stream name must be a QID or a label in liveconf.json")
-      return {}
+    } catch (error) {
+      console.log("Stream name must be a QID or a label in liveconf.json");
+      return {};
     }
     const streams = JSON.parse(streamsBuf);
     const conf = streams[name];
