@@ -14,7 +14,11 @@ You'll need the latest current Nodejs and NPM (Node 17.5.0+ or npm 8.5.1+): http
 npm install
 ```
 
-Then:
+# Tools
+
+# EluvioLive CLI
+
+The EluvioLive CLI (`elv-live`) provides tenant, tokens and marketplace management commands.
 
 ```
 ./elv-live --help
@@ -26,7 +30,7 @@ Usage: elv-live <command>
 Commands:
   ...
 ```
-# Usage Examples
+## Usage Examples
 
 Environment variables required:
 
@@ -92,6 +96,7 @@ Properties > Library Info > Library Id
 Tenant Object Id *
 Properties > Eluvio LIVE Tenant > Object Id
 ```
+
 ## NFT commands
 
 Set up an NFT contract and associate it with an NFT Template object:
@@ -100,7 +105,7 @@ Set up an NFT contract and associate it with an NFT Template object:
 ./elv-live nft_add_contract  ilib3ErteXJcCoTapj2ZhEvMKWau6jET iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP itenYQbgk66W1BFEqWr95xPmHZEjmdF --minthelper 0x59e79eFE007F5208857a646Db5cBddA82261Ca81 --cap 100 --name "TEST NFT SERIES A" --symbol "TESTA"
 ```
 
-## NFT Build for generative images or videos
+### NFT Build for generative images or videos
 
 ./elv-live nft_build command assumes the nft_template object has been created and source images and videos have been ingested into the fabric such that image and embedded video urls have been generated and working.
 
@@ -146,3 +151,37 @@ NFT content object's value from /asset_metadata/nft if present.
 The required key 'attributes' is an array of objects {"trait_type": "", "value": ""}
 and is used to calculate trait rarity. If rarity is already present in the attribute,
 it will be used instead.
+
+# EluvioStream CLI
+
+```
+  export PRIVATE_KEY=0x...
+  ./elv-stream
+
+```
+
+The EluvioStream CLI provides commands for managing live streams.
+
+The general flow for managing a live stream is:
+
+1. Create and configure a live stream content object
+
+  This can be performed with the Fabric Browser
+
+2. Create a 'stream'
+
+  A live stream content object is only active once you create a 'stream'.
+
+3. Start the 'stream'
+
+  This is the process by which the stream is listening for input and is ready to stream.
+
+4. Stop or Reset the 'stream'
+
+  During streaming, you can stop (pause) or reset the stream which will discontinue playout until the stream is restarted.
+
+5. Terminate the stream
+
+  The stream is ended and can no longer be restarted.  You can create a new stream within
+  the same content object.
+
