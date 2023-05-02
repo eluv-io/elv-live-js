@@ -27,14 +27,17 @@ const CmdInit = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.SetOfferingAndDRM({name: argv.stream});
+    let status = await elvStream.SetOfferingAndDRM({
+      name: argv.stream,
+      drm: argv.drm
+    });
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
 
-const CmdStreamStart = async ({ argv }) => {
+const CmdStreamCreate = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
       configUrl: Config.networks[Config.net],
@@ -45,7 +48,7 @@ const CmdStreamStart = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StreamStart({
+    let status = await elvStream.StreamCreate({
       name: argv.stream,
       start: argv.start,
       show_curl: argv.show_curl
@@ -127,7 +130,13 @@ yargs(hideBin(process.argv))
             "Stream name or QID (content ID)",
           type: "string",
         })
-    },
+        .option("drm", {
+          describe:
+            "Specify if playout should be DRM protected (default: false)",
+          type: "boolean",
+        })
+
+      },
     (argv) => {
       CmdInit({ argv });
     }
@@ -154,7 +163,7 @@ yargs(hideBin(process.argv))
         })
     },
     (argv) => {
-      CmdStreamStart({ argv });
+      CmdStreamCreate({ argv });
     }
   )
   .command(

@@ -113,7 +113,9 @@ class EluvioLiveStream {
       });
 
       // If a stream has never been started return state 'inactive'
-      if (!edgeMeta.live_recording.recordings || !edgeMeta.live_recording.recordings.recording_sequence) {
+      if (edgeMeta.live_recording == undefined ||
+        edgeMeta.live_recording.recordings == undefined ||
+        edgeMeta.live_recording.recordings.recording_sequence == undefined) {
         status.state = "inactive";
         return status;
       }
@@ -187,19 +189,27 @@ class EluvioLiveStream {
   }
 
   /*
-  * StartSession creates a new edge write token
+  * StreamCreate creates a new edge write token
   */
-  async StreamStart ({name, start = false, show_curl = false}) {
+  async StreamCreate ({name, start = false, show_curl = false}) {
 
+    let status = await this.Status({name});
+    if (status.state != "inactive" && status.state != "terminated") {
+      return {
+        state: status.state,
+        error: "stream still active - must terminate first"
+      }
+    }
+
+    let objectId = status.object_id;
     console.log("START: ", name, "start", start, "show_curl", show_curl);
-    let conf = await this.LoadConf({name});
 
-    let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
+    let libraryId = await this.client.ContentObjectLibraryId({objectId: objectId});
 
     // Read live recording parameters - determine ingest node
     let liveRecording = await this.client.ContentObjectMetadata({
       libraryId: libraryId,
-      objectId: conf.objectId,
+      objectId: objectId,
       metadataSubtree: "/live_recording"
     });
 
@@ -216,7 +226,7 @@ class EluvioLiveStream {
 
     let response = await this.client.EditContentObject({
       libraryId: libraryId,
-      objectId: conf.objectId
+      objectId: objectId
     });
     const edgeToken = response.write_token;
     console.log("Edge token:", edgeToken);
@@ -226,14 +236,14 @@ class EluvioLiveStream {
     */
     response = await this.client.EditContentObject({
       libraryId: libraryId,
-      objectId: conf.objectId
+      objectId: objectId
     });
     let writeToken = response.write_token;
 
-    if (PRINT_DEBUG) console.log("MergeMetadata", libraryId, conf.objectId, writeToken);
+    if (PRINT_DEBUG) console.log("MergeMetadata", libraryId, objectId, writeToken);
     await this.client.MergeMetadata({
       libraryId: libraryId,
-      objectId: conf.objectId,
+      objectId: objectId,
       writeToken: writeToken,
       metadata: {
         live_recording: {
@@ -248,19 +258,19 @@ class EluvioLiveStream {
       }
     });
 
-    if (PRINT_DEBUG) console.log("FinalizeContentObject", libraryId, conf.objectId, writeToken);
+    if (PRINT_DEBUG) console.log("FinalizeContentObject", libraryId, objectId, writeToken);
     response = await this.client.FinalizeContentObject({
       libraryId: libraryId,
-      objectId: conf.objectId,
+      objectId: objectId,
       writeToken: writeToken
     });
     const objectHash = response.hash;
     console.log("Object hash:", objectHash);
 
-    if (PRINT_DEBUG) console.log("AuthorizationToken", libraryId, conf.objectId);
+    if (PRINT_DEBUG) console.log("AuthorizationToken", libraryId, objectId);
     response = await this.client.authClient.AuthorizationToken({
       libraryId: libraryId,
-      objectId: conf.objectId,
+      objectId: objectId,
       versionHash: "",
       channelAuth: false,
       noCache: true,
@@ -294,8 +304,8 @@ class EluvioLiveStream {
         fabLibHashURI + "/rep/live/default/hls-sample-aes/playlist.m3u8?authorization=" + response);
     }
 
-    let status = {
-      object_id: conf.objectId,
+    status = {
+      object_id: objectId,
       hash: objectHash,
       library_id: libraryId,
       stream_id: edgeToken,
@@ -325,8 +335,6 @@ class EluvioLiveStream {
 
       console.log("Stream ", op, ": ", name);
       let status = await this.Status({name});
-      console.log("STATUS: ", status);
-
       if (status.state != "terminated" && status.state != "inactive") {
         if (op == "start") {
           return status;
@@ -375,6 +383,10 @@ class EluvioLiveStream {
         });
       } catch (error) {
         console.log("LRO Start (failed): ", error);
+        return {
+          state: status.state,
+          error: "LRO start failed - must create a stream first"
+        };
       }
 
       // Wait until LRO is 'starting'
@@ -405,11 +417,12 @@ class EluvioLiveStream {
 
       let conf = await this.LoadConf({name});
 
-      let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
+      let objectId = conf.objectId;
+      let libraryId = await this.client.ContentObjectLibraryId({objectId: objectId});
 
       let mainMeta = await this.client.ContentObjectMetadata({
         libraryId: libraryId,
-        objectId: conf.objectId
+        objectId: objectId
       });
 
       let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
@@ -423,9 +436,15 @@ class EluvioLiveStream {
 
       let edgeWriteToken = mainMeta.live_recording.fabric_config.edge_write_token;
 
+      if (edgeWriteToken == undefined || edgeWriteToken == "") {
+        return {
+          state: "inactive",
+          error: "no active streams - must create a stream first"
+        }
+      }
       let edgeMeta = await this.client.ContentObjectMetadata({
         libraryId: libraryId,
-        objectId: conf.objectId,
+        objectId: objectId,
         writeToken: edgeWriteToken
       });
 
@@ -461,25 +480,33 @@ class EluvioLiveStream {
         }
       }
 
-      console.log("CONFIG:");
-      console.log("recording_start_time: ", edgeMeta.recording_start_time);
-      console.log("recording_stop_time:  ", edgeMeta.recording_stop_time);
-
       // Set stop time
       edgeMeta.recording_stop_time = Math.floor(new Date().getTime() / 1000);
-      console.log("AFTER");
       console.log("recording_start_time: ", edgeMeta.recording_start_time);
       console.log("recording_stop_time:  ", edgeMeta.recording_stop_time);
 
-      edgeMeta.live_recording.status = {state: "terminated"};
+      edgeMeta.live_recording.status = {
+        state: "terminated",
+        recording_stop_time: edgeMeta.recording_stop_time
+      };
+
+      edgeMeta.live_recording.fabric_config.edge_write_token = "";
 
       await this.client.ReplaceMetadata({
         libraryId: libraryId,
-        objectId: conf.objectId,
+        objectId: objectId,
         writeToken: edgeWriteToken,
         metadata: edgeMeta
 
       });
+
+      await this.client.FinalizeContentObject({
+        libraryId,
+        objectId,
+        writeToken: edgeWriteToken,
+        commitMessage: "Finalize live stream - stop time " + edgeMeta.recording_stop_time,
+        publish: false // Don't publish this version because it is not currently useful
+      })
 
       return {
         name: name,
@@ -492,11 +519,19 @@ class EluvioLiveStream {
     }
   }
 
-  async SetOfferingAndDRM({name}) {
+  async SetOfferingAndDRM({name, drm=false}) {
 
-    console.log("INIT: ", name);
+    let status = await this.Status({name});
+    if (status.state != "inactive" && status.state != "terminated") {
+      return {
+        state: status.state,
+        error: "stream still active - must terminate first"
+      }
+    }
 
-    let conf = await this.LoadConf({name});
+    let objectId = status.object_id;
+
+    console.log("INIT: ", name, objectId);
 
     const {GenerateOffering} = require("./LiveObjectSetupStepOne");
 
@@ -516,15 +551,25 @@ class EluvioLiveStream {
     const vTimeBase = "1/30000"; // "1/16000";
 
     const abrProfile = require("./abr_profile_live_drm.json");
+    if (!drm) {
+      abrProfile.drm_optional = true;
+      abrProfile.playout_formats = {
+        "hls-clear": {
+          "drm": null,
+          "protocol": {
+            "type": "ProtoHls"
+          }
+        }
+      }
+    }
 
-    let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
-    const objectId = conf.objectId;
+    let libraryId = await this.client.ContentObjectLibraryId({objectId});
 
     try {
 
       let mainMeta = await this.client.ContentObjectMetadata({
         libraryId: libraryId,
-        objectId: conf.objectId
+        objectId: objectId
       });
 
       let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
