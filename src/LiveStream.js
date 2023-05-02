@@ -537,7 +537,7 @@ class EluvioLiveStream {
 
     if (typeAbrMaster == undefined || typeLiveStream == undefined) {
       console.log("ERROR - unable to find content types", "ABR Master", typeAbrMaster, "Live Stream", typeLiveStream);
-      return {}
+      return {};
     }
     let res = await this.SetOfferingAndDRM({name, typeAbrMaster, typeLiveStream, drm, format});
     return res;
