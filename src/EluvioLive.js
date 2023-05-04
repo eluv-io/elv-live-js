@@ -13,7 +13,6 @@ const url = require("url");
 
 const crypto = require("crypto");
 const ethers = require("ethers");
-const { object } = require("dot-object");
 
 /**
  * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
