@@ -3026,7 +3026,21 @@ class EluvioLive {
     * @param {string} contentHash - Version hash of the new Tenant Object to submit
     * @return {Promise<Object>} - The API Response for the request
     */
-  async TenantPublishData({tenant, host, contentHash}) {
+  async TenantPublishData({tenant, host, contentHash, updateLinks=false}) {
+    let latestVersionHash = contentHash;
+    if (updateLinks){
+      let objectId = this.client.utils.DecodeVersionHash(contentHash).objectId;
+      let libraryId = await this.client.ContentObjectLibraryId({objectId});
+      await this.client.UpdateContentObjectGraph({libraryId,objectId});
+
+      latestVersionHash = await this.client.LatestVersionHash({objectId});
+      contentHash = latestVersionHash;
+      if (this.debug){
+        console.log("Update links latest version hash: ", contentHash, " object Id ", objectId, " library Id ", libraryId);
+      }
+    }
+
+    let tenantConfigResult = null;
 
     var body = {
       content_hash: contentHash
@@ -3038,12 +3052,13 @@ class EluvioLive {
       body
     });
 
-    let tenantConfigResult = await res.json();
+    tenantConfigResult = await res.json();
 
     if (this.debug){
       console.log("Create response: ", tenantConfigResult);
     }
-    return tenantConfigResult;
+
+    return {response:tenantConfigResult, content_hash_updated:contentHash };
   }
 
   /**

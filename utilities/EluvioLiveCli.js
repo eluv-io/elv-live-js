@@ -1314,6 +1314,7 @@ const CmdTenantPublishData  = async ({ argv }) => {
   console.log("Tenant Config Update");
   console.log(`TenantId: ${argv.tenant}`);
   console.log(`Content Hash: ${argv.content_hash}`);
+  console.log(`Update Links: ${argv.update_links}`);
   console.log(`Host: ${argv.as_url}`);
 
   try {
@@ -1321,7 +1322,8 @@ const CmdTenantPublishData  = async ({ argv }) => {
 
     let res = await elvlv.TenantPublishData({
       tenant: argv.tenant,
-      contentHash: argv.content_hash
+      contentHash: argv.content_hash,
+      updateLinks: argv.update_links
     });
 
     console.log("\n" + yaml.dump(res));
@@ -2830,6 +2832,10 @@ yargs(hideBin(process.argv))
         .positional("content_hash", {
           describe: "Version hash of the new tenant Fabric object",
           type: "string",
+        })
+        .option("update_links", {
+          describe: "Update links on your tenant Fabric object",
+          type: "boolean",
         });
     },
     (argv) => {
