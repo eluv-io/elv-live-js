@@ -1,9 +1,11 @@
 const { EluvioLiveStream } = require("../src/LiveStream.js");
 const { Config } = require("../src/Config.js");
+const { LiveRecording } = require("../src/LiveRecordingGenerator.js");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
+const fs = require("fs");
 
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
@@ -115,6 +117,15 @@ const CmdStreamOp = async ({ argv, op }) => {
   }
 };
 
+const CreateLiveRecording = async ({ argv }) => {
+  let { probeFile, nodeUrl, nodeId, calcAvSegDurations, overwriteOriginUrl} = argv;
+  let rawdata = fs.readFileSync(probeFile);
+  let probe = JSON.parse(rawdata);
+
+  lc = new LiveRecording(probe, nodeId, nodeUrl, calcAvSegDurations, overwriteOriginUrl);
+  console.log(lc.generateLiveConf());
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -142,7 +153,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
 
-      },
+    },
     (argv) => {
       CmdInit({ argv });
     }
@@ -245,6 +256,46 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdStreamOp({ argv, op: "stop" });
+    }
+  )
+  .command(
+    "liverecording [args]",
+    "Generates live recording object metadata using a source probe",
+    (yargs) => {
+      yargs
+        .option("probeFile", {
+          description: "Path to file containing ffprobe data in json format",
+          alias: "p",
+          type: "string",
+          demand: true,
+        })
+        .option("nodeUrl", {
+          description: "Optional node, example: https://host-76-74-34-195.contentfabric.io",
+          alias: "n",
+          type: "string",
+          demand: false,
+        })
+        .option("nodeId", {
+          description: "Optional node id, example: inod2dPELDTh44bbBDU7rdH7zGTThRKd",
+          alias: "i",
+          type: "string",
+          demand: false,
+        })
+        .option("calcAvSegDurations", {
+          description: "Have the tool automatically calculate and use audio_seg_duration_ts and video_seg_duration_ts",
+          alias: "c",
+          type: "boolean",
+          default: false,
+        })
+        .option("overwriteOriginUrl", {
+          description: "Manually provide rtmp or udp origin url rather than use the url provided in the probe",
+          alias: "d",
+          type: "string",
+          default: null,
+        });
+    },
+    (argv) => {
+      CreateLiveRecording({argv});
     }
   )
 
