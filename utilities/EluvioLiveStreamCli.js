@@ -118,12 +118,15 @@ const CmdStreamOp = async ({ argv, op }) => {
 };
 
 const CreateLiveRecording = async ({ argv }) => {
-  let { probeFile, nodeUrl, nodeId, calcAvSegDurations, overwriteOriginUrl} = argv;
-  let rawdata = fs.readFileSync(probeFile);
-  let probe = JSON.parse(rawdata);
-
-  lc = new LiveRecording(probe, nodeId, nodeUrl, calcAvSegDurations, overwriteOriginUrl);
-  console.log(lc.generateLiveConf());
+  try {
+    let { probeFile, nodeUrl, nodeId, calcAvSegDurations, overwriteOriginUrl} = argv;
+    let rawdata = fs.readFileSync(probeFile);
+    let probe = JSON.parse(rawdata);
+    lc = new LiveRecording(probe, nodeId, nodeUrl, calcAvSegDurations, overwriteOriginUrl);
+    console.log(lc.generateLiveConf());
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 yargs(hideBin(process.argv))
