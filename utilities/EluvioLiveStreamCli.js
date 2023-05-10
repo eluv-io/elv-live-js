@@ -156,7 +156,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
 
-    },
+      },
     (argv) => {
       CmdInit({ argv });
     }

@@ -1,4 +1,5 @@
 const liveconfTemplate = require("./LiveRecordingTemplate");
+
 class LiveRecording {
   constructor(probeData, nodeId, nodeUrl, calcAvSegDurations, overwriteOriginUrl) {
     this.probeData = probeData;
