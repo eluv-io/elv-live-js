@@ -251,9 +251,14 @@ class ElvFabric {
 
     let csvOut = "";
     for (const [id] of Object.entries(ids)) {
-      const meta = await this.getMeta({objectId: id, includeHash:true});
+      let row = "";
+      try {
+        const meta = await this.getMeta({objectId: id, includeHash:true});
 
-      let row = await ElvUtils.MakeCsv({fields, meta});
+        row = await ElvUtils.MakeCsv({fields, meta});
+      } catch (error) {
+        row = "ERROR: " + error.message;
+      }
       row = id + "," + row;
       csvOut = csvOut + row + "\n";
     }
