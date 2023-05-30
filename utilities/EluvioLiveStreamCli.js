@@ -283,12 +283,12 @@ yargs(hideBin(process.argv))
         })
         .positional("time", {
           describe:
-            "Insertion time (seconds with 6 decimals)",
+            "Insertion time relative to stream start (seconds with 6 decimal precision)",
           type: "float",
         })
         .positional("duration", {
           describe:
-            "Duration (seconds with 6 decimals)",
+            "Duration (seconds with 6 decimal precision)",
           type: "float",
         })
         .positional("target_hash", {

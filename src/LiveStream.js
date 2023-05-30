@@ -662,8 +662,8 @@ class EluvioLiveStream {
   }
 
   async Insertion({name, insertionTime, duration, targetHash, remove}) {
-    const audioAbrDuration = 2.005333
-    const videoAbrDuration = 2.002002
+    const audioAbrDuration = 2.005333;
+    const videoAbrDuration = 2.002002;
 
     let conf = await this.LoadConf({name});
     let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
@@ -744,7 +744,7 @@ class EluvioLiveStream {
       insertions = [
         ...insertions,
         newInsertion
-      ]
+      ];
     }
 
     // Store the new insertions in the write token
