@@ -91,6 +91,9 @@ class EluvioLiveStream {
       });
 
       let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
+      if (fabURI == undefined) {
+        console.log("bad fabric config - missing ingress node API");
+      }
 
       // Support both hostname and URL ingress_node_api
       if (!fabURI.startsWith("http")) {
@@ -722,7 +725,7 @@ class EluvioLiveStream {
         if (insertions[i].insertion_time > insertionTime) {
           if (i > 0) {
             insertions = [
-              ...insertions.slice[0, i],
+              ...insertions.splice(0, i),
               newInsertion,
               ...insertions.splice(i)
             ];

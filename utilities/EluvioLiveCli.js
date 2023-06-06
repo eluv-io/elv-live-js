@@ -450,7 +450,7 @@ const CmdTenantWallets = async ({ argv }) => {
     `Tenant wallets tenant: ${argv.tenant} max_results: ${argv.max_results}`
   );
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantWallets({
       tenant: argv.tenant,
