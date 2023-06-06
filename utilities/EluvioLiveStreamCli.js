@@ -115,6 +115,30 @@ const CmdStreamOp = async ({ argv, op }) => {
   }
 };
 
+const CmdStreamInsertion = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let status = await elvStream.Insertion({
+      name: argv.stream,
+      insertionTime: argv.time,
+      duration: argv.duration,
+      targetHash: argv.target_hash,
+      remove: argv.remove
+    });
+    console.log(yaml.dump(status));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -245,6 +269,42 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdStreamOp({ argv, op: "stop" });
+    }
+  )
+  .command(
+    "insertion <stream> <time> <duration> <target_hash>",
+    "Pauses the currently active live stream.",
+    (yargs) => {
+      yargs
+        .positional("stream", {
+          describe:
+            "Stream name or QID (content ID)",
+          type: "string",
+        })
+        .positional("time", {
+          describe:
+            "Insertion time relative to stream start (seconds with 6 decimal precision)",
+          type: "float",
+        })
+        .positional("duration", {
+          describe:
+            "Duration (seconds with 6 decimal precision)",
+          type: "float",
+        })
+        .positional("target_hash", {
+          describe:
+            "Target content object hash (playable)",
+          type: "string",
+        })
+        .option("remove", {
+          describe:
+            "Flag indicating the insertion is to be deleted",
+          type: "bool",
+        })
+
+    },
+    (argv) => {
+      CmdStreamInsertion({ argv });
     }
   )
 

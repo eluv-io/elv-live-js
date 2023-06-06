@@ -91,6 +91,9 @@ class EluvioLiveStream {
       });
 
       let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
+      if (fabURI == undefined) {
+        console.log("bad fabric config - missing ingress node API");
+      }
 
       // Support both hostname and URL ingress_node_api
       if (!fabURI.startsWith("http")) {
@@ -149,6 +152,14 @@ class EluvioLiveStream {
         writeToken: edgeWriteToken,
         call: "live/status/" + tlro
       });
+
+      status.insertions = [];
+      if (edgeMeta.live_recording.playout_config.interleaves != undefined) {
+        let insertions = edgeMeta.live_recording.playout_config.interleaves;
+        for (let i = 0; i < insertions.length; i ++) {
+          status.insertions[i] = {insertion_time: insertions[i].insertion_time, target: insertions[i].playout};
+        }
+      }
 
       let state = "stopped";
       let lroStatus = "";
@@ -497,7 +508,6 @@ class EluvioLiveStream {
         objectId: objectId,
         writeToken: edgeWriteToken,
         metadata: edgeMeta
-
       });
 
       await this.client.FinalizeContentObject({
@@ -653,6 +663,107 @@ class EluvioLiveStream {
       console.error(error);
     }
   }
+
+  async Insertion({name, insertionTime, duration, targetHash, remove}) {
+    const audioAbrDuration = 2.005333;
+    const videoAbrDuration = 2.002002;
+
+    let conf = await this.LoadConf({name});
+    let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
+    let objectId = conf.objectId;
+
+    let mainMeta = await this.client.ContentObjectMetadata({
+      libraryId: libraryId,
+      objectId: conf.objectId
+    });
+
+    let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
+
+    // Support both hostname and URL ingress_node_api
+    if (!fabURI.startsWith("http")) {
+      // Assume https
+      fabURI = "https://" + fabURI;
+    }
+    this.client.SetNodes({fabricURIs: [fabURI]});
+    let edgeWriteToken = mainMeta.live_recording.fabric_config.edge_write_token;
+
+    let edgeMeta = await this.client.ContentObjectMetadata({
+      libraryId: libraryId,
+      objectId: conf.objectId,
+      writeToken: edgeWriteToken
+    });
+
+    let res = {};
+    let insertions = [];
+    if (edgeMeta.live_recording.playout_config.interleaves != undefined) {
+      insertions = edgeMeta.live_recording.playout_config.interleaves;
+    }
+
+    // Assume insertions are sorted by insertion time
+    let errs = [];
+    let currentTime = -1;
+    let insertionDone = false;
+    let newInsertion = {
+      insertion_time: insertionTime,
+      duration: duration,
+      audio_abr_duration: audioAbrDuration,
+      video_abr_duration: videoAbrDuration,
+      playout: "/qfab/" + targetHash + "/rep/playout"  // TO FIX - should be a link
+    };
+
+    for (let i = 0; i < insertions.length; i ++) {
+      if (insertions[i].insertion_time <= currentTime) {
+        // Bad insertion - must be later than current time
+        append(errs, "Bad insertion - time:", insertions[i].insertion_time);
+      }
+      if (remove) {
+        if (insertions[i].insertion_time == insertionTime) {
+          insertions.splice(i, 1);
+          break;
+        }
+      } else {
+        if (insertions[i].insertion_time > insertionTime) {
+          if (i > 0) {
+            insertions = [
+              ...insertions.splice(0, i),
+              newInsertion,
+              ...insertions.splice(i)
+            ];
+          } else {
+            insertions = [
+              newInsertion,
+              ...insertions.splice(i)
+            ];
+          }
+          insertionDone = true;
+          break;
+        }
+      }
+    }
+
+    if (!remove && !insertionDone) {
+      // Add to the end of the insertions list
+      console.log("Add insertion at the end");
+      insertions = [
+        ...insertions,
+        newInsertion
+      ];
+    }
+
+    // Store the new insertions in the write token
+    await this.client.ReplaceMetadata({
+      libraryId: libraryId,
+      objectId: objectId,
+      writeToken: edgeWriteToken,
+      metadataSubtree: "/live_recording/playout_config/interleaves",
+      metadata: insertions
+    });
+
+    res.errors = errs;
+    res.insertions = insertions;
+    return res;
+  }
+
 
   async LoadConf({name}) {
 
