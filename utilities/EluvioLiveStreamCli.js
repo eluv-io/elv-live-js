@@ -126,9 +126,35 @@ const CmdStreamInsertion = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
+    // Parse insertion time
+    let t = parseFloat(argv.time);
+    let sinceStart = true;
+    if (isNaN(t) || argv.time.includes("-") || argv.time.includes(":")) {
+      // Time specified as an ISO string
+      t = new Date(argv.time).getTime();
+      if (t == undefined || isNaN(t)) {
+        console.log("Bad time specification", argv.time);
+        return;
+      }
+      if (argv.from_now) {
+        console.log("Unsupported flag 'from_now' with absolute time");
+        return;
+      }
+      t = t / 1000; // seconds with decimals
+      sinceStart = false;
+    } else {
+      // Time specified as a float. Check 'from_now' argument
+      if (argv.from_now) {
+        t = Date.now() / 1000 + t;
+        sinceStart = false;
+      }
+    }
+    console.log("Time: " + t + " " + (sinceStart ? "since start" : "since epoch"));
+
     let status = await elvStream.Insertion({
       name: argv.stream,
-      insertionTime: argv.time,
+      insertionTime: t,
+      sinceStart,
       duration: argv.duration,
       targetHash: argv.target_hash,
       remove: argv.remove
@@ -272,7 +298,7 @@ yargs(hideBin(process.argv))
     }
   )
   .command(
-    "insertion <stream> <time> <duration> <target_hash>",
+    "insertion <stream> <time> <target_hash>",
     "Pauses the currently active live stream.",
     (yargs) => {
       yargs
@@ -283,13 +309,8 @@ yargs(hideBin(process.argv))
         })
         .positional("time", {
           describe:
-            "Insertion time relative to stream start (seconds with 6 decimal precision)",
-          type: "float",
-        })
-        .positional("duration", {
-          describe:
-            "Duration (seconds with 6 decimal precision)",
-          type: "float",
+            "Insertion time since stream start (seconds with 6 decimals), since epoch (if 'from_now') or ISO time",
+          type: "string",
         })
         .positional("target_hash", {
           describe:
@@ -300,6 +321,16 @@ yargs(hideBin(process.argv))
           describe:
             "Flag indicating the insertion is to be deleted",
           type: "bool",
+        })
+        .option("from_now", {
+          describe:
+            "Flag indicating insertion time is relative to 'now'",
+          type: "bool",
+        })
+        .option("duration", {
+          describe:
+            "Duration of the content insertion (seconds with 6 decimal precisions)",
+          type: "float",
         })
 
     },

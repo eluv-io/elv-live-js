@@ -157,7 +157,12 @@ class EluvioLiveStream {
       if (edgeMeta.live_recording.playout_config.interleaves != undefined) {
         let insertions = edgeMeta.live_recording.playout_config.interleaves;
         for (let i = 0; i < insertions.length; i ++) {
-          status.insertions[i] = {insertion_time: insertions[i].insertion_time, target: insertions[i].playout};
+          let insertionTimeSinceEpoch = recording_period.start_time_epoch_sec + insertions[i].insertion_time;
+          status.insertions[i] = {
+            insertion_time_since_start: insertions[i].insertion_time,
+            insertion_time: new Date(insertionTimeSinceEpoch * 1000).toISOString(),
+            insertion_time_local: new Date(insertionTimeSinceEpoch * 1000).toLocaleString(),
+            target: insertions[i].playout};
         }
       }
 
@@ -384,6 +389,7 @@ class EluvioLiveStream {
       }
 
       console.log("STARTING");
+
       try {
         await this.client.CallBitcodeMethod({
           libraryId: status.library_id,
@@ -664,7 +670,14 @@ class EluvioLiveStream {
     }
   }
 
-  async Insertion({name, insertionTime, duration, targetHash, remove}) {
+  // Add a content insertion entry
+  // Parameters:
+  // - insertionTime - seconds (float)
+  // - sinceStart - true if time specified since stream start, false if since epoch
+  // - duration - seconds (float, deafault 20.0)
+  // - targetHash -  playable
+  // - remove - flag to remove the insertion at that exact 'time' (instead of adding)
+  async Insertion({name, insertionTime, sinceStart, duration, targetHash, remove}) {
     const audioAbrDuration = 2.005333;
     const videoAbrDuration = 2.002002;
 
@@ -697,6 +710,19 @@ class EluvioLiveStream {
     let insertions = [];
     if (edgeMeta.live_recording.playout_config.interleaves != undefined) {
       insertions = edgeMeta.live_recording.playout_config.interleaves;
+    }
+
+    // Find stream start time (from the most recent recording section)
+    let recordings = edgeMeta.live_recording.recordings;
+    let period = recordings.live_offering[recordings.recording_sequence - 1];
+    let streamStartTime = period.start_time_epoch_sec
+
+    if (!sinceStart) {
+      insertionTime = insertionTime - streamStartTime;
+    }
+
+    if (duration == undefined) {
+      duration = 20;  // Default duration
     }
 
     // Assume insertions are sorted by insertion time
