@@ -300,9 +300,6 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
   if (argv?.token_id) {
     console.log("token_id ", argv?.token_id);
   }
-  if (argv?.host) {
-    console.log("host ", argv?.host);
-  }
   if (argv?.csv) {
     console.log("csv ", argv?.csv);
   }
@@ -316,7 +313,6 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
       contractAddress: argv.contract_address,
       tokenURI: argv.new_token_uri,
       tokenId: argv?.token_id,
-      host: argv?.host,
       csv: argv?.csv,
     });
 
@@ -2085,10 +2081,6 @@ yargs(hideBin(process.argv))
           describe:
             "Optional Token ID; required for single request type",
           type: "number",
-        })
-        .option("host", {
-          describe: "Use this authority service url instead.",
-          type: "string",
         })
         .option("csv", {
           describe: "CSV file for batch request type",
