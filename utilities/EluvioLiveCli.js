@@ -292,6 +292,47 @@ const CmdTenantShow = async ({ argv }) => {
   }
 };
 
+const CmdTenantSetTokenURI = async ({ argv }) => {
+  console.log("request_type ", argv.request_type);
+  console.log("tenantId ", argv.tenant);
+  console.log("contract_address ", argv.contract_address);
+  console.log("token_uri ", argv.new_token_uri);
+  if (argv?.token_id) {
+    console.log("token_id ", argv?.token_id);
+  }
+  if (argv?.host) {
+    console.log("host ", argv?.host);
+  }
+  if (argv?.csv) {
+    console.log("csv ", argv?.csv);
+  }
+
+  try {
+    await Init({debugLogging: argv.verbose});
+
+    let res = await elvlv.TenantSetTokenURI({
+      requestType: argv.request_type,
+      tenantId: argv.tenant,
+      contractAddress: argv.contract_address,
+      tokenURI: argv.new_token_uri,
+      tokenId: argv?.token_id,
+      host: argv?.host,
+      csv: argv?.csv,
+    });
+
+    if (res) {
+      console.log("SUCCESS: ");
+      console.log(res);
+    } else {
+      console.log("ERROR: no response");
+    }
+
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 const CmdSiteShow = async ({ argv }) => {
   console.log("Site - show", argv.object);
   try {
@@ -2018,6 +2059,49 @@ yargs(hideBin(process.argv))
       CmdTenantShow({ argv });
     }
   )
+
+  .command(
+    "tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]",
+    "Reset the token URI(s) for tenant NFT contract(s)",
+    (yargs) => {
+      yargs
+        .positional("request_type", {
+          describe: "Request Type (single, batch, all)",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("contract_address", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("new_token_uri", {
+          describe: 'New token URI; ignored if CSV batch, use -',
+          type: "string",
+        })
+        .option("token_id", {
+          describe:
+            "Optional Token ID; required for single request type",
+          type: "number",
+        })
+        .option("host", {
+          describe: "Use this authority service url instead.",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "CSV file for batch request type",
+          type: "string",
+        });
+
+
+    },
+    (argv) => {
+      CmdTenantSetTokenURI({ argv });
+    }
+  )
+
 
   .command(
     "tenant_balance_of <tenant> <owner>",

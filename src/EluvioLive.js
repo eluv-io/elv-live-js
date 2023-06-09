@@ -13,6 +13,7 @@ const url = require("url");
 
 const crypto = require("crypto");
 const ethers = require("ethers");
+const { parse } = require("csv-parse");
 
 /**
  * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
@@ -84,6 +85,88 @@ class EluvioLive {
     return {tenant_admin_address,
       tenant_admin_id: ElvUtils.AddressToId({prefix:"igrp", address:tenant_admin_address})
     };
+  }
+
+  /**
+   * Set the Token URI for an NFT.
+   * Currently only setting one and a time. Will support types, single, batch and all.
+   *
+   * @namedParams
+   * @param {string} requestType - The type of request: single, batch, all
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} contractAddress - The NFT contract address
+   * @param {string} tokenURI - The new token URI
+   * @param {int} tokenId - The NFT token ID
+   * @param {string} host - The host to use for the request, undefined to use config
+   * @param {string} csv - The CSV file to use for the request, undefined to use config
+   * @return {Promise<Object>} - An object containing tenant info, including 'warnings'
+   */
+  async TenantSetTokenURI({ requestType, tenantId, contractAddress, tokenURI, tokenId, host, csv }) {
+
+    let body = {};
+    body.request_type = requestType;
+    body.contract_address = contractAddress;
+    body.tokens = [];
+  
+    switch (requestType) {
+      case "batch":
+        if (!csv) {
+          console.log("Error: CSV file required for batch request");
+          return;
+        }
+        let csvFile;
+        try {
+          csvFile = fs.readFileSync(path.resolve(__dirname, csv));
+        } catch (e) {
+          console.log("Error reading CSV file: ", e);
+          return;
+        }
+        // transform CSV to array for JSON request
+        const records = parse(csvFile, {columns: true,
+          skip_records_with_empty_values: true});
+
+        // rows should be tokenURI, tokenId
+        // tokenId should always exist
+        await records.forEach(row => {
+          body.tokens.push({
+            "token_id": Number(row.tokenId),
+            "token_id_str":  row.tokenId.toString(),
+            "token_uri": row.tokenURI
+          });
+        });
+
+        break;
+      case "all":
+        body.tokens.push({
+          "token_id": null,
+          "token_id_str": "",
+          "token_uri": tokenURI
+        });
+        break;
+      case "single":
+        body.tokens.push({
+          "token_id": tokenId,
+          "token_id_str": tokenId.toString(),
+          "token_uri": tokenURI
+        });
+        break;
+      default:
+        console.log("Error: Invalid request type");
+        return;
+    }
+
+    let res = await this.PostServiceRequest({
+      path: urljoin("/tnt/nft/stu", tenantId),  // /tnt/nft/stu/:tid/
+      body, 
+      host 
+    });
+
+    let tenantConfigResult = await res.json();
+    if (this.debug){
+      console.log("Create response: ", tenantConfigResult);
+    }
+    return tenantConfigResult;
+
   }
 
   /**
