@@ -21,16 +21,32 @@ npm install
 The EluvioLive CLI (`elv-live`) provides tenant, tokens and marketplace management commands.
 
 ```
-./elv-live --help
-
 EluvioLive CLI
 
 Usage: elv-live <command>
 
 Commands:
-  ...
+  nft_add_contract <tenant> <object> <cap>  Add a new or existing NFT contract
+  <name> <symbol> [options]                 to an NFT Template object
+  token_add_minter <addr> <minter>          Add minter or mint helper address to
+                                            NFT or Token
+  token_renounce_minter <addr>              Renounce the minter(msg.sender) from
+                                            NFT or Token
+  token_is_minter <addr> <minter>           check if minter to NFT or Token
+
+  [...]
+
+Options:
+      --version  Show version number                                   [boolean]
+  -v, --verbose  Verbose mode                                          [boolean]
+      --as_url   Alternate URL endpoint                                 [string]
+      --help     Show help                                             [boolean]
 ```
-## Usage Examples
+
+[Complete Command Line Help](CMDLINE.md)
+
+# Usage Examples
+
 
 Environment variables required:
 
@@ -99,13 +115,38 @@ Properties > Eluvio LIVE Tenant > Object Id
 
 ## NFT commands
 
+### Set up an NFT contract 
 Set up an NFT contract and associate it with an NFT Template object:
 
 ```
 ./elv-live nft_add_contract  ilib3ErteXJcCoTapj2ZhEvMKWau6jET iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP itenYQbgk66W1BFEqWr95xPmHZEjmdF --minthelper 0x59e79eFE007F5208857a646Db5cBddA82261Ca81 --cap 100 --name "TEST NFT SERIES A" --symbol "TESTA"
 ```
 
-### NFT Build for generative images or videos
+### Set Token URI for NFT contract:
+elv-live tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]
+
+Single:
+```
+PRIVATE_KEY=0x00...ZZZ ./elv-live tenant_set_token_uri single itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft --token_id 128 --as_url http://127.0.0.1:6546
+```
+
+Batch:
+```
+PRIVATE_KEY=0x00...ZZZ ./elv-live tenant_set_token_uri batch itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca - --as_url http://127.0.0.1:6546 --csv ../test/testdata/settokenuri_testlist.csv
+```
+
+[Sample Batch CSV file](test/testdata/settokenuri_testlist.csv)
+
+All:
+```
+PRIVATE_KEY=0x00...ZZZ ./elv-live tenant_set_token_uri all itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft --as_url http://127.0.0.1:6546
+```
+
+
+
+
+## NFT Build for generative images or videos
+
 
 ./elv-live nft_build command assumes the nft_template object has been created and source images and videos have been ingested into the fabric such that image and embedded video urls have been generated and working.
 

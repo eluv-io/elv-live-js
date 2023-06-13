@@ -74,7 +74,7 @@ const CmfNftTemplateAddNftContract = async ({ argv }) => {
 
 const CmdTokenAddMinter = async ({ argv }) => {
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.AddMinter({
       addr: argv.addr,
@@ -88,7 +88,7 @@ const CmdTokenAddMinter = async ({ argv }) => {
 
 const CmdTokenRenounceMinter= async ({ argv }) => {
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.RenounceMinter({
       addr: argv.addr,
@@ -101,7 +101,7 @@ const CmdTokenRenounceMinter= async ({ argv }) => {
 
 const CmdTokenIsMinter= async ({ argv }) => {
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.IsMinter({
       addr: argv.addr,
@@ -118,7 +118,7 @@ const CmdTokenIsMinter= async ({ argv }) => {
 const CmfNftSetProxy = async ({ argv }) => {
   console.log("NFT - set proxy", argv.addr, argv.proxy_addr);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let p = await elvlv.NftSetTransferProxy({
       addr: argv.addr,
@@ -133,7 +133,7 @@ const CmfNftSetProxy = async ({ argv }) => {
 const CmdNftBalanceOf = async ({ argv }) => {
   console.log("NFT - call", argv.addr, argv.owner);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.NftBalanceOf({
       addr: argv.addr,
@@ -149,7 +149,7 @@ const CmdNftBalanceOf = async ({ argv }) => {
 const CmdNftBurn = async ({ argv }) => {
   console.log("NFT burn ", argv.addr, argv.token_id);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.NftBurn({
       addr: argv.addr,
@@ -165,7 +165,7 @@ const CmdNftBurn = async ({ argv }) => {
 const CmdNftProxyBurn = async ({ argv }) => {
   console.log("NFT Proxy burn ", argv.addr, argv.token_id);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.NftProxyBurn({
       addr: argv.addr,
@@ -185,7 +185,7 @@ const CmdNftShow = async ({ argv }) => {
   console.log("show_owners ", argv.show_owners);
   console.log("token_id ", argv.token_id);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.NftShow({
       addr: argv.addr,
@@ -206,7 +206,7 @@ const CmdNftBuild = async ({ argv }) => {
   console.log("NFT - objectId ", argv.object);
   console.log("NFT - nftDir ", argv.nft_dir);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.NftBuild({
       libraryId: argv.library,
@@ -228,7 +228,7 @@ const CmdNftProxyTransfer = async ({ argv }) => {
     argv.to_addr
   );
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.NftProxyTransferFrom({
       addr: argv.addr,
@@ -252,7 +252,7 @@ const CmdNftTransfer = async ({ argv }) => {
     argv.auth_service
   );
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res;
     if (argv.auth_service) {
@@ -279,7 +279,7 @@ const CmdTenantShow = async ({ argv }) => {
   console.log("Tenant - show", argv.tenant);
   console.log("check_nfts", argv.check_nfts);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.TenantShow({
       tenantId: argv.tenant,
@@ -292,10 +292,47 @@ const CmdTenantShow = async ({ argv }) => {
   }
 };
 
+const CmdTenantSetTokenURI = async ({ argv }) => {
+  console.log("request_type ", argv.request_type);
+  console.log("tenantId ", argv.tenant);
+  console.log("contract_address ", argv.contract_address);
+  console.log("token_uri ", argv.new_token_uri);
+  if (argv?.token_id) {
+    console.log("token_id ", argv?.token_id);
+  }
+  if (argv?.csv) {
+    console.log("csv ", argv?.csv);
+  }
+
+  try {
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+
+    let res = await elvlv.TenantSetTokenURI({
+      requestType: argv.request_type,
+      tenantId: argv.tenant,
+      contractAddress: argv.contract_address,
+      tokenURI: argv.new_token_uri,
+      tokenId: argv?.token_id,
+      csv: argv?.csv,
+    });
+
+    if (res) {
+      console.log("SUCCESS: ");
+      console.log(res);
+    } else {
+      console.log("ERROR: no response");
+    }
+
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 const CmdSiteShow = async ({ argv }) => {
   console.log("Site - show", argv.object);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.SiteShow({
       libraryId: argv.library,
@@ -312,7 +349,7 @@ const CmdSiteSetDrop = async ({ argv }) => {
   console.log("Site - set drop", argv.object, argv.uuid, "update", argv.update);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.SiteSetDrop({
       libraryId: argv.library,
@@ -335,7 +372,7 @@ const CmdSiteSetDrop = async ({ argv }) => {
 const CmdTenantBalanceOf = async ({ argv }) => {
   console.log("Tenant - balance of", argv.tenant, argv.owner, argv.max_results);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.TenantBalanceOf({
       tenantId: argv.tenant,
@@ -352,7 +389,7 @@ const CmdTenantBalanceOf = async ({ argv }) => {
 const CmdFabricTenantBalanceOf = async ({ argv }) => {
   console.log("Fabric Tenant - balance of", argv.object, argv.owner);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.FabricTenantBalanceOf({
       objectId: argv.object,
@@ -429,7 +466,7 @@ const CmdTenantMint = async ({ argv }) => {
   );
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.TenantMint({
       tenant: argv.tenant,
@@ -469,7 +506,7 @@ const CmdNFTRefresh = async ({ argv }) => {
   console.log(`address: ${argv.addr}}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.NFTRefresh({
       tenant: argv.tenant,
@@ -486,7 +523,7 @@ const CmdNFTRefresh = async ({ argv }) => {
 const CmdList = async ({ argv }) => {
   console.log(`list tenant: ${argv.tenant} tenant_slug: ${argv.tenant_slug}`);
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.List({
       tenantId: argv.tenant,
@@ -667,7 +704,7 @@ const CmdAccountCreate = async ({ argv }) => {
   console.log(`tenant_admins: ${argv.tenant_admins}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     let res = await elvlv.AccountCreate({
       funds: argv.funds,
       accountName: argv.account_name,
@@ -683,7 +720,7 @@ const CmdAccountShow = async () => {
   console.log("Account Show\n");
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     let res = await elvlv.AccountShow();
     console.log(yaml.dump(res));
   } catch (e) {
@@ -697,7 +734,7 @@ const CmdTenantNftRemove = async ({ argv }) => {
   console.log(`NFT Address: ${argv.addr}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     console.log("Searching for NFT address in tenant contract...");
     let res = await elvlv.TenantHasNft({
@@ -737,7 +774,7 @@ const CmdTenantNftList = async ({ argv }) => {
   console.log(`Tenant ID: ${argv.tenant}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     res = await elvlv.TenantNftList({ tenantId: argv.tenant });
 
     console.log(yaml.dump(res));
@@ -752,7 +789,7 @@ const CmdTenantHasNft = async ({ argv }) => {
   console.log(`NFT Address: ${argv.addr}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     res = await elvlv.TenantHasNft({
       tenantId: argv.tenant,
       nftAddr: argv.addr,
@@ -770,7 +807,7 @@ const CmdTenantAddConsumers = async ({ argv }) => {
   console.log(`Account Addresses: ${argv.addrs}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     let res = await elvlv.TenantAddConsumers({
       groupId: argv.group_id,
       accountAddresses: argv.addrs,
@@ -788,7 +825,7 @@ const CmdTenantRemoveConsumer = async ({ argv }) => {
   console.log(`Account Address: ${argv.addr}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     let res = await elvlv.TenantRemoveConsumer({
       groupId: argv.group_id,
       accountAddress: argv.addr,
@@ -809,7 +846,7 @@ const CmdMarketplaceAddItem = async ({ argv }) => {
   console.log(`NFT For Sale: ${argv.forSale}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     const res = await marketplace.MarketplaceAddItem({
       nftObjectId: argv.object.startsWith("iq__") ? argv.object : undefined,
       nftObjectHash: argv.object.startsWith("hq__") ? argv.object : undefined,
@@ -833,7 +870,7 @@ const CmdMarketplaceAddItemBatch = async ({ argv }) => {
   console.log(`CSV file containing Object Names and IDs: ${argv.csv}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     const res = await marketplace.MarketplaceAddItemBatch({
       marketplaceObjectId: argv.marketplace,
@@ -852,7 +889,7 @@ const CmdMarketplaceRemoveItem = async ({ argv }) => {
   console.log(`NFT Template Object ID: ${argv.object}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     const res = await marketplace.MarketplaceRemoveItem({
       nftObjectId: argv.object,
       marketplaceObjectId: argv.marketplace,
@@ -870,7 +907,7 @@ const CmdTenantHasConsumer = async ({ argv }) => {
   console.log(`Account Address: ${argv.addr}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     var res = await elvlv.TenantHasConsumer({
       groupId: argv.group_id,
       accountAddress: argv.addr,
@@ -889,7 +926,7 @@ const CmdStorefrontSectionAddItem = async ({ argv }) => {
   console.log(`Marketplace Storefront Section: ${argv.section}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     const res = await marketplace.StorefrontSectionAddItem({
       objectId: argv.marketplace,
       sku: argv.sku,
@@ -909,7 +946,7 @@ const CmdStorefrontSectionRemoveItem = async ({ argv }) => {
   console.log(`Object Write Token: ${argv.writeToken}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     const res = await marketplace.StorefrontSectionRemoveItem({
       objectId: argv.marketplace,
       sku: argv.sku,
@@ -928,7 +965,7 @@ const CmdNftSetTransferFee = async ({ argv }) => {
   console.log(`Fee: ${argv.fee}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.NftSetTransferFee({
       address: argv.addr,
@@ -946,7 +983,7 @@ const CmdNftGetTransferFee = async ({ argv }) => {
   console.log(`NFT Contract Address: ${argv.addr}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.NftGetTransferFee({ address: argv.addr });
 
@@ -978,7 +1015,7 @@ const CmdNftRemoveRedeemableOffer = async ({ argv }) => {
   console.log(`Offer ID: ${argv.id}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.NFTRemoveRedeemableOffer({ addr: argv.addr,
       offerId:argv.id });
@@ -995,7 +1032,7 @@ const CmdNftIsOfferActive = async ({ argv }) => {
   console.log(`Offer ID: ${argv.offer_id}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.NFTIsOfferActive({ addr: argv.addr,
       offerId:argv.offer_id });
@@ -1013,7 +1050,7 @@ const CmdNftIsOfferRedeemed = async ({ argv }) => {
   console.log(`Offer ID: ${argv.offer_id}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.NFTIsOfferRedeemed({ addr: argv.addr,
       tokenId: argv.token_id,
@@ -1033,7 +1070,7 @@ const CmdNftRedeemOffer = async ({ argv }) => {
   console.log(`Offer ID: ${argv.offer_id}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.NFTRedeemOffer({
       addr: argv.addr,
@@ -1058,7 +1095,7 @@ const CmdASNftRedeemOffer = async ({ argv }) => {
 
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.ASNFTRedeemOffer({
       addr: argv.addr,
@@ -1081,7 +1118,7 @@ const CmdTenantProvision = async ({ argv }) => {
   console.log(`verbose: ${argv.verbose}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     let client = elvlv.client;
     let kmsId = ElvUtils.AddressToId({
       prefix: "ikms",
@@ -1109,7 +1146,7 @@ const CmdTenantAddConsumerGroup = async ({ argv }) => {
   console.log(`verbose: ${argv.verbose}`);
 
   try {
-    await Init({debugLogging: argv.verbose});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     let client = elvlv.client;
     let tenantAddress = Utils.HashToAddress(argv.tenant);
     console.log(`Tenant Contract Address: ${tenantAddress}`);
@@ -1128,7 +1165,7 @@ const CmdNFTGetPolicyPermissions = async ({ argv }) => {
   console.log(`verbose: ${argv.verbose}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.NftGetPolicyAndPermissions({ address: argv.object });
 
@@ -1147,7 +1184,7 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   console.log(`clear: ${argv.clear}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.NftSetPolicyAndPermissions({
       objectId: argv.object,
@@ -1337,7 +1374,7 @@ const CmdNotifSendTokenUpdate = async ({ argv }) => {
 
   try {
 
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     let nftInfo = await elvlv.NftShow({
       addr: argv.nft_addr,
       showOwners: 10000000 // 10 mil is code for 'unlimited'
@@ -1472,7 +1509,7 @@ const CmdContentSetPolicy  = async ({ argv }) => {
   console.log(`Data: ${argv.data}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.ContentSetPolicy({
       objectId: argv.object,
@@ -1498,7 +1535,7 @@ const CmdContentSetPolicyDelegate  = async ({ argv }) => {
   console.log(`Data: ${argv.data}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.ContentSetPolicyDelegate({
       objectId: argv.object,
@@ -1520,7 +1557,7 @@ const CmdContentGetPolicy  = async ({ argv }) => {
   console.log(`Object: ${argv.object}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.ContentGetPolicy({
       objectId: argv.object
@@ -1537,7 +1574,7 @@ const CmdContentClearPolicy = async ({ argv }) => {
   console.log(`Object: ${argv.object}`);
 
   try {
-    await Init({ debugLogging: argv.verbose });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     res = await elvlv.ContentClearPolicy({
       objectId: argv.object
@@ -2018,6 +2055,45 @@ yargs(hideBin(process.argv))
       CmdTenantShow({ argv });
     }
   )
+
+  .command(
+    "tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]",
+    "Reset the token URI(s) for tenant NFT contract(s)",
+    (yargs) => {
+      yargs
+        .positional("request_type", {
+          describe: "Request Type (single, batch, all)",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("contract_address", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("new_token_uri", {
+          describe: 'New token URI; ignored if CSV batch, use -',
+          type: "string",
+        })
+        .option("token_id", {
+          describe:
+            "Optional Token ID; required for single request type",
+          type: "number",
+        })
+        .option("csv", {
+          describe: "CSV file for batch request type",
+          type: "string",
+        });
+
+
+    },
+    (argv) => {
+      CmdTenantSetTokenURI({ argv });
+    }
+  )
+
 
   .command(
     "tenant_balance_of <tenant> <owner>",
