@@ -292,6 +292,57 @@ const CmdTenantShow = async ({ argv }) => {
   }
 };
 
+const CmdTenantShowNew = async({ argv }) => {
+  console.log("Tenant - show", argv.tenant);
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    let res = await elvlv.TenantShowNew({
+      tenantId: argv.tenant
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantAddContentAdmin = async ({ argv }) => {
+  console.log(`Setting a new Content Admin for Tenant ${argv.tenant}`);
+  console.log(`New Content Admin's Address: ${argv.content_admin_address}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    let res = await elvlv.TenantAddContentAdmin({
+      tenantId: argv.tenant,
+      contentAdminsAddress: argv.content_admin_address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantRemoveContentAdmin = async ({ argv }) => {
+  console.log(`Removing a Content Admin from Tenant ${argv.tenant}`);
+  console.log(`Removed Content Admin's Address: ${argv.content_admin_address}`);
+  
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    let res = await elvlv.TenantRemoveContentAdmin({
+      tenantId: argv.tenant,
+      contentAdminsAddress: argv.content_admin_address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdTenantSetTokenURI = async ({ argv }) => {
   console.log("request_type ", argv.request_type);
   console.log("tenantId ", argv.tenant);
@@ -2057,6 +2108,59 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "tenant_show_new <tenant> [options]",
+    "Show info on this tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantShowNew({ argv });
+    }
+  )
+
+  .command(
+    "tenant_add_content_admin <tenant> <content_admin_address>",
+    "Set new content admin",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("content_admin_address", {
+          describe: "Content Admin's address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantAddContentAdmin({ argv });
+    }
+  )
+
+  .command(
+    "tenant_remove_content_admin <tenant> <content_admin_address>",
+    "Remove a content admin",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("content_admin_address", {
+          describe: "Content Admin's address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantRemoveContentAdmin({ argv });
+    }
+  )
+
+  .command(
     "tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]",
     "Reset the token URI(s) for tenant NFT contract(s)",
     (yargs) => {
@@ -2093,7 +2197,6 @@ yargs(hideBin(process.argv))
       CmdTenantSetTokenURI({ argv });
     }
   )
-
 
   .command(
     "tenant_balance_of <tenant> <owner>",

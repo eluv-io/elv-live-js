@@ -354,6 +354,101 @@ class EluvioLive {
   }
 
   /**
+   * Return tenant admins group and content admins group corresponding to this tenant.
+   * @param {string} ojbectId - The ID of the tenant (iten***)
+   */
+  async TenantShowNew({ tenantId }) {
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    let tenantAdminAddr = await this.client.CallContractMethod({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "groupsMapping",
+      methodArgs: ["tenant_admin", 0],
+      formatArguments: true,
+    });
+
+    let contentAdminAddresses = [];
+    
+    for (let i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+      let ordinal = BigNumber(i).toString(16);
+      try {
+        let addr = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
+          methodName: "groupsMapping",
+          methodArgs: ["content_admin", ordinal], 
+          formatArguments: true,
+        });
+
+        contentAdminAddresses.push(addr);
+      } catch (e) {
+        if (contentAdminAddresses.length == 0) {
+          contentAdminAddresses = null;
+        }
+        break;
+      }
+    }
+
+    return {tenant_admin_address: tenantAdminAddr,
+      content_admin_addresses: contentAdminAddresses};
+  }
+
+  /**
+   * Set a new content admin corresponding to this tenant.
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} contentAdminsAddress - Address of content admin we want to add.
+   */
+  async TenantAddContentAdmin({ tenantId, contentAdminsAddress }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+
+    let res = await this.client.CallContractMethodAndWait({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "addGroup",
+      methodArgs: ["content_admin", contentAdminsAddress],
+      formatArguments: true,
+    });
+
+    console.log(res);
+
+    return res;
+  }
+
+  /**
+   * Remove a content admin from this tenant.
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} contentAdminsAddress - Address of content admin we want to remove.
+   */
+  async TenantRemoveContentAdmin({ tenantId, contentAdminsAddress }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+
+    let res = await this.client.CallContractMethodAndWait({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "removeGroup",
+      methodArgs: ["content_admin", contentAdminsAddress],
+      formatArguments: true,
+    });
+
+    console.log(res);
+
+    return res;
+  }
+
+
+  /**
    * Get a list of the NFTs of this tenant owned by 'ownerAddr'
    *
    * @namedParams
