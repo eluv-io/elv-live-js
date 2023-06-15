@@ -447,7 +447,6 @@ class EluvioLive {
     return res;
   }
 
-
   /**
    * Get a list of the NFTs of this tenant owned by 'ownerAddr'
    *
