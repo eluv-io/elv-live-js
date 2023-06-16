@@ -71,7 +71,7 @@ class ElvSpace {
 
       if (this.debug){
         console.log("tenant admins:", tenantAdminGroup);
-        console.log("content admins:", contentAdminGroup)
+        console.log("content admins:", contentAdminGroup);
       }
 
       let tenant = await this.TenantDeploy({
