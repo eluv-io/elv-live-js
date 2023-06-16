@@ -195,6 +195,7 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
   console.log(`Tenant name: ${argv.tenant_name}`);
   console.log(`Owner address: ${argv.owner_addr}`);
   console.log(`Tenant admin group address: ${argv.tenant_admin_addr}`);
+  console.log(`Content admin group address: ${argv.content_admin_addr}`);
 
   try {
     let space = new ElvSpace({
@@ -208,7 +209,8 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
     res = await space.TenantDeploy({
       tenantName: argv.tenant_name,
       ownerAddress: argv.owner_addr,
-      adminGroupAddress: argv.tenant_admin_addr,
+      tenantAdminGroupAddress: argv.tenant_admin_addr,
+      contentAdminGroupAddress: argv.content_admin_addr,
     });
 
     console.log(yaml.dump(res));
@@ -910,7 +912,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "space_tenant_deploy <tenant_name> <owner_addr> <tenant_admin_addr>",
+    "space_tenant_deploy <tenant_name> <owner_addr> <tenant_admin_addr> <content_admin_addr>",
     "Deploys a tenant contract",
     (yargs) => {
       yargs
@@ -924,6 +926,10 @@ yargs(hideBin(process.argv))
         })
         .positional("tenant_admin_addr", {
           describe: "Address of the tenant admins groups",
+          type: "string",
+        })
+        .positional("content_admin_addr", {
+          describe: "Address of the content admins groups",
           type: "string",
         });
     },

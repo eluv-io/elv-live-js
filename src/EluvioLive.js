@@ -393,6 +393,9 @@ class EluvioLive {
       }
     }
 
+    console.log(await this.client.userProfileClient.TenantId());
+
+
     return {tenant_admin_address: tenantAdminAddr,
       content_admin_addresses: contentAdminAddresses};
   }

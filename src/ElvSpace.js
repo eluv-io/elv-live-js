@@ -62,39 +62,23 @@ class ElvSpace {
       await elvAccount.Init({ privateKey: account.privateKey });
 
       if (this.debug){
-        console.log("create admin group");
+        console.log("create admin groups");
       }
 
-      let adminGroup = await elvAccount.CreateAccessGroup({
-        name: `${tenantName} Tenant Admins`,
-      });
-
-      await elvAccount.AddToAccessGroup({
-        groupAddress: adminGroup.address,
-        accountAddress: account.address,
-        isManager: true,
-      });
-
-      // Add KMS to tenant admins group
-      await elvAccount.AddToAccessGroup({
-        groupAddress: adminGroup.address,
-        accountAddress: this.kmsAddress,
-      });
-
-      await elvAccount.SetAccountTenantAdminsAddress({
-        tenantAdminsAddress: adminGroup.address,
-      });
-
-      account.tenantAdminsId = await elvAccount.client.userProfileClient.TenantId();
+      let admins = SetTenantAndContentAdminGroups(tenantName, account, elvAccount);
+      let tenantAdminGroup = admins.tenantAdminGroup;
+      let contentAdminGroup = admins.contentAdminGroup;
 
       if (this.debug){
-        console.log("tenant admins:", adminGroup);
+        console.log("tenant admins:", tenantAdminGroup);
+        console.log("content admins:", contentAdminGroup)
       }
 
       let tenant = await this.TenantDeploy({
         tenantName,
         ownerAddress: account.address,
-        adminGroupAddress: adminGroup.address,
+        adminGroupAddress: tenantAdminGroup.address,
+        contentGroupAddress: contentAdminGroup.address,
       });
       return {
         account,
@@ -106,7 +90,7 @@ class ElvSpace {
     }
   }
 
-  async TenantDeploy({ tenantName, ownerAddress, adminGroupAddress }) {
+  async TenantDeploy({ tenantName, ownerAddress, tenantAdminGroupAddress, contentAdminGroupAddress }) {
     let tenantContract = await ElvUtils.DeployContractFile({
       client: this.client,
       fileName: "BaseTenantSpace",
@@ -140,7 +124,7 @@ class ElvSpace {
       console.log("Result addFuncs", res);
     }
 
-    if (adminGroupAddress) {
+    if (tenantAdminGroupAddress) {
       let contractAdminGroup = await this.client.CallContractMethod({
         contractAddress: tenantContract.address,
         abi: JSON.parse(tenantContract.abi),
@@ -153,13 +137,25 @@ class ElvSpace {
         contractAddress: tenantContract.address,
         abi: JSON.parse(tenantContract.abi),
         methodName: "addGroup",
-        methodArgs: [contractAdminGroup, adminGroupAddress],
+        methodArgs: [contractAdminGroup, tenantAdminGroupAddress],
         formatArguments: true,
       });
 
       if (this.debug){
-        console.log("Result set admin group", res);
+        console.log("Result set tenant admin group", res);
       }
+    }
+
+    res = await this.client.CallContractMethodAndWait({
+      contractAddress: tenantContract.address,
+      abi: JSON.parse(tenantContract.abi),
+      methodName: "addGroup",
+      methodArgs: ["content_admin", contentAdminGroupAddress],
+      formatArguments: true,
+    });
+
+    if (this.debug){
+      console.log("Result set content admin group", res);
     }
 
     if (ownerAddress) {
@@ -197,10 +193,52 @@ class ElvSpace {
       name: tenantName,
       id: ElvUtils.AddressToId({prefix:"iten", address:tenantContract.address}),
       address: tenantContract.address,
-      adminGroupAddress,
+      tenantAdminGroupAddress,
+      contentAdminGroupAddress
     };
   }
 
+  //Helper function for TenantCreate
+  async SetTenantAndContentAdminGroups(tenantName, account, elvAccount) {
+    //Create Tenant Admin Access Group
+    let tenantAdminGroup = await elvAccount.CreateAccessGroup({
+      name: `${tenantName} Tenant Admins`,
+    });
+
+    await elvAccount.AddToAccessGroup({
+      groupAddress: tenantAdminGroup.address,
+      accountAddress: account.address,
+      isManager: true,
+    });
+    await elvAccount.AddToAccessGroup({
+      groupAddress: tenantAdminGroup.address,
+      accountAddress: this.kmsAddress, // Add KMS to tenant admins group
+    });
+
+    await elvAccount.SetAccountTenantAdminsAddress({
+      tenantAdminsAddress: tenantAdminGroup.address,
+    });
+    account.tenantAdminsId = await elvAccount.client.userProfileClient.TenantId();
+
+    //Create Content Admin Access Group
+    let contentAdminGroup = await elvAccount.CreateAccessGroup({
+      name: `${tenantName} Content Admins`,
+    });
+
+    await elvAccount.AddToAccessGroup({
+      groupAddress: contentAdminGroup.address,
+      accountAddress: account.address,
+      isManager: true,
+    });
+    await elvAccount.AddToAccessGroup({
+      groupAddress: contentAdminGroup.address,
+      accountAddress: this.kmsAddress, // Add KMS to tenant admins group
+    });
+
+    return {
+      tenantAdminGroup, contentAdminGroup
+    };
+  }
 }
 
 exports.ElvSpace = ElvSpace;
