@@ -97,7 +97,7 @@ class ElvSpace {
       });
       await elvAccount.AddToAccessGroup({
         groupAddress: contentAdminGroup.address,
-        accountAddress: this.kmsAddress, // Add KMS to tenant admins group
+        accountAddress: this.kmsAddress, // Add KMS to content admins group
       });
 
       //if (this.debug){
@@ -122,20 +122,18 @@ class ElvSpace {
   }
 
   async TenantDeploy({ tenantName, ownerAddress, tenantAdminGroupAddress, contentAdminGroupAddress }) {
-    console.log("#0");
     let tenantContract = await ElvUtils.DeployContractFile({
       client: this.client,
       fileName: "BaseTenantSpace",
       args: [this.spaceAddress, tenantName, this.kmsAddress],
     });
-    console.log("#1");
+ 
     let res = {};
 
     let tenantFuncsContract = await ElvUtils.DeployContractFile({
       client: this.client,
       fileName: "TenantFuncsBase",
     });
-    console.log('#2');
 
     var tt4Bytes = ElvUtils.GetFunc4Bytes(
       "transferToken(bytes,uint256,address)"
