@@ -84,9 +84,13 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   });
 
   let tenantAdminGroupAddress = client.utils.HashToAddress(tenantAdminId);
-
-  const contentAdminGroupAddress = await client.CreateAccessGroup({
-    name: `${tenantName} Content Admins`
+  
+  let contentAdminGroupAddress = await client.CallContractMethodAndWait({
+    contractAddress: tenantAddr,
+    abi: JSON.parse(abi),
+    methodName: "groupsMapping",
+    methodArgs: ["content_admin", 0],
+    formatArguments: true,
   });
 
   const contentViewersGroupAddress = await client.CreateAccessGroup({
@@ -94,11 +98,6 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   });
 
   const tenantSlug = tenantName.toLowerCase().replace(/ /g, "-");
-
-  await client.AddAccessGroupManager({
-    contractAddress: contentAdminGroupAddress,
-    memberAddress: tenantAdminSigner.address
-  });
 
   await client.AddAccessGroupManager({
     contractAddress: contentViewersGroupAddress,
