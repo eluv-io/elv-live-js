@@ -487,7 +487,6 @@ const CmdTenantWallets = async ({ argv }) => {
   console.log(
     `Tenant wallets tenant: ${argv.tenant} max_results: ${max}`
   );
-  console.log(`CSV: ${argv.csv}`);
 
   try {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
@@ -498,6 +497,7 @@ const CmdTenantWallets = async ({ argv }) => {
     });
 
     if (argv.csv && argv.csv != "") {
+      console.log(`CSV: ${argv.csv}`);
       let out = "";
       for (let i = 0; i < res.contents.length; i++) {
         const ident = res.contents[i].ident ? res.contents[i].ident : "";
@@ -505,7 +505,6 @@ const CmdTenantWallets = async ({ argv }) => {
         out = out + res.contents[i].addr + "," + ident + "," + res.contents[i].created + "\n";
       }
       fs.writeFileSync(argv.csv, out);
-      console.log("CSV written to " + argv.csv);
     } else {
       console.log(yaml.dump(res));
     }
