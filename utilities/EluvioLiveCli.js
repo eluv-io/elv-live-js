@@ -498,11 +498,12 @@ const CmdTenantWallets = async ({ argv }) => {
 
     if (argv.csv && argv.csv != "") {
       console.log(`CSV: ${argv.csv}`);
-      let out = "";
+      let out = "user_address,ident,created,extra_json\n";
       for (let i = 0; i < res.contents.length; i++) {
         const ident = res.contents[i].ident ? res.contents[i].ident : "";
         //console.log(res.contents[i].addr + "," + ident + "," + res.contents[i].created);
-        out = out + res.contents[i].addr + "," + ident + "," + res.contents[i].created + "\n";
+        const json = JSON.stringify(res.contents[i].extra_json);
+        out = out + res.contents[i].addr + "," + ident + "," + res.contents[i].created + "," +  json + "\n";
       }
       fs.writeFileSync(argv.csv, out);
     } else {
