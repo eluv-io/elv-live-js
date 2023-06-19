@@ -358,6 +358,9 @@ class EluvioLive {
    * @param {string} ojbectId - The ID of the tenant (iten***)
    */
   async TenantShowNew({ tenantId }) {
+    let tenantInfo = {};
+    let errors = [];
+
     const tenantAddr = Utils.HashToAddress(tenantId);
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
@@ -370,6 +373,7 @@ class EluvioLive {
       methodArgs: ["tenant_admin", 0],
       formatArguments: true,
     });
+    tenantInfo[tenantAdminAddr] = tenantInfo;
     
     //Content admins group might not exist for the tenant with this tenantId due to legacy reasons.
     //Running this command again with a --fix tag to update this tenant.
@@ -384,12 +388,49 @@ class EluvioLive {
       });
     } catch (e) {
       contentAdminAddr = null;
-      console.log("[ERROR]: groupsMapping does not contain a Content Admin Group, run with a --fix command to update this tenant.");
-      //To be implemented
+      errors.push("missing content admins");
+    }
+    tenantInfo["content_admin_address"] = contentAdminAddr;
+
+    if (errors.length != 0) {
+      tenantInfo["errors"] = errors;
     }
 
-    return {tenant_admin_address: tenantAdminAddr,
-      content_admin_addresses: contentAdminAddr};
+    return tenantInfo;
+  }
+
+  /**
+   * Create a new content admin group corresponding to this tenant.
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @returns {string} Content Admin Group's address
+   */
+  async TenantCreateContentAdmin({ tenantId }) {
+    const tenantOwner = await this.client.authClient.Owner({id: tenantId});
+    if (tenantOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
+      throw Error("Content Admin must be created by the owner of tenant " + tenantId);
+    }
+
+    let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+    elvAccount.InitWithClient({elvClient:this.client});
+
+    let accountName = await client.userProfileClient.UserMetadata({
+      metadataSubtree: "public/name"
+    });
+  
+    let contentAdminGroup = await elvAccount.CreateAccessGroup({
+      name: `${accountName} Content Admins`,
+    });
+    await elvAccount.AddToAccessGroup({
+      groupAddress: contentAdminGroup.address,
+      accountAddress: this.client.signer.accountAddress,
+      isManager: true,
+    });
+    await elvAccount.AddToAccessGroup({
+      groupAddress: contentAdminGroup.address,
+      accountAddress: this.kmsAddress, // Add KMS to content admins group
+    });
+
+    return contentAdminGroup.address;
   }
 
   /**
