@@ -89,7 +89,7 @@ const CmdStreamStatus = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.Status({name: argv.stream, stopLro: false});
+    let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -261,6 +261,11 @@ yargs(hideBin(process.argv))
           describe:
             "Stream name or QID (content ID)",
           type: "string",
+        })
+        .option("show_params", {
+          describe:
+            "Show recording parameters (can be large)",
+          type: "bool",
         })
     },
     (argv) => {

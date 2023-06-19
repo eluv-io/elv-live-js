@@ -73,7 +73,7 @@ class EluvioLiveStream {
    * - stalled - stream is running but source feed is no longer received
    * - terminated - stream is terminated (must create a new one to restart)
    */
-  async Status({name, stopLro = false}) {
+  async Status({name, stopLro = false, showParams = false}) {
 
     let conf = await this.LoadConf({name});
 
@@ -164,6 +164,10 @@ class EluvioLiveStream {
             insertion_time_local: new Date(insertionTimeSinceEpoch * 1000).toLocaleString(),
             target: insertions[i].playout};
         }
+      }
+
+      if (showParams) {
+        status.recording_paramse = edgeMeta.live_recording.recording_config.recording_params;
       }
 
       let state = "stopped";
@@ -679,7 +683,7 @@ class EluvioLiveStream {
   // - remove - flag to remove the insertion at that exact 'time' (instead of adding)
   async Insertion({name, insertionTime, sinceStart, duration, targetHash, remove}) {
     const audioAbrDuration = 2.005333;
-    const videoAbrDuration = 2.002002;
+    const videoAbrDuration = 2.002000;
 
     let conf = await this.LoadConf({name});
     let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
@@ -715,7 +719,7 @@ class EluvioLiveStream {
     // Find stream start time (from the most recent recording section)
     let recordings = edgeMeta.live_recording.recordings;
     let period = recordings.live_offering[recordings.recording_sequence - 1];
-    let streamStartTime = period.start_time_epoch_sec
+    let streamStartTime = period.start_time_epoch_sec;
 
     if (!sinceStart) {
       insertionTime = insertionTime - streamStartTime;
