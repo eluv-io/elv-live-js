@@ -370,31 +370,24 @@ class EluvioLive {
       methodArgs: ["tenant_admin", 0],
       formatArguments: true,
     });
-
-    let contentAdminAddresses = [];
     
-    for (let i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
-      let ordinal = BigNumber(i).toString(16);
-      try {
-        let addr = await this.client.CallContractMethod({
-          contractAddress: tenantAddr,
-          abi: JSON.parse(abi),
-          methodName: "groupsMapping",
-          methodArgs: ["content_admin", ordinal], 
-          formatArguments: true,
-        });
-
-        contentAdminAddresses.push(addr);
-      } catch (e) {
-        if (contentAdminAddresses.length == 0) {
-          contentAdminAddresses = null;
-        }
-        break;
-      }
+    let contentAdminAddr;
+    try {
+      contentAdminAddr = await this.client.CallContractMethod({
+        contractAddress: tenantAddr,
+        abi: JSON.parse(abi),
+        methodName: "groupsMapping",
+        methodArgs: ["content_admin", 0], 
+        formatArguments: true,
+      });
+    } catch (e) {
+      contentAdminAddr = null;
+      console.log("[ERROR]: groupsMapping does not contain a Content Admin Group, run with a --fix command to update this tenant.")
+      //To be implemented
     }
 
     return {tenant_admin_address: tenantAdminAddr,
-      content_admin_addresses: contentAdminAddresses};
+      content_admin_addresses: contentAdminAddr};
   }
 
   /**

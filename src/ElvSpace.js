@@ -104,16 +104,17 @@ class ElvSpace {
       console.log("tenant admins:", tenantAdminGroup);
       console.log("content admins:", contentAdminGroup);
       //}
+      let adminGroups = {tenantAdminGroup, contentAdminGroup};
 
       let tenant = await this.TenantDeploy({
         tenantName,
         ownerAddress: account.address,
-        adminGroupAddress: tenantAdminGroup.address,
-        contentGroupAddress: contentAdminGroup.address,
+        tenantAdminGroupAddress: tenantAdminGroup.address,
+        contentAdminGroupAddress: contentAdminGroup.address,
       });
       return {
         account,
-        admins,
+        adminGroups,
         tenant,
       };
     } catch (e){
