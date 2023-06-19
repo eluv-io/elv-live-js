@@ -371,6 +371,8 @@ class EluvioLive {
       formatArguments: true,
     });
     
+    //Content admins group might not exist for the tenant with this tenantId due to legacy reasons.
+    //Running this command again with a --fix tag to update this tenant.
     let contentAdminAddr;
     try {
       contentAdminAddr = await this.client.CallContractMethod({
@@ -382,7 +384,7 @@ class EluvioLive {
       });
     } catch (e) {
       contentAdminAddr = null;
-      console.log("[ERROR]: groupsMapping does not contain a Content Admin Group, run with a --fix command to update this tenant.")
+      console.log("[ERROR]: groupsMapping does not contain a Content Admin Group, run with a --fix command to update this tenant.");
       //To be implemented
     }
 

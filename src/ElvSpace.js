@@ -100,10 +100,10 @@ class ElvSpace {
         accountAddress: this.kmsAddress, // Add KMS to content admins group
       });
 
-      //if (this.debug){
-      console.log("tenant admins:", tenantAdminGroup);
-      console.log("content admins:", contentAdminGroup);
-      //}
+      if (this.debug){
+        console.log("tenant admins:", tenantAdminGroup);
+        console.log("content admins:", contentAdminGroup);
+      }
       let adminGroups = {tenantAdminGroup, contentAdminGroup};
 
       let tenant = await this.TenantDeploy({
@@ -123,11 +123,16 @@ class ElvSpace {
   }
 
   async TenantDeploy({ tenantName, ownerAddress, tenantAdminGroupAddress, contentAdminGroupAddress }) {
-    let tenantContract = await ElvUtils.DeployContractFile({
-      client: this.client,
-      fileName: "BaseTenantSpace",
-      args: [this.spaceAddress, tenantName, this.kmsAddress],
-    });
+    try {
+      let tenantContract = await ElvUtils.DeployContractFile({
+        client: this.client,
+        fileName: "BaseTenantSpace",
+        args: [this.spaceAddress, tenantName, this.kmsAddress],
+      });
+    } catch (e) {
+      console.log("[Error]: TenantDeploy can only be called by the space owner.")
+      throw(e);
+    }
  
     let res = {};
 
@@ -173,9 +178,9 @@ class ElvSpace {
         formatArguments: true,
       });
 
-      //if (this.debug){
-      console.log("Result set tenant admin group", res);
-      //}
+      if (this.debug){
+        console.log("Result set tenant admin group", res);
+      }
     }
 
     res = await this.client.CallContractMethodAndWait({
@@ -186,9 +191,9 @@ class ElvSpace {
       formatArguments: true,
     });
 
-    //if (this.debug){
-    console.log("Result set content admin group", res);
-    //}
+    if (this.debug){
+      console.log("Result set content admin group", res);
+    }
 
     if (ownerAddress) {
       res = await this.client.CallContractMethodAndWait({
