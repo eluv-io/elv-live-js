@@ -2770,6 +2770,11 @@ class EluvioLive {
   async TenantMint({ tenant, marketplace, sku, addr, quantity = 1 }) {
     let now = Date.now();
 
+    /* body can optionally include:
+     * - ident: ""
+     * - email: ""
+     * - cust_name: ""
+     */
     let body = {
       trans_id: "",
       tickets: null,
@@ -2780,9 +2785,6 @@ class EluvioLive {
           quant: quantity,
         },
       ],
-      ident: "minter@tenant.com",
-      email: "minter@tenant.com",
-      cust_name: "minter@tenant.com",
       ts: now,
       extra: {
         elv_addr: addr,
