@@ -123,15 +123,16 @@ class ElvSpace {
   }
 
   async TenantDeploy({ tenantName, ownerAddress, tenantAdminGroupAddress, contentAdminGroupAddress }) {
+    let tenantContract;
     try {
-      let tenantContract = await ElvUtils.DeployContractFile({
+      tenantContract = await ElvUtils.DeployContractFile({
         client: this.client,
         fileName: "BaseTenantSpace",
         args: [this.spaceAddress, tenantName, this.kmsAddress],
       });
     } catch (e) {
-      console.log("[Error]: TenantDeploy can only be called by the space owner.")
-      throw(e);
+      console.log("[Error]: TenantDeploy can only be called by the space owner.");
+      throw (e);
     }
  
     let res = {};
