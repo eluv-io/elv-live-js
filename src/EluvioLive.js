@@ -359,12 +359,13 @@ class EluvioLive {
    */
   async TenantShowNew({ tenantId }) {
     let tenantInfo = {};
-    let errors = [];
 
     const tenantAddr = Utils.HashToAddress(tenantId);
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
+
+    let errors = [];
 
     let tenantAdminAddr = await this.client.CallContractMethod({
       contractAddress: tenantAddr,
@@ -373,10 +374,11 @@ class EluvioLive {
       methodArgs: ["tenant_admin", 0],
       formatArguments: true,
     });
-    tenantInfo[tenantAdminAddr] = tenantInfo;
+    tenantInfo["tenant_admin_address"] = tenantAdminAddr;
     
     //Content admins group might not exist for the tenant with this tenantId due to legacy reasons.
-    //Running this command again with a --fix tag to update this tenant.
+    //Running tenant_fix tag update this tenant.
+    //Running tenant_fix tag update this tenant.
     let contentAdminAddr;
     try {
       contentAdminAddr = await this.client.CallContractMethod({
@@ -388,7 +390,7 @@ class EluvioLive {
       });
     } catch (e) {
       contentAdminAddr = null;
-      errors.push("missing content admins");
+      errors.push('missing content admins');
     }
     tenantInfo["content_admin_address"] = contentAdminAddr;
 

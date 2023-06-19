@@ -302,10 +302,43 @@ const CmdTenantShowNew = async({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (res.errors) {
+      console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run tenant_fix ${argv.tenant} to resolve them.`);
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
+
+const CmdTenantFix = async({ argv }) => {
+  console.log("Tenant - fix", argv.tenant);
+  try {
+    let errors = argv.errors;
+    let unresolved = [];
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    if (errors.length == 0) {
+      console.log(`No error found for tenant with tenant id: ${arg.tenant}!`);
+      return;
+    }
+
+    for (let i = 0; i < errors.length; i++) {
+      let error = errors[i];
+      switch(error) {
+        case 'missing content admins':
+          let content_admin_address = elvlv.TenantCreateContentAdmin({tenant: argv.tenant});
+          CmdTenantAddContentAdmin({tenant: argv.tenant, content_admin_address});
+        default:
+          console.log(`No fix actions available for error: ${error}.`)
+          unresolved.push(error);
+      }
+    }
+
+    console.log(`${errors.length - errors.unresolved} errors fixed, ${unresolved.length} errors remaining.`)
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
 
 const CmdTenantAddContentAdmin = async ({ argv }) => {
   console.log(`Setting a new Content Admin for Tenant ${argv.tenant}`);
@@ -2132,6 +2165,20 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantShowNew({ argv });
+    }
+  )
+
+  .command(
+    "tenant_fix <tenant> [options]",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantFix({ argv });
     }
   )
 
