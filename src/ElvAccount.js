@@ -188,6 +188,8 @@ class ElvAccount {
 
   async AddToAccessGroup({ groupAddress, accountAddress, isManager = false }) {
     let res = {};
+    console.log(groupAddress);
+    console.log(accountAddress);
     if (isManager) {
       res = await this.client.AddAccessGroupManager({
         contractAddress: groupAddress,

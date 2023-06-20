@@ -378,7 +378,6 @@ class EluvioLive {
     
     //Content admins group might not exist for the tenant with this tenantId due to legacy reasons.
     //Running tenant_fix tag update this tenant.
-    //Running tenant_fix tag update this tenant.
     let contentAdminAddr;
     try {
       contentAdminAddr = await this.client.CallContractMethod({
@@ -390,7 +389,7 @@ class EluvioLive {
       });
     } catch (e) {
       contentAdminAddr = null;
-      errors.push('missing content admins');
+      errors.push("missing content admins");
     }
     tenantInfo["content_admin_address"] = contentAdminAddr;
 
@@ -415,21 +414,22 @@ class EluvioLive {
     let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
     elvAccount.InitWithClient({elvClient:this.client});
 
-    let accountName = await client.userProfileClient.UserMetadata({
+    let accountName = await this.client.userProfileClient.UserMetadata({
       metadataSubtree: "public/name"
     });
   
     let contentAdminGroup = await elvAccount.CreateAccessGroup({
       name: `${accountName} Content Admins`,
     });
+
     await elvAccount.AddToAccessGroup({
       groupAddress: contentAdminGroup.address,
-      accountAddress: this.client.signer.accountAddress,
+      accountAddress: this.client.signer.address.toLowerCase(),
       isManager: true,
     });
     await elvAccount.AddToAccessGroup({
       groupAddress: contentAdminGroup.address,
-      accountAddress: this.kmsAddress, // Add KMS to content admins group
+      accountAddress: await this.client.DefaultKMSAddress(tenantId), // Add KMS to content admins group
     });
 
     return contentAdminGroup.address;
