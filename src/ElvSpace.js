@@ -75,10 +75,6 @@ class ElvSpace {
         accountAddress: account.address,
         isManager: true,
       });
-      await elvAccount.AddToAccessGroup({
-        groupAddress: tenantAdminGroup.address,
-        accountAddress: this.kmsAddress, // Add KMS to tenant admins group
-      });
 
       await elvAccount.SetAccountTenantAdminsAddress({
         tenantAdminsAddress: tenantAdminGroup.address,
@@ -94,10 +90,6 @@ class ElvSpace {
         groupAddress: contentAdminGroup.address,
         accountAddress: account.address,
         isManager: true,
-      });
-      await elvAccount.AddToAccessGroup({
-        groupAddress: contentAdminGroup.address,
-        accountAddress: this.kmsAddress, // Add KMS to content admins group
       });
 
       if (this.debug){

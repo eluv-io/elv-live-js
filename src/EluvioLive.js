@@ -427,10 +427,6 @@ class EluvioLive {
       accountAddress: this.client.signer.address.toLowerCase(),
       isManager: true,
     });
-    await elvAccount.AddToAccessGroup({
-      groupAddress: contentAdminGroup.address,
-      accountAddress: await this.client.DefaultKMSAddress(tenantId), // Add KMS to content admins group
-    });
 
     return contentAdminGroup.address;
   }
@@ -446,6 +442,24 @@ class EluvioLive {
     );
 
     const tenantAddr = Utils.HashToAddress(tenantId);
+
+    let contentAdmin;
+    try {
+      contentAdmin = await this.client.CallContractMethod({
+        contractAddress: tenantAddr,
+        abi: JSON.parse(abi),
+        methodName: "groupsMapping",
+        methodArgs: ["content_admin", 0],
+        formatArguments: true,
+      });
+    } catch (e) {
+      contentAdmin = null;
+    }
+
+    if (contentAdmin) {
+      let logMsg = `Tenant ${tenantId} already has a content admin group: ${contentAdmin}, aborting...`;
+      return logMsg;
+    }
 
     let res = await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
