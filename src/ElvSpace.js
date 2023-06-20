@@ -14,7 +14,7 @@ class ElvSpace {
    * @param {string} mainObjectId - The top-level Eluvio Live object ID
    * @return {ElvSpace} - New ElvSpace object connected to the specified content fabric and blockchain
    */
-  constructor({ configUrl, spaceAddress, kmsAddress, debugLogging = true }) {
+  constructor({ configUrl, spaceAddress, kmsAddress, debugLogging = false }) {
     this.configUrl = configUrl;
     (this.spaceAddress = spaceAddress), (this.kmsAddress = kmsAddress);
     this.debug = debugLogging;

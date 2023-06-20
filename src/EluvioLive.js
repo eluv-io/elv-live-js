@@ -377,7 +377,7 @@ class EluvioLive {
     tenantInfo["tenant_admin_address"] = tenantAdminAddr;
     
     //Content admins group might not exist for the tenant with this tenantId due to legacy reasons.
-    //Running tenant_fix tag update this tenant.
+    //Running ./elv-live tenant-fix to update this tenant.
     let contentAdminAddr;
     try {
       contentAdminAddr = await this.client.CallContractMethod({
