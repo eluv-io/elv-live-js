@@ -104,6 +104,9 @@ class ElvSpace {
         tenantAdminGroupAddress: tenantAdminGroup.address,
         contentAdminGroupAddress: contentAdminGroup.address,
       });
+
+      elvAccount.SetAccountTenantContractAddress(tenant.address);
+
       return {
         account,
         adminGroups,

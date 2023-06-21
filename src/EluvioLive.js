@@ -453,7 +453,7 @@ class EluvioLive {
         formatArguments: true,
       });
     } catch (e) {
-      //content admin group doesn't exist for this tenant.
+      //content admin group doesn't exist for this tenant, add new content admin.
       console.log(contentAdmin);
       contentAdmin = null;
     }
