@@ -166,6 +166,16 @@ class ElvAccount {
     });
   }
 
+  async SetAccountTenantContractAddress({ tenantContractAddress }) {
+    if (!this.client) {
+      throw Error("ElvAccount not intialized");
+    }
+
+    await this.client.userProfileClient.SetTenantContractId({
+      address: tenantContractAddress,
+    });
+  }
+
   async CreateAccessGroup({ name }) {
     const address = await this.client.CreateAccessGroup({
       name,
