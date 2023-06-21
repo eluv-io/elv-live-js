@@ -453,8 +453,7 @@ class EluvioLive {
         formatArguments: true,
       });
     } catch (e) {
-      //content admin group doesn't exist for this tenant, add new content admin.
-      console.log(contentAdmin);
+      //call cannot override gasLimit error will be thrown if content admin group doesn't exist for this tenant.
       contentAdmin = null;
     }
 

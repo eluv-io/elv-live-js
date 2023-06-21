@@ -302,8 +302,12 @@ const CmdTenantShowNew = async({ argv }) => {
     });
 
     console.log(yaml.dump(res));
-    if (res.errors) {
+    if (res.errors) { 
       console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-live tenant_fix ${argv.tenant} to resolve them.`);
+      if (res.errors.includes('missing content admins')) {
+        console.log(`NOTE: ./elv-live tenant_fix will create a new content admins group for 'missing content admins'.
+      Run ./elv-live tenant_add_content_admin ${argv.tenant} <content_admin_address> to add a specific content admins group.`)
+      }
     }
   } catch (e) {
     console.error("ERROR:", e);
