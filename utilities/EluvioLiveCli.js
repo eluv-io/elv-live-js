@@ -483,9 +483,11 @@ const CmdTenantMint = async ({ argv }) => {
 };
 
 const CmdTenantWallets = async ({ argv }) => {
+  const max = argv.max_results ? argv.max_results : "unlimited";
   console.log(
-    `Tenant wallets tenant: ${argv.tenant} max_results: ${argv.max_results}`
+    `Tenant wallets tenant: ${argv.tenant} max_results: ${max}`
   );
+
   try {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
@@ -494,7 +496,18 @@ const CmdTenantWallets = async ({ argv }) => {
       maxNumber: argv.max_results,
     });
 
-    console.log(yaml.dump(res));
+    if (argv.csv && argv.csv != "") {
+      console.log(`CSV: ${argv.csv}`);
+      let out = "user_address,ident,created,extra_json\n";
+      for (let i = 0; i < res.contents.length; i++) {
+        const ident = res.contents[i].ident ? res.contents[i].ident : "";
+        const json = res.contents[i].extra_json ? JSON.stringify(res.contents[i].extra_json) : "";
+        out = out + res.contents[i].addr + "," + ident + "," + res.contents[i].created + "," +  json + "\n";
+      }
+      fs.writeFileSync(argv.csv, out);
+    } else {
+      console.log(yaml.dump(res));
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -2292,6 +2305,10 @@ yargs(hideBin(process.argv))
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
           type: "string",
         })
         .option("max_results", {
