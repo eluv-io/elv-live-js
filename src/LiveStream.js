@@ -126,7 +126,8 @@ class EluvioLiveStream {
       let recordings = edgeMeta.live_recording.recordings;
       status.recording_period_sequence = recordings.recording_sequence;
 
-      let period = recordings.live_offering[recordings.recording_sequence - 1];
+      let sequence = recordings.recording_sequence;
+      let period = recordings.live_offering[sequence - 1];
 
       let tlro = period.live_recording_handle;
       status.tlro = tlro;
@@ -154,8 +155,9 @@ class EluvioLiveStream {
       });
 
       status.insertions = [];
-      if (edgeMeta.live_recording.playout_config.interleaves != undefined) {
-        let insertions = edgeMeta.live_recording.playout_config.interleaves;
+      if ((edgeMeta.live_recording.playout_config.interleaves != undefined) &&
+          (edgeMeta.live_recording.playout_config.interleaves[sequence] != undefined)) {
+        let insertions = edgeMeta.live_recording.playout_config.interleaves[sequence];
         for (let i = 0; i < insertions.length; i ++) {
           let insertionTimeSinceEpoch = recording_period.start_time_epoch_sec + insertions[i].insertion_time;
           status.insertions[i] = {
@@ -685,7 +687,6 @@ class EluvioLiveStream {
 
     // Determine audio and video parameters of the insertion
     const insertionInfo = await this.getOfferingInfo({versionHash: targetHash});
-    console.log(insertionInfo);
     const audioAbrDuration = insertionInfo.audio.seg_duration_sec;
     const videoAbrDuration = insertionInfo.video.seg_duration_sec;
 
@@ -723,20 +724,22 @@ class EluvioLiveStream {
 
     // Find stream start time (from the most recent recording section)
     let recordings = edgeMeta.live_recording.recordings;
-    let period = recordings.live_offering[recordings.recording_sequence - 1];
+    let sequence = recordings.recording_sequence;
+    let period = recordings.live_offering[sequence - 1];
     let streamStartTime = period.start_time_epoch_sec;
 
     // Find the current period playout configuration
-    if (edgeMeta.live_recording.playout_config.recordings == undefined) {
-      edgeMeta.live_recording.playout_config.recordings = [{}];
+    if (edgeMeta.live_recording.playout_config.interleaves == undefined) {
+      edgeMeta.live_recording.playout_config.interleaves = {};
     }
-    let playoutConfigPeriod = edgeMeta.live_recording.playout_config.recordings[recordings.recording_sequence - 1];
+    if (edgeMeta.live_recording.playout_config.interleaves[sequence] == undefined) {
+      edgeMeta.live_recording.playout_config.interleaves[sequence] = [];
+    }
+
+    let playoutConfig = edgeMeta.live_recording.playout_config;
+    let insertions = playoutConfig.interleaves[sequence];
 
     let res = {};
-    let insertions = [];
-    if (playoutConfigPeriod.interleaves != undefined) {
-      insertions = playoutConfigPeriod.interleaves;
-    }
 
     if (!sinceStart) {
       insertionTime = insertionTime - streamStartTime;
@@ -797,7 +800,7 @@ class EluvioLiveStream {
       ];
     }
 
-    playoutConfigPeriod.interleaves = insertions;
+    playoutConfig.interleaves[sequence] = insertions;
 
     // Store the new insertions in the write token
     await this.client.ReplaceMetadata({
@@ -847,6 +850,16 @@ class EluvioLiveStream {
    * Read a playable contnet object and get information about a particular offering
    */
   async getOfferingInfo({versionHash, offering = "default"}) {
+
+    let ct = await this.client.ContentObject({versionHash});
+    if (ct.type != undefined && ct.type != "") {
+      let typeMeta = await this.client.ContentObjectMetadata({
+        versionHash: ct.type
+      });
+      if (typeMeta.bitcode_flags != "abrmaster") {
+        throw new Error("Not a playable VoD object " + versionHash);
+      }
+    }
     let offeringMeta = await this.client.ContentObjectMetadata({
       versionHash,
       metadataSubtree: "/offerings/" + offering
@@ -861,6 +874,7 @@ class EluvioLiveStream {
         frame_rate_rat: stream.rate,
       };
     });
+
     return info;
   }
 
