@@ -846,7 +846,7 @@ class EluvioLiveStream {
   /*
    * Read a playable contnet object and get information about a particular offering
    */
-  async getOfferingInfo({versionHash, offering = 'default'}) {
+  async getOfferingInfo({versionHash, offering = "default"}) {
     let offeringMeta = await this.client.ContentObjectMetadata({
       versionHash,
       metadataSubtree: "/offerings/" + offering
@@ -859,7 +859,7 @@ class EluvioLiveStream {
         seg_duration_sec: stream.optimum_seg_dur.float,
         duration_sec: stream.duration.float,
         frame_rate_rat: stream.rate,
-      }
+      };
     });
     return info;
   }
