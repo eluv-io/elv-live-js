@@ -38,7 +38,7 @@
   ],
   "homepage": "https://github.com/eluv-io/elv-live-js#readme",
   "dependencies": {
-    "@eluvio/elv-client-js": "^3.1.97",
+    "@eluvio/elv-client-js": "github:eluv-io/elv-client-js#tenant",
     "big-number": "^2.0.0",
     "csv-parse": "^5.3.0",
     "dot-object": "^2.1.4",
