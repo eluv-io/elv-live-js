@@ -724,9 +724,29 @@ class EluvioLiveStream {
 
     // Find stream start time (from the most recent recording section)
     let recordings = edgeMeta.live_recording.recordings;
-    let sequence = recordings.recording_sequence;
-    let period = recordings.live_offering[sequence - 1];
-    let streamStartTime = period.start_time_epoch_sec;
+    let sequence = 1;
+    let streamStartTime = 0;
+    if (recordings != undefined && recordings.recording_sequence != undefined) {
+      // We have at least one recording - check if still active
+      let period = recordings.live_offering[sequence - 1];
+      sequence = recordings.recording_sequence;
+
+      if (period.end_time_epoch_sec > 0) {
+        // The last period is closed - apply insertions to the next period
+        sequence ++;
+      } else {
+        // The period is active
+        sequence = recordings.recording_sequence;
+        streamStartTime = period.start_time_epoch_sec;
+      }
+    }
+
+    if (streamStartTime == 0) {
+      // There is no active period - must use absolute time
+      if (sinceStart == 0) {
+        throw new Error("Stream not running - must use 'time since start'");
+      }
+    }
 
     // Find the current period playout configuration
     if (edgeMeta.live_recording.playout_config.interleaves == undefined) {
