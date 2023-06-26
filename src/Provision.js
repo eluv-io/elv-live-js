@@ -89,7 +89,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     methodName: "groupsMapping",
     methodArgs : ["tenant_admin", 0],
     formatArguments: true,
-  })
+  });
   
   let contentAdminGroupAddress = await client.CallContractMethodAndWait({
     contractAddress: tenantAddr,

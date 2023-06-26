@@ -304,10 +304,6 @@ const CmdTenantShowNew = async({ argv }) => {
     console.log(yaml.dump(res));
     if (res.errors) { 
       console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-live tenant_fix ${argv.tenant} to resolve them.`);
-      if (res.errors.includes('missing content admins')) {
-        console.log(`NOTE: ./elv-live tenant_fix will create a new content admins group for 'missing content admins'.
-      Run ./elv-live tenant_add_content_admin ${argv.tenant} <content_admin_address> to add a specific content admins group.`)
-      }
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -334,32 +330,38 @@ const CmdTenantFix = async({ argv }) => {
       let error = errors[i];
       switch(error) {
         case 'missing content admins':
-          let content_admin_address = await elvlv.TenantCreateContentAdmin({tenantId: argv.tenant});
-          console.log(content_admin_address);
-          await elvlv.TenantAddContentAdmin({tenantId: argv.tenant, contentAdminsAddress: content_admin_address});
+          let content_admin_address = await elvlv.TenantSetContentAdmins({tenantId: argv.tenant});
+          console.log(`Created new content admin group ${content_admin_address} for tenant with tenantId ${argv.tenant}`);
           break;
+
+        case 'tenant admin group is not associated with any tenant': 
+          await elvlv.GroupSetTenantContractId({tenantId: argv.tenant, groupAddress: res.tenant_admin_address});
+          break;
+
+        case 'content admin group is not associated with any tenant':
+          await elvlv.GroupSetTenantContractId({tenantId: argv.tenant, groupAddress: res.content_admin_address});
+          break;
+
         default:
           console.log(`No fix actions available for error: ${error}.`)
           unresolved.push(error);
       }
     }
 
-    console.log(`${errors.length - errors.unresolved} errors fixed, ${unresolved.length} errors remaining.`)
+    console.log(`${errors.length - unresolved.length} errors fixed, ${unresolved.length} errors remaining.`)
   } catch (e) {
     console.error("ERROR:", e);
   }
 }
 
-const CmdTenantAddContentAdmin = async ({ argv }) => {
-  console.log(`Setting a new Content Admin for Tenant ${argv.tenant}`);
-  console.log(`New Content Admin's Address: ${argv.content_admin_address}`);
+const CmdTenantSetContentAdmins = async ({ argv }) => {
+  console.log(`Setting a new content admin group for Tenant ${argv.tenant}`);
 
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
-    let res = await elvlv.TenantAddContentAdmin({
+    let res = await elvlv.TenantSetContentAdmins({
       tenantId: argv.tenant,
-      contentAdminsAddress: argv.content_admin_address
     });
 
     console.log(yaml.dump(res));
@@ -2194,21 +2196,17 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_add_content_admin <tenant> <content_admin_address>",
+    "tenant_set_content_admins <tenant>",
     "Set new content admin",
     (yargs) => {
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
-        })
-        .positional("content_admin_address", {
-          describe: "Content Admin's address",
-          type: "string",
         });
     },
     (argv) => {
-      CmdTenantAddContentAdmin({ argv });
+      CmdTenantSetContentAdmins({ argv });
     }
   )
 

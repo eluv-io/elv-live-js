@@ -393,6 +393,30 @@ class EluvioLive {
     }
     tenantInfo["content_admin_address"] = contentAdminAddr;
 
+    //Check if the groups have _ELV_TENANT_ID set correctly
+    for (const group in tenantInfo) {
+      let groupAddress = tenantInfo[group];
+      
+      if (groupAddress != null) {
+        let tenantContractAddress = await this.client.CallContractMethod({
+          contractAddress: groupAddress,
+          methodName: "getMeta",
+          methodArgs: ["_ELV_TENANT_ID"], 
+        });
+
+        let args = group.split("_");
+        if (tenantContractAddress == "0x") {
+          errors.push(`${args[0]} ${args[1]} group is not associated with any tenant`);
+        } else {
+          let tenantContractId = Ethers.utils.toUtf8String(tenantContractAddress);
+
+          if (tenantContractId != tenantId) {
+            errors.push(`${args[0]} ${args[1]} group doesn't belong to this tenant`);
+          }
+        }
+      }
+    }
+
     if (errors.length != 0) {
       tenantInfo["errors"] = errors;
     }
@@ -405,38 +429,14 @@ class EluvioLive {
    * @param {string} tenantId - The ID of the tenant (iten***)
    * @returns {string} Content Admin Group's address
    */
-  async TenantCreateContentAdmin({ tenantId }) {
+  async TenantSetContentAdmins({ tenantId }) {
+    //Check that the user is the owner of the tenant
     const tenantOwner = await this.client.authClient.Owner({id: tenantId});
     if (tenantOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
       throw Error("Content Admin must be created by the owner of tenant " + tenantId);
     }
 
-    let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
-    elvAccount.InitWithClient({elvClient:this.client});
-
-    let accountName = await this.client.userProfileClient.UserMetadata({
-      metadataSubtree: "public/name"
-    });
-  
-    let contentAdminGroup = await elvAccount.CreateAccessGroup({
-      name: `${accountName} Content Admins`,
-    });
-
-    await elvAccount.AddToAccessGroup({
-      groupAddress: contentAdminGroup.address,
-      accountAddress: this.client.signer.address.toLowerCase(),
-      isManager: true,
-    });
-
-    return contentAdminGroup.address;
-  }
-
-  /**
-   * Set a new content admin corresponding to this tenant.
-   * @param {string} tenantId - The ID of the tenant (iten***)
-   * @param {string} contentAdminsAddress - Address of content admin we want to add.
-   */
-  async TenantAddContentAdmin({ tenantId, contentAdminsAddress }) {
+    //The tenant must not already have a content admin group - can only have 1 content admin group for each tenant.
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
@@ -462,11 +462,33 @@ class EluvioLive {
       return logMsg;
     }
 
+    //Create and add the new content admin group to the user's account.
+    let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+    elvAccount.InitWithClient({elvClient:this.client});
+
+    let accountName = await this.client.userProfileClient.UserMetadata({
+      metadataSubtree: "public/name"
+    });
+  
+    let contentAdminGroup = await elvAccount.CreateAccessGroup({
+      name: `${accountName} Content Admins`,
+    });
+
+    await elvAccount.AddToAccessGroup({
+      groupAddress: contentAdminGroup.address,
+      accountAddress: this.client.signer.address.toLowerCase(),
+      isManager: true,
+    });
+
+    //Associate the group with this tenant - set the content admin group's _ELV_TENANT_ID to this tenant's tenant id.
+    await this.GroupSetTenantContractId({tenantId: tenantId, groupAddress: contentAdminGroup.address});
+
+    //Associate the tenant with this group - set tenant's content admin group on the tenant's contract.
     let res = await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),
       methodName: "addGroup",
-      methodArgs: ["content_admin", contentAdminsAddress],
+      methodArgs: ["content_admin", contentAdminGroup.address],
       formatArguments: true,
     });
 
@@ -494,6 +516,33 @@ class EluvioLive {
     });
 
     return res;
+  }
+
+  /**
+   * Set _ELV_TENANT_ID of group with groupAddress to tenantId.
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} groupAddress - Address of the group we want to remove.
+   */
+  async GroupSetTenantContractId({ tenantId, groupAddress }) {
+    let id = await this.client.CallContractMethod({
+      contractAddress: groupAddress,
+      methodName: "getMeta",
+      methodArgs: ["_ELV_TENANT_ID"], 
+    });
+    if (id != "0x") {
+      throw Error(`Group ${groupAddress} already has a _ELV_TENANT_ID metadata set to ${id}, aborting...`)
+    }
+
+    let newId = await this.client.CallContractMethod({
+      contractAddress: groupAddress,
+      methodName: "putMeta",
+      methodArgs: [
+        "_ELV_TENANT_ID",
+        tenantId
+        ],
+    });
+
+    return newId;
   }
 
   /**
