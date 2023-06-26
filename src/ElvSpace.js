@@ -114,7 +114,7 @@ class ElvSpace {
           "_ELV_TENANT_ID",
           tenant.id
         ]
-      })
+      });
 
       await CallContractMethod({
         contractAddress: contentAdminGroup.address,
@@ -123,7 +123,7 @@ class ElvSpace {
           "_ELV_TENANT_ID",
           tenant.id
         ]
-      })
+      });
 
       return {
         account,

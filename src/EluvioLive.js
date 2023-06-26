@@ -355,7 +355,7 @@ class EluvioLive {
 
   /**
    * Return tenant admins group and content admins group corresponding to this tenant.
-   * @param {string} ojbectId - The ID of the tenant (iten***)
+   * @param {string} tenantId - The ID of the tenant (iten***)
    */
   async TenantShowNew({ tenantId }) {
     let tenantInfo = {};
@@ -392,6 +392,7 @@ class EluvioLive {
       errors.push("missing content admins");
     }
     tenantInfo["content_admin_address"] = contentAdminAddr;
+    console.log(await this.client.authClient.AccessType("iten"+Utils.AddressToHash(contentAdminAddr)));
 
     //Check if the groups have _ELV_TENANT_ID set correctly
     for (const group in tenantInfo) {
@@ -530,7 +531,7 @@ class EluvioLive {
       methodArgs: ["_ELV_TENANT_ID"], 
     });
     if (id != "0x") {
-      throw Error(`Group ${groupAddress} already has a _ELV_TENANT_ID metadata set to ${id}, aborting...`)
+      throw Error(`Group ${groupAddress} already has a _ELV_TENANT_ID metadata set to ${id}, aborting...`);
     }
 
     let newId = await this.client.CallContractMethod({
@@ -539,7 +540,7 @@ class EluvioLive {
       methodArgs: [
         "_ELV_TENANT_ID",
         tenantId
-        ],
+      ],
     });
 
     return newId;
