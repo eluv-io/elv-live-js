@@ -83,8 +83,13 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     formatArguments: true,
   });
 
-  //tenant admin group and content admin group are both already created by ElvSpace/TenantCreate, just need to retreive them.
-  let tenantAdminGroupAddress = client.utils.HashToAddress(tenantAdminId);
+  let tenantAdminGroupAddress = await client.CallContractMethodAndWait({
+    contractAddress: tenantAddr,
+    abi: JSON.parse(abi),
+    methodName: "groupsMapping",
+    methodArgs : ["tenant_admin", 0],
+    formatArguments: true,
+  })
   
   let contentAdminGroupAddress = await client.CallContractMethodAndWait({
     contractAddress: tenantAddr,

@@ -106,6 +106,24 @@ class ElvSpace {
       });
 
       elvAccount.SetAccountTenantContractAddress(tenant.address);
+      //Add _ELV_TENANT_ID to groups' metadata so we can identify the tenant these groups belong to
+      await CallContractMethod({
+        contractAddress: tenantAdminGroup.address,
+        methodName: "putMeta",
+        methodArgs: [
+          "_ELV_TENANT_ID",
+          tenant.id
+        ]
+      })
+
+      await CallContractMethod({
+        contractAddress: contentAdminGroup.address,
+        methodName: "putMeta",
+        methodArgs: [
+          "_ELV_TENANT_ID",
+          tenant.id
+        ]
+      })
 
       return {
         account,
