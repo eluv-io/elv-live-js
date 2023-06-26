@@ -549,7 +549,7 @@ class EluvioLiveStream {
     let typeLiveStream;
     for (let i = 0; i < Object.keys(contentTypes).length; i ++) {
       const key = Object.keys(contentTypes)[i];
-      if (contentTypes[key].name.includes("ABR Master")) {
+      if (contentTypes[key].name.includes("ABR Master") || contentTypes[key].name.includes("Title")) {
         typeAbrMaster = contentTypes[key].hash;
       }
       if (contentTypes[key].name.includes("Live Stream")) {
@@ -693,8 +693,13 @@ class EluvioLiveStream {
     if (audioAbrDuration == 0 || videoAbrDuration == 0) {
       throw new Error("Bad segment duration hash:", targetHash);
     }
-    if (insertionInfo.duration_sec < duration || insertionInfo.duration_sec < duration) {
-      throw new Error("Insertion shorter than required duration");
+
+    if (duration == undefined) {
+      duration = insertionInfo.duration_sec;  // Use full duration of the insertion
+    } else {
+      if (duration > insertionInfo.duration_sec) {
+        throw new Error("Bad duration - larger than insertion object duration", insertionInfo.duration_sec);
+      }
     }
 
     let conf = await this.LoadConf({name});
@@ -728,22 +733,21 @@ class EluvioLiveStream {
     let streamStartTime = 0;
     if (recordings != undefined && recordings.recording_sequence != undefined) {
       // We have at least one recording - check if still active
-      let period = recordings.live_offering[sequence - 1];
       sequence = recordings.recording_sequence;
+      let period = recordings.live_offering[sequence - 1];
 
       if (period.end_time_epoch_sec > 0) {
         // The last period is closed - apply insertions to the next period
         sequence ++;
       } else {
         // The period is active
-        sequence = recordings.recording_sequence;
         streamStartTime = period.start_time_epoch_sec;
       }
     }
 
     if (streamStartTime == 0) {
       // There is no active period - must use absolute time
-      if (sinceStart == 0) {
+      if (sinceStart == false) {
         throw new Error("Stream not running - must use 'time since start'");
       }
     }
@@ -763,10 +767,6 @@ class EluvioLiveStream {
 
     if (!sinceStart) {
       insertionTime = insertionTime - streamStartTime;
-    }
-
-    if (duration == undefined) {
-      duration = 20;  // Default duration
     }
 
     // Assume insertions are sorted by insertion time
@@ -871,6 +871,8 @@ class EluvioLiveStream {
    */
   async getOfferingInfo({versionHash, offering = "default"}) {
 
+    // Content Type check is currently disabled due to permissions
+    /*
     let ct = await this.client.ContentObject({versionHash});
     if (ct.type != undefined && ct.type != "") {
       let typeMeta = await this.client.ContentObjectMetadata({
@@ -880,12 +882,15 @@ class EluvioLiveStream {
         throw new Error("Not a playable VoD object " + versionHash);
       }
     }
+    */
     let offeringMeta = await this.client.ContentObjectMetadata({
       versionHash,
       metadataSubtree: "/offerings/" + offering
     });
 
-    var info = {};
+    var info = {
+      duration_sec: 0 // Minimum of video and audio duration
+    };
     ["video", "audio"].forEach(mt =>  {
       const stream = offeringMeta.media_struct.streams[mt];
       info[mt] = {
@@ -893,8 +898,10 @@ class EluvioLiveStream {
         duration_sec: stream.duration.float,
         frame_rate_rat: stream.rate,
       };
+      if (info.duration_sec == 0 || stream.duration.float < info.duration_sec) {
+        info.duration_sec = stream.duration.float;
+      }
     });
-
     return info;
   }
 
