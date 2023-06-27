@@ -126,7 +126,8 @@ class EluvioLiveStream {
       let recordings = edgeMeta.live_recording.recordings;
       status.recording_period_sequence = recordings.recording_sequence;
 
-      let period = recordings.live_offering[recordings.recording_sequence - 1];
+      let sequence = recordings.recording_sequence;
+      let period = recordings.live_offering[sequence - 1];
 
       let tlro = period.live_recording_handle;
       status.tlro = tlro;
@@ -154,8 +155,9 @@ class EluvioLiveStream {
       });
 
       status.insertions = [];
-      if (edgeMeta.live_recording.playout_config.interleaves != undefined) {
-        let insertions = edgeMeta.live_recording.playout_config.interleaves;
+      if ((edgeMeta.live_recording.playout_config.interleaves != undefined) &&
+          (edgeMeta.live_recording.playout_config.interleaves[sequence] != undefined)) {
+        let insertions = edgeMeta.live_recording.playout_config.interleaves[sequence];
         for (let i = 0; i < insertions.length; i ++) {
           let insertionTimeSinceEpoch = recording_period.start_time_epoch_sec + insertions[i].insertion_time;
           status.insertions[i] = {
@@ -547,7 +549,7 @@ class EluvioLiveStream {
     let typeLiveStream;
     for (let i = 0; i < Object.keys(contentTypes).length; i ++) {
       const key = Object.keys(contentTypes)[i];
-      if (contentTypes[key].name.includes("ABR Master")) {
+      if (contentTypes[key].name.includes("ABR Master") || contentTypes[key].name.includes("Title")) {
         typeAbrMaster = contentTypes[key].hash;
       }
       if (contentTypes[key].name.includes("Live Stream")) {
@@ -682,8 +684,23 @@ class EluvioLiveStream {
   // - targetHash -  playable
   // - remove - flag to remove the insertion at that exact 'time' (instead of adding)
   async Insertion({name, insertionTime, sinceStart, duration, targetHash, remove}) {
-    const audioAbrDuration = 2.005333;
-    const videoAbrDuration = 2.002000;
+
+    // Determine audio and video parameters of the insertion
+    const insertionInfo = await this.getOfferingInfo({versionHash: targetHash});
+    const audioAbrDuration = insertionInfo.audio.seg_duration_sec;
+    const videoAbrDuration = insertionInfo.video.seg_duration_sec;
+
+    if (audioAbrDuration == 0 || videoAbrDuration == 0) {
+      throw new Error("Bad segment duration hash:", targetHash);
+    }
+
+    if (duration == undefined) {
+      duration = insertionInfo.duration_sec;  // Use full duration of the insertion
+    } else {
+      if (duration > insertionInfo.duration_sec) {
+        throw new Error("Bad duration - larger than insertion object duration", insertionInfo.duration_sec);
+      }
+    }
 
     let conf = await this.LoadConf({name});
     let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
@@ -710,23 +727,46 @@ class EluvioLiveStream {
       writeToken: edgeWriteToken
     });
 
-    let res = {};
-    let insertions = [];
-    if (edgeMeta.live_recording.playout_config.interleaves != undefined) {
-      insertions = edgeMeta.live_recording.playout_config.interleaves;
-    }
-
     // Find stream start time (from the most recent recording section)
     let recordings = edgeMeta.live_recording.recordings;
-    let period = recordings.live_offering[recordings.recording_sequence - 1];
-    let streamStartTime = period.start_time_epoch_sec;
+    let sequence = 1;
+    let streamStartTime = 0;
+    if (recordings != undefined && recordings.recording_sequence != undefined) {
+      // We have at least one recording - check if still active
+      sequence = recordings.recording_sequence;
+      let period = recordings.live_offering[sequence - 1];
+
+      if (period.end_time_epoch_sec > 0) {
+        // The last period is closed - apply insertions to the next period
+        sequence ++;
+      } else {
+        // The period is active
+        streamStartTime = period.start_time_epoch_sec;
+      }
+    }
+
+    if (streamStartTime == 0) {
+      // There is no active period - must use absolute time
+      if (sinceStart == false) {
+        throw new Error("Stream not running - must use 'time since start'");
+      }
+    }
+
+    // Find the current period playout configuration
+    if (edgeMeta.live_recording.playout_config.interleaves == undefined) {
+      edgeMeta.live_recording.playout_config.interleaves = {};
+    }
+    if (edgeMeta.live_recording.playout_config.interleaves[sequence] == undefined) {
+      edgeMeta.live_recording.playout_config.interleaves[sequence] = [];
+    }
+
+    let playoutConfig = edgeMeta.live_recording.playout_config;
+    let insertions = playoutConfig.interleaves[sequence];
+
+    let res = {};
 
     if (!sinceStart) {
       insertionTime = insertionTime - streamStartTime;
-    }
-
-    if (duration == undefined) {
-      duration = 20;  // Default duration
     }
 
     // Assume insertions are sorted by insertion time
@@ -780,13 +820,15 @@ class EluvioLiveStream {
       ];
     }
 
+    playoutConfig.interleaves[sequence] = insertions;
+
     // Store the new insertions in the write token
     await this.client.ReplaceMetadata({
       libraryId: libraryId,
       objectId: objectId,
       writeToken: edgeWriteToken,
-      metadataSubtree: "/live_recording/playout_config/interleaves",
-      metadata: insertions
+      metadataSubtree: "/live_recording/playout_config",
+      metadata: edgeMeta.live_recording.playout_config
     });
 
     res.errors = errs;
@@ -824,8 +866,46 @@ class EluvioLiveStream {
     return conf;
   }
 
-} // End class
+  /*
+   * Read a playable contnet object and get information about a particular offering
+   */
+  async getOfferingInfo({versionHash, offering = "default"}) {
 
+    // Content Type check is currently disabled due to permissions
+    /*
+    let ct = await this.client.ContentObject({versionHash});
+    if (ct.type != undefined && ct.type != "") {
+      let typeMeta = await this.client.ContentObjectMetadata({
+        versionHash: ct.type
+      });
+      if (typeMeta.bitcode_flags != "abrmaster") {
+        throw new Error("Not a playable VoD object " + versionHash);
+      }
+    }
+    */
+    let offeringMeta = await this.client.ContentObjectMetadata({
+      versionHash,
+      metadataSubtree: "/offerings/" + offering
+    });
+
+    var info = {
+      duration_sec: 0 // Minimum of video and audio duration
+    };
+    ["video", "audio"].forEach(mt =>  {
+      const stream = offeringMeta.media_struct.streams[mt];
+      info[mt] = {
+        seg_duration_sec: stream.optimum_seg_dur.float,
+        duration_sec: stream.duration.float,
+        frame_rate_rat: stream.rate,
+      };
+      if (info.duration_sec == 0 || stream.duration.float < info.duration_sec) {
+        info.duration_sec = stream.duration.float;
+      }
+    });
+    return info;
+  }
+
+} // End class
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
