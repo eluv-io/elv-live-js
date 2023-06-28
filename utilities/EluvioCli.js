@@ -240,6 +240,124 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
   }
 };
 
+const CmdTenantShow = async({ argv }) => {
+  console.log("Tenant - show", argv.tenant);
+  console.log("Network: " + Config.net);
+  
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantShow({
+      tenantId: argv.tenant
+    });
+
+    console.log(yaml.dump(res));
+    if (res.errors) { 
+      console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantFix = async({ argv }) => {
+  console.log("Tenant - fix", argv.tenant);
+  console.log("Network: " + Config.net);
+
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantShow({
+      tenantId: argv.tenant
+    });
+    let errors = res.errors;
+    let unresolved = [];
+
+    if (!errors) {
+      console.log(`No error found for tenant with tenant id: ${argv.tenant}!`);
+      return;
+    }
+
+    for (let i = 0; i < errors.length; i++) {
+      let error = errors[i];
+      switch(error) {
+        case 'missing content admins':
+          let content_admin_address = await t.TenantSetContentAdmins({tenantId: argv.tenant});
+          console.log(`Created new content admin group ${content_admin_address} for tenant with tenantId ${argv.tenant}`);
+          break;
+
+        case 'tenant admin group is not associated with any tenant': 
+          await t.TenantSetGroupContractId({tenantId: argv.tenant, groupAddress: res.tenant_admin_address});
+          break;
+
+        case 'content admin group is not associated with any tenant':
+          await t.TenantSetGroupContractId({tenantId: argv.tenant, groupAddress: res.content_admin_address});
+          break;
+
+        default:
+          console.log(`No fix actions available for error: ${error}.`)
+          unresolved.push(error);
+      }
+    }
+
+    console.log(`${errors.length - unresolved.length} errors fixed, ${unresolved.length} errors remaining.`)
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+const CmdTenantSetContentAdmins = async ({ argv }) => {
+  console.log(`Setting a new content admin group for Tenant ${argv.tenant}`);
+  console.log("Network: " + Config.net);
+
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantSetContentAdmins({
+      tenantId: argv.tenant,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantRemoveContentAdmin = async ({ argv }) => {
+  console.log(`Removing a Content Admin from Tenant ${argv.tenant}`);
+  console.log(`Removed Content Admin's Address: ${argv.content_admin_address}`);
+  console.log("Network: " + Config.net);
+  
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantRemoveContentAdmin({
+      tenantId: argv.tenant,
+      contentAdminsAddress: argv.content_admin_address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
   console.log("Tenant set Eluvio Live ID");
   console.log(`Tenant: ${argv.tenant}`);
@@ -912,6 +1030,70 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "tenant_show <tenant> [options]",
+    "Show info on this tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantShow({ argv });
+    }
+  )
+
+  .command(
+    "tenant_fix <tenant> [options]",
+    "Fix tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantFix({ argv });
+    }
+  )
+
+  .command(
+    "tenant_set_content_admins <tenant>",
+    "Set new content admin",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantSetContentAdmins({ argv });
+    }
+  )
+
+  .command(
+    "tenant_remove_content_admin <tenant> <content_admin_address>",
+    "Remove a content admin",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("content_admin_address", {
+          describe: "Content Admin's address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantRemoveContentAdmin({ argv });
+    }
+  )
+
+  .command(
     "space_tenant_deploy <tenant_name> <owner_addr> <tenant_admin_addr> <content_admin_addr>",
     "Deploys a tenant contract",
     (yargs) => {
@@ -1225,6 +1407,6 @@ yargs(hideBin(process.argv))
 
   .strict()
   .help()
-  .usage("EluvioLive CLI\n\nUsage: elv-live <command>")
+  .usage("EluvioLive Admin CLI\n\nUsage: elv-admin <command>")
   .scriptName("")
   .demandCommand(1).argv;
