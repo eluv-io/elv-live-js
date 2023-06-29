@@ -69,6 +69,31 @@ const CmdAccountSetTenantAdminsAddress = async ({ argv }) => {
     console.error("ERROR:", e);
   }
 };
+
+const CmdAccountSetTenantContract = async ({ argv }) => {
+  console.log("Account Set Tenant Contract ID\n");
+  console.log(`tenant_contract_id: ${argv.tenant_id}`);
+
+  try {
+    let elvAccount = newElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    await elvAccount.SetAccountTenantContractAddress({
+      tenantContractAddress: argv.tenant,
+    });
+    console.log("Success!");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+
 const CmdAccountShow = async ({ argv }) => {
   console.log("Account Show\n");
 
@@ -243,7 +268,7 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
 const CmdTenantShow = async({ argv }) => {
   console.log("Tenant - show", argv.tenant);
   console.log("Network: " + Config.net);
-  
+
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
@@ -851,7 +876,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "account_set_tenant <tenant_admins>",
+    "account_set_tenan_admins <tenant_admins>",
     "Sets the tenant admins group address for this account.",
     (yargs) => {
       yargs.positional("tenant_admins", {
@@ -861,6 +886,20 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAccountSetTenantAdminsAddress({ argv });
+    }
+  )
+
+  .command(
+    "account_set_tenant_contract <tenant>",
+    "Sets the tenant contract to assoicate with this account.",
+    (yargs) => {
+      yargs.option("tenant", {
+        describe: "Tenant contract address (hex) or ID (iten...)",
+        type: "string",
+      })
+    },
+    (argv) => {
+      CmdAccountSetTenantContract({ argv });
     }
   )
 
