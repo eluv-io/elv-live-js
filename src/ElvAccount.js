@@ -19,7 +19,7 @@ class ElvAccount {
     this.debug = debugLogging;
   }
 
-  async Init({ privateKey, tenantId="" }) {
+  async Init({ privateKey }) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
@@ -27,18 +27,7 @@ class ElvAccount {
     this.signer = this.wallet.AddAccount({
       privateKey, 
     });
-    if (tenantId) {
-      this.signer.connect(this.ethClient.Provider());
-      this.signer.pollingInterval = 500;
-
-      this.client.signer = signer;
-      this.client.InitializeClients();
-
-      this.SetAccountTenantContractId(tenantId);
-    } else {
-      this.client.SetSigner({ signer:this.signer });
-    }
-
+    this.client.SetSigner({ signer:this.signer });
     this.client.ToggleLogging(this.debug);
   }
 

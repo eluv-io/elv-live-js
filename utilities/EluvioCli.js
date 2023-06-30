@@ -75,14 +75,24 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
   console.log(`tenant_contract_id: ${argv.tenantId}`);
 
   try {
-    let elvAccount = newElvAccount({
+    let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
-      privateKey: process.env.PRIVATE_KEY, setTenant: true
+      privateKey: process.env.PRIVATE_KEY
     });
+
+    //Manually configure client as client.SetSigner will throw an error if the account's tenant contract id is missing.
+    this.client = await ElvClient.FromConfigurationUrl({
+      configUrl: this.configUrl,
+    });
+    this.wallet = this.client.GenerateWallet();
+    this.signer = this.wallet.AddAccount({
+      privateKey, 
+    });
+    this.client.signer = this.signer;
 
     await elvAccount.SetAccountTenantContractId({
       id: argv.tenantId,
