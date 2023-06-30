@@ -70,9 +70,9 @@ const CmdAccountSetTenantAdminsAddress = async ({ argv }) => {
   }
 };
 
-const CmdAccountSetTenantContract = async ({ argv }) => {
+const CmdAccountSetTenantContractId = async ({ argv }) => {
   console.log("Account Set Tenant Contract ID\n");
-  console.log(`tenant_contract_id: ${argv.tenant_id}`);
+  console.log(`tenant_contract_id: ${argv.tenantId}`);
 
   try {
     let elvAccount = newElvAccount({
@@ -81,11 +81,11 @@ const CmdAccountSetTenantContract = async ({ argv }) => {
     });
 
     await elvAccount.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: process.env.PRIVATE_KEY, setTenant: true
     });
 
-    await elvAccount.SetAccountTenantContractAddress({
-      tenantContractAddress: argv.tenant,
+    await elvAccount.SetAccountTenantContractId({
+      id: argv.tenantId,
     });
     console.log("Success!");
   } catch (e) {
@@ -876,7 +876,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "account_set_tenan_admins <tenant_admins>",
+    "account_set_tenant_admins <tenant_admins>",
     "Sets the tenant admins group address for this account.",
     (yargs) => {
       yargs.positional("tenant_admins", {
@@ -893,13 +893,13 @@ yargs(hideBin(process.argv))
     "account_set_tenant_contract <tenant>",
     "Sets the tenant contract to assoicate with this account.",
     (yargs) => {
-      yargs.option("tenant", {
-        describe: "Tenant contract address (hex) or ID (iten...)",
+      yargs.option("tenantId", {
+        describe: "Tenant contract ID (iten...)",
         type: "string",
       })
     },
     (argv) => {
-      CmdAccountSetTenantContract({ argv });
+      CmdAccountSetTenantContractId({ argv });
     }
   )
 

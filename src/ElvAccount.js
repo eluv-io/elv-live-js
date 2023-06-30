@@ -19,7 +19,7 @@ class ElvAccount {
     this.debug = debugLogging;
   }
 
-  async Init({ privateKey }) {
+  async Init({ privateKey, tenantId="" }) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
@@ -27,7 +27,18 @@ class ElvAccount {
     this.signer = this.wallet.AddAccount({
       privateKey, 
     });
-    this.client.SetSigner({ signer:this.signer });
+    if (tenantId) {
+      this.signer.connect(this.ethClient.Provider());
+      this.signer.pollingInterval = 500;
+
+      this.client.signer = signer;
+      this.client.InitializeClients();
+
+      this.SetAccountTenantContractId(tenantId);
+    } else {
+      this.client.SetSigner({ signer:this.signer });
+    }
+
     this.client.ToggleLogging(this.debug);
   }
 
@@ -166,13 +177,13 @@ class ElvAccount {
     });
   }
 
-  async SetAccountTenantContractAddress({ tenantContractAddress }) {
+  async SetAccountTenantContractId({ id }) {
     if (!this.client) {
       throw Error("ElvAccount not intialized");
     }
 
     await this.client.userProfileClient.SetTenantContractId({
-      address: tenantContractAddress,
+      tenantContractId: id,
     });
   }
 
