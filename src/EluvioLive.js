@@ -3147,6 +3147,87 @@ class EluvioLive {
   }
 
   /**
+   * Pack - retrieve pack spec and pack distribtion from an NFT Template
+   * using authd tenant-authenticated pack APIs.
+   * The spec and distribition are saved in JSON files.
+   *
+   * @namedParams
+   * @param {string} versionHash - NFT Template object hash
+   * @return {object} - file names where spec and dist are saved
+   */
+  async NftPackGetDist({versionHash}) {
+
+    const sf = "pack_spec." + versionHash + ".json";
+    const df = "pack_dist." + versionHash + ".json";
+
+    // Get pack 'spec'
+    let res = await this.GetServiceRequest({
+      path: urljoin("/nft/pack/spec", versionHash),
+    });
+    let spec = await res.json();
+    fs.writeFileSync(sf, JSON.stringify(spec));
+
+    // Get pack 'dist'
+    res = await this.GetServiceRequest({
+      path: urljoin("/nft/pack/dist", versionHash),
+    });
+    let dist = await res.json();
+    fs.writeFileSync(df, JSON.stringify(dist));
+
+    return {
+      "spec_file": sf,
+      "dist_file": df
+    };
+  }
+
+  /**
+   * Pack - set a previously created pack distribution in pack object metadata
+   *
+   * @namedParams
+   * @param {string} versionHash - NFT Template content hash
+   * @return {Promise<Object>} - The new object info
+   */
+  async NftPackSetDist({versionHash}) {
+
+    let objectId = this.client.utils.DecodeVersionHash(versionHash).objectId;
+    let libraryId = await this.client.ContentObjectLibraryId({objectId})
+
+    const df = "pack_dist." + versionHash + ".json";
+    let distBuf = fs.readFileSync(df);
+    let dist = JSON.parse(distBuf);
+
+    const e = await this.client.EditContentObject({
+      libraryId,
+      objectId
+    });
+
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      metadataSubtree: "/public/asset_metadata/nft/pack_dist",
+      metadata: dist.pack_dist
+    });
+
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      metadataSubtree: "/public/asset_metadata/nft/pack_spec",
+      metadata: dist.pack_spec
+    });
+
+    let res = await this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      commitMessage: "Set pack_dist"
+    });
+
+    return res;
+  }
+
+  /**
    * Get Admin API status from Authority Service
    *
    * @namedParams

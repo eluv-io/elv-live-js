@@ -220,6 +220,38 @@ const CmdNftBuild = async ({ argv }) => {
   }
 };
 
+const CmdNftPackGetDist = async ({ argv }) => {
+  console.log("NFT - pack get dist");
+  console.log("NFT - hash ", argv.hash);
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    let res = await elvlv.NftPackGetDist({
+      versionHash: argv.hash,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftPackSetDist = async ({ argv }) => {
+  console.log("NFT - pack set dist");
+  console.log("NFT - hash ", argv.hash);
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    let res = await elvlv.NftPackSetDist({
+      versionHash: argv.hash,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdNftProxyTransfer = async ({ argv }) => {
   console.log(
     "NFT - transer as proxy owner",
@@ -1840,6 +1872,36 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNftBuild({ argv });
+    }
+  )
+
+  .command(
+    "nft_pack_get_dist <hash>",
+    "Compute pack distribution based on NFT Template spec. Saves to file.",
+    (yargs) => {
+      yargs
+        .positional("hash", {
+          describe: "NFT Template content hash (hq__)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftPackGetDist({ argv });
+    }
+  )
+
+  .command(
+    "nft_pack_set_dist <hash>",
+    "Set the pack distribution for an NFT Template. Reads distribution from file.",
+    (yargs) => {
+      yargs
+        .positional("hash", {
+          describe: "NFT Template content hash (hq__)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftPackSetDist({ argv });
     }
   )
 
