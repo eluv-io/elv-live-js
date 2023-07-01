@@ -44,6 +44,24 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
   await marketplace.Init({ debugLogging });
 };
 
+const CmdTenantAuthToken = async ({ argv }) => {
+  await Init({debugLogging: argv.verbose});
+
+  let ts = Date.now();
+  let message = argv.path_or_body + "?ts=" + ts
+  try {
+    let j = JSON.parse(argv.path_or_body)
+    j.ts = ts;
+    message = JSON.stringify(j)
+  } catch (e) {}
+
+  const { multiSig } = await elvlv.TenantSign({
+    message: message
+  });
+  console.log(message)
+  console.log(`Authorization: Bearer ${multiSig}`);
+};
+
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
   console.log(
     "\nNFT Template - set contract",
@@ -1662,6 +1680,21 @@ yargs(hideBin(process.argv))
     describe: "Alternate authority service URL (include '/as/' route if necessary)",
     type: "string"
   })
+  .command(
+      "tenant_auth_token <path_or_body>",
+      "Generate a tenant token",
+      (yargs) => {
+        yargs
+            .positional("path_or_body", {
+              describe: "URL path or request body",
+              type: "string",
+            });
+      },
+      (argv) => {
+        CmdTenantAuthToken({argv}).then();
+      }
+  )
+
   .command(
     "nft_add_contract <tenant> <object> <cap> <name> <symbol> [options]",
     "Add a new or existing NFT contract to an NFT Template object",
