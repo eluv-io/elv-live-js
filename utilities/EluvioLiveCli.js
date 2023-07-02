@@ -2196,12 +2196,12 @@ yargs(hideBin(process.argv))
           describe: "Tenant ID",
           type: "string",
         })
-        .option("csv", {
-          describe: "File path to output csv",
-          type: "string",
-        })
         .positional("owner", {
           describe: "Owner address (hex)",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
           type: "string",
         });
     },
