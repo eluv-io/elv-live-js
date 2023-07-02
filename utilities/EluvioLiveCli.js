@@ -425,7 +425,6 @@ const CmdTenantBalanceOf = async ({ argv }) => {
             out += `${contract},${nft.name},${token.tokenId},${token.hold}\n`
         }
       }
-      console.log(out)
       fs.writeFileSync(argv.csv, out);
     } else {
       console.log(yaml.dump(res));

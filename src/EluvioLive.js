@@ -3190,7 +3190,7 @@ class EluvioLive {
   async NftPackSetDist({versionHash}) {
 
     let objectId = this.client.utils.DecodeVersionHash(versionHash).objectId;
-    let libraryId = await this.client.ContentObjectLibraryId({objectId})
+    let libraryId = await this.client.ContentObjectLibraryId({objectId});
 
     const df = "pack_dist." + versionHash + ".json";
     let distBuf = fs.readFileSync(df);
