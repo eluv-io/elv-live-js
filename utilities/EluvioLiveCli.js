@@ -414,7 +414,7 @@ const CmdTenantBalanceOf = async ({ argv }) => {
 
     if (argv.csv && argv.csv != "") {
       console.log(`CSV: ${argv.csv}`);
-      let out = "contract,name,token,hold\n";
+      let out = "contract,token,hold,name\n";
       let json = res.nfts
       let contracts = Object.keys(json)
       for (let i = 0; i < contracts.length; i++) {
@@ -422,7 +422,7 @@ const CmdTenantBalanceOf = async ({ argv }) => {
         let nft = json[contract]
         for (let j = 0; j < nft.tokens.length; j++) {
             let token = nft.tokens[j]
-            out += `${contract},${nft.name},${token.tokenId},${token.hold}\n`
+            out += `${contract},${token.tokenId},${token.hold},${nft.name}\n`
         }
       }
       fs.writeFileSync(argv.csv, out);
