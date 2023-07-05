@@ -412,7 +412,24 @@ const CmdTenantBalanceOf = async ({ argv }) => {
       maxNumber: argv.max_results,
     });
 
-    console.log(yaml.dump(res));
+    if (argv.csv && argv.csv != "") {
+      console.log(`CSV: ${argv.csv}`);
+      let out = "contract,token,hold,name\n";
+      let json = res.nfts;
+      let contracts = Object.keys(json);
+      for (let i = 0; i < contracts.length; i++) {
+        let contract = contracts[i];
+        let nft = json[contract];
+        for (let j = 0; j < nft.tokens.length; j++) {
+            let token = nft.tokens[j];
+            out += `${contract},${token.tokenId},${token.hold},${nft.name}\n`;
+        }
+      }
+      fs.writeFileSync(argv.csv, out);
+    } else {
+      console.log(yaml.dump(res));
+    }
+
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -2181,6 +2198,10 @@ yargs(hideBin(process.argv))
         })
         .positional("owner", {
           describe: "Owner address (hex)",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
           type: "string",
         });
     },
