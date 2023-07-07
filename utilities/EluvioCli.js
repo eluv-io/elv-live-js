@@ -94,8 +94,19 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
     });
     this.client.signer = this.signer;
 
+    //Automatic fix: convert tenant admin group id to tenant contract id 
+    let tenantId = argv.tenantId;
+    const idType = await this.client.AccessType({ tenantId });
+    if (idType === this.client.authClient.ACCESS_TYPES.GROUP) {
+      tenantId = await this.client.CallContractMethod({
+        contractAddress: groupAddress,
+        methodName: "getMeta",
+        methodArgs: ["_ELV_TENANT_ID"], 
+      });
+    }
+
     await elvAccount.SetAccountTenantContractId({
-      id: argv.tenantId,
+      id: tenantId,
     });
     console.log("Success!");
   } catch (e) {
@@ -886,22 +897,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "account_set_tenant_admins <tenant_admins>",
-    "Sets the tenant admins group address for this account.",
-    (yargs) => {
-      yargs.positional("tenant_admins", {
-        describe: "Tenant admins group address (hex)",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdAccountSetTenantAdminsAddress({ argv });
-    }
-  )
-
-  .command(
     "account_set_tenant_contract <tenant>",
-    "Sets the tenant contract to assoicate with this account.",
+    "Sets the tenant contract to assoicate with this account - if an admin group id is used, it will be converted to the tenant contract id that belongs to the group.",
     (yargs) => {
       yargs.option("tenantId", {
         describe: "Tenant contract ID (iten...)",
