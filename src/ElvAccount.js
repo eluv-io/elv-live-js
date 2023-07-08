@@ -31,7 +31,7 @@ class ElvAccount {
     this.client.ToggleLogging(this.debug);
   }
 
-  async InitWithId({ privateKey, id}) {
+  async InitWithId({ privateKey, id }) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
