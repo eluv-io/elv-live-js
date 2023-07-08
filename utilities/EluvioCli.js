@@ -47,29 +47,6 @@ const CmdAccountCreate = async ({ argv }) => {
   }
 };
 
-const CmdAccountSetTenantAdminsAddress = async ({ argv }) => {
-  console.log("Account Set Tenant Admins ID\n");
-  console.log(`tenant_admins: ${argv.tenant_admins}`);
-
-  try {
-    let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
-    });
-
-    await elvAccount.Init({
-      privateKey: process.env.PRIVATE_KEY,
-    });
-
-    await elvAccount.SetAccountTenantAdminsAddress({
-      tenantAdminsAddress: argv.tenant_admins,
-    });
-    console.log("Success!");
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
 const CmdAccountSetTenantContractId = async ({ argv }) => {
   console.log("Account Set Tenant Contract ID\n");
   console.log(`tenant_contract_id: ${argv.tenantId}`);
@@ -79,35 +56,10 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
     });
-
-    await elvAccount.Init({
-      privateKey: process.env.PRIVATE_KEY
-    });
-
-    //Manually configure client as client.SetSigner will throw an error if the account's tenant contract id is missing.
-    this.client = await ElvClient.FromConfigurationUrl({
-      configUrl: this.configUrl,
-    });
-    this.wallet = this.client.GenerateWallet();
-    this.signer = this.wallet.AddAccount({
-      privateKey, 
-    });
-    this.client.signer = this.signer;
-
-    //Automatic fix: convert tenant admin group id to tenant contract id 
-    let tenantId = argv.tenantId;
-    const idType = await this.client.AccessType({ tenantId });
-    if (idType === this.client.authClient.ACCESS_TYPES.GROUP) {
-      tenantId = await this.client.CallContractMethod({
-        contractAddress: groupAddress,
-        methodName: "getMeta",
-        methodArgs: ["_ELV_TENANT_ID"], 
-      });
-    }
-
-    await elvAccount.SetAccountTenantContractId({
-      id: tenantId,
-    });
+    await elvAccount.InitWithId({
+      privateKey: process.env.PRIVATE_KEY,
+      id: argv.tenantId,
+    })
     console.log("Success!");
   } catch (e) {
     console.error("ERROR:", e);
@@ -897,7 +849,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "account_set_tenant <tenant>",
+    "account_set_tenant <tenantId>",
     "Sets the tenant contract to assoicate with this account - if an admin group id is used, it will be converted to the tenant contract id that belongs to the group.",
     (yargs) => {
       yargs.option("tenantId", {
