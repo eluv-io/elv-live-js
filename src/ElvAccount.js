@@ -31,6 +31,37 @@ class ElvAccount {
     this.client.ToggleLogging(this.debug);
   }
 
+  async InitWithId({ privateKey, id}) {
+    this.client = await ElvClient.FromConfigurationUrl({
+      configUrl: this.configUrl,
+    });
+    this.wallet = this.client.GenerateWallet();
+    this.signer = this.wallet.AddAccount({
+      privateKey, 
+    });
+    this.client.signer = this.signer;
+    this.client.ToggleLogging(this.debug);
+
+    //Automatic fix: convert tenant admin group id to tenant contract id 
+    const idType = await this.client.AccessType({ id });
+    if (idType === this.client.authClient.ACCESS_TYPES.GROUP) {
+      let groupAddress = this.client.utils.HashToAddress(id);
+
+      let tenantContractAddress = await this.client.CallContractMethod({
+        contractAddress: groupAddress,
+        methodName: "getMeta",
+        methodArgs: ["_ELV_TENANT_ID"], 
+      });
+
+      if (tenantContractAddress == "0x") {
+        let args = group.split("_");
+        throw (`${args[0]} ${args[1]} group is not associated with any tenant`);
+      }
+      id = ethers.utils.toUtf8String(tenantContractAddress);
+    }
+    await this.SetAccountTenantContractId({ id });
+  }
+
   InitWithClient({ elvClient }) {
     if (!elvClient){
       throw Error("ElvAccount InitWithClient with null");
