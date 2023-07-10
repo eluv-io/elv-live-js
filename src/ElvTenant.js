@@ -213,18 +213,18 @@ class ElvTenant {
       let groupAddress = tenantInfo[group];
       
       if (groupAddress != null) {
-        let tenantContractAddress = await this.client.CallContractMethod({
+        let tenantContractIdHex = await this.client.CallContractMethod({
           contractAddress: groupAddress,
           methodName: "getMeta",
           methodArgs: ["_ELV_TENANT_ID"], 
         });
 
         let args = group.split("_");
-        if (tenantContractAddress == "0x") {
+        if (tenantContractIdHex == "0x") {
           errors.push(`${args[0]} ${args[1]} group is not associated with any tenant`);
         } else {
-          let tenantContractId = Ethers.utils.toUtf8String(tenantContractAddress);
-
+          let tenantContractId = Ethers.utils.toUtf8String(tenantContractIdHex);
+          
           if (tenantContractId != tenantId) {
             errors.push(`${args[0]} ${args[1]} group doesn't belong to this tenant`);
           }

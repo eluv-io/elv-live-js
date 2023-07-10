@@ -47,17 +47,17 @@ class ElvAccount {
     if (idType === this.client.authClient.ACCESS_TYPES.GROUP) {
       let groupAddress = this.client.utils.HashToAddress(id);
 
-      let tenantContractAddress = await this.client.CallContractMethod({
+      let tenantContractIdHex = await this.client.CallContractMethod({
         contractAddress: groupAddress,
         methodName: "getMeta",
         methodArgs: ["_ELV_TENANT_ID"], 
       });
 
-      if (tenantContractAddress == "0x") {
+      if (tenantContractIdHex == "0x") {
         let args = group.split("_");
         throw (`${args[0]} ${args[1]} group is not associated with any tenant`);
       }
-      id = ethers.utils.toUtf8String(tenantContractAddress);
+      id = ethers.utils.toUtf8String(tenantContractIdHex);
     }
     await this.SetAccountTenantContractId({ id });
   }

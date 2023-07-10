@@ -49,7 +49,7 @@ const CmdAccountCreate = async ({ argv }) => {
 
 const CmdAccountSetTenantContractId = async ({ argv }) => {
   console.log("Account Set Tenant Contract ID\n");
-  console.log(`tenant_contract_id: ${argv.tenantId}`);
+  console.log(`tenant_contract_id: ${argv.tenant}`);
 
   try {
     let elvAccount = new ElvAccount({
@@ -58,7 +58,7 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
     });
     await elvAccount.InitWithId({
       privateKey: process.env.PRIVATE_KEY,
-      id: argv.tenantId,
+      id: argv.tenant,
     })
     console.log("Success!");
   } catch (e) {
@@ -849,10 +849,10 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "account_set_tenant <tenantId>",
+    "account_set_tenant <tenant>",
     "Sets the tenant contract to assoicate with this account - if an admin group id is used, it will be converted to the tenant contract id that belongs to the group.",
     (yargs) => {
-      yargs.option("tenantId", {
+      yargs.option("tenant", {
         describe: "Tenant contract ID (iten...)",
         type: "string",
       })
