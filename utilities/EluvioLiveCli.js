@@ -45,21 +45,21 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
 };
 
 const CmdTenantAuthToken = async ({ argv }) => {
-  await Init({debugLogging: argv.verbose});
+  await Init({debugLogging: argv.verbose})
 
-  let ts = Date.now();
+  let ts = Date.now()
   let message = argv.path_or_body + "?ts=" + ts
   try {
     let j = JSON.parse(argv.path_or_body)
-    j.ts = ts;
+    j.ts = ts
     message = JSON.stringify(j)
   } catch (e) {}
 
   const { multiSig } = await elvlv.TenantSign({
     message: message
-  });
-  console.log(message)
-  console.log(`Authorization: Bearer ${multiSig}`);
+  })
+  console.log(`Timestamped path or body: ${message}`)
+  console.log(`Token: Authorization: Bearer ${multiSig}`)
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
