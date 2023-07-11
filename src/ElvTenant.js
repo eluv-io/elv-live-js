@@ -296,7 +296,7 @@ class ElvTenant {
     });
 
     //Associate the group with this tenant - set the content admin group's _ELV_TENANT_ID to this tenant's tenant id.
-    await this.GroupSetTenantContractId({tenantId: tenantId, groupAddress: contentAdminGroup.address});
+    await this.TenantSetGroupContractId({tenantId: tenantId, groupAddress: contentAdminGroup.address});
 
     //Associate the tenant with this group - set tenant's content admin group on the tenant's contract.
     let res = await this.client.CallContractMethodAndWait({
@@ -338,7 +338,7 @@ class ElvTenant {
    * @param {string} tenantId - The ID of the tenant (iten***)
    * @param {string} groupAddress - Address of the group we want to remove.
    */
-  async GroupSetTenantContractId({ tenantId, groupAddress }) {
+  async TenantSetGroupContractId({ tenantId, groupAddress }) {
     let id = await this.client.CallContractMethod({
       contractAddress: groupAddress,
       methodName: "getMeta",

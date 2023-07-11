@@ -106,6 +106,13 @@ class ElvSpace {
       });
       elvAccount.SetAccountTenantContractAddress(tenant.address);
 
+      // We must sign in using the new account to set the groups' metadata - metadata can only be set by the groups' admin
+      let account_wallet = this.client.GenerateWallet();
+      let account_signer = account_wallet.AddAccount({
+        privateKey: account.privateKey,
+      });
+      this.client.SetSigner({ signer: account_signer });
+
       //Add _ELV_TENANT_ID to groups' metadata so we can identify the tenant these groups belong to
       await this.client.CallContractMethodAndWait({
         contractAddress: tenantAdminGroup.address,
