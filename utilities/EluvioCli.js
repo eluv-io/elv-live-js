@@ -288,8 +288,8 @@ const CmdTenantFix = async({ argv }) => {
       let error = errors[i];
       switch(error) {
         case 'missing content admins':
-          let content_admin_address = await t.TenantSetContentAdmins({tenantId: argv.tenant});
-          console.log(`Created new content admin group ${content_admin_address.address} for tenant with tenantId ${argv.tenant}`);
+          await t.TenantSetContentAdmins({tenantId: argv.tenant});
+          console.log(`Created new content admin group for tenant with tenantId ${argv.tenant}`);
           break;
 
         case 'tenant admin group is not associated with any tenant': 
