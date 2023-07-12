@@ -113,7 +113,7 @@ class ElvSpace {
       this.client.SetSigner({ signer: account_signer });
 
       // Assign the created tenant to account
-      elvAccount.SetAccountTenantContractAddress(tenant.address);
+      elvAccount.SetAccountTenantContractId(tenant.id);
 
       // Add _ELV_TENANT_ID to groups' metadata so we can identify the tenant these groups belong to
       await this.client.CallContractMethodAndWait({
