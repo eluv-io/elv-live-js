@@ -173,8 +173,9 @@ class ElvTenant {
    * Return tenant admins group and content admins group corresponding to this tenant.
    * @param {string} tenantId - The ID of the tenant (iten***)
    */
-  async TenantShow({ tenantId }) {
+  async TenantShow({ tenantId, show_metadata = false }) {
     let tenantInfo = {};
+    console.log(show_metadata);
 
     const tenantAddr = Utils.HashToAddress(tenantId);
     const abi = fs.readFileSync(
@@ -229,6 +230,26 @@ class ElvTenant {
             errors.push(`${args[0]} ${args[1]} group doesn't belong to this tenant`);
           }
         }
+      }
+    }
+
+    if (show_metadata) {
+      let services = {};
+      let tenantObjectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr});
+      let tenantLibraryId = await this.client.ContentObjectLibraryId({objectId: tenantObjectId});
+
+      try {
+        let liveId = await this.client.ContentObjectMetadata({
+          libraryId: tenantLibraryId,
+          objectId: tenantObjectId,
+          select:"public/eluvio_live_id",
+        });
+
+        services["eluvio_live_id"] = liveId;
+        console.log(liveId);
+      } catch (e) {
+        console.log(e);
+        errors.push("Encountered an error when getting metadata for the eluvio_live_id service");
       }
     }
 
