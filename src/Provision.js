@@ -88,7 +88,7 @@ const SetTenantEluvioLiveId = async (client, tenantId, eluvioLiveId) => {
   });
 
   return res;
-}
+};
 
 const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   let tenantAdminId = await client.userProfileClient.TenantId();
@@ -286,7 +286,6 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
 
   /* Add ids of services to tenant fabric metadata */
   await SetTenantEluvioLiveId(client, tenantId, liveTypeIds[TYPE_LIVE_TENANT]);
-
 
   /* Create libraries - Properties, Title Masters, Title Mezzanines and add each to the groups */
 

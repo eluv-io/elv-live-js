@@ -175,6 +175,7 @@ class ElvTenant {
    */
   async TenantShow({ tenantId, show_metadata = false }) {
     let tenantInfo = {};
+    
     const tenantAddr = Utils.HashToAddress(tenantId);
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
