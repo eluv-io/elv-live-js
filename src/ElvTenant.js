@@ -175,8 +175,6 @@ class ElvTenant {
    */
   async TenantShow({ tenantId, show_metadata = false }) {
     let tenantInfo = {};
-    console.log(show_metadata);
-
     const tenantAddr = Utils.HashToAddress(tenantId);
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
@@ -234,7 +232,7 @@ class ElvTenant {
     }
 
     if (show_metadata) {
-      let services = {};
+      let services = [];
       let tenantObjectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr});
       let tenantLibraryId = await this.client.ContentObjectLibraryId({objectId: tenantObjectId});
 
@@ -242,15 +240,16 @@ class ElvTenant {
         let liveId = await this.client.ContentObjectMetadata({
           libraryId: tenantLibraryId,
           objectId: tenantObjectId,
+          noAuth: true,
           select:"public/eluvio_live_id",
         });
+        services.push(liveId["public"]);
 
-        services["eluvio_live_id"] = liveId;
-        console.log(liveId);
       } catch (e) {
         console.log(e);
         errors.push("Encountered an error when getting metadata for the eluvio_live_id service");
       }
+      tenantInfo["services"] = services;
     }
 
     if (errors.length != 0) {
