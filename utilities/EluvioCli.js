@@ -1,7 +1,6 @@
 const { ElvSpace } = require("../src/ElvSpace.js");
 const { ElvTenant } = require("../src/ElvTenant.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
-const { ElvFabric } = require("../src/ElvFabric.js");
 const { ElvContracts } = require("../src/ElvContracts.js");
 const { Config } = require("../src/Config.js");
 
@@ -250,7 +249,8 @@ const CmdTenantShow = async({ argv }) => {
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     let res = await t.TenantShow({
-      tenantId: argv.tenant
+      tenantId: argv.tenant,
+      show_metadata: argv.show_metadata
     });
 
     console.log(yaml.dump(res));
@@ -1035,6 +1035,10 @@ yargs(hideBin(process.argv))
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
+        })
+        .option("show_metadata", {
+          describe: "Show the content fabric metadata associated to this tenant",
+          type: "boolean",
         });
     },
     (argv) => {

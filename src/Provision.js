@@ -62,6 +62,34 @@ const SetObjectPermissions = async (client, objectId, tenantAdmins, contentAdmin
   await Promise.all(promises);
 };
 
+const SetTenantEluvioLiveId = async (client, tenantId, eluvioLiveId) => {
+  const tenantAddr = Utils.HashToAddress(tenantId);
+  const libraryId = ElvUtils.AddressToId({prefix: "ilib", address: tenantAddr});
+  const objectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr});
+
+  var e = await client.EditContentObject({
+    libraryId,
+    objectId,  
+  });
+
+  await client.ReplaceMetadata({
+    libraryId,
+    objectId,
+    writeToken: e.write_token,
+    metadataSubtree: "public/eluvio_live_id",
+    metadata: eluvioLiveId,
+  });
+
+  const res = await client.FinalizeContentObject({
+    libraryId,
+    objectId,
+    writeToken: e.write_token,
+    commitMessage: "Set Eluvio Live object ID " + eluvioLiveId,
+  });
+
+  return res;
+};
+
 const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   let tenantAdminId = await client.userProfileClient.TenantId();
   let tenantAdminSigner = client.signer;
@@ -83,7 +111,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     formatArguments: true,
   });
 
-  let tenantAdminGroupAddress = await client.CallContractMethodAndWait({
+  let tenantAdminGroupAddress = await client.CallContractMethod({
     contractAddress: tenantAddr,
     abi: JSON.parse(abi),
     methodName: "groupsMapping",
@@ -91,7 +119,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     formatArguments: true,
   });
   
-  let contentAdminGroupAddress = await client.CallContractMethodAndWait({
+  let contentAdminGroupAddress = await client.CallContractMethod({
     contractAddress: tenantAddr,
     abi: JSON.parse(abi),
     methodName: "groupsMapping",
@@ -256,6 +284,8 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     liveTypeIds[liveTypes[i].name] = typeId;
   }
 
+  /* Add ids of services to tenant fabric metadata */
+  await SetTenantEluvioLiveId(client, tenantId, liveTypeIds[TYPE_LIVE_TENANT]);
 
   /* Create libraries - Properties, Title Masters, Title Mezzanines and add each to the groups */
 
