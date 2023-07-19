@@ -170,8 +170,8 @@ class ElvUtils {
     // Find pattern '/q/hq__...'
     let s = p.split("/");
     for (var i = 0; i < s.length; i ++) {
-      if (s[i] == 'q') {
-        if (s[i+1].startsWith('hq__')) {
+      if (s[i] == "q") {
+        if (s[i+1].startsWith("hq__")) {
           s[i+1] = newHash;
           break;
         }

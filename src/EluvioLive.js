@@ -203,9 +203,9 @@ class EluvioLive {
         formatArguments: true,
       });
       nftInfo.totalSupply = Number(totalSupply);
-      } catch (e) {
-        console.log("Failed to retrieve supply", e);
-        return;
+    } catch (e) {
+      console.log("Failed to retrieve supply", e);
+      return;
     }
 
     // Retrieve the list of owners
@@ -243,8 +243,8 @@ class EluvioLive {
       }
     }
 
-    if (dryRun == true) {
-      console.log("DRY RUN - RETURNING REQUEST ODY");
+    if (dryRun) {
+      console.log("DRY RUN - RETURNING REQUEST BODY");
       return body;
     }
 

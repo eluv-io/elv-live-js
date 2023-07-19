@@ -2261,7 +2261,7 @@ yargs(hideBin(process.argv))
         .option("dry_run", {
           describe:
             "Default 'true'",
-          type: "bool",
+          type: "boolean",
         })
     },
     (argv) => {
