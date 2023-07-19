@@ -156,6 +156,31 @@ class ElvUtils {
     return false;
   }
 
+  /**
+   * Parse a fabric URL of format 'http(s)://host/.../q/hq__.../...' and replace the object hash
+   * with the newly provided one.
+   *
+   * @param {string} url
+   * @param {string} newHash Format 'hq__...'
+   */
+  static async UpdateFabricUrl({url, newHash}) {
+    let u = new URL(url);
+    let p = u.pathname;
+
+    // Find pattern '/q/hq__...'
+    let s = p.split("/");
+    for (var i = 0; i < s.length; i ++) {
+      if (s[i] == 'q') {
+        if (s[i+1].startsWith('hq__')) {
+          s[i+1] = newHash;
+          break;
+        }
+      }
+    }
+    u.pathname = s.join("/");
+    return u.href;
+  }
+
 }
 
 
