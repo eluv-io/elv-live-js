@@ -173,7 +173,7 @@ class ElvTenant {
    * Return tenant admins group and content admins group corresponding to this tenant.
    * @param {string} tenantId - The ID of the tenant (iten***)
    */
-  async TenantShow({ tenantId }) {
+  async TenantShow({ tenantId, show_metadata = false }) {
     let tenantInfo = {};
 
     const tenantAddr = Utils.HashToAddress(tenantId);
@@ -230,6 +230,27 @@ class ElvTenant {
           }
         }
       }
+    }
+
+    if (show_metadata) {
+      let services = [];
+      let tenantObjectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr});
+      let tenantLibraryId = await this.client.ContentObjectLibraryId({objectId: tenantObjectId});
+
+      try {
+        let liveId = await this.client.ContentObjectMetadata({
+          libraryId: tenantLibraryId,
+          objectId: tenantObjectId,
+          noAuth: true,
+          select:"public/eluvio_live_id",
+        });
+        services.push(liveId["public"]);
+
+      } catch (e) {
+        console.log(e);
+        errors.push("Encountered an error when getting metadata for the eluvio_live_id service");
+      }
+      tenantInfo["services"] = services;
     }
 
     if (errors.length != 0) {
