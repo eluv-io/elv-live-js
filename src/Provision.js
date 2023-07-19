@@ -83,7 +83,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     formatArguments: true,
   });
 
-  let tenantAdminGroupAddress = await client.CallContractMethodAndWait({
+  let tenantAdminGroupAddress = await client.CallContractMethod({
     contractAddress: tenantAddr,
     abi: JSON.parse(abi),
     methodName: "groupsMapping",
@@ -91,7 +91,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     formatArguments: true,
   });
   
-  let contentAdminGroupAddress = await client.CallContractMethodAndWait({
+  let contentAdminGroupAddress = await client.CallContractMethod({
     contractAddress: tenantAddr,
     abi: JSON.parse(abi),
     methodName: "groupsMapping",

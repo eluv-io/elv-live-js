@@ -28,7 +28,7 @@ class ElvSpace {
     let signer = wallet.AddAccount({
       privateKey: spaceOwnerKey,
     });
-    this.client.SetSigner({ signer });
+    this.client.SetSigner({ signer, tenantCheck: false });
     this.client.ToggleLogging(this.debug);
   }
 
@@ -59,7 +59,7 @@ class ElvSpace {
         console.log("create account - done");
       }
 
-      await elvAccount.Init({ privateKey: account.privateKey });
+      await elvAccount.Init({ privateKey: account.privateKey, tenantCheck: false });
 
       if (this.debug){
         console.log("create admin groups");
@@ -110,10 +110,11 @@ class ElvSpace {
       let account_signer = account_wallet.AddAccount({
         privateKey: account.privateKey,
       });
-      this.client.SetSigner({ signer: account_signer });
+
+      this.client.SetSigner({ signer: account_signer, tenantCheck: false });
 
       // Assign the created tenant to account
-      elvAccount.SetAccountTenantContractId(tenant.id);
+      elvAccount.SetAccountTenantContractId({id: tenant.id});
 
       // Add _ELV_TENANT_ID to groups' metadata so we can identify the tenant these groups belong to
       await this.client.CallContractMethodAndWait({

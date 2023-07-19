@@ -5,6 +5,7 @@ const networks = {
   demo: "https://demov3.net955210.contentfabric.io",
   demov3: "https://demov3.net955210.contentfabric.io",
   test: "https://test.net955205.contentfabric.io/config",
+  local: "http://localhost:8008/config?qspace=dev&self",
 };
 
 const mainObjects = {
@@ -39,6 +40,10 @@ const consts = {
     spaceAddress: "0x8e5935ca87ad11779e3aec4adcb48a5cb7c2abb4",
     claimerAddress: "0xdB9241496785241f0727D3f2BbB12a5B75dEb3E9",
   },
+  local: {
+    spaceAddress: "0x96d03f6476f478f99017aec366c874004020899f",
+    kmsAddress: "0xd9dc97b58c5f2584062cf69775d160ed9a3bfbc4",
+  }
 };
 
 exports.Config = { net, networks, mainObjects, consts };
