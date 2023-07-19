@@ -378,6 +378,28 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
   }
 };
 
+const CmdTenantUpdateTokenURI = async ({ argv }) => {
+  console.log("Contract address", argv.addr);
+  console.log("Hash", argv.hash);
+  console.log("Dry run", argv.dry_run);
+
+  try {
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+
+    let res = await elvlv.TenantUpdateTokenURI({
+      tenantId: argv.tenant,
+      contractAddress: argv.addr,
+      hash: argv.hash,
+      dryRun: argv.dry_run
+    });
+
+    console.log(res);
+
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 
 const CmdSiteShow = async ({ argv }) => {
   console.log("Site - show", argv.object);
@@ -2219,6 +2241,33 @@ yargs(hideBin(process.argv))
     }
   )
 
+  .command(
+    "tenant_update_token_uri <tenant> <addr> <hash> [options]",
+    "Reset the token URI(s) for tenant NFT contract(s)",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("hash", {
+          describe: 'New NFT template object hash',
+          type: "string",
+        })
+        .option("dry_run", {
+          describe:
+            "Default 'true'",
+          type: "boolean",
+        })
+    },
+    (argv) => {
+      CmdTenantUpdateTokenURI({ argv });
+    }
+  )
 
   .command(
     "tenant_balance_of <tenant> <owner>",
