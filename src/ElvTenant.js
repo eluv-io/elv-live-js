@@ -176,7 +176,7 @@ class ElvTenant {
   async TenantShow({ tenantId, show_metadata = false }) {
     let tenantInfo = {};
 
-    const tenantAddr = Utils.HashToAddress(tenantId);
+    const tenantAddr = Utils.HashToAddress(tenantId); 
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
@@ -244,13 +244,17 @@ class ElvTenant {
           noAuth: true,
           select:"public/eluvio_live_id",
         });
-        services.push(liveId["public"]);
+        if (liveId["public"]) {
+          services.push(liveId["public"]);
+        }
 
       } catch (e) {
         console.log(e);
         errors.push("Encountered an error when getting metadata for the eluvio_live_id service");
       }
-      tenantInfo["services"] = services;
+      if (services.length != 0) {
+        tenantInfo["services"] = services;
+      }
     }
 
     if (errors.length != 0) {
@@ -360,16 +364,17 @@ class ElvTenant {
    * @param {string} groupAddress - Address of the group we want to remove.
    */
   async TenantSetGroupContractId({ tenantId, groupAddress }) {
-    let id = await this.client.CallContractMethod({
+    let idHex = await this.client.CallContractMethod({
       contractAddress: groupAddress,
       methodName: "getMeta",
       methodArgs: ["_ELV_TENANT_ID"], 
     });
-    if (id != "0x") {
+    if (idHex != "0x") {
+      let id = Ethers.utils.toUtf8String(idHex);
       throw Error(`Group ${groupAddress} already has a _ELV_TENANT_ID metadata set to ${id}, aborting...`);
     }
 
-    let newId = await this.client.CallContractMethod({
+    let res = await this.client.CallContractMethod({
       contractAddress: groupAddress,
       methodName: "putMeta",
       methodArgs: [
@@ -378,7 +383,7 @@ class ElvTenant {
       ],
     });
 
-    return newId;
+    return res;
   }
 
   /**

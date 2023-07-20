@@ -12,6 +12,7 @@ const mainObjects = {
   main: "iq__suqRJUt2vmXsyiWS5ZaSGwtFU9R",
   demov3: "iq__2gkNh8CCZqFFnoRpEUmz7P3PaBQG",
   test: "NOT YET SET UP",
+  local: "NOT YET SET UP",
 };
 
 const consts = {
