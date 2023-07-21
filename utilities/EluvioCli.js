@@ -850,7 +850,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "account_set_tenant <tenant>",
-    "Sets the tenant contract to assoicate with this account - if an admin group id is used, it will be converted to the tenant contract id that belongs to the group.",
+    "Associate this account to the tenant - if an admins group ID is used, it will be converted to the tenant ID.",
     (yargs) => {
       yargs.option("tenant", {
         describe: "Tenant contract ID (iten...)",

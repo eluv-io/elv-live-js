@@ -28,7 +28,7 @@ class ElvSpace {
     let signer = wallet.AddAccount({
       privateKey: spaceOwnerKey,
     });
-    this.client.SetSigner({ signer, tenantCheck: false });
+    this.client.SetSigner({ signer });
     this.client.ToggleLogging(this.debug);
   }
 
@@ -59,7 +59,7 @@ class ElvSpace {
         console.log("create account - done");
       }
 
-      await elvAccount.Init({ privateKey: account.privateKey, tenantCheck: false });
+      await elvAccount.Init({ privateKey: account.privateKey });
 
       if (this.debug){
         console.log("create admin groups");
@@ -105,19 +105,11 @@ class ElvSpace {
         contentAdminGroupAddress: contentAdminGroup.address,
       });
 
-      // We must sign in using the new account to set the groups' metadata - metadata can only be set by the groups' admin
-      let account_wallet = this.client.GenerateWallet();
-      let account_signer = account_wallet.AddAccount({
-        privateKey: account.privateKey,
-      });
-
-      this.client.SetSigner({ signer: account_signer, tenantCheck: false });
-
       // Assign the created tenant to account
-      elvAccount.SetAccountTenantContractId({id: tenant.id});
+      //elvAccount.SetAccountTenantContractId({id: tenant.id});
 
       // Add _ELV_TENANT_ID to groups' metadata so we can identify the tenant these groups belong to
-      await this.client.CallContractMethodAndWait({
+      await elvAccount.client.CallContractMethodAndWait({
         contractAddress: tenantAdminGroup.address,
         methodName: "putMeta",
         methodArgs: [
@@ -126,7 +118,7 @@ class ElvSpace {
         ]
       });
 
-      await this.client.CallContractMethodAndWait({
+      await elvAccount.client.CallContractMethodAndWait({
         contractAddress: contentAdminGroup.address,
         methodName: "putMeta",
         methodArgs: [

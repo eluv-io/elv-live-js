@@ -19,7 +19,7 @@ class ElvAccount {
     this.debug = debugLogging;
   }
 
-  async Init({ privateKey, tenantCheck = true }) {
+  async Init({ privateKey }) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
@@ -27,21 +27,12 @@ class ElvAccount {
     this.signer = this.wallet.AddAccount({
       privateKey, 
     });
-    this.client.SetSigner({ signer:this.signer, tenantCheck });
+    this.client.SetSigner({ signer:this.signer });
     this.client.ToggleLogging(this.debug);
   }
 
   async InitWithId({ privateKey, id }) {
-    this.client = await ElvClient.FromConfigurationUrl({
-      configUrl: this.configUrl,
-    });
-    this.wallet = this.client.GenerateWallet();
-    this.signer = this.wallet.AddAccount({
-      privateKey, 
-    });
-    this.client.SetSigner({ signer:this.signer, tenantCheck:false});
-    this.client.ToggleLogging(this.debug);
-
+    await this.Init({privateKey})
     await this.SetAccountTenantContractId({ id });
   }
 
@@ -94,7 +85,7 @@ class ElvAccount {
     }
 
     try {
-      client.SetSigner({ signer, tenantCheck: false });
+      client.SetSigner({ signer });
 
       let res = await this.client.SendFunds({
         recipient: address,
