@@ -32,7 +32,7 @@ class ElvAccount {
   }
 
   async InitWithId({ privateKey, id }) {
-    await this.Init({privateKey})
+    await this.Init({privateKey});
     await this.SetAccountTenantContractId({ id });
   }
 
