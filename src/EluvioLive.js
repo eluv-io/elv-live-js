@@ -2217,7 +2217,7 @@ class EluvioLive {
    * @param {Object} rarity - Stats for each trait and value
    * @return {Promise<Object>} - The public/nfts JSON array element
    */
-  async NftMakeGenerative({ assetMetadata, hash, nftMeta, rarity }) {
+  async NftMakeGenerative({ assetMetadata, hash, nftMeta, rarity, insertRarity = false }) {
     const m = assetMetadata;
     var pnft = {};
 
@@ -2266,15 +2266,17 @@ class EluvioLive {
       },
     ];
 
-    // Insert rarity if doesn't exist
-    for (const i in nftMeta.attributes) {
-      if (nftMeta.attributes[i].rarity !== undefined){
-        continue;
-      }
-      if (rarity && rarity[nftMeta.attributes[i].trait_type]) {
-        let r = rarity[nftMeta.attributes[i].trait_type];
-        nftMeta.attributes[i].rarity =
-          r[nftMeta.attributes[i].value] + "/" + total_supply;
+    if (insertRarity) {
+      // Insert rarity if doesn't exist
+      for (const i in nftMeta.attributes) {
+        if (nftMeta.attributes[i].rarity !== undefined){
+          continue;
+        }
+        if (rarity && rarity[nftMeta.attributes[i].trait_type]) {
+          let r = rarity[nftMeta.attributes[i].trait_type];
+          nftMeta.attributes[i].rarity =
+            r[nftMeta.attributes[i].value] + "/" + total_supply;
+        }
       }
     }
     pnft.attributes = pnft.attributes.concat(nftMeta.attributes);
