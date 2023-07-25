@@ -31,6 +31,11 @@ class ElvAccount {
     this.client.ToggleLogging(this.debug);
   }
 
+  async InitWithId({ privateKey, id }) {
+    await this.Init({privateKey});
+    await this.SetAccountTenantContractId({ id });
+  }
+
   InitWithClient({ elvClient }) {
     if (!elvClient){
       throw Error("ElvAccount InitWithClient with null");
@@ -163,6 +168,34 @@ class ElvAccount {
 
     await this.client.userProfileClient.SetTenantId({
       address: tenantAdminsAddress,
+    });
+  }
+
+  async SetAccountTenantContractId({ id }) {
+    if (!this.client) {
+      throw Error("ElvAccount not intialized");
+    }
+
+    //Automatic fix: convert tenant admin group id to tenant contract id 
+    const idType = await this.client.AccessType({ id });
+    if (idType === this.client.authClient.ACCESS_TYPES.GROUP) {
+      let groupAddress = this.client.utils.HashToAddress(id);
+
+      let tenantContractIdHex = await this.client.CallContractMethod({
+        contractAddress: groupAddress,
+        methodName: "getMeta",
+        methodArgs: ["_ELV_TENANT_ID"], 
+      });
+
+      if (tenantContractIdHex == "0x") {
+        let args = group.split("_");
+        throw (`${args[0]} ${args[1]} group is not associated with any tenant`);
+      }
+      id = ethers.utils.toUtf8String(tenantContractIdHex);
+    }
+
+    await this.client.userProfileClient.SetTenantContractId({
+      tenantContractId: id,
     });
   }
 
