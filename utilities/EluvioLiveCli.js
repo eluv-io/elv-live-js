@@ -44,6 +44,24 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
   await marketplace.Init({ debugLogging });
 };
 
+const CmdTenantAuthToken = async ({ argv }) => {
+  await Init({debugLogging: argv.verbose})
+
+  let ts = Date.now()
+  let message = argv.path_or_body + "?ts=" + ts
+  try {
+    let j = JSON.parse(argv.path_or_body)
+    j.ts = ts
+    message = JSON.stringify(j)
+  } catch (e) {}
+
+  const { multiSig } = await elvlv.TenantSign({
+    message: message
+  })
+  console.log(`Timestamped path or body: ${message}`)
+  console.log(`Token: Authorization: Bearer ${multiSig}`)
+};
+
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
   console.log(
     "\nNFT Template - set contract",
@@ -220,6 +238,38 @@ const CmdNftBuild = async ({ argv }) => {
   }
 };
 
+const CmdNftPackGetDist = async ({ argv }) => {
+  console.log("NFT - pack get dist");
+  console.log("NFT - hash ", argv.hash);
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    let res = await elvlv.NftPackGetDist({
+      versionHash: argv.hash,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftPackSetDist = async ({ argv }) => {
+  console.log("NFT - pack set dist");
+  console.log("NFT - hash ", argv.hash);
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    let res = await elvlv.NftPackSetDist({
+      versionHash: argv.hash,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdNftProxyTransfer = async ({ argv }) => {
   console.log(
     "NFT - transer as proxy owner",
@@ -328,6 +378,28 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
   }
 };
 
+const CmdTenantUpdateTokenURI = async ({ argv }) => {
+  console.log("Contract address", argv.addr);
+  console.log("Hash", argv.hash);
+  console.log("Dry run", argv.dry_run);
+
+  try {
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+
+    let res = await elvlv.TenantUpdateTokenURI({
+      tenantId: argv.tenant,
+      contractAddress: argv.addr,
+      hash: argv.hash,
+      dryRun: argv.dry_run
+    });
+
+    console.log(res);
+
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 
 const CmdSiteShow = async ({ argv }) => {
   console.log("Site - show", argv.object);
@@ -380,7 +452,24 @@ const CmdTenantBalanceOf = async ({ argv }) => {
       maxNumber: argv.max_results,
     });
 
-    console.log(yaml.dump(res));
+    if (argv.csv && argv.csv != "") {
+      console.log(`CSV: ${argv.csv}`);
+      let out = "contract,token,hold,name\n";
+      let json = res.nfts;
+      let contracts = Object.keys(json);
+      for (let i = 0; i < contracts.length; i++) {
+        let contract = contracts[i];
+        let nft = json[contract];
+        for (let j = 0; j < nft.tokens.length; j++) {
+            let token = nft.tokens[j];
+            out += `${contract},${token.tokenId},${token.hold},${nft.name}\n`;
+        }
+      }
+      fs.writeFileSync(argv.csv, out);
+    } else {
+      console.log(yaml.dump(res));
+    }
+
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1614,6 +1703,21 @@ yargs(hideBin(process.argv))
     type: "string"
   })
   .command(
+      "tenant_auth_token <path_or_body>",
+      "Generate a tenant token",
+      (yargs) => {
+        yargs
+            .positional("path_or_body", {
+              describe: "URL path or request body",
+              type: "string",
+            });
+      },
+      (argv) => {
+        CmdTenantAuthToken({argv}).then();
+      }
+  )
+
+  .command(
     "nft_add_contract <tenant> <object> <cap> <name> <symbol> [options]",
     "Add a new or existing NFT contract to an NFT Template object",
     (yargs) => {
@@ -1840,6 +1944,36 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNftBuild({ argv });
+    }
+  )
+
+  .command(
+    "nft_pack_get_dist <hash>",
+    "Compute pack distribution based on NFT Template spec. Saves to file.",
+    (yargs) => {
+      yargs
+        .positional("hash", {
+          describe: "NFT Template content hash (hq__)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftPackGetDist({ argv });
+    }
+  )
+
+  .command(
+    "nft_pack_set_dist <hash>",
+    "Set the pack distribution for an NFT Template. Reads distribution from file.",
+    (yargs) => {
+      yargs
+        .positional("hash", {
+          describe: "NFT Template content hash (hq__)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftPackSetDist({ argv });
     }
   )
 
@@ -2108,6 +2242,34 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "tenant_update_token_uri <tenant> <addr> <hash> [options]",
+    "Reset the token URI(s) for tenant NFT contract(s)",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        })
+        .positional("hash", {
+          describe: 'New NFT template object hash',
+          type: "string",
+        })
+        .option("dry_run", {
+          describe:
+            "Default 'true'",
+          type: "boolean",
+        })
+    },
+    (argv) => {
+      CmdTenantUpdateTokenURI({ argv });
+    }
+  )
+
+  .command(
     "tenant_balance_of <tenant> <owner>",
     "Show NFTs owned by this owner in this tenant using contracts.",
     (yargs) => {
@@ -2118,6 +2280,10 @@ yargs(hideBin(process.argv))
         })
         .positional("owner", {
           describe: "Owner address (hex)",
+          type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
           type: "string",
         });
     },

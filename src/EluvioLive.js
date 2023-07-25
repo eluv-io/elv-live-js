@@ -107,7 +107,7 @@ class EluvioLive {
     body.request_type = requestType;
     body.contract_address = contractAddress;
     body.tokens = [];
-  
+
     switch (requestType) {
       case "batch":
         if (!csv) {
@@ -157,8 +157,8 @@ class EluvioLive {
 
     let res = await this.PostServiceRequest({
       path: urljoin("/tnt/nft/stu", tenantId),  // /tnt/nft/stu/:tid/
-      body, 
-      host 
+      body,
+      host
     });
 
     let tenantConfigResult = await res.json();
@@ -168,6 +168,97 @@ class EluvioLive {
     return tenantConfigResult;
 
   }
+
+  /**
+   * Update all token URIs for a given contract to the new hash provided as argument.
+   *
+   * @namedParams
+   * @param {string} tenantId - Tenant ID (iten format)
+   * @param {string} contractAddress - The NFT contract address
+   * @param {string} hash - The new NFT template object hash
+   * @param {bool} dryRun - Dry run flag (default 'true')
+   * @return {Promise<Object>} - An object containing operation result
+   */
+  async TenantUpdateTokenURI({ tenantId, contractAddress, hash, dryRun = true }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+    );
+
+    let nftInfo = {
+      tokens: [],
+      warns: []
+    };
+
+    let body = {
+      request_type: "batch",
+      contract_address:contractAddress,
+      tokens: []
+    };
+
+    try {
+      const totalSupply = await this.client.CallContractMethod({
+        contractAddress,
+        abi: JSON.parse(abi),
+        methodName: "totalSupply",
+        formatArguments: true,
+      });
+      nftInfo.totalSupply = Number(totalSupply);
+    } catch (e) {
+      console.log("Failed to retrieve supply", e);
+      return;
+    }
+
+    // Retrieve the list of owners
+    for (var i = 0; i < nftInfo.totalSupply; i ++) {
+      nftInfo.tokens[i] = {};
+      try {
+        let tokenId = await this.client.CallContractMethod({
+          contractAddress,
+          abi: JSON.parse(abi),
+          methodName: "tokenByIndex",
+          methodArgs: [i],
+          formatArguments: true,
+        });
+        nftInfo.tokens[i].tokenId = tokenId.toString();
+
+        nftInfo.tokens[i].tokenUri = await this.client.CallContractMethod({
+          contractAddress,
+          abi: JSON.parse(abi),
+          methodName: "tokenURI",
+          methodArgs: [tokenId],
+          formatArguments: true,
+        });
+
+        nftInfo.tokens[i].newTokenUri = await ElvUtils.UpdateFabricUrl({url: nftInfo.tokens[i].tokenUri, newHash: hash});
+
+        body.tokens.push({
+          "token_id": Number(tokenId),
+          "token_id_str": tokenId.toString(),
+          "token_uri": nftInfo.tokens[i].newTokenUri
+        });
+
+      } catch (e) {
+        console.log("Failed to get token ID/URI (index: " + i + "): " + contractAddress, e);
+        continue;
+      }
+    }
+
+    if (dryRun) {
+      console.log("DRY RUN - RETURNING REQUEST BODY");
+      return body;
+    }
+
+    console.log("REQUEST BODY", body);
+    let res = await this.PostServiceRequest({
+      path: urljoin("/tnt/nft/stu", tenantId),  // /tnt/nft/stu/:tid/
+      body
+    });
+
+    let tenantConfigResult = await res.json();
+
+    return tenantConfigResult;
+  }
+
 
   /**
    * Show info about this tenant.
@@ -3144,6 +3235,87 @@ class EluvioLive {
     }
 
     return {response:tenantConfigResult, content_hash_updated:contentHash };
+  }
+
+  /**
+   * Pack - retrieve pack spec and pack distribtion from an NFT Template
+   * using authd tenant-authenticated pack APIs.
+   * The spec and distribition are saved in JSON files.
+   *
+   * @namedParams
+   * @param {string} versionHash - NFT Template object hash
+   * @return {object} - file names where spec and dist are saved
+   */
+  async NftPackGetDist({versionHash}) {
+
+    const sf = "pack_spec." + versionHash + ".json";
+    const df = "pack_dist." + versionHash + ".json";
+
+    // Get pack 'spec'
+    let res = await this.GetServiceRequest({
+      path: urljoin("/nft/pack/spec", versionHash),
+    });
+    let spec = await res.json();
+    fs.writeFileSync(sf, JSON.stringify(spec));
+
+    // Get pack 'dist'
+    res = await this.GetServiceRequest({
+      path: urljoin("/nft/pack/dist", versionHash),
+    });
+    let dist = await res.json();
+    fs.writeFileSync(df, JSON.stringify(dist));
+
+    return {
+      "spec_file": sf,
+      "dist_file": df
+    };
+  }
+
+  /**
+   * Pack - set a previously created pack distribution in pack object metadata
+   *
+   * @namedParams
+   * @param {string} versionHash - NFT Template content hash
+   * @return {Promise<Object>} - The new object info
+   */
+  async NftPackSetDist({versionHash}) {
+
+    let objectId = this.client.utils.DecodeVersionHash(versionHash).objectId;
+    let libraryId = await this.client.ContentObjectLibraryId({objectId});
+
+    const df = "pack_dist." + versionHash + ".json";
+    let distBuf = fs.readFileSync(df);
+    let dist = JSON.parse(distBuf);
+
+    const e = await this.client.EditContentObject({
+      libraryId,
+      objectId
+    });
+
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      metadataSubtree: "/public/asset_metadata/nft/pack_dist",
+      metadata: dist.pack_dist
+    });
+
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      metadataSubtree: "/public/asset_metadata/nft/pack_spec",
+      metadata: dist.pack_spec
+    });
+
+    let res = await this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      commitMessage: "Set pack_dist"
+    });
+
+    return res;
   }
 
   /**
