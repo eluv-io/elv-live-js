@@ -280,6 +280,10 @@ const CmdTenantFix = async({ argv }) => {
     let errors = res.errors;
     let unresolved = [];
 
+    if (argv.content_admin_address && !t.client.utils.EqualAddress(res.content_admin_address, argv.content_admin_address)) {
+      throw Error(`Tenant ${argv.tenant} already has a content admin group: ${res.content_admin_address}, aborting...`);
+    }
+
     if (!errors) {
       console.log(`No error found for tenant with tenant id: ${argv.tenant}!`);
       return;
@@ -309,14 +313,12 @@ const CmdTenantFix = async({ argv }) => {
 
     console.log(`${errors.length - unresolved.length} errors fixed, ${unresolved.length} errors remaining.`)
   } catch (e) {
-    console.error("ERROR:", e);
+    console.log(e);
+    return;
   }
 }
 
 const CmdTenantFixSuite = async({ argv }) => {
-  console.log("Tenant - fix", argv.tenant);
-  console.log("Network: " + Config.net);
-  console.log(argv);
   try {
     //Add tenantContractId to the account's metadata if not already exists
     let elvAccount = new ElvAccount({
@@ -375,7 +377,7 @@ const CmdTenantFixSuite = async({ argv }) => {
     if (failedLibraries.length == 0) {
       console.log('Tenant successfully fixed!');
     } else {
-      console.log(`_ELV_ACCOUNT_ID can't be added to the following libraries`);
+      console.log(`_ELV_ACCOUNT_ID couldn't be added to the following libraries:`);
       console.log(failedLibraries);
     }
 
