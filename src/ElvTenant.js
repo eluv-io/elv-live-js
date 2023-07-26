@@ -267,7 +267,7 @@ class ElvTenant {
   /**
    * Create a new content admin group corresponding to this tenant.
    * @param {string} tenantId - The ID of the tenant (iten***)
-   * @param {string} contentAdminAddr - Content Admin Group's address (optional)
+   * @param {string} contentAdminAddr - Content Admin Group's address, new group will be created if not specified (optional)
    * @returns {string} Content Admin Group's address
    */
   async TenantSetContentAdmins({ tenantId, contentAdminAddr }) {
@@ -349,7 +349,7 @@ class ElvTenant {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
-    
+
     const tenantAddr = Utils.HashToAddress(tenantId);
 
     let res = await this.client.CallContractMethodAndWait({

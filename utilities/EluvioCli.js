@@ -327,9 +327,6 @@ const CmdTenantFixSuite = async({ argv }) => {
       privateKey: argv.private_key,
     });
 
-    // let res = await elvAccount.client.CreateContentLibrary({name: 'random'});
-    // console.log(res);
-
     let tenantContractId;
     try {
       tenantContractId  = await elvAccount.client.userProfileClient.TenantContractId();
