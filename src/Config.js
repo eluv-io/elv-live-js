@@ -1,4 +1,4 @@
-const net = "main"; // Set to "main"  "demov3" "test" "dev"
+const net = "dev"; // Set to "main"  "demov3" "test" "dev"
 
 const networks = {
   main: "https://main.net955305.contentfabric.io",

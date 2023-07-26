@@ -306,7 +306,7 @@ class ElvTenant {
     let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
     elvAccount.InitWithClient({elvClient:this.client});
 
-    //Arguments don't contain content admin group address, creating a new content admin group to the user's account.
+    //Arguments don't contain content admin group address, creating a new content admin group for the user's account.
     if (!contentAdminAddr) {
       let accountName = await this.client.userProfileClient.UserMetadata({
         metadataSubtree: "public/name"
@@ -315,14 +315,15 @@ class ElvTenant {
       let contentAdminGroup = await elvAccount.CreateAccessGroup({
         name: `${accountName} Content Admins`,
       });
-      contentAdminAddr = contentAdminGroup.address
-    }
 
-    await elvAccount.AddToAccessGroup({
-      groupAddress: contentAdminAddr,
-      accountAddress: this.client.signer.address.toLowerCase(),
-      isManager: true,
-    });
+      await elvAccount.AddToAccessGroup({
+        groupAddress: contentAdminAddr,
+        accountAddress: this.client.signer.address.toLowerCase(),
+        isManager: true,
+      });
+
+      contentAdminAddr = contentAdminGroup.address;
+    }
 
     //Associate the group with this tenant - set the content admin group's _ELV_TENANT_ID to this tenant's tenant id.
     await this.TenantSetGroupContractId({tenantId: tenantId, groupAddress: contentAdminAddr});
@@ -348,9 +349,9 @@ class ElvTenant {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
+    
     const tenantAddr = Utils.HashToAddress(tenantId);
-    console.log(tenantAddr);
-    console.log(contentAdminsAddress);
+
     let res = await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),
@@ -378,7 +379,7 @@ class ElvTenant {
       if (!Utils.EqualHash(tenantId, id)) {
         throw Error(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set to ${id}, aborting...`);
       } else {
-        console.log(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set correctly to ${id}`)
+        console.log(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set correctly to ${id}`);
         return;
       }
     }
