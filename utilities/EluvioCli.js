@@ -3,6 +3,7 @@ const { ElvTenant } = require("../src/ElvTenant.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
 const { ElvContracts } = require("../src/ElvContracts.js");
 const { Config } = require("../src/Config.js");
+const Ethers = require("ethers");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -288,8 +289,8 @@ const CmdTenantFix = async({ argv }) => {
       let error = errors[i];
       switch(error) {
         case 'missing content admins':
-          await t.TenantSetContentAdmins({tenantId: argv.tenant});
-          console.log(`Created new content admin group for tenant with tenantId ${argv.tenant}`);
+          await t.TenantSetContentAdmins({tenantId: argv.tenant, contentAdminAddr: argv.content_admin_address});
+          console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${argv.content_admin_address}`);
           break;
 
         case 'tenant admin group is not associated with any tenant': 
@@ -312,6 +313,80 @@ const CmdTenantFix = async({ argv }) => {
   }
 }
 
+const CmdTenantFixSuite = async({ argv }) => {
+  console.log("Tenant - fix", argv.tenant);
+  console.log("Network: " + Config.net);
+  console.log(argv);
+  try {
+    //Add tenantContractId to the account's metadata if not already exists
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await elvAccount.Init({
+      privateKey: argv.private_key,
+    });
+
+    // let res = await elvAccount.client.CreateContentLibrary({name: 'random'});
+    // console.log(res);
+
+    let tenantContractId;
+    try {
+      tenantContractId  = await elvAccount.client.userProfileClient.TenantContractId();
+    } catch (e) {
+      throw Error(`Can't find an account with private key ${argv.private_key} on the ${Config.net} network, aborting...`);
+    }
+    if (tenantContractId) {
+      if (!elvAccount.client.utils.EqualHash(tenantContractId, argv.tenant)) {
+        throw Error(`The account with private key ${argv.private_key} is already associated with tenant ${tenantContractId}`);
+      }
+    } else {
+      elvAccount.SetAccountTenantContractId({ id: argv.tenant });
+    }
+
+    //Set content admins group ID and fix problems related to the tenant and its admin groups
+    process.env.PRIVATE_KEY = argv.private_key
+    CmdTenantFix({argv})
+
+    //Set _ELV_TENANT_ID metadata for the libraries if they are owned by the account
+    let failedLibraries = [];
+    for (let i = 0; i < argv.libraries.length; i++) {
+      let lib = argv.libraries[i];
+      let libAddr = elvAccount.client.utils.HashToAddress(lib);
+
+      try {
+        await elvAccount.client.CallContractMethod({
+          contractAddress: libAddr,
+          methodName: "putMeta",
+          methodArgs: [
+            "_ELV_TENANT_ID",
+            argv.tenant,
+          ],
+          formatArguments: true
+        });
+      } catch (e) {
+        let libOwner = await elvAccount.client.CallContractMethod({
+          contractAddress: libAddr,
+          methodName: "owner",
+          methodArgs: [],
+          formatArguments: true
+        });
+        console.log(`Failed to set _ELV_TENANT_ID of ${lib}. Make sure you are signed in to the account with address ${libOwner}`);
+        failedLibraries.push(lib);
+      } 
+    }
+    if (failedLibraries.length == 0) {
+      console.log('Tenant successfully fixed!');
+    } else {
+      console.log(`_ELV_ACCOUNT_ID can't be added to the following libraries`);
+      console.log(failedLibraries);
+    }
+
+  } catch (e) {
+    throw(e);
+  }
+}
+
 const CmdTenantSetContentAdmins = async ({ argv }) => {
   console.log(`Setting a new content admin group for Tenant ${argv.tenant}`);
   console.log("Network: " + Config.net);
@@ -325,6 +400,7 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
 
     let res = await t.TenantSetContentAdmins({
       tenantId: argv.tenant,
+      contentAdminAddr: argv.content_admin_address,
     });
 
     console.log(yaml.dump(res));
@@ -1054,6 +1130,10 @@ yargs(hideBin(process.argv))
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
+        })
+        .options("content_admin_address", {
+          describe: "Address of the content admins groups",
+          type: "string",
         });
     },
     (argv) => {
@@ -1062,12 +1142,43 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_set_content_admins <tenant>",
+    "tenant_fix_suite <private_key> <tenant> <content_admin_address> [options]",
+    "Fix old-gen tenant",
+    (yargs) => {
+      yargs 
+        .positional("private_key", {
+          describe: "Private Key",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("content_admin_address", {
+          describe: "Address of the content admins groups",
+          type: "string",
+        })
+        .options("libraries", {
+          describe: "List of libraries that belong to this tenant",
+          type: "array",
+        });
+      },
+      (argv) => {
+        CmdTenantFixSuite({ argv });
+      }
+  )
+
+  .command(
+    "tenant_set_content_admins <tenant> [options]",
     "Set new content admin",
     (yargs) => {
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
+          type: "string",
+        })
+        .options("content_admin_address", {
+          describe: "Address of the content admins groups",
           type: "string",
         });
     },

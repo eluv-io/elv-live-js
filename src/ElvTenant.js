@@ -267,9 +267,10 @@ class ElvTenant {
   /**
    * Create a new content admin group corresponding to this tenant.
    * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} contentAdminAddr - Content Admin Group's address (optional)
    * @returns {string} Content Admin Group's address
    */
-  async TenantSetContentAdmins({ tenantId }) {
+  async TenantSetContentAdmins({ tenantId, contentAdminAddr }) {
     //Check that the user is the owner of the tenant
     const tenantOwner = await this.client.authClient.Owner({id: tenantId});
     if (tenantOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
@@ -302,33 +303,36 @@ class ElvTenant {
       return logMsg;
     }
 
-    //Create and add the new content admin group to the user's account.
     let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
     elvAccount.InitWithClient({elvClient:this.client});
 
-    let accountName = await this.client.userProfileClient.UserMetadata({
-      metadataSubtree: "public/name"
-    });
-  
-    let contentAdminGroup = await elvAccount.CreateAccessGroup({
-      name: `${accountName} Content Admins`,
-    });
+    //Arguments don't contain content admin group address, creating a new content admin group to the user's account.
+    if (!contentAdminAddr) {
+      let accountName = await this.client.userProfileClient.UserMetadata({
+        metadataSubtree: "public/name"
+      });
+    
+      let contentAdminGroup = await elvAccount.CreateAccessGroup({
+        name: `${accountName} Content Admins`,
+      });
+      contentAdminAddr = contentAdminGroup.address
+    }
 
     await elvAccount.AddToAccessGroup({
-      groupAddress: contentAdminGroup.address,
+      groupAddress: contentAdminAddr,
       accountAddress: this.client.signer.address.toLowerCase(),
       isManager: true,
     });
 
     //Associate the group with this tenant - set the content admin group's _ELV_TENANT_ID to this tenant's tenant id.
-    await this.TenantSetGroupContractId({tenantId: tenantId, groupAddress: contentAdminGroup.address});
+    await this.TenantSetGroupContractId({tenantId: tenantId, groupAddress: contentAdminAddr});
 
     //Associate the tenant with this group - set tenant's content admin group on the tenant's contract.
     let res = await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),
       methodName: "addGroup",
-      methodArgs: ["content_admin", contentAdminGroup.address],
+      methodArgs: ["content_admin", contentAdminAddr],
       formatArguments: true,
     });
 
@@ -344,9 +348,9 @@ class ElvTenant {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
-
     const tenantAddr = Utils.HashToAddress(tenantId);
-
+    console.log(tenantAddr);
+    console.log(contentAdminsAddress);
     let res = await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),
@@ -371,7 +375,12 @@ class ElvTenant {
     });
     if (idHex != "0x") {
       let id = Ethers.utils.toUtf8String(idHex);
-      throw Error(`Group ${groupAddress} already has a _ELV_TENANT_ID metadata set to ${id}, aborting...`);
+      if (!Utils.EqualHash(tenantId, id)) {
+        throw Error(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set to ${id}, aborting...`);
+      } else {
+        console.log(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set correctly to ${id}`)
+        return;
+      }
     }
 
     let res = await this.client.CallContractMethod({
