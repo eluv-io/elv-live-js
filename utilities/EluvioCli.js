@@ -280,7 +280,7 @@ const CmdTenantFix = async({ argv }) => {
     let errors = res.errors;
     let unresolved = [];
 
-    if (argv.content_admin_address && !t.client.utils.EqualAddress(res.content_admin_address, argv.content_admin_address)) {
+    if (argv.content_admin_address && res.content_admin_address && !t.client.utils.EqualAddress(res.content_admin_address, argv.content_admin_address)) {
       throw Error(`Tenant ${argv.tenant} already has a content admin group: ${res.content_admin_address}, aborting...`);
     }
 
@@ -293,8 +293,8 @@ const CmdTenantFix = async({ argv }) => {
       let error = errors[i];
       switch(error) {
         case 'missing content admins':
-          await t.TenantSetContentAdmins({tenantId: argv.tenant, contentAdminAddr: argv.content_admin_address});
-          console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${argv.content_admin_address}`);
+          let addr = await t.TenantSetContentAdmins({tenantId: argv.tenant, contentAdminAddr: argv.content_admin_address});
+          console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`);
           break;
 
         case 'tenant admin group is not associated with any tenant': 
@@ -345,7 +345,7 @@ const CmdTenantFixSuite = async({ argv }) => {
 
     //Set content admins group ID and fix problems related to the tenant and its admin groups
     process.env.PRIVATE_KEY = argv.private_key
-    CmdTenantFix({argv})
+    await CmdTenantFix({argv})
 
     //Set _ELV_TENANT_ID metadata for the libraries if they are owned by the account
     let failedLibraries = [];
@@ -370,7 +370,7 @@ const CmdTenantFixSuite = async({ argv }) => {
           methodArgs: [],
           formatArguments: true
         });
-        console.log(`Failed to set _ELV_TENANT_ID of ${lib}. Make sure you are signed in to the account with address ${libOwner}`);
+        console.log(`Failed to set _ELV_TENANT_ID of ${lib}- doesn't belong to this account and can only be set by the account with address ${libOwner}`);
         failedLibraries.push(lib);
       } 
     }

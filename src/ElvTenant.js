@@ -274,7 +274,7 @@ class ElvTenant {
     //Check that the user is the owner of the tenant
     const tenantOwner = await this.client.authClient.Owner({id: tenantId});
     if (tenantOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
-      throw Error("Content Admin must be created by the owner of tenant " + tenantId);
+      throw Error("Content Admin must be set by the owner of tenant " + tenantId);
     }
 
     //The tenant must not already have a content admin group - can only have 1 content admin group for each tenant.
@@ -316,20 +316,20 @@ class ElvTenant {
         name: `${accountName} Content Admins`,
       });
 
+      contentAdminAddr = contentAdminGroup.address;
+
       await elvAccount.AddToAccessGroup({
         groupAddress: contentAdminAddr,
         accountAddress: this.client.signer.address.toLowerCase(),
         isManager: true,
       });
-
-      contentAdminAddr = contentAdminGroup.address;
     }
 
     //Associate the group with this tenant - set the content admin group's _ELV_TENANT_ID to this tenant's tenant id.
     await this.TenantSetGroupContractId({tenantId: tenantId, groupAddress: contentAdminAddr});
 
     //Associate the tenant with this group - set tenant's content admin group on the tenant's contract.
-    let res = await this.client.CallContractMethodAndWait({
+    await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),
       methodName: "addGroup",
@@ -337,7 +337,7 @@ class ElvTenant {
       formatArguments: true,
     });
 
-    return res;
+    return contentAdminAddr;
   }
 
   /**
