@@ -348,39 +348,40 @@ const CmdTenantFixSuite = async({ argv }) => {
     await CmdTenantFix({argv})
 
     //Set _ELV_TENANT_ID metadata for the libraries if they are owned by the account
-    let failedLibraries = [];
-    for (let i = 0; i < argv.libraries.length; i++) {
-      let lib = argv.libraries[i];
-      let libAddr = elvAccount.client.utils.HashToAddress(lib);
+    if (argv.libraries) {
+      let failedLibraries = [];
+      for (let i = 0; i < argv.libraries.length; i++) {
+        let lib = argv.libraries[i];
+        let libAddr = elvAccount.client.utils.HashToAddress(lib);
 
-      try {
-        await elvAccount.client.CallContractMethod({
-          contractAddress: libAddr,
-          methodName: "putMeta",
-          methodArgs: [
-            "_ELV_TENANT_ID",
-            argv.tenant,
-          ],
-          formatArguments: true
-        });
-      } catch (e) {
-        let libOwner = await elvAccount.client.CallContractMethod({
-          contractAddress: libAddr,
-          methodName: "owner",
-          methodArgs: [],
-          formatArguments: true
-        });
-        console.log(`Failed to set _ELV_TENANT_ID of ${lib}- doesn't belong to this account and can only be set by the account with address ${libOwner}`);
-        failedLibraries.push(lib);
-      } 
+        try {
+          await elvAccount.client.CallContractMethod({
+            contractAddress: libAddr,
+            methodName: "putMeta",
+            methodArgs: [
+              "_ELV_TENANT_ID",
+              argv.tenant,
+            ],
+            formatArguments: true
+          });
+        } catch (e) {
+          let libOwner = await elvAccount.client.CallContractMethod({
+            contractAddress: libAddr,
+            methodName: "owner",
+            methodArgs: [],
+            formatArguments: true
+          });
+          console.log(`Failed to set _ELV_TENANT_ID of ${lib}- doesn't belong to this account and can only be set by the account with address ${libOwner}`);
+          failedLibraries.push(lib);
+        } 
+      }
+      if (failedLibraries.length == 0) {
+        console.log('Tenant successfully fixed!');
+      } else {
+        console.log(`_ELV_ACCOUNT_ID couldn't be added to the following libraries:`);
+        console.log(failedLibraries);
+      }
     }
-    if (failedLibraries.length == 0) {
-      console.log('Tenant successfully fixed!');
-    } else {
-      console.log(`_ELV_ACCOUNT_ID couldn't be added to the following libraries:`);
-      console.log(failedLibraries);
-    }
-
   } catch (e) {
     throw(e);
   }
