@@ -41,7 +41,7 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
   await elvlv.Init({ debugLogging, asUrl });
 
   marketplace = new Marketplace(config);
-  await marketplace.Init({ debugLogging });
+  await marketplace.Init({ debugLogging, asUrl });
 };
 
 const CmdTenantAuthToken = async ({ argv }) => {
@@ -201,6 +201,7 @@ const CmdNftShow = async ({ argv }) => {
   console.log("addr ", argv.addr);
   console.log("check_minter ", argv.check_minter);
   console.log("show_owners ", argv.show_owners);
+  console.log("show_owners_via_contract ", argv.show_owners_via_contract);
   console.log("token_id ", argv.token_id);
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
@@ -209,6 +210,7 @@ const CmdNftShow = async ({ argv }) => {
       addr: argv.addr,
       mintHelper: argv.check_minter,
       showOwners: argv.show_owners,
+      showOwnersViaContract: argv.show_owners_via_contract,
       tokenId: argv.token_id
     });
 
@@ -1834,7 +1836,11 @@ yargs(hideBin(process.argv))
           describe: "Check that all NFTs use this mint helper",
         })
         .option("show_owners", {
-          describe: "Show up to these many owners (default 0). Only used when token_id is not specified.",
+          describe: "Show up to these many owners (default 0), loaded from an index. Only used when token_id is not specified.",
+          type: "integer",
+        })
+        .option("show_owners_via_contract", {
+          describe: "Show up to these many owners (default 0), parsed directly from the contract. Only used when token_id is not specified.",
           type: "integer",
         })
         .option("token_id", {
