@@ -1362,7 +1362,7 @@ class EluvioLive {
 
         nftInfo.tokens = res.contents;
       } catch (e) {
-        warns.push("Failed to get token owners: " + addr);
+        warns.push("Failed to get token owners: " + addr + " - " + e);
       }
 
       for (var i = 0; i < maxShowOwners && i < nftInfo.totalSupply; i++) {
