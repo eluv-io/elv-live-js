@@ -1197,7 +1197,7 @@ class EluvioLive {
    * @param {string} minter - Warn if this is not the owner of the mint helper contract (hex)
    * @param {string} proxyAddr - proxy owner address
    * @param {integer} showOwners - Enumerate all token owners using a fast indexed query. Only used if tokenId is undefined.
-   * @param {integer} showOwnersViaContract - Enumerate all token info up to showOwners amount. Only used if tokenId is undefined.
+   * @param {integer} showOwnersViaContract - Enumerate all token info up to the given amount. Only used if tokenId is undefined.
    * @param {integer} tokenId - The token ID to show info for. This will take precedence over showOwners
    * @return {Promise<Object>} - An object containing NFT info, including 'warnings'
    */
