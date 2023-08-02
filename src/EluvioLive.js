@@ -1361,7 +1361,6 @@ class EluvioLive {
           queryParams: { limit: maxShowOwners },
         });
         res = await res.json();
-        console.log("res", res);
 
         nftInfo.tokens = res.contents;
       } catch (e) {
