@@ -44,7 +44,6 @@ class EluvioLive {
     });
 
     if (asUrl) {
-      console.log("Setting AS URL to", asUrl);
       // elv-client-js strips the path and only stores the host - save it here
       this.asUrlPath = url.parse(asUrl).path;
       this.client.SetNodes({
@@ -53,7 +52,6 @@ class EluvioLive {
         ]
       });
     } else {
-      console.log("Using default AS URL");
       this.asUrlPath = "as";
     }
 
