@@ -1350,7 +1350,7 @@ class EluvioLive {
       }
 
     } else if (showOwners && showOwners > 0) {
-      // prefer this fast one to the contract code, let for reference below
+      // prefer this fast one to the contract code, which is left for reference below
       const maxShowOwners = showOwners;
       nftInfo.tokens = [];
 
