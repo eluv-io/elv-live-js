@@ -1287,11 +1287,12 @@ class EluvioLive {
    * @param {string} mintHelper - Warn if this is not a minter for the NFT contract (hex)
    * @param {string} minter - Warn if this is not the owner of the mint helper contract (hex)
    * @param {string} proxyAddr - proxy owner address
-   * @param {integer} showOwners - Also enumerate all token info up to showOwners amount. Only used if tokenId is undefined.
+   * @param {integer} showOwners - Enumerate all token owners using a fast indexed query. Only used if tokenId is undefined.
+   * @param {integer} showOwnersViaContract - Enumerate all token info up to the given amount. Only used if tokenId is undefined.
    * @param {integer} tokenId - The token ID to show info for. This will take precedence over showOwners
    * @return {Promise<Object>} - An object containing NFT info, including 'warnings'
    */
-  async NftShow({ addr, mintHelper, minterAddr, proxyAddr, showOwners, tokenId }) {
+  async NftShow({ addr, mintHelper, minterAddr, proxyAddr, showOwners, showOwnersViaContract, tokenId }) {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
@@ -1438,9 +1439,63 @@ class EluvioLive {
       }
 
     } else if (showOwners && showOwners > 0) {
-      var maxShowOwners = showOwners;
+      // prefer this fast one to the contract code, which is left for reference below
+      const maxShowOwners = showOwners;
+      nftInfo.tokens = [];
+
+      try {
+        const url = urljoin("/nft/owners/", addr);
+        let res = await this.GetServiceRequest({
+          path: url,
+          queryParams: { limit: maxShowOwners },
+        });
+        res = await res.json();
+
+        nftInfo.tokens = res.contents;
+      } catch (e) {
+        warns.push("Failed to get token owners: " + addr + " - " + e);
+      }
 
       for (var i = 0; i < maxShowOwners && i < nftInfo.totalSupply; i++) {
+        try {
+          // adapt to format:
+          // hold -> holdSecs
+          nftInfo.tokens[i].holdSecs = nftInfo.tokens[i].hold;
+          // add holdEnd
+          const timestamp = nftInfo.tokens[i].hold;
+          nftInfo.tokens[i].holdEnd = new Date(timestamp * 1000);
+          // token_id -> tokenId
+          nftInfo.tokens[i].tokenId = "" + nftInfo.tokens[i].token_id;
+          // token_uri -> tokenURI
+          nftInfo.tokens[i].tokenURI = nftInfo.tokens[i].token_uri;
+          // token_owner -> owner
+          nftInfo.tokens[i].owner = nftInfo.tokens[i].token_owner;
+          // ordinal int -> string
+          nftInfo.tokens[i].ordinal = "" + nftInfo.tokens[i].ordinal;
+
+          delete nftInfo.tokens[i].block;
+          delete nftInfo.tokens[i].created;
+          delete nftInfo.tokens[i].contract_name;
+          delete nftInfo.tokens[i].contract_addr;
+          delete nftInfo.tokens[i].hold;
+          delete nftInfo.tokens[i].token_id;
+          delete nftInfo.tokens[i].token_id_str;
+          delete nftInfo.tokens[i].token_owner;
+          delete nftInfo.tokens[i].token_uri;
+        } catch (e) {
+          warns.push("Failed to re-process token ID (index: " + i + "): " + addr);
+          continue;
+        }
+
+        if (i == 0) {
+          nftInfo.firstTokenUri = nftInfo.tokens[i].tokenURI;
+        }
+      }
+
+    } else if (showOwnersViaContract && showOwnersViaContract > 0) {
+      var maxShowOwners = showOwnersViaContract;
+
+      for (i = 0; i < maxShowOwners && i < nftInfo.totalSupply; i++) {
         nftInfo.tokens[i] = {};
 
         try {
@@ -1896,7 +1951,7 @@ class EluvioLive {
     let account = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
     account.InitWithClient({elvClient: this.client});
     var policyFormat = await ElvUtils.parseAndSignPolicy({policyString, data, configUrl:this.configUrl, elvAccount:account});
-    
+
     if (this.debug){
       console.log("Policy format: ", policyFormat);
     }
