@@ -96,6 +96,29 @@ const CmdStreamStatus = async ({ argv }) => {
   }
 };
 
+const CmdStreamMonitor = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params});
+    if (status.state == "running") {
+      let playoutUrls = await elvStream.MonitorStream({name: argv.stream});
+      console.log(yaml.dump(playoutUrls));
+    } else {
+      console.log("Error: stream is not running.");
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 // Executes stream start, stop or reset
 const CmdStreamOp = async ({ argv, op }) => {
   try {
@@ -270,6 +293,26 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdStreamStatus({ argv });
+    }
+  )
+  .command(
+    "monitor <stream>",
+    "monitor a running stream by fetching playout urls. This returns hls and embed urls.",
+    (yargs) => {
+      yargs
+        .positional("stream", {
+          describe:
+            "Stream name or QID (content ID)",
+          type: "string",
+        })
+        .option("show_params", {
+          describe:
+            "Show recording parameters (can be large)",
+          type: "bool",
+        })
+    },
+    (argv) => {
+      CmdStreamMonitor({ argv });
     }
   )
   .command(
