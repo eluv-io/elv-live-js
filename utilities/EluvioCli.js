@@ -532,13 +532,6 @@ const CmdQuery = async ({ argv }) => {
   }
 
   return;
-    // for (let entry in tenants) {
-    //   let res = CmdTenantShow({ tenant: entry.id });
-    //   if (res.errors != 0) {
-    //     need_fix.push(entry.id);
-
-    //   }
-    // }
 }
 
 const CmdTenantSetContentAdmins = async ({ argv }) => {
