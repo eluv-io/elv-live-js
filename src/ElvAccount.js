@@ -189,7 +189,7 @@ class ElvAccount {
 
       if (tenantContractIdHex == "0x") {
         let args = group.split("_");
-        throw (`${args[0]} ${args[1]} group is not associated with any tenant`);
+        throw (`${args[0]} ${args[1]} group can't be verified or is not associated with any tenant`);
       }
       id = ethers.utils.toUtf8String(tenantContractIdHex);
     }
@@ -236,11 +236,11 @@ class ElvAccount {
   }
 
   /**
-   * Set _ELV_TENANT_ID on group and tenant_id on content fabric metadata.
+   * Associate group with the tenant with tenantId.
    * @param {string} tenantId - The ID of the tenant (iten***)
    * @param {string} groupAddress - Address of the group we want to remove.
    */
-  async SetGroupMeta({ tenantId, groupAddress }) {
+  async SetGroupTenantConfig({ tenantId, groupAddress }) {
     let idHex;
     let contractHasMeta = true;
     try {
@@ -263,54 +263,76 @@ class ElvAccount {
           throw Error(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set to ${id}, aborting...`);
         } else {
           console.log(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set correctly to ${id}`);
-          return;
+        }
+      } else {
+        res = await this.client.CallContractMethod({
+          contractAddress: groupAddress,
+          methodName: "putMeta",
+          methodArgs: [
+            "_ELV_TENANT_ID",
+            tenantId
+          ],
+        });
+      }
+      // Set the tenant field on the contract to tenantId so that it is consistent with the metadata
+      try {
+        await this.client.CallContractMethod({
+          contractAddress: groupAddress,
+          methodName: "setTenant",
+          methodArgs: [this.client.utils.HashToAddress(tenantId)], 
+        });
+      } catch (e) {
+        if (e.message.includes("Unknown method: setTenant")) {
+          console.log(`Log: The group contract with address ${groupAddress} doesn't support setTenant method`);
+        } else {
+          throw e;
         }
       }
-
-      res = await this.client.CallContractMethod({
-        contractAddress: groupAddress,
-        methodName: "putMeta",
-        methodArgs: [
-          "_ELV_TENANT_ID",
-          tenantId
-        ],
-      });
     }
 
-
-    // Set tenantId in the group's fabric metadata to support legacy group contracts
+    // If the contract doesn't have metadata, the group's fabric metadata is the main identification point and can't be replaced if set
     let groupObjectId = ElvUtils.AddressToId({prefix: "iq__", address: groupAddress});
     let groupLibraryId = await this.client.ContentObjectLibraryId({objectId: groupObjectId});
 
-    try {
-      let tenantContractId = await this.client.ContentObjectMetadata({
-        libraryId: groupLibraryId,
-        objectId: groupObjectId,
-        select:"elv/tenant_id",
-      });
-      if (!tenantContractId) {
-        //add tenant id to fabric meta
-        var e = await this.client.EditContentObject({
-          libraryId: groupLibraryId,
-          objectId: groupObjectId, 
-        });
-        await this.client.ReplaceMetadata({
-          libraryId: groupLibraryId,
-          objectId: groupObjectId, 
-          writeToken: e.write_token,
-          metadataSubtree: "elv/tenant_id",
-          metadata: tenantId,
-        });
-        await this.client.FinalizeContentObject({
-          libraryId: groupLibraryId,
-          objectId: groupObjectId, 
-          writeToken: e.write_token,
-          commitMessage: "Set Eluvio Live object ID " + tenantId,
-        });
+    let groupMeta = await this.client.ContentObjectMetadata({
+      libraryId: groupLibraryId,
+      objectId: groupObjectId,
+      select:"elv/tenant_id",
+    });
+    if (groupMeta && !contractHasMeta) {
+      let tenantContractId = groupMeta.elv.tenant_id;
+      if (tenantContractId != tenantId) {
+        throw Error(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set to ${id}, aborting...`);
       }
-    } catch (e) {
-      console.log("Unable to access group's fabric metadata - make sure to use the private key of the group's owner");
     }
+
+    // Set tenantId in the group's fabric metadata to support legacy group contracts
+    let tenantContractId = await this.client.ContentObjectMetadata({
+      libraryId: groupLibraryId,
+      objectId: groupObjectId,
+      select:"elv/tenant_id",
+    });
+    if (!tenantContractId) {
+      //add tenant id to fabric meta
+      var e = await this.client.EditContentObject({
+        libraryId: groupLibraryId,
+        objectId: groupObjectId, 
+      });
+      await this.client.ReplaceMetadata({
+        libraryId: groupLibraryId,
+        objectId: groupObjectId, 
+        writeToken: e.write_token,
+        metadataSubtree: "elv/tenant_id",
+        metadata: tenantId,
+      });
+      await this.client.FinalizeContentObject({
+        libraryId: groupLibraryId,
+        objectId: groupObjectId, 
+        writeToken: e.write_token,
+        commitMessage: "Set Eluvio Live object ID " + tenantId,
+      });
+    }
+
     return res;
   }
 

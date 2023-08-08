@@ -306,12 +306,12 @@ const CmdTenantFix = async({ argv }) => {
           console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`);
           break;
 
-        case 'tenant admin group is not associated with any tenant': 
-          await t.TenantSetGroupMeta({tenantId: argv.tenant, groupAddress: res.tenant_admin_address});
+        case `tenant admin group can't be verified or is not associated with any tenant`: 
+          await t.TenantSetGroupConfig({tenantId: argv.tenant, groupAddress: res.tenant_admin_address});
           break;
 
-        case 'content admin group is not associated with any tenant':
-          await t.TenantSetGroupMeta({tenantId: argv.tenant, groupAddress: res.content_admin_address});
+        case `content admin group can't be verified or is not associated with any tenant`:
+          await t.TenantSetGroupConfig({tenantId: argv.tenant, groupAddress: res.content_admin_address});
           break;
 
         default:
