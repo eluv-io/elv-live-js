@@ -450,36 +450,28 @@ class ElvTenant {
     if (groupMeta && !contractHasMeta) {
       let tenantContractId = groupMeta.elv.tenant_id;
       if (tenantContractId != tenantId) {
-        throw Error(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set to ${id}, aborting...`);
+        throw Error(`Group ${groupAddress} already has elv/tenant_id content fabric metadata set to ${tenantContractId}, aborting...`);
       }
     }
 
-    // Set tenantId in the group's fabric metadata to support legacy group contracts
-    let tenantContractId = await this.client.ContentObjectMetadata({
+    // Add tenant id to fabric meta
+    var e = await this.client.EditContentObject({
       libraryId: groupLibraryId,
-      objectId: groupObjectId,
-      select:"elv/tenant_id",
+      objectId: groupObjectId, 
     });
-    if (!tenantContractId) {
-      //add tenant id to fabric meta
-      var e = await this.client.EditContentObject({
-        libraryId: groupLibraryId,
-        objectId: groupObjectId, 
-      });
-      await this.client.ReplaceMetadata({
-        libraryId: groupLibraryId,
-        objectId: groupObjectId, 
-        writeToken: e.write_token,
-        metadataSubtree: "elv/tenant_id",
-        metadata: tenantId,
-      });
-      await this.client.FinalizeContentObject({
-        libraryId: groupLibraryId,
-        objectId: groupObjectId, 
-        writeToken: e.write_token,
-        commitMessage: "Set Eluvio Live object ID " + tenantId,
-      });
-    }
+    await this.client.ReplaceMetadata({
+      libraryId: groupLibraryId,
+      objectId: groupObjectId, 
+      writeToken: e.write_token,
+      metadataSubtree: "elv/tenant_id",
+      metadata: tenantId,
+    });
+    await this.client.FinalizeContentObject({
+      libraryId: groupLibraryId,
+      objectId: groupObjectId, 
+      writeToken: e.write_token,
+      commitMessage: "Set Eluvio Live object ID " + tenantId,
+    });
 
     return res;
   }
