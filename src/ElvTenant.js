@@ -250,7 +250,7 @@ class ElvTenant {
       }
     }
 
-    tenantInfo["owner_address"] = owner;
+    tenantInfo["tenant_root_key"] = owner;
 
     if (show_metadata) {
       let services = [];

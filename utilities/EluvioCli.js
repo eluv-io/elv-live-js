@@ -380,7 +380,7 @@ const CmdTenantFixSuite = async({ argv }) => {
             methodArgs: [],
             formatArguments: true
           });
-          console.log(`Failed to set _ELV_TENANT_ID of ${lib}- doesn't belong to this account and can only be set by the account with address ${libOwner}`);
+          console.log(`Failed to set _ELV_TENANT_ID of ${lib} - doesn't belong to this account and can only be set by the account with address ${libOwner}`);
           failedLibraries.push(lib);
         } 
       }
