@@ -322,7 +322,7 @@ class ElvAccount {
       libraryId: groupLibraryId,
       objectId: groupObjectId, 
       writeToken: e.write_token,
-      commitMessage: "Set Eluvio Live object ID " + tenantId,
+      commitMessage: "Set tenant ID " + tenantId,
     });
 
     return res;
