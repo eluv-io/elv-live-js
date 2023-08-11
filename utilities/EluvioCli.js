@@ -432,6 +432,7 @@ const CmdQuery = async ({ argv }) => {
 
     let success_count = 0
     let failure_count = 0
+    let need_further_check = 0
     let failure_log = []
 
     let bcindexer_tenant_count = await sql`
@@ -478,7 +479,7 @@ const CmdQuery = async ({ argv }) => {
             });
 
             res = await t.TenantShow({tenantId: tenant_contract_id});
-            if (res.errors.length == 0) {
+            if (!res.errors) {
               success_count += 1
               continue;
             }
@@ -497,7 +498,11 @@ const CmdQuery = async ({ argv }) => {
               tenant_admins_id: tenant_admins_id,
               libraries: tenant.libraries,
               errors: e.message});
-            failure_count += 1;
+            if (e.message.includes('must be logged in with an account in the tenant admins group')) {
+              need_further_check += 1;
+            } else {
+              failure_count += 1;
+            }
           }
         }
       } else {
@@ -513,6 +518,7 @@ const CmdQuery = async ({ argv }) => {
     }
     console.log("Number of tenants that support the new tenant system: ", success_count);
     console.log("Number of tenants that need to be fixed: ", failure_count);
+    console.log("Number of tenants that the check needed access to their content fabric metadata: ", need_further_check);
 
     require('fs').writeFile(
       './tenant_contracts_fix_info.json',
