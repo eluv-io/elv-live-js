@@ -109,22 +109,14 @@ class ElvSpace {
       elvAccount.SetAccountTenantContractId({id: tenant.id});
 
       // Add _ELV_TENANT_ID to groups' metadata so we can identify the tenant these groups belong to
-      await elvAccount.client.CallContractMethodAndWait({
-        contractAddress: tenantAdminGroup.address,
-        methodName: "putMeta",
-        methodArgs: [
-          "_ELV_TENANT_ID",
-          tenant.id
-        ]
+      await elvAccount.SetGroupTenantConfig({
+        tenantId: tenant.id,
+        groupAddress: tenantAdminGroup.address
       });
 
-      await elvAccount.client.CallContractMethodAndWait({
-        contractAddress: contentAdminGroup.address,
-        methodName: "putMeta",
-        methodArgs: [
-          "_ELV_TENANT_ID",
-          tenant.id
-        ]
+      await elvAccount.SetGroupTenantConfig({
+        tenantId: tenant.id,
+        groupAddress: contentAdminGroup.address
       });
 
       return {

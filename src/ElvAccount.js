@@ -189,7 +189,7 @@ class ElvAccount {
 
       if (tenantContractIdHex == "0x") {
         let args = group.split("_");
-        throw (`${args[0]} ${args[1]} group is not associated with any tenant`);
+        throw (`${args[0]} ${args[1]} group can't be verified or is not associated with any tenant`);
       }
       id = ethers.utils.toUtf8String(tenantContractIdHex);
     }
@@ -233,6 +233,99 @@ class ElvAccount {
       });
     }
     return { res };
+  }
+
+  /**
+   * Associate group with the tenant with tenantId.
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} groupAddress - Address of the group we want to remove.
+   */
+  async SetGroupTenantConfig({ tenantId, groupAddress }) {
+    let idHex;
+    let contractHasMeta = true;
+    try {
+      idHex = await this.client.CallContractMethod({
+        contractAddress: groupAddress,
+        methodName: "getMeta",
+        methodArgs: ["_ELV_TENANT_ID"], 
+      });
+    } catch (e) {
+      console.log(`Log: The group contract with group address ${groupAddress} doesn't support metadata. Some operations with this group contract may fail.`);
+      contractHasMeta = false;
+    }
+
+    // Set _ELV_TENANT_ID in the group contract's metadata if possible
+    let res;
+    if (contractHasMeta) {
+      if (idHex != "0x") {
+        let id = ethers.utils.toUtf8String(idHex);
+        if (!Utils.EqualHash(tenantId, id)) {
+          throw Error(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set to ${id}, aborting...`);
+        } else {
+          console.log(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set correctly to ${id}`);
+        }
+      } else {
+        res = await this.client.CallContractMethod({
+          contractAddress: groupAddress,
+          methodName: "putMeta",
+          methodArgs: [
+            "_ELV_TENANT_ID",
+            tenantId
+          ],
+        });
+      }
+      // Set the tenant field on the contract to tenantId so that it is consistent with the metadata
+      try {
+        await this.client.CallContractMethod({
+          contractAddress: groupAddress,
+          methodName: "setTenant",
+          methodArgs: [this.client.utils.HashToAddress(tenantId)], 
+        });
+      } catch (e) {
+        if (e.message.includes("Unknown method: setTenant")) {
+          console.log(`Log: The group contract with address ${groupAddress} doesn't support setTenant method`);
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    // If the contract doesn't have metadata, the group's fabric metadata is the main identification point and can't be replaced if set
+    let groupObjectId = ElvUtils.AddressToId({prefix: "iq__", address: groupAddress});
+    let groupLibraryId = await this.client.ContentObjectLibraryId({objectId: groupObjectId});
+
+    let groupMeta = await this.client.ContentObjectMetadata({
+      libraryId: groupLibraryId,
+      objectId: groupObjectId,
+      select:"elv/tenant_id",
+    });
+    if (groupMeta && !contractHasMeta) {
+      let tenantContractId = groupMeta.elv.tenant_id;
+      if (tenantContractId != tenantId) {
+        throw Error(`Group ${groupAddress} already has elv/tenant_id content fabric metadata set to ${tenantContractId}, aborting...`);
+      }
+    }
+
+    // Add tenant id to fabric meta
+    var e = await this.client.EditContentObject({
+      libraryId: groupLibraryId,
+      objectId: groupObjectId, 
+    });
+    await this.client.ReplaceMetadata({
+      libraryId: groupLibraryId,
+      objectId: groupObjectId, 
+      writeToken: e.write_token,
+      metadataSubtree: "elv/tenant_id",
+      metadata: tenantId,
+    });
+    await this.client.FinalizeContentObject({
+      libraryId: groupLibraryId,
+      objectId: groupObjectId, 
+      writeToken: e.write_token,
+      commitMessage: "Set tenant ID " + tenantId,
+    });
+
+    return res;
   }
 
   async CreateSignedToken({
