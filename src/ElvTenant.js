@@ -545,8 +545,8 @@ class ElvTenant {
       }
       verified = true;
     } catch (e) {
-      if (e.message.includes('Forbidden')) {
-        console.log(`Log: can't verify the group's content fabric metadata - must be a tenant admin user to do so.`)
+      if (e.message.includes("Forbidden")) {
+        console.log("Log: can't verify the group's content fabric metadata - must be a tenant admin user to do so.");
       }
     }
 
