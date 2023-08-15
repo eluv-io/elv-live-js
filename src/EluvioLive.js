@@ -1554,6 +1554,12 @@ class EluvioLive {
       path.resolve(__dirname, "../contracts/v3/MinterRole.abi")
     );
 
+    // Check if the address is already a minter
+    var res = await this.IsMinter({addr, minterAddr});
+    if (res.is_minter) {
+      return res;
+    }
+
     await this.client.CallContractMethodAndWait({
       contractAddress: addr,
       abi: JSON.parse(abi),
@@ -1562,7 +1568,7 @@ class EluvioLive {
       formatArguments: true,
     });
 
-    var res = await this.IsMinter({addr, minterAddr});
+    res = await this.IsMinter({addr, minterAddr});
     if (!res.is_minter) {
       throw new Error("minter address is not set");
     }
