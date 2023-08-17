@@ -824,7 +824,7 @@ const CmdAccountShow = async () => {
   console.log("Account Show\n");
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: false });
     let res = await elvlv.AccountShow();
     console.log(yaml.dump(res));
   } catch (e) {
