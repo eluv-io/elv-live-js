@@ -69,7 +69,7 @@ const SetTenantEluvioLiveId = async (client, tenantId, eluvioLiveId) => {
 
   var e = await client.EditContentObject({
     libraryId,
-    objectId,  
+    objectId,
   });
 
   await client.ReplaceMetadata({
@@ -92,10 +92,15 @@ const SetTenantEluvioLiveId = async (client, tenantId, eluvioLiveId) => {
 
 const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   let tenantAdminId = await client.userProfileClient.TenantId();
+  let tenantContractId = await client.userProfileClient.TenantContractId();
   let tenantAdminSigner = client.signer;
 
   if (!tenantAdminId){
     throw Error("No tenant admin group set for account.");
+  }
+
+  if (tenantId != tenantContractId) {
+    throw Error("Signer associated with different tenant", tenantId, tenantContractId);
   }
 
   const tenantAddr = Utils.HashToAddress(tenantId);
