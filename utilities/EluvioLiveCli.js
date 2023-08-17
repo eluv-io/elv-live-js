@@ -1704,58 +1704,6 @@ yargs(hideBin(process.argv))
     describe: "Alternate authority service URL (include '/as/' route if necessary)",
     type: "string"
   })
-  .command(
-      "tenant_auth_token <path_or_body>",
-      "Generate a tenant token",
-      (yargs) => {
-        yargs
-            .positional("path_or_body", {
-              describe: "URL path or request body",
-              type: "string",
-            });
-      },
-      (argv) => {
-        CmdTenantAuthToken({argv}).then();
-      }
-  )
-
-  .command(
-    "nft_set_proxy <addr> [proxy_addr]",
-    "Set a proxy on an NFT contract",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT address (hex)",
-          type: "string",
-        })
-        .option("proxy_addr", {
-          describe: "Proxy contract address (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmfNftSetProxy({ argv });
-    }
-  )
-
-  .command(
-    "nft_balance_of <addr> <owner>",
-    "Call NFT ownerOf - determine if this is an owner",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT address (hex)",
-          type: "string",
-        })
-        .positional("owner", {
-          describe: "Owner address to check (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdNftBalanceOf({ argv });
-    }
-  )
 
   .command(
     "nft_show <addr> [options]",
@@ -1784,6 +1732,25 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNftShow({ argv });
+    }
+  )
+
+  .command(
+    "nft_balance_of <addr> <owner>",
+    "Call NFT ownerOf - determine if this is an owner",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT address (hex)",
+          type: "string",
+        })
+        .positional("owner", {
+          describe: "Owner address to check (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNftBalanceOf({ argv });
     }
   )
 
@@ -1896,6 +1863,25 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNftBuild({ argv });
+    }
+  )
+
+  .command(
+    "nft_set_proxy <addr> [proxy_addr]",
+    "Set a proxy on an NFT contract",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT address (hex)",
+          type: "string",
+        })
+        .option("proxy_addr", {
+          describe: "Proxy contract address (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmfNftSetProxy({ argv });
     }
   )
 
@@ -2230,6 +2216,21 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantShow({ argv });
+    }
+  )
+
+  .command(
+    "tenant_auth_token <path_or_body>",
+    "Generate a tenant token",
+    (yargs) => {
+      yargs
+        .positional("path_or_body", {
+          describe: "URL path or request body",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantAuthToken({argv}).then();
     }
   )
 
