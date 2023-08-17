@@ -88,6 +88,25 @@ class EluvioLive {
   }
 
   /**
+   * Show info about this account.
+   */
+  async AccountShow() {
+    if (!this.client) {
+      throw Error("EluvioLive not initialized");
+    }
+
+    const [tenantId, walletAddress, userWalletObject, userMetadata] = await Promise.all([
+      this.client.userProfileClient.TenantId(),
+      this.client.userProfileClient.WalletAddress(),
+      this.client.userProfileClient.UserWalletObjectInfo(),
+      this.client.userProfileClient.UserMetadata()
+    ]);
+
+    return { tenantId, walletAddress, userWalletObject, userMetadata };
+  }
+
+
+  /**
    * Set the Token URI for an NFT.
    * Currently only setting one and a time. Will support types, single, batch and all.
    *
