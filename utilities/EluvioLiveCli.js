@@ -3342,6 +3342,7 @@ yargs(hideBin(process.argv))
   )
 
   .strict()
+  .wrap(yargs().terminalWidth() != null ? Math.min(120, yargs().terminalWidth()) : 120)
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")
   .scriptName("")
