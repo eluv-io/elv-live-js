@@ -92,7 +92,7 @@ class EluvioLive {
    */
   async AccountShow() {
     if (!this.client) {
-      throw Error("EluvioLive not intialized");
+      throw Error("EluvioLive not initialized");
     }
 
     const [tenantId, walletAddress, userWalletObject, userMetadata] = await Promise.all([
