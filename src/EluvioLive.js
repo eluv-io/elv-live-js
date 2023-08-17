@@ -95,13 +95,12 @@ class EluvioLive {
       throw Error("EluvioLive not intialized");
     }
 
-    let tenantAmdinsId = await this.client.userProfileClient.TenantId();
+    let tenantId = await this.client.userProfileClient.TenantId();
     let walletAddress = await this.client.userProfileClient.WalletAddress();
-    let userWalletObject =
-      await this.client.userProfileClient.UserWalletObjectInfo();
+    let userWalletObject = await this.client.userProfileClient.UserWalletObjectInfo();
     let userMetadata = await this.client.userProfileClient.UserMetadata();
 
-    return { tenantAmdinsId, walletAddress, userWalletObject, userMetadata };
+    return { tenantId, walletAddress, userWalletObject, userMetadata };
   }
 
 
