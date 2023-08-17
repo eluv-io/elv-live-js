@@ -1720,94 +1720,6 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_add_contract <tenant> <object> <cap> <name> <symbol> [options]",
-    "Add a new or existing NFT contract to an NFT Template object",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("object", {
-          describe: "NFT Template object ID",
-          type: "string",
-        })
-        .positional("cap", {
-          describe: "NFT total supply cap",
-          type: "number",
-        })
-        .positional("name", {
-          describe: "NFT collection name",
-          type: "string",
-        })
-        .positional("symbol", {
-          describe: "NFT collection symbol",
-          type: "string",
-        })
-        .option("hold", {
-          describe: "Hold period in seconds (default 7 days)",
-          type: "number",
-        });
-    },
-    (argv) => {
-      CmfNftTemplateAddNftContract({ argv });
-    }
-  )
-
-  .command(
-    "token_add_minter <addr> <minter>",
-    "Add minter or mint helper address to NFT or Token",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT or Token address (hex)",
-          type: "string",
-        })
-        .option("minter", {
-          describe: "Minter or mint helper address (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTokenAddMinter({ argv });
-    }
-  )
-
-  .command(
-    "token_renounce_minter <addr>",
-    "Renounce the minter(msg.sender) from NFT or Token",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT or Token address (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTokenRenounceMinter({ argv });
-    }
-  )
-
-  .command(
-    "token_is_minter <addr> <minter>",
-    "check if minter to NFT or Token",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT or Token address (hex)",
-          type: "string",
-        })
-        .option("minter", {
-          describe: "Minter address (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTokenIsMinter({ argv });
-    }
-  )
-
-  .command(
     "nft_set_proxy <addr> [proxy_addr]",
     "Set a proxy on an NFT contract",
     (yargs) => {
@@ -1876,6 +1788,25 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "nft_refresh <tenant> <addr>",
+    "Synchronize backend listings with fabric metadata for a specific tenant's NFT. Requires tenant Key.",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("addr", {
+          describe: "NFT contract address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNFTRefresh({ argv });
+    }
+  )
+
+  .command(
     "nft_transfer <addr> <token_id> <to_addr> [options]",
     "Transfer the specified NFT as the token owner",
     (yargs) => {
@@ -1898,6 +1829,21 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNftTransfer({ argv });
+    }
+  )
+
+  .command(
+    "transfer_errors <tenant>",
+    "Show tenant transfer failures. Used to identify payments collected on failed transfers.",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantTransferFailures({ argv });
     }
   )
 
@@ -2056,6 +2002,41 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "nft_add_contract <tenant> <object> <cap> <name> <symbol> [options]",
+    "Add a new or existing NFT contract to an NFT Template object",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("object", {
+          describe: "NFT Template object ID",
+          type: "string",
+        })
+        .positional("cap", {
+          describe: "NFT total supply cap",
+          type: "number",
+        })
+        .positional("name", {
+          describe: "NFT collection name",
+          type: "string",
+        })
+        .positional("symbol", {
+          describe: "NFT collection symbol",
+          type: "string",
+        })
+        .option("hold", {
+          describe: "Hold period in seconds (default 7 days)",
+          type: "number",
+        });
+    },
+    (argv) => {
+      CmfNftTemplateAddNftContract({ argv });
+    }
+  )
+
+  .command(
     "nft_add_offer <addr>",
     "Add a redeemable offer to the NFT contract as the contract owner or minter",
     (yargs) => {
@@ -2186,6 +2167,49 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdASNftRedeemOffer({ argv });
+    }
+  )
+
+  .command(
+    "nft_get_policy_permissions <object>",
+    "Gets the policy and permissions of a content object.",
+    (yargs) => {
+      yargs.positional("object", {
+        describe: "ID of the content fabric object",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdNFTGetPolicyPermissions({ argv });
+    }
+  )
+
+  .command(
+    "nft_set_policy_permissions <object> <policy_path> <addrs..>",
+    "Sets the policy and permissions granting NFT owners access to a content object. When no addresses are specified, only the policy is set.",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object to grant access to",
+          type: "string",
+        })
+        .positional("policy_path", {
+          describe: "Path of policy object file",
+          type: "string",
+        })
+        .positional("addrs", {
+          describe:
+            "List of space separated NFT contract addresses to set. Calling multiple times with a new list will replace the existing.",
+          type: "string",
+        })
+        .option("clear", {
+          describe: "clear the nft owners",
+          type: "boolean",
+          default: false
+        });
+    },
+    (argv) => {
+      CmdNFTSetPolicyPermissions({ argv });
     }
   )
 
@@ -2388,34 +2412,6 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "shuffle <file> [options]",
-    "Sort each line deterministically based on the seed",
-    (yargs) => {
-      yargs
-        .positional("file", {
-          describe: "File or directory path",
-          type: "string",
-        })
-        .option("seed", {
-          describe:
-            "Determines the order. If no seed is provided, the shuffler uses a random one.",
-          type: "string",
-        })
-        .option("check_dupes", {
-          describe: "Abort if duplicate is found",
-          type: "boolean",
-        })
-        .option("print_js", {
-          describe: "Print result as an array in JavaScript",
-          type: "boolean",
-        });
-    },
-    (argv) => {
-      CmdShuffle({ argv });
-    }
-  )
-
-  .command(
     "tenant_tickets_generate <tenant> <otp>",
     "Generate tickets for a given tenant OTP ID",
     (yargs) => {
@@ -2466,67 +2462,6 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantMint({ argv });
-    }
-  )
-
-  .command(
-    "tenant_wallets <tenant> [options]",
-    "Show the wallets associated with this tenant",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("csv", {
-          describe: "File path to output csv",
-          type: "string",
-        })
-        .option("max_results", {
-          describe: "Show up to these many results (default 0 = unlimited)",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdTenantWallets({ argv });
-    }
-  )
-
-  .command(
-    "nft_refresh <tenant> <addr>",
-    "Synchronize backend listings with fabric metadata for a specific tenant's NFT. Requires tenant Key.",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdNFTRefresh({ argv });
-    }
-  )
-
-  .command(
-    "list [options]",
-    "List the Eluvio Live Tenants",
-    (yargs) => {
-      yargs
-        .option("tenant", {
-          describe: "Show the tenant based on id. Eg. itenXXX...",
-          type: "string",
-        })
-        .option("tenant_slug", {
-          describe: "Show the tenant based on slug. Eg. elv-live",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdList({ argv });
     }
   )
 
@@ -2625,47 +2560,27 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "transfer_errors <tenant>",
-    "Show tenant transfer failures. Used to identify payments collected on failed transfers.",
+    "tenant_wallets <tenant> [options]",
+    "Show the wallets associated with this tenant",
     (yargs) => {
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
+          type: "string",
+        })
+        .option("max_results", {
+          describe: "Show up to these many results (default 0 = unlimited)",
+          type: "integer",
         });
     },
     (argv) => {
-      CmdTenantTransferFailures({ argv });
+      CmdTenantWallets({ argv });
     }
   )
-
-  .command(
-    "account_create <funds> <account_name> <tenant_admins>",
-    "Create a new account -> mnemonic, address, private key",
-    (yargs) => {
-      yargs
-        .positional("funds", {
-          describe:
-            "How much to fund the new account from this private key in ETH.",
-          type: "string",
-        })
-        .positional("account_name", {
-          describe: "Account Name",
-          type: "string",
-        })
-        .positional("tenant_admins", {
-          describe: "Tenant Admins group ID",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdAccountCreate({ argv });
-    }
-  )
-
-  .command("account_show", "Shows current account information.", () => {
-    CmdAccountShow();
-  })
 
   .command(
     "tenant_nft_remove <tenant> <addr>",
@@ -2919,49 +2834,6 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_get_policy_permissions <object>",
-    "Gets the policy and permissions of a content object.",
-    (yargs) => {
-      yargs.positional("object", {
-        describe: "ID of the content fabric object",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdNFTGetPolicyPermissions({ argv });
-    }
-  )
-
-  .command(
-    "nft_set_policy_permissions <object> <policy_path> <addrs..>",
-    "Sets the policy and permissions granting NFT owners access to a content object. When no addresses are specified, only the policy is set.",
-    (yargs) => {
-      yargs
-        .positional("object", {
-          describe: "ID of the content object to grant access to",
-          type: "string",
-        })
-        .positional("policy_path", {
-          describe: "Path of policy object file",
-          type: "string",
-        })
-        .positional("addrs", {
-          describe:
-            "List of space separated NFT contract addresses to set. Calling multiple times with a new list will replace the existing.",
-          type: "string",
-        })
-        .option("clear", {
-          describe: "clear the nft owners",
-          type: "boolean",
-          default: false
-        });
-    },
-    (argv) => {
-      CmdNFTSetPolicyPermissions({ argv });
-    }
-  )
-
-  .command(
     "tenant_get_minter_config <tenant> [options]",
     "Gets the minter configuration for this tenant key",
     (yargs) => {
@@ -3170,15 +3042,32 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "admin_health [options]",
-    "Checks the health of the Authority Service APIs. Note the current key must be a system admin configured in the AuthD servers.",
+    "account_create <funds> <account_name> <tenant_admins>",
+    "Create a new account -> mnemonic, address, private key",
     (yargs) => {
       yargs
+        .positional("funds", {
+          describe:
+            "How much to fund the new account from this private key in ETH.",
+          type: "string",
+        })
+        .positional("account_name", {
+          describe: "Account Name",
+          type: "string",
+        })
+        .positional("tenant_admins", {
+          describe: "Tenant Admins group ID",
+          type: "string",
+        });
     },
     (argv) => {
-      CmdAdminHealth({ argv });
+      CmdAccountCreate({ argv });
     }
   )
+
+  .command("account_show", "Shows current account information.", () => {
+    CmdAccountShow();
+  })
 
   .command(
     "payment_contract_create addresses shares",
@@ -3270,6 +3159,59 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "token_add_minter <addr> <minter>",
+    "Add minter or mint helper address to NFT or Token",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT or Token address (hex)",
+          type: "string",
+        })
+        .option("minter", {
+          describe: "Minter or mint helper address (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTokenAddMinter({ argv });
+    }
+  )
+
+  .command(
+    "token_renounce_minter <addr>",
+    "Renounce the minter(msg.sender) from NFT or Token",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT or Token address (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTokenRenounceMinter({ argv });
+    }
+  )
+
+  .command(
+    "token_is_minter <addr> <minter>",
+    "check if minter to NFT or Token",
+    (yargs) => {
+      yargs
+        .positional("addr", {
+          describe: "NFT or Token address (hex)",
+          type: "string",
+        })
+        .option("minter", {
+          describe: "Minter address (hex)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTokenIsMinter({ argv });
+    }
+  )
+
+  .command(
     "content_set_policy <object> <policy_path> [data]",
     "Set the policy on an existing content object. This also sets the delegate on the object contract to itself.",
     (yargs) => {
@@ -3338,6 +3280,64 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdContentClearPolicy({ argv });
+    }
+  )
+
+  .command(
+    "list [options]",
+    "List the Eluvio Live Tenants",
+    (yargs) => {
+      yargs
+        .option("tenant", {
+          describe: "Show the tenant based on id. Eg. itenXXX...",
+          type: "string",
+        })
+        .option("tenant_slug", {
+          describe: "Show the tenant based on slug. Eg. elv-live",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdList({ argv });
+    }
+  )
+
+  .command(
+    "shuffle <file> [options]",
+    "Sort each line deterministically based on the seed",
+    (yargs) => {
+      yargs
+        .positional("file", {
+          describe: "File or directory path",
+          type: "string",
+        })
+        .option("seed", {
+          describe:
+            "Determines the order. If no seed is provided, the shuffler uses a random one.",
+          type: "string",
+        })
+        .option("check_dupes", {
+          describe: "Abort if duplicate is found",
+          type: "boolean",
+        })
+        .option("print_js", {
+          describe: "Print result as an array in JavaScript",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdShuffle({ argv });
+    }
+  )
+
+  .command(
+    "admin_health [options]",
+    "Checks the health of the Authority Service APIs. Note the current key must be a system admin configured in the AuthD servers.",
+    (yargs) => {
+      yargs
+    },
+    (argv) => {
+      CmdAdminHealth({ argv });
     }
   )
 
