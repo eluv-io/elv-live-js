@@ -203,6 +203,54 @@ class EluvioLiveStream {
         }
       }
 
+      if (state == "running") {
+        let playout_urls = {};
+        let master_hash = mainMeta.master.hash;
+        let objectId = conf.objectId;
+        let playout_options = await this.client.PlayoutOptions({
+          objectId,
+          master_hash,
+          linkPath: "public/asset_metadata/sources/default"
+        });
+
+        let hls_clear_enabled = playout_options?.hls?.playoutMethods?.clear != undefined; 
+        if (hls_clear_enabled) {
+          playout_urls.hls_clear = await this.client.FabricUrl({
+            libraryId: libraryId,
+            objectId: objectId,
+            rep: "playout/default/hls-clear/playlist.m3u8",
+          });
+        }
+
+        let hls_aes128_enabled = playout_options?.hls?.playoutMethods?.["aes-128"] != undefined; 
+        if (hls_aes128_enabled) {
+          playout_urls.hls_aes128 = await this.client.FabricUrl({
+            libraryId: libraryId,
+            objectId: objectId,
+            rep: "playout/default/hls-aes128/playlist.m3u8",
+          });
+        }
+
+        let hls_sample_aes_enabled = playout_options?.hls?.playoutMethods?.["sample-aes"] != undefined; 
+        if (hls_sample_aes_enabled) {
+          playout_urls.hls_sample_aes = await this.client.FabricUrl({
+            libraryId: libraryId,
+            objectId: objectId,
+            rep: "playout/default/hls-sample-aes/playlist.m3u8",
+          });
+        }
+
+        let token = await MakeTxLessToken({client: this.client, libraryId: libraryId});
+        let embed_net = "main";
+        if (this.configUrl.includes("demo")) {
+          embed_net = "demo";
+        }
+        let embed_url = `https://embed.v3.contentfabric.io/?net=${embed_net}&p&ct=h&oid=${conf.objectId}&mt=v&ath=${token}`;
+        playout_urls.embed_url = embed_url;
+
+        status.playout_urls = playout_urls;
+      }
+
     } catch (error) {
       console.error(error);
     }
@@ -903,67 +951,6 @@ class EluvioLiveStream {
       }
     });
     return info;
-  }
-
-  /*
-   * Get hls related playout and embed urls for a given stream. 
-   */
-  async MonitorStream({name}) {
-    let playout_urls = {};
-    try {
-      let conf = await this.LoadConf({name});
-      let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
-      let mainMeta = await this.client.ContentObjectMetadata({
-        libraryId: libraryId,
-        objectId: conf.objectId
-      });
-
-      let master_hash = mainMeta.master.hash;
-      let objectId = conf.objectId;
-      let playout_options = await this.client.PlayoutOptions({
-        objectId,
-        master_hash,
-        linkPath: "public/asset_metadata/sources/default"
-      });
-
-      let hls_clear_enabled = playout_options?.hls?.playoutMethods?.clear != undefined; 
-      if (hls_clear_enabled) {
-        playout_urls.hls_clear = await this.client.FabricUrl({
-          libraryId: libraryId,
-          objectId: objectId,
-          rep: "playout/default/hls-clear/playlist.m3u8",
-        });
-      }
-
-      let hls_aes128_enabled = playout_options?.hls?.playoutMethods?.["aes-128"] != undefined; 
-      if (hls_aes128_enabled) {
-        playout_urls.hls_aes128 = await this.client.FabricUrl({
-          libraryId: libraryId,
-          objectId: objectId,
-          rep: "playout/default/hls-aes128/playlist.m3u8",
-        });
-      }
-
-      let hls_sample_aes_enabled = playout_options?.hls?.playoutMethods?.["sample-aes"] != undefined; 
-      if (hls_sample_aes_enabled) {
-        playout_urls.hls_sample_aes = await this.client.FabricUrl({
-          libraryId: libraryId,
-          objectId: objectId,
-          rep: "playout/default/hls-sample-aes/playlist.m3u8",
-        });
-      }
-
-      let token = await MakeTxLessToken({client: this.client, libraryId: libraryId});
-      let embed_net = "main";
-      if (this.configUrl.includes("demo")) {
-        embed_net = "demo";
-      }
-      let embed_url = `https://embed.v3.contentfabric.io/?net=${embed_net}&p&ct=h&oid=${conf.objectId}&mt=v&ath=${token}`;
-      playout_urls.embed_url = embed_url;
-    } catch (error) {
-      console.error(error);
-    }
-    return playout_urls;
   }
 
 } // End class
