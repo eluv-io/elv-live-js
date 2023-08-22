@@ -165,6 +165,24 @@ const CmdStreamInsertion = async ({ argv }) => {
   }
 };
 
+const CmdStreamDownload = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period});
+    console.log(yaml.dump(status));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -341,6 +359,27 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdStreamInsertion({ argv });
+    }
+  )
+
+  .command(
+    "download <stream>",
+    "Download the live stream recording and creates and mp4 file.",
+    (yargs) => {
+      yargs
+        .positional("stream", {
+          describe:
+            "Stream name or QID (content ID)",
+          type: "string",
+        })
+        .option("period", {
+          describe:
+            "Download a specific recording period (instead of the lastone)",
+          type: "int",
+        })
+    },
+    (argv) => {
+      CmdStreamDownload({ argv });
     }
   )
 

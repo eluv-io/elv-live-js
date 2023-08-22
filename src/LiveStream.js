@@ -3,6 +3,7 @@
  */
 
 const { ElvClient } = require("@eluvio/elv-client-js");
+const { execSync } = require("child_process");
 
 const fs = require("fs");
 const path = require("path");
@@ -905,6 +906,125 @@ class EluvioLiveStream {
     return info;
   }
 
+
+  async StreamDownload({name, period}) {
+
+    let conf = await this.LoadConf({name});
+
+    let status = {name};
+
+    try {
+
+      let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
+      status.library_id = libraryId;
+      status.object_id = conf.objectId;
+
+      let mainMeta = await this.client.ContentObjectMetadata({
+        libraryId: libraryId,
+        objectId: conf.objectId
+      });
+
+      let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
+      if (fabURI == undefined) {
+        console.log("bad fabric config - missing ingress node API");
+      }
+
+      // Support both hostname and URL ingress_node_api
+      if (!fabURI.startsWith("http")) {
+        // Assume https
+        fabURI = "https://" + fabURI;
+      }
+      this.client.SetNodes({fabricURIs: [fabURI]});
+
+      let edgeWriteToken = mainMeta.live_recording.fabric_config.edge_write_token;
+      let edgeMeta = await this.client.ContentObjectMetadata({
+        libraryId: libraryId,
+        objectId: conf.objectId,
+        writeToken: edgeWriteToken
+      });
+
+      // If a stream has never been started return state 'inactive'
+      if (edgeMeta.live_recording == undefined ||
+        edgeMeta.live_recording.recordings == undefined ||
+        edgeMeta.live_recording.recordings.recording_sequence == undefined) {
+        status.state = "no recordings";
+        return status;
+      }
+
+      let recordings = edgeMeta.live_recording.recordings;
+      status.recording_period_sequence = recordings.recording_sequence;
+
+      let sequence = recordings.recording_sequence;
+      if (period == undefined || period < 0 || period > sequence - 1) {
+        period = sequence - 1;
+      }
+
+      console.log("Downloading stream", name, " period", period, " latest", sequence - 1);
+
+      let recording = recordings.live_offering[period];
+      if (recording == undefined) {
+        console.log("ERROR - recording period not found: ", period);
+      }
+
+      let dpath = "DOWNLOAD/" + edgeWriteToken + "." + period;
+      !fs.existsSync(dpath) && fs.mkdirSync(dpath, {recursive: true});
+
+      let mts = ["audio", "video"];
+      for (let mi = 0; mi < mts.length; mi ++) {
+        let mt = mts[mi];
+        console.log("Downloading ", mt);
+        let mtpath = dpath + "/" + mt;
+        let partsfile = dpath + "/parts_" + mt + ".txt";
+        !fs.existsSync(mtpath) && fs.mkdirSync(mtpath);
+        var sources = recording.sources[mt];
+        for (let i = 0; i < sources.length - 1; i++) {
+          console.log(sources[i].hash);
+          let partHash = sources[i].hash;
+          let buf = await this.client.DownloadPart({
+            libraryId,
+            objectId: conf.objectId,
+            partHash,
+            format: "buffer",
+            chunked: false,
+            callback: ({bytesFinished, bytesTotal}) => {
+              console.log("  progress: ", bytesFinished + "/" + bytesTotal);
+            }
+          });
+
+          let partfile = mtpath + "/" + partHash + ".mp4";
+          fs.appendFile(partfile, buf, (err) => {
+            if (err)
+              console.log(err);
+          });
+          fs.appendFile(partsfile, "file '" + mt + "/" + partHash + ".mp4'\n", (err) => {
+            if (err)
+              console.log(err);
+          });
+        }
+
+        // Concatenate parts into one mp4
+        let cmd = "ffmpeg -f concat -safe 0 -i " + partsfile + " -c copy " + dpath + "/" + mt + ".mp4";
+        console.log("Running", cmd);
+        execSync(cmd);
+      }
+
+      // Create final mp4 file
+      let f = dpath + "/download.mp4";
+      let cmd = "ffmpeg -i " + dpath + "/video.mp4"  + "  -i " +  dpath + "/audio.mp4" + "  -map 0:v:0  -map 1:a:0  -c copy  -shortest " + f;
+      console.log("Running", cmd);
+      execSync(cmd);
+
+      status.file = f;
+      status.state = "completed";
+    } catch (e) {
+      console.log("Download failed", e);
+      throw e;
+    }
+
+    return status;
+  }
+
+
 } // End class
 
 function sleep(ms) {
@@ -1160,6 +1280,7 @@ async function EnsureAll() {
 
   return res;
 }
+
 
 /*
  * Original Run() function - kept for reference
