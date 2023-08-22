@@ -1565,7 +1565,7 @@ class EluvioLive {
           for (i = 0; i < nftInfo.tokens.length; i++) {
             const tok = nftInfo.tokens[i];
             const ownerObj = wallets.contents.filter(function (entry) { return entry.addr === tok.owner; });
-            tok.owner_email = ownerObj ? ownerObj[0].ident : "";
+            tok.owner_email = ownerObj.length > 0 ? ownerObj[0].ident : "";
           }
         } else {
           // single token queries do not include the token owner, just contract owner, or we'd fill it too
