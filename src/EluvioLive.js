@@ -1308,10 +1308,12 @@ class EluvioLive {
    * @param {string} proxyAddr - proxy owner address
    * @param {integer} showOwners - Enumerate all token owners using a fast indexed query. Only used if tokenId is undefined.
    * @param {integer} showOwnersViaContract - Enumerate all token info up to the given amount. Only used if tokenId is undefined.
+   * @param {string} includeEmail - Include email address for owners, as bound to the given tenant ID. Only used if tokenId is undefined.
    * @param {integer} tokenId - The token ID to show info for. This will take precedence over showOwners
    * @return {Promise<Object>} - An object containing NFT info, including 'warnings'
    */
-  async NftShow({ addr, mintHelper, minterAddr, proxyAddr, showOwners, showOwnersViaContract, tokenId }) {
+  async NftShow({ addr, mintHelper, minterAddr, proxyAddr,
+    showOwners, showOwnersViaContract, includeEmail, tokenId }) {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     );
@@ -1553,6 +1555,26 @@ class EluvioLive {
         ) {
           warns.push("Bad tokenURI: " + addr);
         }
+      }
+    }
+
+    if (includeEmail) {
+      try {
+        const wallets = await this.TenantWallets({ tenant: includeEmail });
+        if (nftInfo.tokens) {
+          for (i = 0; i < nftInfo.tokens.length; i++) {
+            const tok = nftInfo.tokens[i];
+            const owner = tok.owner;
+            const ownerObj = wallets.contents.filter(function (entry) { return entry.addr === owner; });
+            tok.owner_email = ownerObj ? ownerObj[0].ident : "";
+          }
+        } else {
+          // single tokens do not include the token owner, just contract owner, or we'd fill it too via:
+          const ownerObj = wallets.contents.filter(function (entry) { return entry.addr === nftInfo.owner; });
+          nftInfo.owner_email = ownerObj ? ownerObj[0].ident : "";
+        }
+      } catch (e) {
+        warns.push("Unable to get email(s): " + e);
       }
     }
 
