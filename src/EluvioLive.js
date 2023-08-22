@@ -1564,8 +1564,7 @@ class EluvioLive {
         if (nftInfo.tokens) {
           for (i = 0; i < nftInfo.tokens.length; i++) {
             const tok = nftInfo.tokens[i];
-            const owner = tok.owner;
-            const ownerObj = wallets.contents.filter(function (entry) { return entry.addr === owner; });
+            const ownerObj = wallets.contents.filter(function (entry) { return entry.addr === tok.owner; });
             tok.owner_email = ownerObj ? ownerObj[0].ident : "";
           }
         } else {
