@@ -1569,9 +1569,7 @@ class EluvioLive {
             tok.owner_email = ownerObj ? ownerObj[0].ident : "";
           }
         } else {
-          // single tokens do not include the token owner, just contract owner, or we'd fill it too via:
-          const ownerObj = wallets.contents.filter(function (entry) { return entry.addr === nftInfo.owner; });
-          nftInfo.owner_email = ownerObj ? ownerObj[0].ident : "";
+          // single token queries do not include the token owner, just contract owner, or we'd fill it too
         }
       } catch (e) {
         warns.push("Unable to get email(s): " + e);
