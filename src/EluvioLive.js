@@ -1571,7 +1571,7 @@ class EluvioLive {
           // single token queries do not include the token owner, just contract owner, or we'd fill it too
         }
       } catch (e) {
-        warns.push("Unable to get email(s): " + e);
+        warns.push({"error": "Unable to get email(s)", "exception": e });
       }
     }
 
