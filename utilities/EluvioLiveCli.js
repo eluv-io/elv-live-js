@@ -200,8 +200,8 @@ const CmdNftShow = async ({ argv }) => {
   console.log("NFT - show");
   console.log("addr ", argv.addr);
   console.log("check_minter ", argv.check_minter);
-  console.log("show_owners ", argv.show_owners);
-  console.log("show_owners_via_contract ", argv.show_owners_via_contract);
+  console.log("show_owners/show_owners_via_contract", argv.show_owners, argv.show_owners_via_contract);
+  console.log("include_email ", argv.include_email);
   console.log("token_id ", argv.token_id);
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
@@ -211,6 +211,7 @@ const CmdNftShow = async ({ argv }) => {
       mintHelper: argv.check_minter,
       showOwners: argv.show_owners,
       showOwnersViaContract: argv.show_owners_via_contract,
+      includeEmail: argv.include_email,
       tokenId: argv.token_id
     });
 
@@ -1724,6 +1725,10 @@ yargs(hideBin(process.argv))
         .option("show_owners_via_contract", {
           describe: "Show up to these many owners (default 0), parsed directly from the contract. Only used when token_id is not specified.",
           type: "integer",
+        })
+        .option("include_email", {
+          describe: "Include owner(s) email(s) when available, as bound to the given tenant ID.",
+          type: "string",
         })
         .option("token_id", {
           describe: "External token ID. This will take precedence over show_owners.",
