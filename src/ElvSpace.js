@@ -4,6 +4,7 @@ const { ElvAccount } = require("./ElvAccount");
 const { ElvClient } = require("@eluvio/elv-client-js");
 
 const Ethers = require("ethers");
+const CBOR = require("cbor");
 
 class ElvSpace {
   /**
@@ -241,6 +242,79 @@ class ElvSpace {
       tenantAdminGroupAddress,
       contentAdminGroupAddress
     };
+  }
+
+  /**
+   * Return a list of nodes in the content space, optionally filtered by node ID or endpoint.
+   *
+   * @param {string} matchEndpoint Only return nodes that have endpoints matching this string
+   * @param {string} matchNodeId Only return the node matching this nodeId
+   */
+  async SpaceNodes({matchEndpoint, matchNodeId}) {
+
+    // List all nodes in the space
+    let bign = await this.client.CallContractMethod({
+      contractAddress: this.spaceAddress,
+      methodName: "numActiveNodes",
+    });
+    let n = bign.toNumber();
+
+    let nodes = [];
+
+    for (let i = 0; i < n; i ++) {
+
+      let bigi = Ethers.BigNumber.from(i);
+      let addr = await this.client.CallContractMethod({
+        contractAddress: this.spaceAddress,
+        methodName: "activeNodeAddresses",
+        methodArgs: [bigi],
+        formatArguments: true
+      });
+
+      let locatorsHex = await this.client.CallContractMethod({
+        contractAddress: this.spaceAddress,
+        methodName: "activeNodeLocators",
+        methodArgs: [bigi]
+      });
+
+      let nodeId = this.client.utils.AddressToNodeId(addr);
+
+      if (matchNodeId != undefined && nodeId != matchNodeId) {
+        continue; // Not a match
+      }
+
+      let node = {id: nodeId, endpoints: []};
+
+      // Parse locators CBOR
+      let buffer = locatorsHex.slice(2, locatorsHex.length); // Skip "0x"
+      let hex = buffer.toString("hex");
+      let locators = CBOR.decodeAllSync(hex);
+
+      let match = false;
+      if (locators.length >= 5) {
+        let fabArray = locators[4].fab;
+        if (fabArray != undefined) {
+          for (let i = 0; i < fabArray.length; i ++) {
+            let host = fabArray[i].host;
+            if (matchEndpoint != undefined && !host.includes(matchEndpoint)) {
+              continue; // Not a match
+            }
+            match = true;
+            let endpoint = fabArray[i].scheme + "://" + host;
+            if (fabArray[i].port != "") {
+              endpoint = endpoint + ":" + fabArray[i].port;
+            }
+            endpoint = endpoint + "/" + fabArray[i].path;
+            node.endpoints.push(endpoint);
+          }
+        }
+      }
+      if (match) {
+        nodes.push(node);
+      }
+    }
+
+    return nodes;
   }
 
 }

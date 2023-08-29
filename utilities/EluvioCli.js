@@ -1047,6 +1047,27 @@ const CmdClaimerBurnOf = async ({ argv }) => {
   }
 };
 
+const CmdNodes = async ({ argv }) => {
+  try {
+    let space = new ElvSpace({
+      configUrl: Config.networks[Config.net],
+      spaceAddress: Config.consts[Config.net].spaceAddress,
+      kmsAddress: Config.consts[Config.net].kmsAddress,
+      debugLogging: argv.verbose
+    });
+    await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
+
+    let res = await space.SpaceNodes({
+      matchEndpoint: argv.endpoint,
+      matchNodeId: argv.node_id
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -1672,6 +1693,25 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdClaimerBurnOf({ argv });
+    }
+  )
+
+  .command(
+    "nodes",
+    "Retrieve all nodes in the content space, with optional filters.",
+    (yargs) => {
+      yargs
+        .option("endpoint", {
+          describe: "Match nodes with endpoints that contain this string.",
+          type: "string",
+        })
+        .option("node_id", {
+          describe: "Only match the node with this node ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdNodes({ argv });
     }
   )
 
