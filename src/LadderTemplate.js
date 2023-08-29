@@ -1,5 +1,5 @@
 module.exports = {
-  "4k": {
+  "2160": {
     bit_rate: 14000000,
     codecs: "avc1.640028,mp4a.40.2",
     height: 2160,

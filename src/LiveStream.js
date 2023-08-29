@@ -1142,7 +1142,7 @@ class EluvioLiveStream {
       console.log("PROBE", probe);
 
       // Create live reocording config
-      let lc = new LiveConf(probe, node.id, endpoint, false, false, "1080", true);
+      let lc = new LiveConf(probe, node.id, endpoint, false, false, true);
 
       const liveRecordingConfigStr = lc.generateLiveConf();
       let liveRecordingConfig = JSON.parse(liveRecordingConfigStr);
