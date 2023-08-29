@@ -1,4 +1,5 @@
 const { EluvioLiveStream } = require("../src/LiveStream.js");
+const { ElvSpace } = require("../src/ElvSpace.js");
 const { Config } = require("../src/Config.js");
 
 const yargs = require("yargs/yargs");
@@ -183,12 +184,55 @@ const CmdStreamDownload = async ({ argv }) => {
   }
 };
 
+const CmdStreamConfig = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let space = new ElvSpace({
+      configUrl: Config.networks[Config.net],
+      spaceAddress: Config.consts[Config.net].spaceAddress,
+      kmsAddress: Config.consts[Config.net].kmsAddress,
+      debugLogging: argv.verbose
+    });
+    await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
+
+    let status = await elvStream.StreamConfig({name: argv.stream, space});
+    console.log(yaml.dump(status));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
     type: "boolean",
     alias: "v"
   })
+
+  .command(
+    "config <stream>",
+    "Apply user configuration based on stream info",
+    (yargs) => {
+      yargs
+        .positional("stream", {
+          describe:
+            "Stream name or QID (content ID). Stream must be stopped.",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdStreamConfig({ argv });
+    }
+  )
+
   .command(
     "init <stream>",
     "Initialize media and DRM configuration for the stream object.",
@@ -215,6 +259,7 @@ yargs(hideBin(process.argv))
       CmdInit({ argv });
     }
   )
+
   .command(
     "create <stream>",
     "Create a new live stream for this stream object.",

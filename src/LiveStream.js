@@ -3,6 +3,7 @@
  */
 
 const { ElvClient } = require("@eluvio/elv-client-js");
+const {LiveConf} = require("./LiveConf");
 const { execSync } = require("child_process");
 
 const fs = require("fs");
@@ -206,11 +207,9 @@ class EluvioLiveStream {
 
       if (state == "running") {
         let playout_urls = {};
-        let master_hash = mainMeta.master.hash;
         let objectId = conf.objectId;
         let playout_options = await this.client.PlayoutOptions({
           objectId,
-          master_hash,
           linkPath: "public/asset_metadata/sources/default"
         });
 
@@ -333,7 +332,8 @@ class EluvioLiveStream {
     response = await this.client.FinalizeContentObject({
       libraryId: libraryId,
       objectId: objectId,
-      writeToken: writeToken
+      writeToken: writeToken,
+      commitMessage: "Create stream edge write token " + edgeToken
     });
     const objectHash = response.hash;
     console.log("Object hash:", objectHash);
@@ -571,7 +571,7 @@ class EluvioLiveStream {
         metadata: edgeMeta
       });
 
-      await this.client.FinalizeContentObject({
+      let fin = await this.client.FinalizeContentObject({
         libraryId,
         objectId,
         writeToken: edgeWriteToken,
@@ -580,6 +580,7 @@ class EluvioLiveStream {
       });
 
       return {
+        fin,
         name: name,
         edge_write_token: edgeWriteToken,
         state: "terminated"
@@ -1072,8 +1073,121 @@ class EluvioLiveStream {
     return status;
   }
 
+  async StreamConfig({name, space}) {
+
+    let conf = await this.LoadConf({name});
+
+    let status = {name};
+
+    try {
+
+      let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
+      status.library_id = libraryId;
+      status.object_id = conf.objectId;
+
+      let mainMeta = await this.client.ContentObjectMetadata({
+        libraryId: libraryId,
+        objectId: conf.objectId
+      });
+
+      let userConfig = mainMeta.live_recording_config;
+      status.user_config = userConfig;
+
+      // Get node URI from user config
+      const streamUrl = new URL(userConfig.url);
+
+      let nodes = await space.SpaceNodes({matchEndpoint: streamUrl.hostname});
+      if (nodes.length < 1) {
+        status.error = "No node matching stream URL " + streamUrl.href;
+        return;
+      }
+      const node = nodes[0];
+      status.node = node;
+
+      let endpoint = node.endpoints[0];
+      this.client.SetNodes({fabricURIs: [endpoint]});
+
+      // Probe the stream
+      let probe = {};
+      try {
+
+        let probeUrl = await this.client.Rep({
+          libraryId,
+          objectId: conf.objectId,
+          rep: "probe"
+        });
+        console.log("Probe URL", probeUrl);
+        let res = await got.post(probeUrl, {
+          json: {
+            "filename": streamUrl.href,
+            "listen": true
+          },
+          timeout: {
+            response: 60 * 1000 // millisec
+          }
+        });
+
+        const probeBuf = await res.body;
+        probe = JSON.parse(probeBuf);
+
+      } catch (error) {
+        if (error.code == "ETIMEDOUT") {
+          status.error = "Stream probe time out - make sure the stream source is available";
+        } else {
+          console.log("Stream probe failed", error);
+        }
+      }
+
+      probe.format.filename = streamUrl.href;
+      console.log("PROBE", probe);
+
+      // Create live reocording config
+      let lc = new LiveConf(probe, node.id, endpoint, false, false, true);
+
+      const liveRecordingConfigStr = lc.generateLiveConf();
+      let liveRecordingConfig = JSON.parse(liveRecordingConfigStr);
+      console.log("CONFIG", JSON.stringify(liveRecordingConfig.live_recording));
+
+      // Store live recordng config into the stream object
+      let e = await this.client.EditContentObject({
+        libraryId,
+        objectId: conf.objectId
+      });
+      let writeToken = e.write_token;
+
+      await this.client.ReplaceMetadata({
+        libraryId,
+        objectId: conf.objectId,
+        writeToken,
+        metadataSubtree: "live_recording",
+        metadata: liveRecordingConfig.live_recording
+      });
+
+      let fin = await this.client.FinalizeContentObject({
+        libraryId,
+        objectId: conf.objectId,
+        writeToken,
+        commitMessage: "Apply live stream configuration"
+      });
+
+      status.fin = fin;
+
+      return status;
+
+    } catch (e) {
+      console.log("ERROR", e);
+    }
+  }
+
+  async ReadEdgeMeta() {
+
+  }
+
+
 
 } // End class
+
+
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -1241,7 +1355,9 @@ const ChannelSummary = async ({client}) => {
   return summary;
 };
 
-const ConfigStream = async () => {
+
+
+const ConfigStreamRebroadcast = async () => {
 
   const t = 1619850660;
 
@@ -1388,7 +1504,7 @@ async function Run() {
       break;
 
     case "future_use_config":
-      ConfigStream();
+      ConfigStreamRebroadcast();
       break;
 
     default:
