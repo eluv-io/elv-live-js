@@ -1119,7 +1119,8 @@ class EluvioLiveStream {
         console.log("Probe URL", probeUrl);
         let res = await got.post(probeUrl, {
           json: {
-            "filename": streamUrl.href
+            "filename": streamUrl.href,
+            "listen": true
           },
           timeout: {
             response: 60 * 1000 // millisec

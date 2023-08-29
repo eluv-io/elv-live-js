@@ -53,7 +53,7 @@ class LiveConf {
     let frameRate = videoStream.frame_rate;
 
     let seg ={};
-    switch(frameRate) {
+    switch (frameRate) {
       case "24":
         seg.video = 30 * sourceTimescale;
         seg.audio = 30 * 48000;
@@ -97,7 +97,7 @@ class LiveConf {
         seg.duration = "30.03";
         break;
       default:
-        console.log("Unsupported frame rate", frameRate)
+        console.log("Unsupported frame rate", frameRate);
         break;
     }
     return seg;
@@ -109,7 +109,7 @@ class LiveConf {
     switch (this.probeKind()) {
       case "udp":
         let video_id_hex = videoStream.stream_id;
-        sync_id = parseInt(video_id_hex, 16)
+        sync_id = parseInt(video_id_hex, 16);
         break;
       case "rtmp":
         sync_id = -1; // Pending fabric API: videoStream.stream_index
