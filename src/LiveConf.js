@@ -47,12 +47,60 @@ class LiveConf {
     }
   }
 
-  calcSegDuration() {
-    // I've only seen these two values. Hard coded for now...
-    if (this.isFrameRateWhole()) {
-      return "30";
+  calcSegDuration({sourceTimescale}) {
+
+    let videoStream = this.getStreamDataForCodecType("video");
+    let frameRate = videoStream.frame_rate;
+
+    let seg ={};
+    switch(frameRate) {
+      case "24":
+        seg.video = 30 * sourceTimescale;
+        seg.audio = 30 * 48000;
+        seg.keyint = 48;
+        seg.duration = "30";
+        break;
+      case "25":
+        seg.video = 30 * sourceTimescale;
+        seg.audio = 30 * 48000;
+        seg.keyint = 50;
+        seg.duration = "30";
+        break;
+      case "30":
+        seg.video = 30 * sourceTimescale;
+        seg.audio = 30 * 48000;
+        seg.keyint = 60;
+        seg.duration = "30";
+        break;
+      case "30000/1001":
+        seg.video = 30.03 * sourceTimescale;
+        seg.audio = 29.76 * 48000;
+        seg.keyint = 60;
+        seg.duration = "30.03";
+        break;
+      case "48":
+        seg.video = 30 * sourceTimescale;
+        seg.audio = 30 * 48000;
+        seg.keyint = 96;
+        seg.duration = "30";
+        break;
+      case "50":
+        seg.video = 30 * sourceTimescale;
+        seg.audio = 30 * 48000;
+        seg.keyint = 100;
+        seg.duration = "30";
+        break;
+      case "60000/1001":
+        seg.video = 30.03 * sourceTimescale;
+        seg.audio = 29.76 * 48000;
+        seg.keyint = 120;
+        seg.duration = "30.03";
+        break;
+      default:
+        console.log("Unsupported frame rate", frameRate)
+        break;
     }
-    return "30.03";
+    return seg;
   }
 
   syncAudioToStreamIdValue() {
@@ -60,11 +108,11 @@ class LiveConf {
     let videoStream = this.getStreamDataForCodecType("video");
     switch (this.probeKind()) {
       case "udp":
-        let video_id_hex = videoStream.id;
-        sync_id = parseInt(video_id_hex, 16) || -1; // default back to -1 if video id is undefined
+        let video_id_hex = videoStream.stream_id;
+        sync_id = parseInt(video_id_hex, 16)
         break;
       case "rtmp":
-        sync_id = videoStream.index || -1; // default back to -1 if index is undefined
+        sync_id = -1; // Pending fabric API: videoStream.stream_index
         break;
     }
     return sync_id;
@@ -76,10 +124,12 @@ class LiveConf {
     var fileName = this.overwriteOriginUrl || this.probeData.format.filename;
     var audioStream = this.getStreamDataForCodecType("audio");
     var sampleRate = parseInt(audioStream.sample_rate);
-    var segDuration = this.calcSegDuration();
     var videoStream = this.getStreamDataForCodecType("video");
     var sourceTimescale;
-    
+
+    console.log("AUDIO", audioStream);
+    console.log("VIDEO", videoStream);
+
     // Fill in liveconf all formats have in common
     conf.live_recording.fabric_config.ingress_node_api = this.nodeUrl || null;
     conf.live_recording.fabric_config.ingress_node_id = this.nodeId || null;
@@ -87,10 +137,8 @@ class LiveConf {
     conf.live_recording.recording_config.recording_params.origin_url = fileName;
     conf.live_recording.recording_config.recording_params.description = `Ingest stream ${fileName}`;
     conf.live_recording.recording_config.recording_params.name = `Ingest stream ${fileName}`;
-    conf.live_recording.recording_config.recording_params.xc_params.audio_index[0] = audioStream.index;
-    conf.live_recording.recording_config.recording_params.xc_params.force_keyint = this.getForceKeyint();
+    conf.live_recording.recording_config.recording_params.xc_params.audio_index[0] = audioStream.stream_index;
     conf.live_recording.recording_config.recording_params.xc_params.sample_rate = sampleRate;
-    conf.live_recording.recording_config.recording_params.xc_params.seg_duration = segDuration;
     conf.live_recording.recording_config.recording_params.xc_params.enc_height = videoStream.height;
     conf.live_recording.recording_config.recording_params.xc_params.enc_width = videoStream.width;
 
@@ -112,9 +160,17 @@ class LiveConf {
         console.log("HLS detected. Not yet implemented");
         break;
       default:
-        console.log("Something we do not support detected.");
+        console.log("Unsuppoted media", this.probeKind());
         break;
     }
+
+    var segDurations = this.calcSegDuration({sourceTimescale});
+
+    // Segment conditioning parameters
+    conf.live_recording.recording_config.recording_params.xc_params.seg_duration = segDurations.duration;
+    conf.live_recording.recording_config.recording_params.xc_params.audio_seg_duration_ts = segDurations.audio;
+    conf.live_recording.recording_config.recording_params.xc_params.video_seg_duration_ts = segDurations.video;
+    conf.live_recording.recording_config.recording_params.xc_params.force_keyint = segDurations.keyint;
 
     switch (videoStream.height) {
       case 2160:
@@ -169,16 +225,6 @@ class LiveConf {
         break;
       default:
         throw new Error("ERROR: Probed stream does not conform to one of the following built in resolution ladders [4096, 2160], [1920, 1080] [1280, 720], [960, 540], [640, 360]");
-    }
-
-    // Fill in AV segdurations if specified. 
-    if (this.includeAVSegDurations) {
-      // this value is hardcoded for now. 1428480 seems to cover the majority of cases. 
-      conf.live_recording.recording_config.recording_params.xc_params.audio_seg_duration_ts = 1428480;
-      conf.live_recording.recording_config.recording_params.xc_params.video_seg_duration_ts = segDuration * sourceTimescale;
-    } else {
-      delete conf.live_recording.recording_config.recording_params.xc_params.audio_seg_duration_ts;
-      delete conf.live_recording.recording_config.recording_params.xc_params.video_seg_duration_ts;
     }
 
     return JSON.stringify(conf, null, 2);

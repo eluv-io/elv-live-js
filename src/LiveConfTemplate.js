@@ -26,7 +26,7 @@ module.exports = {
         max_duration_sec: -1,
         name: "",
         origin_url: "",
-        part_ttl: 2592000,
+        part_ttl: 3600,
         playout_type: "live",
         source_timescale: null,
         xc_params: {

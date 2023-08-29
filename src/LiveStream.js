@@ -207,11 +207,9 @@ class EluvioLiveStream {
 
       if (state == "running") {
         let playout_urls = {};
-        let master_hash = mainMeta.master.hash;
         let objectId = conf.objectId;
         let playout_options = await this.client.PlayoutOptions({
           objectId,
-          master_hash,
           linkPath: "public/asset_metadata/sources/default"
         });
 
@@ -334,7 +332,8 @@ class EluvioLiveStream {
     response = await this.client.FinalizeContentObject({
       libraryId: libraryId,
       objectId: objectId,
-      writeToken: writeToken
+      writeToken: writeToken,
+      commitMessage: "Create stream edge write token " + edgeToken
     });
     const objectHash = response.hash;
     console.log("Object hash:", objectHash);
@@ -1146,7 +1145,7 @@ class EluvioLiveStream {
 
       const liveRecordingConfigStr = lc.generateLiveConf();
       let liveRecordingConfig = JSON.parse(liveRecordingConfigStr);
-      console.log("CONFIG", liveRecordingConfig.live_recording);
+      console.log("CONFIG", JSON.stringify(liveRecordingConfig.live_recording));
 
       // Store live recordng config into the stream object
       let e = await this.client.EditContentObject({
