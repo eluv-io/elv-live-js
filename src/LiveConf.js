@@ -90,6 +90,12 @@ class LiveConf {
         seg.keyint = 100;
         seg.duration = "30";
         break;
+      case "60":
+        seg.video = 30 * sourceTimescale;
+        seg.audio = 30 * 48000;
+        seg.keyint = 120;
+        seg.duration = "30";
+        break;
       case "60000/1001":
         seg.video = 30.03 * sourceTimescale;
         seg.audio = 29.76 * 48000;
