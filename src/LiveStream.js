@@ -292,7 +292,7 @@ class EluvioLiveStream {
   async StreamCreate ({name, start = false, show_curl = false}) {
 
     let status = await this.Status({name});
-    if (status.state != "inactive" && status.state != "terminated") {
+    if (status.state != "inactive" && status.state != "terminated" && status.state != "stopped") {
       return {
         state: status.state,
         error: "stream still active - must terminate first"
