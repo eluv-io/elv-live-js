@@ -125,7 +125,7 @@ class EluvioLiveStream {
       let edgeWriteToken = mainMeta.live_recording.fabric_config.edge_write_token;
       if (edgeWriteToken == undefined) {
         status.state = "inactive";
-        return status
+        return status;
       }
 
       status.edge_write_token = edgeWriteToken;
@@ -434,10 +434,14 @@ class EluvioLiveStream {
 
       console.log("Stream ", op, ": ", name);
       let status = await this.Status({name});
-      if (status.state != "terminated" && status.state != "inactive") {
+      if (status.state != "stopped" ) {
         if (op == "start") {
+          status.error = "Unable to start stream - state: " + status.state;
           return status;
         }
+      }
+
+      if (status.state == "running" || status.state == "starting" || status.state == "stalled") {
         console.log("STOPPING");
         try {
           await this.client.CallBitcodeMethod({
@@ -454,7 +458,7 @@ class EluvioLiveStream {
 
         // Wait until LRO is terminated
         let tries = 10;
-        while (status.state != "terminated" && tries-- > 0) {
+        while (status.state != "stopped" && tries-- > 0) {
           console.log("Wait to terminate - ", status.state);
           await sleep(1000);
           status = await this.Status({name});
@@ -471,7 +475,7 @@ class EluvioLiveStream {
         return status;
       }
 
-      console.log("STARTING");
+      console.log("STARTING", "edge_write_token", status.edge_write_token);
 
       try {
         await this.client.CallBitcodeMethod({
