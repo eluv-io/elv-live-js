@@ -68,12 +68,14 @@ class EluvioLiveStream {
    * Retrive the status of the current live stream session
    *
    * States:
-   * - inactive - stream created but never started
-   * - stopped - stream is stopped (not listening for source feed)
-   * - starting - stream is started and waiting for source feed
-   * - running - stream is running
-   * - stalled - stream is running but source feed is no longer received
-   * - terminated - stream is terminated (must create a new one to restart)
+
+   * unconfigured    - no live_recording_config
+   * uninitialized   - no live_recording config generated
+   * inactive        - live_recording config initialized but no 'edge write token'
+   * stopped         - edge-write-token but not started
+   * starting        - LRO running but no source data yet
+   * running         - stream is running and producing output
+   * stalled         - LRO running but no source data (so not producing output)
    */
   async Status({name, stopLro = false, showParams = false}) {
 
@@ -92,9 +94,22 @@ class EluvioLiveStream {
         objectId: conf.objectId
       });
 
+      if (mainMeta.live_recording_config == undefined || mainMeta.live_recording_config.url == undefined) {
+        status.state = "unconfigured";
+        return status;
+      }
+
+      if (mainMeta.live_recording == undefined || mainMeta.live_recording.fabric_config == undefined ||
+        mainMeta.live_recording.playout_config == undefined || mainMeta.live_recording.recording_config == undefined) {
+        status.state = "uninitialized";
+        return status;
+      }
+
       let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
       if (fabURI == undefined) {
         console.log("bad fabric config - missing ingress node API");
+        status.state = "uninitialized";
+        return status;
       }
 
       // Support both hostname and URL ingress_node_api
@@ -108,6 +123,10 @@ class EluvioLiveStream {
       status.url = mainMeta.live_recording.recording_config.recording_params.origin_url;
 
       let edgeWriteToken = mainMeta.live_recording.fabric_config.edge_write_token;
+      if (edgeWriteToken == undefined) {
+        status.state = "inactive";
+        return status
+      }
 
       status.edge_write_token = edgeWriteToken;
       status.stream_id = edgeWriteToken; // By convention the stream ID is its write token
@@ -121,7 +140,7 @@ class EluvioLiveStream {
       if (edgeMeta.live_recording == undefined ||
         edgeMeta.live_recording.recordings == undefined ||
         edgeMeta.live_recording.recordings.recording_sequence == undefined) {
-        status.state = "inactive";
+        status.state = "stopped";
         return status;
       }
 
@@ -181,11 +200,18 @@ class EluvioLiveStream {
         state = JSON.parse(lroStatus.body).state;
       } catch (error) {
         console.log("LRO Status (failed): ", error.response.statusCode);
+        status.state = "stopped";
+        status.error = error.response;
+        return status;
       }
+
+      // Convert LRO 'state' to desired 'state'
       if (state == "running" && period.video_finalized_parts_info.last_finalization_time ==0) {
         state = "starting";
       } else if (state == "running" && sinceLastFinalize > 32.9) {
         state = "stalled";
+      } else if (state == "terminated") {
+        state = "stopped";
       }
       status.state = state;
 
@@ -203,6 +229,8 @@ class EluvioLiveStream {
         } catch (error) {
           console.log("LRO Stop (failed): ", error.response.statusCode);
         }
+        state = "stopped";
+        status.state = state;
       }
 
       if (state == "running") {
@@ -1096,10 +1124,11 @@ class EluvioLiveStream {
       // Get node URI from user config
       const streamUrl = new URL(userConfig.url);
 
+      console.log("Retrieving nodes...");
       let nodes = await space.SpaceNodes({matchEndpoint: streamUrl.hostname});
       if (nodes.length < 1) {
         status.error = "No node matching stream URL " + streamUrl.href;
-        return;
+        return status;
       }
       const node = nodes[0];
       status.node = node;
