@@ -323,12 +323,13 @@ class ElvContracts {
       methodArgs: [],
       formatArguments: true,
     });
+
     const totalReleased = await this.client.CallContractMethod({
       contractAddress: contractAddress,
       abi: JSON.parse(abistr),
-      methodName: "totalReleased",
+      methodName: "totalReleased(address)",
       methodArgs: [tokenContractAddress],
-      formatArguments: true,
+      formatArguments: false,
     });
 
     var total = Ethers.BigNumber.from(0);
@@ -342,8 +343,8 @@ class ElvContracts {
           contractAddress: contractAddress,
           abi: JSON.parse(abistr),
           methodName: "payee",
-          methodArgs: [i],
-          formatArguments: true,
+          methodArgs: [Ethers.BigNumber.from(i)],
+          formatArguments: false,
         });
         payees[payeeAddr] = {};
 
@@ -359,9 +360,9 @@ class ElvContracts {
         const released = await this.client.CallContractMethod({
           contractAddress: contractAddress,
           abi: JSON.parse(abistr),
-          methodName: "released",
+          methodName: "released(address,address)",
           methodArgs: [tokenContractAddress, payeeAddr],
-          formatArguments: true,
+          formatArguments: false,
         });
         payees[payeeAddr].released = Ethers.utils.formatUnits(released, decimals);
 
@@ -378,10 +379,11 @@ class ElvContracts {
         payeeTotal = payeeTotal.add(Ethers.BigNumber.from(releasable));
         payees[payeeAddr].total = Ethers.utils.formatUnits(payeeTotal, decimals);
         total = total.add(payeeTotal);
-
       } catch (e) {
+
         // Stop here when we reach the end of the payee list
-        if (e.code == 3) {
+        // These codes are empiric based on two different ethers versions
+        if (e.code == 3 || e.code == "CALL_EXCEPTION") {
           break;
         } else {
           console.log(e);
