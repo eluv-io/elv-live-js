@@ -2,23 +2,23 @@
 
 Eluvio Live JavaScript SDK and CLI
 
-A collection of libraries and utilities for managing content, live performance and NFT marketplaces on [Eluvio Live](https://live.eluv.io)
+A collection of libraries and utilities for managing content, live performance and NFT marketplaces on [Eluvio Live](https://live.eluv.io).
 
-# Dependencies
+## Dependencies
 
-You'll need the latest current Nodejs and NPM (Node 17.5.0+ or npm 8.5.1+): https://nodejs.org/en/download/current/
+You'll need the latest current Nodejs and NPM (Node 17.5.0+ or npm 8.5.1+): <https://nodejs.org/en/download/current/>
 
-# Build
+## Build
+
+From the elv-live-js directory, simply run:
 
 ```
 npm install
 ```
 
-# Tools
+## EluvioLive CLI
 
-# EluvioLive CLI
-
-The EluvioLive CLI (`elv-live`) provides tenant, tokens and marketplace management commands.
+The EluvioLive CLI (`elv-live`) provides tenant, token, and marketplace management commands.
 
 ```
 EluvioLive CLI
@@ -45,7 +45,7 @@ Options:
 
 [Complete Command Line Help](CMDLINE.md)
 
-# Usage Examples
+## Usage Examples
 
 
 Environment variables required:
@@ -54,11 +54,13 @@ Environment variables required:
 export PRIVATE_KEY=0x11...11
 ```
 
-## Tenant commands
+Many of the commands require a tenant ID. This starts with the letters `iten` and can be easily found through the Eluvio Fabric Browser (Properties library > Tenant object > Manage > Tenant ID).
 
-### Minter configuration
+### Tenant commands
 
-For a new tenant - set up all required minter keys and helpers wiht one command:
+#### Minter configuration
+
+For a new tenant, set up all required minter keys and helpers with one command:
 
 ```
 ./elv-live tenant_create_minter_config itenKGHd3iedqtA39krJUPkBTCNoTeX
@@ -71,9 +73,9 @@ To retrieve tenant minter configuration:
 
 ```
 
-To replace one or more minter resources, first get minter configuration and call the 'replace' command passing in all the existing values that you don't want changed (or else they will be regenerated).
+To replace one or more minter resources, first get the minter configuration and call the `elv-live tenant_replace_minter_config` command, passing in all the existing values that you don't want changed (or else they will be regenerated).
 
-For example to set the legacy_shuffle_seed and not change any of the other settings, pass in the existing values as options:
+For example to set the 'legacy\_shuffle\_seed' and not change any of the other settings, pass in the existing values as options:
 
 ```
 ./elv-live tenant_replace_minter_config itenKGHd3iedqtA39krJUPkBTCNoTeX --minter ikms37TNyoqBKqjbAPS7HMv4gzvkJzTa --mint_helper 0x3AEA63e14e084A87Cf2588Fd0987e12db71f81C1 --proxy 0x41899355fE869c370ED92eaA9f791289c4Da9F9D --proxy_owner ikms4DgAcxHqMyv6pJYqdb8wqUrmUmLk --legacy_shuffle_seed 1000
@@ -81,48 +83,37 @@ For example to set the legacy_shuffle_seed and not change any of the other setti
 ```
 
 
-### Marketplace info
+#### Marketplace info
 
 Show tenant-level marketplace information (including validation):
 
 ``` bash
-./elv-live tenant_show itenYQbgk66551FEqWr95xPmHZEjmdF ilib3Drbefo66PfWvY1NVup4VZFzDJ68  iq__21pxPgnpyYkV666nZ2RhNGYGYdwC --check_cauth ikms2BxjJaireMQXHS55gAiWkuugU5gsjx --check_minter 0x59e79eFE007F5205557a646Db5cBddA82261Ca81
+./elv-live tenant_show itenYQbgk66551FEqWr95xPmHZEjmdF --check_nfts
 ```
 
-Show number of items minted by NFT contract:
+Show items minted by NFT contract in a given wallet for a given tenant:
 ```
-./elv-live tenant_wallets iten3RmAAA7LUZdjC55agr68xPASnKxL
+./elv-live tenant_balance_of iten3RmQEH7LUZdjagr68xPASnKxL 0x31d979d8fcc4bfd55a081535c7aa816b67bd40c8
 ```
 
 Show all wallets that have purchases in the tenancy and the corresponding email addresses:
 ```
-./elv-live tenant_balance_of iten3RmQEH7LUZdjagr68xPASnKxL 0x31d979d8fcc4bfd55a081535c7aa816b67bd40c8
-```
-The ids required for the commands are located in the Eluvio fabric browser at:
-
-```
-Tenant Id:
-Properties > Drop Event > Manage > Tenant Id
-```
-```
-Library Id:
-Properties > Library Info > Library Id
-```
-```
-Tenant Object Id *
-Properties > Eluvio LIVE Tenant > Object Id
+./elv-live tenant_wallets iten3RmAAA7LUZdjC55agr68xPASnKxL
 ```
 
-## NFT commands
 
-### Set up an NFT contract 
+### NFT commands
+
+#### Set up an NFT contract 
 Set up an NFT contract and associate it with an NFT Template object:
 
+#TODO
+
 ```
-./elv-live nft_add_contract  ilib3ErteXJcCoTapj2ZhEvMKWau6jET iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP itenYQbgk66W1BFEqWr95xPmHZEjmdF --minthelper 0x59e79eFE007F5208857a646Db5cBddA82261Ca81 --cap 100 --name "TEST NFT SERIES A" --symbol "TESTA"
+./elv-live nft_add_contract iten3h6Eo3NT3JKZss6crss9quGPdKyS iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP 100
 ```
 
-### Set Token URI for NFT contract:
+#### Set Token URI for an NFT contract:
 elv-live tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]
 
 Single:
@@ -141,25 +132,23 @@ All:
 ```
 PRIVATE_KEY=0x00...ZZZ ./elv-live tenant_set_token_uri all itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft --as_url http://127.0.0.1:6546
 ```
-
-
-
+#/TODO
 
 ## NFT Build for generative images or videos
 
 
-./elv-live nft_build command assumes the nft_template object has been created and source images and videos have been ingested into the fabric such that image and embedded video urls have been generated and working.
+The `./elv-live nft_build` command assumes the NFT Template object has been created and source images and videos have been ingested into the fabric such that image and embedded video urls have been generated and are working.
 
-Refer to this repo/branch for ingesting gernerative nft videos:
+Refer to this repo/branch for ingesting generative NFT videos:
 https://github.com/eluv-io/elv-client-js/blob/simple-ingest-wayne/utilities/NFTIngest.js
 
-Note: Video Ingest will soon be brought into elv-live-js in the near future.
+Example command:
+```
+./elv-live nft_build ilib3ErteXJcCoTapj2ZhEvMKWau6jET iq__9dMPeAjFqxCp5Ck6BZBuy3BcA1f --nft_dir /Users/test/nftsTest
+```
 
-eg.
-`./elv-live nft_build ilib3ErteXJcCoTapj2ZhEvMKWau6jET iq__9dMPeAjFqxCp5Ck6BZBuy3BcA1f --nft_dir /Users/test/nftsTest`
+For generative NFTs we use the following convention: `--nft_dir` must specify one or more JSON files with a '.json' extension (for example: nft001.json, nft002.json).
 
-For generative NFTs we use the following convention --nft_dir must contain:
-One or more json files with a '.json' extension (for example: nft001.json, nft002.json)
 Example JSON File:
 ```
 {
@@ -175,23 +164,22 @@ Example JSON File:
     {
       "trait_type":"trait01",
       "value": "test1",
-      "rarity": 0.2                            (OPTIONAL, If not present, it will be calculated)
+      "rarity": 0.2                            (OPTIONAL, Default: null, does not display)
     }
   ]
 }
 ```
+
 The 'count' is an optional parameter to generate copies of this nft element inside
-the /public/nfts array
+the /public/nfts array.
 
-For generative images, the "image" attribute must contain a valid url to the image.
-For generative videos, the embed_url points to a playable video url.
+For generative images, the "image" attribute must contain a valid url for the image. For generative videos, the 'embed_url' must point to a playable video URL.
 
-All other optional keys (name, display_name, description, etc) will override the
-NFT content object's value from /asset_metadata/nft if present.
+The key 'attributes' is an array of objects `{"trait_type": "[trait name]", "value": "[specific trait]","rarity": [number]}` that defines properties for each. 'attributes' is optional but highly recommended. If 'attributes' is specified, then 'trait_type' and 'value' are required.
 
-The required key 'attributes' is an array of objects {"trait_type": "", "value": ""}
-and is used to calculate trait rarity. If rarity is already present in the attribute,
-it will be used instead.
+All other optional keys ('name', 'display\_name', 'description', etc.) will override the
+NFT content object's value from /asset\_metadata/nft if present.
+
 
 # EluvioStream CLI
 
