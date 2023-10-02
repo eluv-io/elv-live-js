@@ -3053,18 +3053,18 @@ class EluvioLive {
         headers,
       });
     } catch (e) {
-      console.error(e);
       try {
-        // if unauthorized try again with inactive marketplace flag
+        // if unauthorized try again as admin for inactive marketplaces
         if (e.status == 401) {
           res = await this.GetServiceRequest({
-            path: urljoin("/tnt/purchases/", tenant, marketplace, "/inactive"),
+            path: urljoin("/adm/purchases/", tenant, marketplace),
             queryParams: { offset, processor },
             headers,
           });
         }
-      } catch (e) {
-        console.error(e);
+      } catch (err2) {
+        console.log("Error: unauthorized or invalid tenant or marketplace");
+        // throw original error
         throw e;
       }
     }
