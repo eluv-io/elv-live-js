@@ -3045,11 +3045,29 @@ class EluvioLive {
       toJson = false;
     }
 
-    let res = await this.GetServiceRequest({
-      path: urljoin("/tnt/purchases/", tenant, marketplace),
-      queryParams: { offset, processor },
-      headers,
-    });
+    let res;
+    try {
+      res = await this.GetServiceRequest({
+        path: urljoin("/tnt/purchases/", tenant, marketplace),
+        queryParams: { offset, processor },
+        headers,
+      });
+    } catch (e) {
+      console.error(e);
+      try {
+        // if unauthorized try again with inactive marketplace flag
+        if (e.status == 401) {
+          res = await this.GetServiceRequest({
+            path: urljoin("/tnt/purchases/", tenant, marketplace, "/inactive"),
+            queryParams: { offset, processor },
+            headers,
+          });
+        }
+      } catch (e) {
+        console.error(e);
+        throw e;
+      }
+    }
 
     return toJson ? await res.json() : await res.text();
   }
