@@ -3443,7 +3443,7 @@ class EluvioLive {
    */
   async AdminTenantPrimarySales({ tenant, marketplace, processor, csv, offset }) {
     return this.TenantPrimarySales(
-      { tenant, marketplace, processor, csv, offset, urlPathPrefix: "/adm/tnt/purchases/" });
+      { tenant, marketplace, processor, csv, offset, urlPathPrefix: "/adm/purchases/" });
   }
 
   FilterTenant({ object }) {
