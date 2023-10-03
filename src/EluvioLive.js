@@ -3037,7 +3037,7 @@ class EluvioLive {
    * @param {string} marketplace - The marketplace ID
    * @return {Promise<Object>} - The API Response containing primary sales info
    */
-  async TenantPrimarySales({ tenant, marketplace, processor, csv, offset, useAdminApi = false }) {
+  async TenantPrimarySales({ tenant, marketplace, processor, csv, offset, admin = false }) {
     let headers = {};
     let toJson = true;
     if (csv && csv != "") {
@@ -3045,7 +3045,7 @@ class EluvioLive {
       toJson = false;
     }
 
-    let urlPathPrefix = useAdminApi ? "/adm/purchases" : "/tnt/purchases/";
+    let urlPathPrefix = admin ? "/adm/purchases" : "/tnt/purchases/";
 
     let res = await this.GetServiceRequest({
       path: urljoin(urlPathPrefix, tenant, marketplace),

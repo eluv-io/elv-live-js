@@ -662,7 +662,7 @@ const CmdTenantPrimarySales = async ({ argv }) => {
   console.log(`Processor: ${argv.processor}`);
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
-  console.log(`use_admin_api: ${argv.use_admin_api}`);
+  console.log(`admin: ${argv.admin}`);
 
   try {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
@@ -673,7 +673,7 @@ const CmdTenantPrimarySales = async ({ argv }) => {
         processor: argv.processor,
         csv: argv.csv,
         offset: argv.offset,
-        useAdminApi: argv.use_admin_api,
+        admin: argv.admin,
       });
 
     if (argv.csv && argv.csv != "") {
@@ -2500,7 +2500,7 @@ yargs(hideBin(process.argv))
           type: "number",
           default: 1,
         })
-        .option("use_admin_api", {
+        .option("admin", {
           describe: "Use the Admin API endpoint to resolve this query instead of the tenant API. " +
             "This is required for inactive marketplaces.",
           type: "boolean",
