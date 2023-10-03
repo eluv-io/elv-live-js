@@ -2511,7 +2511,7 @@ yargs(hideBin(process.argv))
           default: 1,
         })
         .option("use_admin_api", {
-          describe: "use the Admin API endpoint to resolve this query instead of the tenant API. " +
+          describe: "Use the Admin API endpoint to resolve this query instead of the tenant API. " +
             "This is required for inactive marketplaces.",
           type: "boolean",
           default: false,
