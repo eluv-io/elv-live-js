@@ -3434,7 +3434,7 @@ class EluvioLive {
   }
 
   /**
-   * Use Admin API to Get primary sales history for the tenant
+   * Use the Admin API endpoint to get primary sales history for the tenant and marketplace.
    *
    * @namedParams
    * @param {string} tenant - The Tenant ID
