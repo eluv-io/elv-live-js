@@ -667,23 +667,18 @@ const CmdTenantPrimarySales = async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
+    let args = {
+      tenant: argv.tenant,
+      marketplace: argv.marketplace,
+      processor: argv.processor,
+      csv: argv.csv,
+      offset: argv.offset,
+    };
     let res;
     if (argv.use_admin_api) {
-      res = await elvlv.AdminTenantPrimarySales({
-        tenant: argv.tenant,
-        marketplace: argv.marketplace,
-        processor: argv.processor,
-        csv: argv.csv,
-        offset: argv.offset,
-      });
+      res = await elvlv.AdminTenantPrimarySales(args);
     } else {
-      res = await elvlv.TenantPrimarySales({
-        tenant: argv.tenant,
-        marketplace: argv.marketplace,
-        processor: argv.processor,
-        csv: argv.csv,
-        offset: argv.offset,
-      });
+      res = await elvlv.TenantPrimarySales(args);
     }
 
     if (argv.csv && argv.csv != "") {
