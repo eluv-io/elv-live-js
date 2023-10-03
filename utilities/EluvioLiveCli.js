@@ -662,17 +662,19 @@ const CmdTenantPrimarySales = async ({ argv }) => {
   console.log(`Processor: ${argv.processor}`);
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
+  console.log(`admin: ${argv.admin}`);
 
   try {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantPrimarySales({
-      tenant: argv.tenant,
-      marketplace: argv.marketplace,
-      processor: argv.processor,
-      csv: argv.csv,
-      offset: argv.offset,
-    });
+        tenant: argv.tenant,
+        marketplace: argv.marketplace,
+        processor: argv.processor,
+        csv: argv.csv,
+        offset: argv.offset,
+        admin: argv.admin,
+      });
 
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
@@ -2494,10 +2496,15 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("offset", {
-          describe:
-            "Offset in months to dump data where 0 is the current month",
+          describe: "Offset in months to dump data where 0 is the current month",
           type: "number",
           default: 1,
+        })
+        .option("admin", {
+          describe: "Use the Admin API endpoint to resolve this query instead of the tenant API. " +
+            "This is required for inactive marketplaces.",
+          type: "boolean",
+          default: false,
         });
     },
     (argv) => {
