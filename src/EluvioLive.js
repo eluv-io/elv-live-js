@@ -3037,13 +3037,15 @@ class EluvioLive {
    * @param {string} marketplace - The marketplace ID
    * @return {Promise<Object>} - The API Response containing primary sales info
    */
-  async TenantPrimarySales({ tenant, marketplace, processor, csv, offset, urlPathPrefix = "/tnt/purchases/" }) {
+  async TenantPrimarySales({ tenant, marketplace, processor, csv, offset, useAdminApi = false }) {
     let headers = {};
     let toJson = true;
     if (csv && csv != "") {
       headers = { Accept: "text/csv" };
       toJson = false;
     }
+
+    let urlPathPrefix = useAdminApi ? "/adm/purchases" : "/tnt/purchases/";
 
     let res = await this.GetServiceRequest({
       path: urljoin(urlPathPrefix, tenant, marketplace),
@@ -3431,19 +3433,6 @@ class EluvioLive {
       path: "/adm/health"
     });
     return res.text();
-  }
-
-  /**
-   * Use the Admin API endpoint to get primary sales history for the tenant and marketplace.
-   *
-   * @namedParams
-   * @param {string} tenant - The Tenant ID
-   * @param {string} marketplace - The marketplace ID
-   * @return {Promise<Object>} - The API Response containing primary sales info
-   */
-  async AdminTenantPrimarySales({ tenant, marketplace, processor, csv, offset }) {
-    return this.TenantPrimarySales(
-      { tenant, marketplace, processor, csv, offset, urlPathPrefix: "/adm/purchases/" });
   }
 
   FilterTenant({ object }) {

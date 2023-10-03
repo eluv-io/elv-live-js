@@ -673,13 +673,9 @@ const CmdTenantPrimarySales = async ({ argv }) => {
       processor: argv.processor,
       csv: argv.csv,
       offset: argv.offset,
+      useAdminApi: argv.use_admin_api,
     };
-    let res;
-    if (argv.use_admin_api) {
-      res = await elvlv.AdminTenantPrimarySales(args);
-    } else {
-      res = await elvlv.TenantPrimarySales(args);
-    }
+    let res= await elvlv.TenantPrimarySales(args);
 
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
