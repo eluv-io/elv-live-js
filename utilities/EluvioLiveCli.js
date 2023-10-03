@@ -662,17 +662,29 @@ const CmdTenantPrimarySales = async ({ argv }) => {
   console.log(`Processor: ${argv.processor}`);
   console.log(`Offset: ${argv.offset}`);
   console.log(`CSV: ${argv.csv}`);
+  console.log(`use_admin_api: ${argv.use_admin_api}`);
 
   try {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
-    let res = await elvlv.TenantPrimarySales({
-      tenant: argv.tenant,
-      marketplace: argv.marketplace,
-      processor: argv.processor,
-      csv: argv.csv,
-      offset: argv.offset,
-    });
+    let res;
+    if (argv.use_admin_api) {
+      res = await elvlv.AdminTenantPrimarySales({
+        tenant: argv.tenant,
+        marketplace: argv.marketplace,
+        processor: argv.processor,
+        csv: argv.csv,
+        offset: argv.offset,
+      });
+    } else {
+      res = await elvlv.TenantPrimarySales({
+        tenant: argv.tenant,
+        marketplace: argv.marketplace,
+        processor: argv.processor,
+        csv: argv.csv,
+        offset: argv.offset,
+      });
+    }
 
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
@@ -1353,35 +1365,6 @@ const CmdAdminHealth = async ({ argv }) => {
     res = await elvlv.AdminHealth();
 
     console.log("\n" + yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
-const CmdAdminTenantPrimarySales = async ({ argv }) => {
-  console.log(
-    `Admin Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`
-  );
-  console.log(`Processor: ${argv.processor}`);
-  console.log(`Offset: ${argv.offset}`);
-  console.log(`CSV: ${argv.csv}`);
-
-  try {
-    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
-
-    let res = await elvlv.AdminTenantPrimarySales({
-      tenant: argv.tenant,
-      marketplace: argv.marketplace,
-      processor: argv.processor,
-      csv: argv.csv,
-      offset: argv.offset,
-    });
-
-    if (argv.csv && argv.csv != "") {
-      fs.writeFileSync(argv.csv, res);
-    } else {
-      console.log(yaml.dump(res));
-    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -2523,10 +2506,15 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("offset", {
-          describe:
-            "Offset in months to dump data where 0 is the current month",
+          describe: "Offset in months to dump data where 0 is the current month",
           type: "number",
           default: 1,
+        })
+        .option("use_admin_api", {
+          describe: "use the Admin API endpoint to resolve this query instead of the tenant API. " +
+            "This is required for inactive marketplaces.",
+          type: "boolean",
+          default: false,
         });
     },
     (argv) => {
@@ -3362,40 +3350,6 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdShuffle({ argv });
-    }
-  )
-
-  .command(
-    "admin_tenant_primary_sales <tenant> <marketplace>",
-    "Use admin API to show tenant primary sales history",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("marketplace", {
-          describe: "Marketplace ID",
-          type: "string",
-        })
-        .option("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
-          type: "string",
-          default: "",
-        })
-        .option("csv", {
-          describe: "File path to output csv",
-          type: "string",
-        })
-        .option("offset", {
-          describe:
-            "Offset in months to dump data where 0 is the current month",
-          type: "number",
-          default: 1,
-        });
-    },
-    (argv) => {
-      CmdAdminTenantPrimarySales({ argv });
     }
   )
 
