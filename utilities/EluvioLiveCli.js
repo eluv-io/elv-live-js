@@ -1358,6 +1358,35 @@ const CmdAdminHealth = async ({ argv }) => {
   }
 };
 
+const CmdAdminTenantPrimarySales = async ({ argv }) => {
+  console.log(
+    `Admin Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`
+  );
+  console.log(`Processor: ${argv.processor}`);
+  console.log(`Offset: ${argv.offset}`);
+  console.log(`CSV: ${argv.csv}`);
+
+  try {
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+
+    let res = await elvlv.AdminTenantPrimarySales({
+      tenant: argv.tenant,
+      marketplace: argv.marketplace,
+      processor: argv.processor,
+      csv: argv.csv,
+      offset: argv.offset,
+    });
+
+    if (argv.csv && argv.csv != "") {
+      fs.writeFileSync(argv.csv, res);
+    } else {
+      console.log(yaml.dump(res));
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdTenantCreateMinter = async ({ argv }) => {
   console.log("Tenant Minter Create Config");
   console.log(`TenantId: ${argv.tenant}`);
@@ -3333,6 +3362,40 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdShuffle({ argv });
+    }
+  )
+
+  .command(
+    "admin_tenant_primary_sales <tenant> <marketplace>",
+    "Use admin API to show tenant primary sales history",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("marketplace", {
+          describe: "Marketplace ID",
+          type: "string",
+        })
+        .option("processor", {
+          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
+          type: "string",
+          default: "",
+        })
+        .option("csv", {
+          describe: "File path to output csv",
+          type: "string",
+        })
+        .option("offset", {
+          describe:
+            "Offset in months to dump data where 0 is the current month",
+          type: "number",
+          default: 1,
+        });
+    },
+    (argv) => {
+      CmdAdminTenantPrimarySales({ argv });
     }
   )
 
