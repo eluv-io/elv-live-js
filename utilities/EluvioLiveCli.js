@@ -667,15 +667,14 @@ const CmdTenantPrimarySales = async ({ argv }) => {
   try {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
-    let args = {
-      tenant: argv.tenant,
-      marketplace: argv.marketplace,
-      processor: argv.processor,
-      csv: argv.csv,
-      offset: argv.offset,
-      useAdminApi: argv.use_admin_api,
-    };
-    let res= await elvlv.TenantPrimarySales(args);
+    let res = await elvlv.TenantPrimarySales({
+        tenant: argv.tenant,
+        marketplace: argv.marketplace,
+        processor: argv.processor,
+        csv: argv.csv,
+        offset: argv.offset,
+        useAdminApi: argv.use_admin_api,
+      });
 
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
