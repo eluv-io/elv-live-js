@@ -69,7 +69,7 @@ class ElvAccount {
 
     // We don't require the key is part of a tenant (for example when creating a tenant root key)
     let tenantAdminsAddr;
-    if (tenantId != undefined) {
+    if (tenantId) {
       // Validate tenant ID (make sure it is not the tenant admins ID)
       const idType = await this.client.AccessType({ id: tenantId });
       if (idType != this.client.authClient.ACCESS_TYPES.TENANT) {
@@ -118,7 +118,7 @@ class ElvAccount {
 
       await client.userProfileClient.CreateWallet();
 
-      if (tenantId != undefined) {
+      if (tenantId) {
 
         await this.SetAccountTenantContractId({tenantId});
 
