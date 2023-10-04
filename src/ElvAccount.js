@@ -1,5 +1,7 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const ethers = require("ethers");
+const fs = require("fs");
+const path = require("path");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { ElvUtils } = require("./Utils");
 
@@ -25,7 +27,7 @@ class ElvAccount {
     });
     this.wallet = this.client.GenerateWallet();
     this.signer = this.wallet.AddAccount({
-      privateKey, 
+      privateKey,
     });
     this.client.SetSigner({ signer:this.signer });
     this.client.ToggleLogging(this.debug);
@@ -33,7 +35,7 @@ class ElvAccount {
 
   async InitWithId({ privateKey, id }) {
     await this.Init({privateKey});
-    await this.SetAccountTenantContractId({ id });
+    await this.SetAccountTenantContractId({ tenantId: id });
   }
 
   InitWithClient({ elvClient }) {
@@ -56,17 +58,35 @@ class ElvAccount {
    *
    * @namedParams
    * @param {number} funds - The amount in ETH to fund the new account.
-   * @cauth {string} accountName - The name of the account to set in it's wallet metadata (Optional)
-   * @cauth {string} tenantAdminsGroup - The tenant admins group ID to set for the user's wallet (Optional)
+   * @param {string} accountName - The name of the account to set in it's wallet metadata (Optional)
+   * @param {string} tenantId - The tenant ID (iten) (Optional)
    * @return {Promise<Object>} - An object containing the new account mnemonic, privateKey, address, accountName, balance
    */
-  async Create({ funds = 0.25, accountName, tenantAdminsAddress }) {
+  async Create({ funds = 0.25, accountName, tenantId }) {
     if (!this.client) {
       throw Error("ElvAccount not intialized");
     }
-    if (tenantAdminsAddress) {
-      if (!Utils.ValidAddress(tenantAdminsAddress)) {
-        throw Error(`Invalid tenant admins address: ${tenantAdminsAddress}`);
+
+    // We don't require the key is part of a tenant (for example when creating a tenant root key)
+    let tenantAdminsAddr;
+    if (tenantId) {
+      // Validate tenant ID (make sure it is not the tenant admins ID)
+      const idType = await this.client.AccessType({ id: tenantId });
+      if (idType != this.client.authClient.ACCESS_TYPES.TENANT) {
+        throw Error("Bad tenant ID");
+      }
+
+      // Find tenant admins address
+      let tenantAddr = this.client.utils.HashToAddress(tenantId);
+      try {
+        tenantAdminsAddr = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          methodName: "groupsMapping",
+          methodArgs: ["tenant_admin", 0],
+          formatArguments: true,
+        });
+      } catch (e) {
+        throw Error("Bad tenant - missing tenant admins group");
       }
     }
 
@@ -98,12 +118,13 @@ class ElvAccount {
 
       await client.userProfileClient.CreateWallet();
 
-      let tenantAdminsId = "";
-      if (tenantAdminsAddress) {
+      if (tenantId) {
+
+        await this.SetAccountTenantContractId({tenantId});
+
         await client.userProfileClient.SetTenantId({
-          address: tenantAdminsAddress,
+          address: tenantAdminsAddr,
         });
-        tenantAdminsId = await this.client.userProfileClient.TenantId();
       }
 
       if (accountName) {
@@ -114,20 +135,23 @@ class ElvAccount {
       }
 
       let balance = await wallet.GetAccountBalance({ signer });
+
       return {
         accountName,
         address,
         mnemonic,
         privateKey,
         balance,
-        tenantAdminsId,
+        tenantId,
       };
     } catch (e) {
+      // Return funds in case of error
       if (funds > 0.01) {
         await client.SendFunds({
           recipient: this.client.signer.address,
           ether: funds - 0.01,
         });
+        console.log("Funds returned", accountName, address, privateKey);
       }
       throw e;
     }
@@ -142,11 +166,16 @@ class ElvAccount {
     }
 
     let address = await this.client.signer.address;
+    let tenantId = "";
     let tenantAdminsId = "";
     let userMetadata = "";
     try {
       tenantAdminsId = await this.client.userProfileClient.TenantId();
     } catch (e){ console.log("No tenantAdminsId set."); }
+
+    try {
+      tenantId = await this.client.userProfileClient.TenantContractId();
+    } catch (e){ console.log("No tenantContractId set."); }
 
     try {
       userMetadata = await this.client.userProfileClient.UserMetadata();
@@ -158,7 +187,23 @@ class ElvAccount {
     let wallet = this.client.GenerateWallet();
     let balance = await wallet.GetAccountBalance({ signer: this.client.signer });
     let userId = ElvUtils.AddressToId({prefix:"iusr", address});
-    return { address, userId, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
+
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseAccessWallet.abi")
+    );
+
+    let userTenantIdHex = await this.client.CallContractMethod({
+      contractAddress: walletAddress,
+      abi: JSON.parse(abi),
+      methodName: "getMeta",
+      methodArgs: ["_ELV_TENANT_ID"],
+    });
+    const userTenantId = ethers.utils.toUtf8String(userTenantIdHex);
+
+    if (tenantId != userTenantId) {
+      console.log("Bad user - inconsistent tenant ID", tenantId, userTenantId);
+    }
+    return { address, userId, tenantId, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
   }
 
   async SetAccountTenantAdminsAddress({ tenantAdminsAddress }) {
@@ -171,32 +216,50 @@ class ElvAccount {
     });
   }
 
-  async SetAccountTenantContractId({ id }) {
+  async SetAccountTenantContractId({ tenantId }) {
     if (!this.client) {
       throw Error("ElvAccount not intialized");
     }
 
-    //Automatic fix: convert tenant admin group id to tenant contract id 
-    const idType = await this.client.AccessType({ id });
+    console.log("tenantId", tenantId);
+    const idType = await this.client.AccessType({ id: tenantId });
     if (idType === this.client.authClient.ACCESS_TYPES.GROUP) {
-      let groupAddress = this.client.utils.HashToAddress(id);
-
-      let tenantContractIdHex = await this.client.CallContractMethod({
-        contractAddress: groupAddress,
-        methodName: "getMeta",
-        methodArgs: ["_ELV_TENANT_ID"], 
-      });
-
-      if (tenantContractIdHex == "0x") {
-        let args = group.split("_");
-        throw (`${args[0]} ${args[1]} group can't be verified or is not associated with any tenant`);
-      }
-      id = ethers.utils.toUtf8String(tenantContractIdHex);
+      throw Error("Bad tenant ID", tenantId);
     }
 
+    const userWalletAddress = await this.client.userProfileClient.WalletAddress();
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseAccessWallet.abi")
+    );
+    console.log("wallet addr", userWalletAddress);
+
     await this.client.userProfileClient.SetTenantContractId({
-      tenantContractId: id,
+      tenantContractId: tenantId,
     });
+
+    // Attempt to store contract meta if the user wallet contract supports it
+    let userTenantIdHex = await this.client.CallContractMethod({
+      contractAddress: userWalletAddress,
+      abi: JSON.parse(abi),
+      methodName: "getMeta",
+      methodArgs: ["_ELV_TENANT_ID"],
+    });
+
+    const userTenantId = ethers.utils.toUtf8String(userTenantIdHex);
+    console.log("User wallet tenant ID", userTenantId);
+
+    if (userTenantId != "" && userTenantId != tenantId) {
+      console.log("User wallet has a different tenant ID", userTenantId);
+    }
+
+    if (userTenantId != tenantId) {
+      await this.client.CallContractMethodAndWait({
+        contractAddress: userWalletAddress,
+        abi: JSON.parse(abi),
+        methodName: "putMeta",
+        methodArgs: ["_ELV_TENANT_ID", tenantId],
+      });
+    }
   }
 
   async CreateAccessGroup({ name }) {
