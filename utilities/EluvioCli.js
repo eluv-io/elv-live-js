@@ -33,7 +33,7 @@ const CmdAccountCreate = async ({ argv }) => {
   console.log("Account Create\n");
   console.log(`funds: ${argv.funds}`);
   console.log(`account_name: ${argv.account_name}`);
-  console.log(`tenant_admins: ${argv.tenant_admins}`);
+  console.log(`tenant: ${argv.tenant}`);
 
   try {
     let elvAccount = new ElvAccount({
@@ -48,7 +48,7 @@ const CmdAccountCreate = async ({ argv }) => {
     let res = await elvAccount.Create({
       funds: argv.funds,
       accountName: argv.account_name,
-      tenantAdminsAddress: argv.tenant_admins,
+      tenantId: argv.tenant,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -350,7 +350,7 @@ const CmdTenantFixSuite = async({ argv }) => {
         throw Error(`The account with private key ${process.env.PRIVATE_KEY} is already associated with tenant ${tenantContractId}`);
       }
     } else {
-      elvAccount.SetAccountTenantContractId({ id: argv.tenant });
+      elvAccount.SetAccountTenantContractId({ tenantId: argv.tenant });
     }
 
     //Set content admins group ID and fix problems related to the tenant and its admin groups
@@ -1075,21 +1075,21 @@ yargs(hideBin(process.argv))
     alias: "v"
   })
   .command(
-    "account_create <funds> <account_name> [tenant_admins]",
+    "account_create <funds> <account_name> <tenant>",
     "Create a new account -> mnemonic, address, private key",
     (yargs) => {
       yargs
         .positional("funds", {
           describe:
-            "How much to fund the new account from this private key in ETH.",
+            "How much to fund the new account from this private key (ELV).",
           type: "string",
         })
         .positional("account_name", {
           describe: "Account Name",
           type: "string",
         })
-        .positional("tenant_admins", {
-          describe: "Tenant admins group address (hex)",
+        .positional("tenant", {
+          describe: "Tenant ID (iten)",
           type: "string",
         });
     },
