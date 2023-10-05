@@ -35,13 +35,13 @@ module.exports = {
     stream_name: "video",
     width: 960
   },
-  "360": {
-    bit_rate: 520000,
+  "540_low": {
+    bit_rate: 900000,
     codecs: "avc1.640028,mp4a.40.2",
-    height: 360,
+    height: 540,
     media_type: 1,
-    representation: "videovideo_640x360_h264@520000",
+    representation: "videovideo_960x540_h264@900000",
     stream_name: "video",
-    width: 640
-  }
+    width: 960
+  },
 };
