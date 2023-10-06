@@ -15,7 +15,6 @@ const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
 const prompt = require("prompt-sync")({ sigint: true });
-const url = require('url');
 
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
@@ -347,15 +346,6 @@ const CmdTenantShow = async ({ argv }) => {
 };
 
 
-function isValidURI(uri) {
-  try {
-    const parsedUrl = new URL(uri);
-    return parsedUrl.protocol === 'https:'; 
-  } catch (error) {
-    return false; 
-  }
-}
-
 const CmdTenantSetTokenURI = async ({ argv }) => {
   console.log("request_type ", argv.request_type);
   console.log("tenantId ", argv.tenant);
@@ -371,7 +361,7 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
   
   try {
     // Validate the token URI from the command line for single, all requests
-    if ((argv.request_type != "batch") && (!(isValidURI(argv.new_token_uri)))) {
+    if ((argv.request_type != "batch") && (!(ElvUtils.IsValidURI(argv.new_token_uri)))) {
       console.log("Invalid token_uri: ", argv.new_token_uri);
       return;
     } 
@@ -395,7 +385,7 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
     }
 
   } catch (e) {
-    console.error("ERROR:", e);
+    console.error("ERROR: ", e);
   }
 };
 
