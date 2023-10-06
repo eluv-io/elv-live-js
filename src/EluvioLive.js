@@ -144,15 +144,26 @@ class EluvioLive {
         const records = parse(csvFile, {columns: true,
           skip_records_with_empty_values: true});
 
-        // rows should be tokenURI, tokenId
-        // tokenId should always exist
-        await records.forEach(row => {
-          body.tokens.push({
-            "token_id": Number(row.tokenId),
-            "token_id_str":  row.tokenId.toString(),
-            "token_uri": row.tokenURI
+        try {
+          // rows should be tokenURI, tokenId
+          // tokenId should always exist
+          await records.forEach(row => {
+            // validate row.tokenURI is a valid URL
+            if (!ElvUtils.IsValidURI(row.tokenURI)) {
+              console.log("Error: Invalid tokenURI while parsing csv ", row.tokenURI);
+              throw new Error("invalid tokenURI " + row.tokenURI);
+            } else {
+              body.tokens.push({
+                "token_id": Number(row.tokenId),
+                "token_id_str":  row.tokenId.toString(),
+                "token_uri": row.tokenURI
+              });
+            }
           });
-        });
+        } catch (e) {
+          console.log("Error parsing CSV file: ", e);
+          return;
+        }
 
         break;
       case "all":
