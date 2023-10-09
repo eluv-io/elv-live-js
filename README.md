@@ -45,7 +45,7 @@ Options:
 
 [Complete Command Line Help](CMDLINE.md)
 
-## Usage Examples
+### Usage Examples
 
 
 Environment variables required:
@@ -56,9 +56,9 @@ export PRIVATE_KEY=0x11...11
 
 Many of the commands require a tenant ID. This starts with the letters `iten` and can be easily found through the Eluvio Fabric Browser (Properties library > Tenant object > Manage > Tenant ID).
 
-### Tenant commands
+#### Tenant commands
 
-#### Minter configuration
+##### Minter configuration
 
 For a new tenant, set up all required minter keys and helpers with one command:
 
@@ -83,58 +83,58 @@ For example to set the 'legacy\_shuffle\_seed' and not change any of the other s
 ```
 
 
-#### Marketplace info
+##### Marketplace info
 
-Show tenant-level marketplace information (including validation):
+To show tenant-level marketplace information (including validation):
 
 ``` bash
 ./elv-live tenant_show itenYQbgk66551FEqWr95xPmHZEjmdF --check_nfts
 ```
 
-Show items minted by NFT contract in a given wallet for a given tenant:
+To show items minted by NFT contract in a given wallet for a given tenant:
 ```
 ./elv-live tenant_balance_of iten3RmQEH7LUZdjagr68xPASnKxL 0x31d979d8fcc4bfd55a081535c7aa816b67bd40c8
 ```
 
-Show all wallets that have purchases in the tenancy and the corresponding email addresses:
+To show all wallets that have purchases in the tenancy and the corresponding email addresses:
 ```
 ./elv-live tenant_wallets iten3RmAAA7LUZdjC55agr68xPASnKxL
 ```
 
 
-### NFT commands
+#### NFT commands
 
-#### Set up an NFT contract 
-Set up an NFT contract and associate it with an NFT Template object:
-
-#TODO
+##### Set up an NFT contract 
+To set up a tradeable NFT contract and associate it with an NFT Template object:
 
 ```
-./elv-live nft_add_contract iten3h6Eo3NT3JKZss6crss9quGPdKyS iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP 100
+./elv-live nft_add_contract iten3h6Eo3NT3JKZss6crss9quGPdKyS iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP 100 MYTENANCY-MYNFTNAME MYTENANCY-MYNFTSYMBOL --hold 1
 ```
 
-#### Set Token URI for an NFT contract:
-elv-live tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]
+##### Build NFT metadata
+
+
+
+##### Set Token URI for an NFT contract
+There are three ways to associate an NFT contract with new token URI metadata: setting a URI for a single token ID, setting one or more URIs in batch for a number of token IDs, and setting a URI for all token IDs at once.
 
 Single:
 ```
-PRIVATE_KEY=0x00...ZZZ ./elv-live tenant_set_token_uri single itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft --token_id 128 --as_url http://127.0.0.1:6546
+./elv-live tenant_set_token_uri single itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft --token_id 128 --as_url http://127.0.0.1:6546
 ```
 
 Batch:
 ```
-PRIVATE_KEY=0x00...ZZZ ./elv-live tenant_set_token_uri batch itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca - --as_url http://127.0.0.1:6546 --csv ../test/testdata/settokenuri_testlist.csv
+./elv-live tenant_set_token_uri batch itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca - --csv ../test/testdata/settokenuri_testlist.csv
 ```
-
 [Sample Batch CSV file](test/testdata/settokenuri_testlist.csv)
 
 All:
 ```
-PRIVATE_KEY=0x00...ZZZ ./elv-live tenant_set_token_uri all itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft --as_url http://127.0.0.1:6546
+./elv-live tenant_set_token_uri all itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft
 ```
-#/TODO
 
-## NFT Build for generative images or videos
+##### NFT Build for generative images or videos
 
 
 The `./elv-live nft_build` command assumes the NFT Template object has been created and source images and videos have been ingested into the fabric such that image and embedded video urls have been generated and are working.
@@ -152,21 +152,27 @@ For generative NFTs we use the following convention: `--nft_dir` must specify on
 Example JSON File:
 ```
 {
-  "count":3,                                   (OPTIONAL, Default: 1)
+  "count": 3,                                   (OPTIONAL, Default: 1)
   "name": "Example NFT",                       (OPTIONAL, Default: from Content Object)
   "display_name": "Example NFT",               (OPTIONAL, Default: from Content Object)
   "description" : "This is an example NFT.",   (OPTIONAL, Default: from Content Object)
-  "rich_text" : "",                            (OPTIONAL, Default: from Content Object)
+  "rich_text": "",                             (OPTIONAL, Default: from Content Object)
   "image": "https://image003",
-  "embed_url":"https://videoURL003",
-  "attributes:":
+  "embed_url":"https://videoURL003",           (Only for Video content)
+  "attributes: "
   [
     {
-      "trait_type":"trait01",
-      "value": "test1",
+      "trait_type": "Hair",
+      "value": "Black",
       "rarity": 0.2                            (OPTIONAL, Default: null, does not display)
+    },
+    {
+      "trait_type": "Expression",
+      "value": "Smiling",
+      "rarity": 0.1
     }
   ]
+  "
 }
 ```
 
@@ -175,7 +181,7 @@ the /public/nfts array.
 
 For generative images, the "image" attribute must contain a valid url for the image. For generative videos, the 'embed_url' must point to a playable video URL.
 
-The key 'attributes' is an array of objects `{"trait_type": "[trait name]", "value": "[specific trait]","rarity": [number]}` that defines properties for each. 'attributes' is optional but highly recommended. If 'attributes' is specified, then 'trait_type' and 'value' are required.
+The key 'attributes' is an array of objects `{"trait_type": "[trait name]", "value": "[specific trait]","rarity": [number]}` that defines properties for each. 'attributes' is optional but highly recommended. If 'attributes' is specified, then 'trait_type' and 'value' are required. Rarity must be specified to display a value; it is not calculated automatically.
 
 All other optional keys ('name', 'display\_name', 'description', etc.) will override the
 NFT content object's value from /asset\_metadata/nft if present.
@@ -183,13 +189,7 @@ NFT content object's value from /asset\_metadata/nft if present.
 
 # EluvioStream CLI
 
-```
-  export PRIVATE_KEY=0x...
-  ./elv-stream
-
-```
-
-The EluvioStream CLI provides commands for managing live streams.
+The EluvioStream CLI `elv-stream` provides commands for managing live streams.
 
 The general flow for managing a live stream is:
 
