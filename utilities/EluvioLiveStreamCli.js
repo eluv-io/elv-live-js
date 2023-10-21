@@ -210,6 +210,25 @@ const CmdStreamConfig = async ({ argv }) => {
   }
 };
 
+const CmdStreamCopyToVod = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let status = await elvStream.StreamCopyToVod({name: argv.stream, object: argv.object});
+    console.log(yaml.dump(status));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -427,6 +446,28 @@ yargs(hideBin(process.argv))
       CmdStreamDownload({ argv });
     }
   )
+
+  .command(
+    "copy_as_vod <stream>",
+    "Copy the stream to a new VoD object.",
+    (yargs) => {
+      yargs
+        .positional("stream", {
+          describe:
+            "Stream name or QID (content ID)",
+          type: "string",
+        })
+        .option("object", {
+          describe:
+            "Copy to an existing object instead of creatng a new one",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdStreamCopyToVod({ argv });
+    }
+  )
+
 
   .strict()
   .help()

@@ -571,15 +571,15 @@ class EluvioLiveStream {
 
         // Wait until LRO is terminated
         let tries = 10;
-        while (status.state != "terminated" && tries-- > 0) {
+        while (status.state != "stopped" && tries-- > 0) {
           console.log("Wait to terminate - ", status.state);
           await sleep(1000);
           status = await this.Status({name});
         }
-        console.log("Status after terminate - ", status.state);
+        console.log("Status after stop - ", status.state);
 
         if (tries <= 0) {
-          console.log("Failed to terminate");
+          console.log("Failed to stop");
           return status;
         }
       }
@@ -1103,6 +1103,149 @@ class EluvioLiveStream {
     }
 
     return status;
+  }
+
+
+  /*
+
+    Example flow:
+
+      https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/live_to_vod/init -d @r1 -H "Authorization: Bearer $TOK"
+
+      {
+        "live_qhash": "hq__5Zk1jSN8vNLUAXjQwMJV8F8J8ESXNvmVKkhaXySmGc1BXnJPG2FvvaXee4CXqvFHuGuU3fqLJc",
+        "start_time": "",
+        "end_time": "",
+        "recording_period": -1,
+        "streams": ["video", "audio"],
+        "variant_key": "default"
+      }
+
+      https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/init  -H "Authorization: Bearer $TOK" -d @r2
+
+      {
+
+        "abr_profile": { ...  },
+        "offering_key": "default",
+        "prod_master_hash": "tqw__HSQHBt7vYxWfCMPH5yXwKTfhdPcQ4Lcs9WUMUbTtnMbTZPTLo4BfJWPMGpoy1Dpv1wWQVtUtAtAr429TnVs",
+        "variant_key": "default",
+        "keep_other_streams": false
+      }
+
+      https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/live_to_vod/copy -d '{"variant_key":"","offering_key":""}' -H "Authorization: Bearer $TOK"
+
+
+      https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
+
+  */
+
+  async StreamCopyToVod({name, object}) {
+
+    let conf = await this.LoadConf({name});
+    let status = {name};
+
+    const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
+
+    try {
+
+      let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
+      status.live_object_id = conf.objectId;
+
+      let liveHash = await this.client.LatestVersionHash({objectId: conf.objectId, libraryId});
+      status.live_hash = liveHash;
+
+      console.log("Copying stream", name, "object", object);
+
+      // Temp special node ch1-001
+      const specialNode = "https://host-76-74-34-194.contentfabric.io";
+      this.client.SetNodes({fabricURIs: [specialNode]});
+
+      let targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
+
+      let edt = await this.client.EditContentObject({
+        objectId: object,
+        libraryId: targetLibraryId
+      });
+      console.log("Target write token", edt.write_token);
+      status.target_object_id = object;
+      status.target_library_id = targetLibraryId;
+      status.target_write_token = edt.write_token;
+
+      console.log("Process live source (takes around 20 sec per hour of content)");
+      await this.client.CallBitcodeMethod({
+        libraryId: targetLibraryId,
+        objectId: object,
+        writeToken: edt.write_token,
+        method: "/media/live_to_vod/init",
+        body: {
+          "live_qhash": liveHash,
+          "start_time": "", // "2023-10-03T02:09:02.00Z",
+          "end_time":   "", // "2023-10-03T02:15:00.00Z",
+          "streams": ["video", "audio"],
+          "recording_period": -1,
+          "variant_key": "default"
+        },
+        constant: false,
+        format: "text"
+      });
+
+      console.log("Initialize VoD mezzanine");
+      let abrMezInitBody = {
+        abr_profile: abrProfileLiveToVod,
+        "offering_key": "default",
+        "prod_master_hash": edt.write_token,
+        "variant_key": "default",
+        "keep_other_streams": false
+      };
+      await this.client.CallBitcodeMethod({
+        libraryId: targetLibraryId,
+        objectId: object,
+        writeToken: edt.write_token,
+        method: "/media/abr_mezzanine/init",
+        body: abrMezInitBody,
+        constant: false,
+        format: "text"
+      });
+
+      console.log("Populate live parts");
+      await this.client.CallBitcodeMethod({
+        libraryId: targetLibraryId,
+        objectId: object,
+        writeToken: edt.write_token,
+        method: "/media/live_to_vod/copy",
+        body: {},
+        constant: false,
+        format: "text"
+      });
+
+      console.log("Finalize VoD mezzanine");
+      await this.client.CallBitcodeMethod({
+        libraryId: targetLibraryId,
+        objectId: object,
+        writeToken: edt.write_token,
+        method: "/media/abr_mezzanine/offerings/default/finalize",
+        body: abrMezInitBody,
+        constant: false,
+        format: "text"
+      });
+
+      let finalize = true;
+      if (finalize) {
+        console.log("Finalize target object");
+        let fin = await this.client.FinalizeContentObject({
+          libraryId: targetLibraryId,
+          objectId: object,
+          writeToken: edt.write_token,
+          commitMessage: "Live Stream to VoD"
+        });
+        status.target_hash = fin.hash;
+      }
+
+      return status;
+
+    } catch (e) {
+      console.log("FAILED", JSON.stringify(e));
+    }
   }
 
   async StreamConfig({name, space}) {
