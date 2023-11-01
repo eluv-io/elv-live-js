@@ -66,14 +66,14 @@ For a new tenant, set up all required minter keys and helpers with one command:
 ./elv-live tenant_create_minter_config itenKGHd3iedqtA39krJUPkBTCNoTeX
 ```
 
-To retrieve tenant minter configuration:
+To retrieve an existing tenant minter configuration:
 
 ```
 ./elv-live tenant_get_minter_config itenKGHd3iedqtA39krJUPkBTCNoTeX
 
 ```
 
-To replace one or more minter resources, first get the minter configuration and call the `elv-live tenant_replace_minter_config` command, passing in all the existing values that you don't want changed (or else they will be regenerated).
+To replace one or more minter resources, first get the minter configuration and then call the `elv-live tenant_replace_minter_config` command, passing in all the existing values that you don't want changed (or else they will be regenerated).
 
 For example to set the 'legacy\_shuffle\_seed' and not change any of the other settings, pass in the existing values as options:
 
@@ -85,18 +85,18 @@ For example to set the 'legacy\_shuffle\_seed' and not change any of the other s
 
 ##### Marketplace info
 
-To show tenant-level marketplace information (including validation):
+To show tenant-level marketplace information (including validation of correct NFT configuration):
 
 ``` bash
 ./elv-live tenant_show itenYQbgk66551FEqWr95xPmHZEjmdF --check_nfts
 ```
 
-To show items minted by NFT contract in a given wallet for a given tenant:
+To show items minted in a given tenant in a given wallet for a specific NFT contract:
 ```
 ./elv-live tenant_balance_of iten3RmQEH7LUZdjagr68xPASnKxL 0x31d979d8fcc4bfd55a081535c7aa816b67bd40c8
 ```
 
-To show all wallets that have purchases in the tenancy and the corresponding email addresses:
+To show all wallets that have purchases in the tenancy and their corresponding email addresses (if shared by the wallet owners):
 ```
 ./elv-live tenant_wallets iten3RmAAA7LUZdjC55agr68xPASnKxL
 ```
@@ -105,39 +105,28 @@ To show all wallets that have purchases in the tenancy and the corresponding ema
 #### NFT commands
 
 ##### Set up an NFT contract 
-To set up a tradeable NFT contract and associate it with an NFT Template object:
 
+Set up a tradeable NFT contract and associate it with an NFT Template object:
 ```
 ./elv-live nft_add_contract iten3h6Eo3NT3JKZss6crss9quGPdKyS iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP 100 MYTENANCY-MYNFTNAME MYTENANCY-MYNFTSYMBOL --hold 1
 ```
 
+The NFT name and NFT symbol cannot contain spaces (even if enclosed in quotes).
+
+The hold option should be specified explicitly as 1 (i.e. 1 second) if it is desired that the NFT tokens be immediately tradeable upon minting.
+
 ##### Build NFT metadata
 
+It is necessary to build NFT-specific metadata prior to minting in order for metadata changes made in the Fabric Browser to be visible for the NFT in the user's wallet. If changes are made to metadata outside of additional media, the build step should be run and changes published prior to making the NFT available for minting or setting token URIs.
 
-
-##### Set Token URI for an NFT contract
-There are three ways to associate an NFT contract with new token URI metadata: setting a URI for a single token ID, setting one or more URIs in batch for a number of token IDs, and setting a URI for all token IDs at once.
-
-Single:
+Example command:
 ```
-./elv-live tenant_set_token_uri single itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft --token_id 128 --as_url http://127.0.0.1:6546
+./elv-live nft_build ilib3ErteXJcCoTapj2ZhEvMKWau6jET iq__QrxLAAJ8V1xbdPzGVMwjHTpoFKP
 ```
 
-Batch:
-```
-./elv-live tenant_set_token_uri batch itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca - --csv ../test/testdata/settokenuri_testlist.csv
-```
-[Sample Batch CSV file](test/testdata/settokenuri_testlist.csv)
+###### Build NFT for generative images or videos
 
-All:
-```
-./elv-live tenant_set_token_uri all itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft
-```
-
-##### NFT Build for generative images or videos
-
-
-The `./elv-live nft_build` command assumes the NFT Template object has been created and source images and videos have been ingested into the fabric such that image and embedded video urls have been generated and are working.
+The `./elv-live nft_build` command for generative NFTs assumes the NFT Template object has been created and source images and videos have been ingested into the fabric such that image and embedded video URLs have been generated and are working.
 
 Refer to this repo/branch for ingesting generative NFT videos:
 https://github.com/eluv-io/elv-client-js/blob/simple-ingest-wayne/utilities/NFTIngest.js
@@ -186,6 +175,26 @@ The key 'attributes' is an array of objects `{"trait_type": "[trait name]", "val
 All other optional keys ('name', 'display\_name', 'description', etc.) will override the
 NFT content object's value from /asset\_metadata/nft if present.
 
+##### Set Token URI for an NFT contract
+
+There are three ways to associate an NFT contract with new token URI metadata: setting a URI for a single token ID, setting one or more URIs in batch for a number of token IDs, and setting a URI for all token IDs at once.
+
+Single:
+```
+./elv-live tenant_set_token_uri single itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft --token_id 128 --as_url http://127.0.0.1:6546
+```
+
+Batch:
+```
+./elv-live tenant_set_token_uri batch itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca - --csv ../test/testdata/settokenuri_testlist.csv
+```
+[Sample Batch CSV file](test/testdata/settokenuri_testlist.csv)
+
+All:
+```
+./elv-live tenant_set_token_uri all itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft
+```
+
 
 # EluvioStream CLI
 
@@ -195,22 +204,21 @@ The general flow for managing a live stream is:
 
 1. Create and configure a live stream content object
 
-  This can be performed with the Fabric Browser
+  A live stream content object can be created in the Fabric Browser. Configuration can be performed with `elv-stream config`.
 
 2. Create a 'stream'
 
-  A live stream content object is only active once you create a 'stream'.
+  A live stream content object is only active once a 'stream' is created with `elv-stream create`.
 
 3. Start the 'stream'
 
-  This is the process by which the stream is listening for input and is ready to stream.
-
+  Running `elv-stream start` will initiate listening for input. Once it is received, streaming begins.
+  
 4. Stop or Reset the 'stream'
 
-  During streaming, you can stop (pause) or reset the stream which will discontinue playout until the stream is restarted.
+  During streaming, you can stop (pause) or reset the stream which will discontinue playout until the stream is restarted. The respective commands are `elv-stream stop` and `elv-stream reset`.
 
 5. Terminate the stream
 
-  The stream is ended and can no longer be restarted.  You can create a new stream within
-  the same content object.
+  After `elv-stream terminate` is run, the stream is ended and can no longer be restarted.  You can create a new stream within the same content object.
 
