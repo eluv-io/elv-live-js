@@ -38,8 +38,9 @@
   ],
   "homepage": "https://github.com/eluv-io/elv-live-js#readme",
   "dependencies": {
-    "@eluvio/elv-client-js": "github:eluv-io/elv-client-js#tenant",
+    "@eluvio/elv-client-js": "github:eluv-io/elv-client-js#live-stream-refine",
     "big-number": "^2.0.0",
+    "cbor-x": "^1.5.4",
     "csv-parse": "^5.3.0",
     "dot-object": "^2.1.4",
     "ethers": "^5.5.4",
