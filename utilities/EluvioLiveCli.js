@@ -1609,6 +1609,67 @@ const CmdTokenCreate = async ({ argv }) => {
   }
 };
 
+const CmdTokenTransfer = async ({ argv }) => {
+  console.log(`token transfer, 
+    token_addr=${argv.token_addr}
+    to_addr=${argv.to_addr}
+    amount=${argv.amount}`);
+
+  try {
+    let elvToken = new ElvToken({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvToken.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res;
+    res = await elvToken.ElvTokenTransfer({
+      tokenAddr: argv.token_addr,
+      toAddr: argv.to_addr,
+      amount: argv.amount,
+    });
+    var status = await res.status;
+    if (status === 1){
+      console.log("status: transfer successful")
+    }else {
+      console.log("status: transfer failed")
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTokenBalanceOf = async ({ argv }) => {
+
+  console.log(`token_addr: ${argv.token_addr}`);
+  console.log(`user_addr: ${argv.user_addr}`);
+
+  try {
+    let elvToken = new ElvToken({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvToken.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res;
+    res = await elvToken.ElvTokenBalance({
+      tokenAddr: argv.token_addr,
+      userAddr : argv.user_addr,
+    });
+    console.log("token_balance:",yaml.dump(await res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
+
 const CmdContentSetPolicy  = async ({ argv }) => {
   console.log("Content Set Policy");
   console.log(`Object: ${argv.object}`);
@@ -3168,6 +3229,49 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTokenCreate({ argv });
+    }
+  )
+
+  .command(
+    "token_transfer <token_addr> <to_addr> <amount> [options]",
+    "Transfer given elv tokens to address provided",
+    (yargs) => {
+      yargs
+        .positional("token_addr", {
+          describe: "elv_token address",
+          type: "string",
+        })
+        .positional("to_addr", {
+          describe: "to address",
+          type: "string",
+        })
+        .positional("amount", {
+          describe: "transfer amount",
+          type: "number",
+        });
+    },
+    (argv) => {
+      CmdTokenTransfer({ argv });
+    }
+  )
+
+
+  .command(
+    "token_balance_of <token_addr> <user_addr> [options]",
+    "Get the token balance of a given user",
+    (yargs) => {
+      yargs
+        .positional("token_addr", {
+          describe: "elv_token address",
+          type: "string",
+        })
+        .positional("user_addr", {
+          describe: "user address",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdTokenBalanceOf({ argv });
     }
   )
 
