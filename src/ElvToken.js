@@ -1,6 +1,7 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const fs = require("fs");
 const path = require("path");
+const Ethers = require("ethers");
 
 class ElvToken {
 
@@ -96,7 +97,51 @@ class ElvToken {
     };
   }
 
+  /**
+   * Transfer the token to the given address
+   *
+   * @namedParams
+   * @param {string} tokenAddr - Token address
+   * @param {string} toAddr - To address
+   * @param {integer} amount - Token amount
+   * @return {Promise<Object>} - Token Transfer Info JSON
+   */
+  async ElvTokenTransfer({ tokenAddr, toAddr, amount }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/IERC20.abi")
+    );
 
+    return await this.client.CallContractMethodAndWait({
+      contractAddress: tokenAddr,
+      abi: JSON.parse(abi),
+      methodName: "transfer",
+      methodArgs: [toAddr, amount],
+      formatArguments: true,
+    });
+  }
+
+  /**
+   * Get the Token balance for a given user address
+   *
+   * @namedParams
+   * @param {string} tokenAddr - Token address
+   * @param {string} userAddr - Token address
+   * @return {integer} - Token balance
+   */
+  async ElvTokenBalance({ tokenAddr, userAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v4/IERC20.abi")
+    );
+
+    let res = await this.client.CallContractMethod({
+      contractAddress: tokenAddr,
+      abi: JSON.parse(abi),
+      methodName: "balanceOf",
+      methodArgs: [userAddr],
+      formatArguments: true,
+    });
+    return Ethers.BigNumber.from(res).toNumber();
+  }
 
 }
 
