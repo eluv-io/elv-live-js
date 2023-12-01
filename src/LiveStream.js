@@ -136,6 +136,8 @@ class EluvioLiveStream {
         writeToken: edgeWriteToken
       });
 
+      status.edge_meta_size = JSON.stringify(edgeMeta).length;
+
       // If a stream has never been started return state 'inactive'
       if (edgeMeta.live_recording == undefined ||
         edgeMeta.live_recording.recordings == undefined ||
@@ -1139,22 +1141,36 @@ class EluvioLiveStream {
 
   */
 
-  async StreamCopyToVod({name, object}) {
+  async StreamCopyToVod({name, object, eventId}) {
 
     let conf = await this.LoadConf({name});
-    let status = {name};
 
     const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
 
+    let status = await this.Status({name});
+    let libraryId = status.libraryId;
+
+    console.log("Copying stream", name, "object", object);
+
+    let startTime = "";
+    let endTime = "";
+
     try {
 
-      let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
       status.live_object_id = conf.objectId;
 
       let liveHash = await this.client.LatestVersionHash({objectId: conf.objectId, libraryId});
       status.live_hash = liveHash;
 
-      console.log("Copying stream", name, "object", object);
+      if (eventId) {
+        // Retrieve start and end times for the event
+        let event = await this.CueInfo({eventId, status});
+        if (event.eventStart && event.eventEnd) {
+          console.log("Event", event);
+          startTime = event.eventStart;
+          endTime = event.eventEnd;
+        }
+      }
 
       // Temp special node ch1-001
       const specialNode = "https://host-76-74-34-194.contentfabric.io";
@@ -1179,8 +1195,8 @@ class EluvioLiveStream {
         method: "/media/live_to_vod/init",
         body: {
           "live_qhash": liveHash,
-          "start_time": "", // "2023-10-03T02:09:02.00Z",
-          "end_time":   "", // "2023-10-03T02:15:00.00Z",
+          "start_time": startTime, // eg. "2023-10-03T02:09:02.00Z",
+          "end_time": endTime, // eg. "2023-10-03T02:15:00.00Z",
           "streams": ["video", "audio"],
           "recording_period": -1,
           "variant_key": "default"
@@ -1359,7 +1375,37 @@ class EluvioLiveStream {
 
   }
 
+  async CueInfo({eventId, status}) {
+    let cues;
+    try {
+      let lroStatus = await got(status.lro_status_url);
+      cues = JSON.parse(lroStatus.body).custom.cues;
+    } catch (error) {
+      console.log("LRO status failed", error);
+      return {error: "failed to retrieve status", eventId};
+    }
 
+    let eventStart, eventEnd;
+    for (const value of Object.values(cues)) {
+      for (const event of Object.values(value.descriptors)) {
+        if (event.id == eventId) {
+          switch (event.type_id) {
+            case 32:
+            case 16:
+              eventStart = value.insertion_time;
+              break;
+            case 33:
+            case 17:
+              eventEnd = value.insertion_time;
+              break;
+
+          }
+        }
+      }
+    }
+
+    return {eventStart, eventEnd, eventId};
+  }
 
 } // End class
 

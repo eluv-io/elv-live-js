@@ -221,7 +221,10 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StreamCopyToVod({name: argv.stream, object: argv.object});
+    let status = await elvStream.StreamCopyToVod({
+      name: argv.stream,
+      object: argv.object,
+      eventId: argv.event_id});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -460,6 +463,11 @@ yargs(hideBin(process.argv))
         .option("object", {
           describe:
             "Copy to an existing object instead of creatng a new one",
+          type: "string",
+        })
+        .option("event_id", {
+          describe:
+            "Optional SCTE35 program or chapter event ID",
           type: "string",
         })
     },
