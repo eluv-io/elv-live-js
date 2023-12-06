@@ -352,7 +352,7 @@ class EluvioLive {
 
         const sku = item.sku;
 
-        if (item.nft_template == "") {
+        if (!item.nft_template) {
           warns.push("No NFT Template sku: " + sku);
           continue;
         }
@@ -499,7 +499,7 @@ class EluvioLive {
 
         const sku = item.sku;
 
-        if (item.nft_template == "") {
+        if (!item.nft_template) {
           warns.push("No NFT Template sku: " + sku);
           continue;
         }
