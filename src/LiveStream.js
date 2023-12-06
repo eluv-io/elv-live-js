@@ -465,7 +465,7 @@ class EluvioLiveStream {
 
         // Wait until LRO is terminated
         let tries = 10;
-        while (status.state != "terminated" && tries-- > 0) {
+        while (status.state != "stopped" && tries-- > 0) {
           console.log("Wait to terminate - ", status.state);
           await sleep(1000);
           status = await this.Status({name});
@@ -578,15 +578,15 @@ class EluvioLiveStream {
 
         // Wait until LRO is terminated
         let tries = 10;
-        while (status.state != "stopped" && tries-- > 0) {
+        while (status.state != "terminated" && tries-- > 0) {
           console.log("Wait to terminate - ", status.state);
           await sleep(1000);
           status = await this.Status({name});
         }
-        console.log("Status after stop - ", status.state);
+        console.log("Status after terminate - ", status.state);
 
         if (tries <= 0) {
-          console.log("Failed to stop");
+          console.log("Failed to terminate");
           return status;
         }
       }
