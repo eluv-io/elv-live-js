@@ -9,6 +9,7 @@ const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const got = require("got");
+const https = require("https");
 
 const PRINT_DEBUG = false;
 
@@ -192,7 +193,7 @@ class EluvioLiveStream {
       }
 
       if (showParams) {
-        status.recording_paramse = edgeMeta.live_recording.recording_config.recording_params;
+        status.recording_params = edgeMeta.live_recording.recording_config.recording_params;
       }
 
       let state = "stopped";
@@ -280,6 +281,10 @@ class EluvioLiveStream {
 
         status.playout_urls = playout_urls;
       }
+
+      // WIP
+      let stats = await this.LatencyCalculator({sequence, period, status});
+      console.log(stats);
 
     } catch (error) {
       console.error(error);
@@ -1373,6 +1378,131 @@ class EluvioLiveStream {
 
   async ReadEdgeMeta() {
 
+  }
+
+  async LatencyCalculator({period, sequence, status}) {
+
+    console.log("LATENCY CALCULATOR");
+
+    let startTimeMillis = period.start_time_epoch_sec * 1000;
+    let mezDurationMillis = 30 * 1000;
+    let segDurationMillis = mezDurationMillis / 15;
+
+    let stats = {
+      start_time: startTimeMillis,
+      mez_duration: mezDurationMillis,
+      seg_duration: segDurationMillis
+    };
+
+    // Ingest latency
+    let videoSources = period.sources.video;
+    let videoSourcesTrimmed = Number(period.sources.video_trimmed);
+    let min = 100 * 1000, max = 0, sum = 0, cnt =0;
+    for (let i = 0; i < videoSources.length; i ++) {
+      let finalized = videoSources[i].finalization_time / 1000;
+      if (finalized <= 0) {
+        continue;
+      }
+      let partDelay = finalized - startTimeMillis - (1 + i + videoSourcesTrimmed) * mezDurationMillis;
+      if (partDelay < min) {
+        min = partDelay
+      }
+      if (partDelay > max) {
+        max = partDelay;
+      }
+      sum += partDelay;
+      cnt ++;
+    }
+    stats.part_ingest = {
+      delay_min: min,
+      delay_max: max,
+      delay_avg: sum / cnt
+    }
+
+    // Segment delivery latency
+
+    // Find first seg in part in the future
+    let nowMillis = new Date().getTime();
+    let segNum = Math.floor((35000 + nowMillis - startTimeMillis) / segDurationMillis);
+    segNum = Math.floor(segNum / 15) * 15;
+
+    stats.segOne = await this.LatencySegment({status, sequence, period, segNum});
+    stats.segOne2 = await this.LatencySegment({status, sequence, period, segNum: segNum + 1});
+    stats.segOne3 = await this.LatencySegment({status, sequence, period, segNum: segNum + 2});
+    stats.segOne4 = await this.LatencySegment({status, sequence, period, segNum: segNum + 3});
+
+    // Segment 8 in the part (in the future)
+    nowMillis = new Date().getTime();
+    segNum = Math.floor((35000 + nowMillis - startTimeMillis) / segDurationMillis);
+    segNum = Math.floor(segNum / 15) * 15 + 8;
+
+    stats.segEight = await this.LatencySegment({status, sequence, period, segNum});
+    stats.segEight2 = await this.LatencySegment({status, sequence, period, segNum: segNum + 1});
+    stats.segEight3 = await this.LatencySegment({status, sequence, period, segNum: segNum + 2});
+    stats.segEight4 = await this.LatencySegment({status, sequence, period, segNum: segNum + 3});
+
+    // Seg 15 in the part (in the future)
+    nowMillis = new Date().getTime();
+    segNum = Math.floor((35000 + nowMillis - startTimeMillis) / segDurationMillis);
+    segNum = Math.floor(segNum / 15) * 15 - 1;
+
+    stats.segFifteen = await this.LatencySegment({status, sequence, period, segNum});
+    stats.segFifteen2 = await this.LatencySegment({status, sequence, period, segNum: segNum + 1});
+    stats.segFifteen3 = await this.LatencySegment({status, sequence, period, segNum: segNum + 2});
+    stats.segFifteen4 = await this.LatencySegment({status, sequence, period, segNum: segNum + 3});
+
+    return stats;
+  }
+
+  /**
+   * Calculate latency stats for a given segment
+   */
+  async LatencySegment({segNum, sequence, period, status}) {
+
+    let startTimeMillis = period.start_time_epoch_sec * 1000;
+    let mezDurationMillis = 30 * 1000;
+    let segDurationMillis = mezDurationMillis / 15;
+
+    let nowMillis = new Date().getTime();
+
+    let targetMillis = startTimeMillis + segNum * segDurationMillis;
+    console.log("Segment target", segNum, targetMillis, "from_now", targetMillis - nowMillis);
+
+    let segURL = await this.client.FabricUrl({
+      libraryId: status.library_id,
+      objectId: status.object_id,
+      queryParams: {rec_seq: sequence},
+      rep: "playout/default/hls-clear/video/videovideo_1920x1080_h264@8000000/00" + segNum + ".m4s",
+    });
+
+    console.log(segURL);
+
+    let segSize = 0;
+    let segDelayFirstByte;
+    let segDelay;
+    let downloadMbps;
+    await new Promise((resolve) => {
+      https.get(segURL, (res) => {
+        res.once('readable', () => {
+          segDelayFirstByte = new Date().getTime() - targetMillis;
+        })
+        res.on('data', (chunk) => {
+          segSize += chunk.length;
+        })
+        res.on('end', () => {
+          segDelay = new Date().getTime() - targetMillis;
+          downloadMbps = segSize * 8 / (segDelay - segDelayFirstByte) / 1024;
+          resolve();
+        })
+        res.on("error", err => {
+          console.log("Error: " + err.message);
+        })
+      });
+    });
+
+    return {
+        segNum, segDelay, segDelayFirstByte, segSize, downloadMbps
+    }
   }
 
   async CueInfo({eventId, status}) {
