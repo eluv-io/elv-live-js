@@ -1247,6 +1247,14 @@ class EluvioLiveStream {
     let segDurationMillis = mezDurationMillis / 15;
     let startTimeMillis = period.start_time_epoch_sec * 1000;
 
+    let reps = [];
+    for (let i = 0; i < params.ladder_specs.length; i ++) {
+      reps[i] = params.ladder_specs[i].representation;
+    }
+
+    // Using the top rep
+    stats.rep = reps[0];
+
     stats.start_time = startTimeMillis;
     stats.seg_duration = segDurationMillis;
     stats.mez_duration = mezDurationMillis;
@@ -1341,7 +1349,7 @@ class EluvioLiveStream {
       libraryId: status.library_id,
       objectId: status.object_id,
       queryParams: {rec_seq: sequence},
-      rep: "playout/default/hls-clear/video/videovideo_1920x1080_h264@8000000/00" + segNum + ".m4s",
+      rep: "playout/default/hls-clear/video/" + stats.rep + "/00" + segNum + ".m4s",
     });
 
     if (debug) console.log(segURL);
