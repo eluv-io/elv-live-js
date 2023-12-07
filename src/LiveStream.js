@@ -1217,6 +1217,9 @@ class EluvioLiveStream {
 
   }
 
+  /**
+   * Calculate live streaming latency - ingest, egress, metadata.
+   */
   async LatencyCalculator({status}) {
 
     const debug = this.debug;
