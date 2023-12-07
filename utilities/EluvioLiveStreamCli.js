@@ -91,6 +91,12 @@ const CmdStreamStatus = async ({ argv }) => {
     });
 
     let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params});
+
+    // Optional latency calculator
+    if (argv.latency) {
+      status.latency = await elvStream.LatencyCalculator({status});
+    }
+
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -328,6 +334,11 @@ yargs(hideBin(process.argv))
         .option("show_params", {
           describe:
             "Show recording parameters (can be large)",
+          type: "bool",
+        })
+        .option("latency", {
+          describe:
+            "Calculate stream latency (may take a few minutes)",
           type: "bool",
         })
     },

@@ -280,12 +280,6 @@ class EluvioLiveStream {
         status.playout_urls = playout_urls;
       }
 
-      // Optional latency calculator
-      const latency = true;
-      if (latency) {
-        status.latency = await this.LatencyCalculator({sequence, period, status, edgeMeta});
-      }
-
     } catch (error) {
       console.error(error);
     }
@@ -1223,11 +1217,25 @@ class EluvioLiveStream {
 
   }
 
-  async LatencyCalculator({period, sequence, status, edgeMeta}) {
+  async LatencyCalculator({status}) {
 
-    const debug = this.debugLogging;
+    const debug = this.debug;
+    let stats = {};
 
     if (debug) console.log("Latency calculator ", status.object_id);
+
+    const getMetaStart = process.hrtime();
+    let edgeMeta = await this.client.ContentObjectMetadata({
+      libraryId: status.library_id,
+      objectId: status.object_id,
+      writeToken: status.edge_write_token
+    });
+    const getMetaElapsed = process.hrtime(getMetaStart);
+    stats.meta_delay = (getMetaElapsed[0] * 1000000000 + getMetaElapsed[1]) / 1000000;
+
+    let recordings = edgeMeta.live_recording.recordings;
+    let sequence = recordings.recording_sequence;
+    let period = recordings.live_offering[sequence - 1];
 
     let params = edgeMeta.live_recording.recording_config.recording_params;
     let sourceTimescale = params.source_timescale;
@@ -1236,10 +1244,9 @@ class EluvioLiveStream {
     let segDurationMillis = mezDurationMillis / 15;
     let startTimeMillis = period.start_time_epoch_sec * 1000;
 
-    let stats = {
-      start_time: startTimeMillis,
-      seg_duration: segDurationMillis
-    };
+    stats.start_time = startTimeMillis;
+    stats.seg_duration = segDurationMillis;
+    stats.mez_duration = mezDurationMillis;
 
     // Ingest latency
     let videoSources = period.sources.video;
@@ -1318,7 +1325,7 @@ class EluvioLiveStream {
    */
   async LatencySegment({segNum, stats, sequence, period, status}) {
 
-    const debug = this.debugLogging;
+    const debug = this.debug;
 
     let startTimeMillis = period.start_time_epoch_sec * 1000;
     let segDurationMillis = stats.seg_duration;
