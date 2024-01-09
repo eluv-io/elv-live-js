@@ -1110,7 +1110,7 @@ const CmdNftAddRedeemableOffer = async ({ argv }) => {
     res = await elvlv.NFTAddRedeemableOffer({ addr: argv.addr });
 
     console.log(yaml.dump(res));
-    console.log("Offer ID: ",res.logs[0].values.offerId);
+    //console.log("Offer ID: ", res.logs[0].values.offerId); // no longer  available in the response
   } catch (e) {
     console.error("ERROR:", e);
   }
