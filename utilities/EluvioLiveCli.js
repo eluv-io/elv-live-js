@@ -538,6 +538,7 @@ const CmdTenantTicketsGenerate = async ({ argv }) => {
     let res = await elvlv.TenantTicketsGenerate({
       tenant: argv.tenant,
       otp: argv.otp,
+      otpClass: argv.otp_class,
       quantity: argv.quantity
     });
 
@@ -2495,6 +2496,10 @@ yargs(hideBin(process.argv))
         })
         .option("quantity", {
           describe: "Specify how many to generate (default 1)",
+          type: "integer",
+        })
+        .option("otp_class", {
+          describe: "Use authority services (class 5) or contract (class 4) (default 5)",
           type: "integer",
         });
     },

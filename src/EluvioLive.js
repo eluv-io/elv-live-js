@@ -2931,12 +2931,26 @@ class EluvioLive {
    * @namedParams
    * @param {string} tenant - The Tenant ID
    * @param {string} otp - The OTP ID
+   * @param {integer} otpClass - The OTP class (4 or 5)
    * @param {integer} quantity - Number of tickets to generate
    * @return {Promise<Object>} - Tickets API Response Object
    */
-  async TenantTicketsGenerate({ tenant, otp, host, quantity = 1 }) {
+  async TenantTicketsGenerate({ tenant, otp, otpClass, host, quantity = 1 }) {
     let now = Date.now();
 
+    if (otpClass && otpClass == 4) {
+      let codes = [];
+      for (let i = 0; i < quantity; i ++) {
+        let code = await this.client.IssueNTPCode({
+          tenantId: tenant,
+          ntpId: otp
+        });
+        codes.push(code);
+      }
+      return codes;
+    }
+
+    // NTP class 5 (authd)
     let body = {
       tickets: {
         quantity: quantity,
