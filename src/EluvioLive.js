@@ -2928,26 +2928,78 @@ class EluvioLive {
   /**
    * Generate tickets (NTP) as a tenant.
    *
+   * Tickets may be bound to emails - in this case, the list of emails has to be supplied
+   * as an argument, and the 'quantity' is no longer allowed.
+   * Optionally creates embed URLs for each ticket code generated, based on a template URL
+   * that contains all required embed URL parameters except for the ticket and optionally email.
+   *
    * @namedParams
    * @param {string} tenant - The Tenant ID
    * @param {string} otp - The OTP ID
-   * @param {integer} otpClass - The OTP class (4 or 5)
+   * @param {integer} otpClass - The OTP class (4 or 5) (default 5)
    * @param {integer} quantity - Number of tickets to generate
+   * @param {string} emails - File containing one email per line
+   * @param {strnig} embedUrlBase - Base embed URL, used to generate embed URLs for each ticket
    * @return {Promise<Object>} - Tickets API Response Object
    */
-  async TenantTicketsGenerate({ tenant, otp, otpClass, host, quantity = 1 }) {
+  async TenantTicketsGenerate({ tenant, otp, otpClass = 5, host, quantity, emails, embedUrlBase }) {
     let now = Date.now();
 
+    // Make embed URL from base URL by adding code and optional email
+    function makeEmbedUrl({code, email, embedUrlBase}) {
+      // Make embed URL from base URL
+      let u = new URL(embedUrlBase);
+      let code64 = Buffer.from(code).toString("base64");
+      u.searchParams.append("tk", code64);
+      if (email) {
+        let email64 = Buffer.from(email).toString("base64");
+        u.searchParams.append("sbj", email64);
+      }
+      let embedUrl = u.href;
+      return embedUrl;
+    }
+
+    // Validation - either emails or quantity may be specified
+    if (emails && quantity) {
+      throw "Only one of parameters emails and quantity may be specified";
+    }
+    if (!emails && !quantity) {
+      quantity = 1;
+    }
+
     if (otpClass && otpClass == 4) {
+
+      var emailList = [];
+      if (emails) {
+        const emailsBuf = fs.readFileSync(emails, "utf-8");
+        emailsBuf.split(/\r?\n/).forEach((line) => {
+          if (line) {
+            emailList.push(line);
+          }
+        });
+        quantity = emailList.length;
+        console.log("email list", emailList);
+      }
+
       let codes = [];
       for (let i = 0; i < quantity; i ++) {
         let code = await this.client.IssueNTPCode({
           tenantId: tenant,
-          ntpId: otp
+          ntpId: otp,
+          email: emails ? emailList[i] : ""
         });
+        if (emails) code.email = emailList[i];
+        if (embedUrlBase) {
+          codes.embed_url = makeEmbedUrl({code: code.token, email: code.email, embedUrlBase});
+        }
         codes.push(code);
       }
       return codes;
+    }
+
+    // Validation - currently 'emails' and 'embed_url_base' only work for class 4
+    if (emails || embedUrlBase) {
+      throw "Parameters emails and embed URL base require class 4";
     }
 
     // NTP class 5 (authd)
