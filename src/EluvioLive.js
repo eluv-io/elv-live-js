@@ -2930,6 +2930,11 @@ class EluvioLive {
    *
    * Tickets may be bound to emails - in this case, the list of emails has to be supplied
    * as an argument, and the 'quantity' is no longer allowed.
+   *
+   * Note that technically tickets can be bound to any user identifier. Emails are the most
+   * common but other IDs such as usernames or oauth/openid subject IDs are also used, so
+   * there is no required format for the strings in the file.
+   *
    * Optionally creates embed URLs for each ticket code generated, based on a template URL
    * that contains all required embed URL parameters except for the ticket and optionally email.
    *
@@ -2939,7 +2944,7 @@ class EluvioLive {
    * @param {integer} otpClass - The OTP class (4 or 5) (default 5)
    * @param {integer} quantity - Number of tickets to generate
    * @param {string} emails - File containing one email per line
-   * @param {strnig} embedUrlBase - Base embed URL, used to generate embed URLs for each ticket
+   * @param {string} embedUrlBase - Base embed URL, used to generate embed URLs for each ticket
    * @return {Promise<Object>} - Tickets API Response Object
    */
   async TenantTicketsGenerate({ tenant, otp, otpClass = 5, host, quantity, emails, embedUrlBase }) {
@@ -2949,13 +2954,13 @@ class EluvioLive {
     function makeEmbedUrl({code, email, embedUrlBase}) {
       // Make embed URL from base URL
       let u = new URL(embedUrlBase);
-      let code64 = Buffer.from(code).toString("base64");
+      const code64 = Buffer.from(code).toString("base64");
       u.searchParams.append("tk", code64);
       if (email) {
-        let email64 = Buffer.from(email).toString("base64");
+        const email64 = Buffer.from(email).toString("base64");
         u.searchParams.append("sbj", email64);
       }
-      let embedUrl = u.href;
+      const embedUrl = u.href;
       return embedUrl;
     }
 
@@ -2978,21 +2983,24 @@ class EluvioLive {
           }
         });
         quantity = emailList.length;
-        console.log("email list", emailList);
       }
 
       let codes = [];
       for (let i = 0; i < quantity; i ++) {
-        let code = await this.client.IssueNTPCode({
-          tenantId: tenant,
-          ntpId: otp,
-          email: emails ? emailList[i] : ""
-        });
-        if (emails) code.email = emailList[i];
-        if (embedUrlBase) {
-          codes.embed_url = makeEmbedUrl({code: code.token, email: code.email, embedUrlBase});
+        try {
+          let code = await this.client.IssueNTPCode({
+            tenantId: tenant,
+            ntpId: otp,
+            email: emails ? emailList[i] : ""
+          });
+          if (emails) code.email = emailList[i];
+          if (embedUrlBase) {
+            code.embed_url = makeEmbedUrl({code: code.token, email: code.email, embedUrlBase});
+          }
+          codes.push(code);
+        } catch (e) {
+          throw new Error("Failed to issue ticket code - " + e.message);
         }
-        codes.push(code);
       }
       return codes;
     }

@@ -2501,7 +2501,7 @@ yargs(hideBin(process.argv))
           type: "integer",
         })
         .option("emails", {
-          describe: "File containing one email per line - create email-bound ticket codes",
+          describe: "File containing one email per line (or any user identifier). Generate codes bound to these identifiers",
           type: "string",
         })
         .option("embed_url_base", {
