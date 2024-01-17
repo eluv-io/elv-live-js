@@ -538,7 +538,10 @@ const CmdTenantTicketsGenerate = async ({ argv }) => {
     let res = await elvlv.TenantTicketsGenerate({
       tenant: argv.tenant,
       otp: argv.otp,
-      quantity: argv.quantity
+      otpClass: argv.otp_class,
+      quantity: argv.quantity,
+      emails: argv.emails,
+      embedUrlBase: argv.embed_url_base
     });
 
     console.log("Tickets: ", res);
@@ -2495,6 +2498,18 @@ yargs(hideBin(process.argv))
         })
         .option("quantity", {
           describe: "Specify how many to generate (default 1)",
+          type: "integer",
+        })
+        .option("emails", {
+          describe: "File containing one email per line (or any user identifier). Generate codes bound to these identifiers",
+          type: "string",
+        })
+        .option("embed_url_base", {
+          describe: "Generate embed URLs for each ticket based on this template",
+          type: "string",
+        })
+        .option("otp_class", {
+          describe: "Use authority services (class 5) or contract (class 4) (default 5)",
           type: "integer",
         });
     },
