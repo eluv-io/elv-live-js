@@ -331,7 +331,7 @@ class EluvioLiveStream {
   */
   async StreamCopyToVod({name, object, eventId}) {
 
-    let conf = await this.LoadConf({name});
+    let conf = await this.client.LoadConf({name});
 
     const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
 
