@@ -1281,6 +1281,14 @@ class EluvioLiveStream {
         status.target_hash = fin.hash;
       }
 
+      // Clean up status items we don't need
+      delete status.playout_urls;
+      delete status.lro_status_url;
+      delete status.recording_period;
+      delete status.recording_period_sequence;
+      delete status.edge_meta_size;
+      delete status.insertions;
+
       return status;
 
     } catch (e) {
