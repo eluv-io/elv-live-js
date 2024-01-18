@@ -3,6 +3,7 @@
  */
 
 const { ElvClient } = require("@eluvio/elv-client-js");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const {LiveConf} = require("./LiveConf");
 const { execSync } = require("child_process");
 
@@ -135,6 +136,8 @@ class EluvioLiveStream {
         objectId: conf.objectId,
         writeToken: edgeWriteToken
       });
+
+      status.edge_meta_size = JSON.stringify(edgeMeta).length;
 
       // If a stream has never been started return state 'inactive'
       if (edgeMeta.live_recording == undefined ||
@@ -571,15 +574,15 @@ class EluvioLiveStream {
 
         // Wait until LRO is terminated
         let tries = 10;
-        while (status.state != "terminated" && tries-- > 0) {
+        while (status.state != "stopped" && tries-- > 0) {
           console.log("Wait to terminate - ", status.state);
           await sleep(1000);
           status = await this.Status({name});
         }
-        console.log("Status after terminate - ", status.state);
+        console.log("Status after stop - ", status.state);
 
         if (tries <= 0) {
-          console.log("Failed to terminate");
+          console.log("Failed to stop");
           return status;
         }
       }
@@ -1105,6 +1108,186 @@ class EluvioLiveStream {
     return status;
   }
 
+
+  /*
+  * Copy a portion of a live stream recording into a standard VoD object using the zero-copy content fabric API.
+  *
+  * Limitations:
+  * - currently requires the target object to be pre-created and have content encryption keys (CAPS)
+  * - for audio and video to be sync'd, the live stream needs to have the beginning of the desired recording period
+  *   - for an event stream, make sure the TTL is long enough to allow running the live-to-vod command before the beginning of the recording expires
+  *   - for 24/7 streams, make sure to reset the stream before the desired recording (as to create a new recording period) and have the TTL long enough
+  *     to allow running the live-to-vod command before the beginning of the recording expires.
+  * - startTime and endTime are not currently implemented by this tool
+  */
+
+  /*
+    Example fabric API flow:
+
+      https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/live_to_vod/init -d @r1 -H "Authorization: Bearer $TOK"
+
+      {
+        "live_qhash": "hq__5Zk1jSN8vNLUAXjQwMJV8F8J8ESXNvmVKkhaXySmGc1BXnJPG2FvvaXee4CXqvFHuGuU3fqLJc",
+        "start_time": "",
+        "end_time": "",
+        "recording_period": -1,
+        "streams": ["video", "audio"],
+        "variant_key": "default"
+      }
+
+      https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/init  -H "Authorization: Bearer $TOK" -d @r2
+
+      {
+
+        "abr_profile": { ...  },
+        "offering_key": "default",
+        "prod_master_hash": "tqw__HSQHBt7vYxWfCMPH5yXwKTfhdPcQ4Lcs9WUMUbTtnMbTZPTLo4BfJWPMGpoy1Dpv1wWQVtUtAtAr429TnVs",
+        "variant_key": "default",
+        "keep_other_streams": false
+      }
+
+      https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/live_to_vod/copy -d '{"variant_key":"","offering_key":""}' -H "Authorization: Bearer $TOK"
+
+
+      https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
+
+  */
+  async StreamCopyToVod({name, object, eventId}) {
+
+    let conf = await this.LoadConf({name});
+
+    const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
+
+    let status = await this.Status({name});
+    let libraryId = status.libraryId;
+
+    console.log("Copying stream", name, "object", object);
+
+    // Validation - require target object
+    if (!object) {
+      throw "Must specify a target object ID";
+    }
+
+    let targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
+
+    // Validation - ensure target object has content encryption keys
+    const kmsAddress = await this.client.authClient.KMSAddress({objectId: object});
+    const kmsCapId = `eluv.caps.ikms${Utils.AddressToHash(kmsAddress)}`;
+    const kmsCap = await this.client.ContentObjectMetadata({
+      libraryId: targetLibraryId,
+      objectId: object,
+      metadataSubtree: kmsCapId
+    });
+    if (!kmsCap) {
+      throw Error("No content encryption key set for this object");
+    }
+
+    let startTime = "";
+    let endTime = "";
+
+    try {
+
+      status.live_object_id = conf.objectId;
+
+      let liveHash = await this.client.LatestVersionHash({objectId: conf.objectId, libraryId});
+      status.live_hash = liveHash;
+
+      if (eventId) {
+        // Retrieve start and end times for the event
+        let event = await this.CueInfo({eventId, status});
+        if (event.eventStart && event.eventEnd) {
+          console.log("Event", event);
+          startTime = event.eventStart;
+          endTime = event.eventEnd;
+        }
+      }
+
+      let edt = await this.client.EditContentObject({
+        objectId: object,
+        libraryId: targetLibraryId
+      });
+      console.log("Target write token", edt.write_token);
+      status.target_object_id = object;
+      status.target_library_id = targetLibraryId;
+      status.target_write_token = edt.write_token;
+
+      console.log("Process live source (takes around 20 sec per hour of content)");
+      await this.client.CallBitcodeMethod({
+        libraryId: targetLibraryId,
+        objectId: object,
+        writeToken: edt.write_token,
+        method: "/media/live_to_vod/init",
+        body: {
+          "live_qhash": liveHash,
+          "start_time": startTime, // eg. "2023-10-03T02:09:02.00Z",
+          "end_time": endTime, // eg. "2023-10-03T02:15:00.00Z",
+          "streams": ["video", "audio"],
+          "recording_period": -1,
+          "variant_key": "default"
+        },
+        constant: false,
+        format: "text"
+      });
+
+      console.log("Initialize VoD mezzanine");
+      let abrMezInitBody = {
+        abr_profile: abrProfileLiveToVod,
+        "offering_key": "default",
+        "prod_master_hash": edt.write_token,
+        "variant_key": "default",
+        "keep_other_streams": false
+      };
+      await this.client.CallBitcodeMethod({
+        libraryId: targetLibraryId,
+        objectId: object,
+        writeToken: edt.write_token,
+        method: "/media/abr_mezzanine/init",
+        body: abrMezInitBody,
+        constant: false,
+        format: "text"
+      });
+
+      console.log("Populate live parts");
+      await this.client.CallBitcodeMethod({
+        libraryId: targetLibraryId,
+        objectId: object,
+        writeToken: edt.write_token,
+        method: "/media/live_to_vod/copy",
+        body: {},
+        constant: false,
+        format: "text"
+      });
+
+      console.log("Finalize VoD mezzanine");
+      await this.client.CallBitcodeMethod({
+        libraryId: targetLibraryId,
+        objectId: object,
+        writeToken: edt.write_token,
+        method: "/media/abr_mezzanine/offerings/default/finalize",
+        body: abrMezInitBody,
+        constant: false,
+        format: "text"
+      });
+
+      let finalize = true;
+      if (finalize) {
+        console.log("Finalize target object");
+        let fin = await this.client.FinalizeContentObject({
+          libraryId: targetLibraryId,
+          objectId: object,
+          writeToken: edt.write_token,
+          commitMessage: "Live Stream to VoD"
+        });
+        status.target_hash = fin.hash;
+      }
+
+      return status;
+
+    } catch (e) {
+      console.log("FAILED", JSON.stringify(e));
+    }
+  }
+
   async StreamConfig({name, space}) {
 
     let conf = await this.LoadConf({name});
@@ -1216,7 +1399,37 @@ class EluvioLiveStream {
 
   }
 
+  async CueInfo({eventId, status}) {
+    let cues;
+    try {
+      let lroStatus = await got(status.lro_status_url);
+      cues = JSON.parse(lroStatus.body).custom.cues;
+    } catch (error) {
+      console.log("LRO status failed", error);
+      return {error: "failed to retrieve status", eventId};
+    }
 
+    let eventStart, eventEnd;
+    for (const value of Object.values(cues)) {
+      for (const event of Object.values(value.descriptors)) {
+        if (event.id == eventId) {
+          switch (event.type_id) {
+            case 32:
+            case 16:
+              eventStart = value.insertion_time;
+              break;
+            case 33:
+            case 17:
+              eventEnd = value.insertion_time;
+              break;
+
+          }
+        }
+      }
+    }
+
+    return {eventStart, eventEnd, eventId};
+  }
 
 } // End class
 
