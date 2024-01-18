@@ -3,6 +3,7 @@
  */
 
 const { ElvClient } = require("@eluvio/elv-client-js");
+const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const {LiveConf} = require("./LiveConf");
 const { execSync } = require("child_process");
 
@@ -1108,9 +1109,20 @@ class EluvioLiveStream {
   }
 
 
-  /*
+ /*
+  * Copy a portion of a live stream recording into a standard VoD object using the zero-copy content fabric API.
+  *
+  * Limitations:
+  * - currently requires the target object to be pre-created and have content encryption keys (CAPS)
+  * - for audio and video to be sync'd, the live stream needs to have the beginning of the desired recording period
+  *   - for an event stream, make sure the TTL is long enough to allow running the live-to-vod command before the beginning of the recording expires
+  *   - for 24/7 streams, make sure to reset the stream before the desired recording (as to create a new recording period) and have the TTL long enough
+  *     to allow running the live-to-vod command before the beginning of the recording expires.
+  * - startTime and endTime are not currently implemented by this tool
+  */
 
-    Example flow:
+  /*
+    Example fabric API flow:
 
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/live_to_vod/init -d @r1 -H "Authorization: Bearer $TOK"
 
@@ -1140,7 +1152,6 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-
   async StreamCopyToVod({name, object, eventId}) {
 
     let conf = await this.LoadConf({name});
@@ -1151,6 +1162,25 @@ class EluvioLiveStream {
     let libraryId = status.libraryId;
 
     console.log("Copying stream", name, "object", object);
+
+    // Validation - require target object
+    if (!object) {
+      throw "Must specify a target object ID"
+    }
+
+    let targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
+
+    // Validation - ensure target object has content encryption keys
+    const kmsAddress = await this.client.authClient.KMSAddress({objectId: object});
+    const kmsCapId = `eluv.caps.ikms${Utils.AddressToHash(kmsAddress)}`;
+    const kmsCap = await this.client.ContentObjectMetadata({
+      libraryId: targetLibraryId,
+      objectId: object,
+      metadataSubtree: kmsCapId
+    });
+    if(!kmsCap) {
+      throw Error("No content encryption key set for this object");
+    }
 
     let startTime = "";
     let endTime = "";
@@ -1175,8 +1205,6 @@ class EluvioLiveStream {
       // Temp special node ch1-001
       const specialNode = "https://host-76-74-34-194.contentfabric.io";
       this.client.SetNodes({fabricURIs: [specialNode]});
-
-      let targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
 
       let edt = await this.client.EditContentObject({
         objectId: object,
