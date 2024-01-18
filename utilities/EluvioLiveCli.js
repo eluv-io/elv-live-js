@@ -15,6 +15,7 @@ const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
 const prompt = require("prompt-sync")({ sigint: true });
+const exec = require('child_process').exec;
 
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
@@ -45,21 +46,56 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
 };
 
 const CmdTenantAuthToken = async ({ argv }) => {
-  await Init({debugLogging: argv.verbose})
+  await Init({debugLogging: argv.verbose});
 
-  let ts = Date.now()
-  let message = argv.path_or_body + "?ts=" + ts
+  let ts = Date.now();
+  let message = argv.path_or_body + "?ts=" + ts;
   try {
-    let j = JSON.parse(argv.path_or_body)
-    j.ts = ts
-    message = JSON.stringify(j)
+    let j = JSON.parse(argv.path_or_body);
+    j.ts = ts;
+    message = JSON.stringify(j);
   } catch (e) {}
 
   const { multiSig } = await elvlv.TenantSign({
     message: message
-  })
-  console.log(`Timestamped path or body: ${message}`)
-  console.log(`Token: Authorization: Bearer ${multiSig}`)
+  });
+  console.log(`Timestamped path or body: ${message}`);
+  console.log(`Token: Authorization: Bearer ${multiSig}`);
+};
+
+const CmdTenantAuthCurl = async ({ argv }) => {
+  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+  let ts = Date.now();
+  let message = argv.url_path + "?ts=" + ts;
+  try {
+    let j = JSON.parse(argv.url_path);
+    j.ts = ts;
+    message = JSON.stringify(j);
+  } catch (e) {}
+
+  const { multiSig } = await elvlv.TenantSign({
+    message: message
+  });
+
+  let prefix = elvlv.client.authServiceURIs[0];
+  if (argv.as_url) {
+    prefix = argv.as_url;
+  }
+
+  let cmd = `curl -s -H "Authorization: Bearer ${multiSig}" ${prefix}${message}`;
+  if (argv.post_body) {
+    cmd = cmd + ` -d '${argv.post_body}'`;
+  }
+  console.log(cmd);
+  exec(cmd, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+      return;
+    }
+    console.log(stdout);
+  });
+
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
@@ -2302,6 +2338,25 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantAuthToken({argv}).then();
+    }
+  )
+
+  .command(
+    "tenant_auth_curl <url_path> [post_body]",
+    "Generate a tenant token and use it to call an authd endpoint.",
+    (yargs) => {
+      yargs
+        .positional("url_path", {
+          describe: "URL path",
+          type: "string",
+        })
+        .positional("post_body", {
+          describe: "optional body; if set will POST, if not, will GET",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantAuthCurl({argv}).then();
     }
   )
 
