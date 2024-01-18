@@ -1109,7 +1109,7 @@ class EluvioLiveStream {
   }
 
 
- /*
+  /*
   * Copy a portion of a live stream recording into a standard VoD object using the zero-copy content fabric API.
   *
   * Limitations:
@@ -1165,7 +1165,7 @@ class EluvioLiveStream {
 
     // Validation - require target object
     if (!object) {
-      throw "Must specify a target object ID"
+      throw "Must specify a target object ID";
     }
 
     let targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
@@ -1178,7 +1178,7 @@ class EluvioLiveStream {
       objectId: object,
       metadataSubtree: kmsCapId
     });
-    if(!kmsCap) {
+    if (!kmsCap) {
       throw Error("No content encryption key set for this object");
     }
 
@@ -1201,10 +1201,6 @@ class EluvioLiveStream {
           endTime = event.eventEnd;
         }
       }
-
-      // Temp special node ch1-001
-      const specialNode = "https://host-76-74-34-194.contentfabric.io";
-      this.client.SetNodes({fabricURIs: [specialNode]});
 
       let edt = await this.client.EditContentObject({
         objectId: object,
