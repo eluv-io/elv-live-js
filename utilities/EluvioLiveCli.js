@@ -17,7 +17,6 @@ const path = require("path");
 const prompt = require("prompt-sync")({ sigint: true });
 const exec = require('child_process').exec;
 
-
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
 //  (Use `node --trace-warnings ...` to show where the warning was created)
@@ -65,7 +64,7 @@ const CmdTenantAuthToken = async ({ argv }) => {
 };
 
 const CmdTenantAuthCurl = async ({ argv }) => {
-  await Init({debugLogging: argv.verbose});
+  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
   let ts = Date.now();
   let message = argv.url_path + "?ts=" + ts;
@@ -79,11 +78,14 @@ const CmdTenantAuthCurl = async ({ argv }) => {
     message: message
   });
 
-  let cmd;
+  let prefix = elvlv.client.authServiceURIs[0];
+  if (argv.as_url) {
+    prefix = argv.as_url;
+  }
+
+  let cmd = `curl -s -H "Authorization: Bearer ${multiSig}" ${prefix}${message}`;
   if (argv.post_body) {
-    cmd = `curl -s -H "Authorization: Bearer ${multiSig}" ${argv.url_prefix}${message} -d '${argv.post_body}'`;
-  } else {
-    cmd = `curl -s -H "Authorization: Bearer ${multiSig}" ${argv.url_prefix}${message}`;
+    cmd = cmd + ` -d '${argv.post_body}'`;
   }
   console.log(cmd);
   exec(cmd, (error, stdout, stderr) => {
@@ -2340,16 +2342,12 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_auth_curl <url_path> <url_prefix> [post_body]",
+    "tenant_auth_curl <url_path> [post_body]",
     "Generate a tenant token and use it to call an authd endpoint.",
     (yargs) => {
       yargs
         .positional("url_path", {
           describe: "URL path",
-          type: "string",
-        })
-        .positional("url_prefix", {
-          describe: "URL prefix to use for POST or GET",
           type: "string",
         })
         .positional("post_body", {
