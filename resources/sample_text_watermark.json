@@ -1,0 +1,9 @@
+{
+  "font_color": "white@0.80",
+  "font_relative_height": 0.025,
+  "shadow": true,
+  "shadow_color": "black@0.18",
+  "template": "Sample - $USERNAME",
+  "x": "(w-tw)/100*85",
+  "y": "(h-th)/100*20"
+}
