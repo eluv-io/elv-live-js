@@ -473,6 +473,66 @@ class EluvioLiveStream {
     }
   }
 
+  async Watermark({op, objectId, fileName}) {
+
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    const edt = await this.client.EditContentObject({
+      objectId,
+      libraryId
+    });
+
+    const recordingParamsPath = "live_recording/recording_config/recording_params";
+
+    let m = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      writeToken: edt.write_token,
+      metadataSubtree: recordingParamsPath,
+      resolveLinks: false
+    });
+    if (!m) {
+      throw "stream object must be configured"
+    }
+
+    switch(op) {
+      case "set":
+        const wmBuf = fs.readFileSync(fileName);
+        const wm = JSON.parse(wmBuf);
+        m.simple_watermark = wm;
+        break;
+      case "rm":
+        delete m.simple_watermark;
+        break;
+      default:
+        throw "watermark operation must be 'set' or 'rm'"
+    }
+
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: edt.write_token,
+      metadataSubtree: recordingParamsPath,
+      metadata: m
+    });
+
+    let res = {
+      "watermark": m.simple_watermark
+    }
+
+    let finalize = true;
+    if (finalize) {
+      let fin = await this.client.FinalizeContentObject({
+        libraryId,
+        objectId,
+        writeToken: edt.write_token,
+        commitMessage: "Watermark " + op
+      });
+      res.hash = fin.hash;
+    }
+
+    return res;
+  }
+
   async StreamConfig({name}) {
     return this.client.StreamConfig({name});
   }
