@@ -491,10 +491,10 @@ class EluvioLiveStream {
       resolveLinks: false
     });
     if (!m) {
-      throw "stream object must be configured"
+      throw "stream object must be configured";
     }
 
-    switch(op) {
+    switch (op) {
       case "set":
         const wmBuf = fs.readFileSync(fileName);
         const wm = JSON.parse(wmBuf);
@@ -504,7 +504,7 @@ class EluvioLiveStream {
         delete m.simple_watermark;
         break;
       default:
-        throw "watermark operation must be 'set' or 'rm'"
+        throw "watermark operation must be 'set' or 'rm'";
     }
 
     await this.client.ReplaceMetadata({
@@ -517,7 +517,7 @@ class EluvioLiveStream {
 
     let res = {
       "watermark": m.simple_watermark
-    }
+    };
 
     let finalize = true;
     if (finalize) {
