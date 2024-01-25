@@ -32,8 +32,6 @@ let elvlv;
 let marketplace;
 
 const Init = async ({debugLogging = false, asUrl}={}) => {
-  console.log("Network: " + Config.net);
-
   const config = {
     configUrl: Config.networks[Config.net],
     mainObjectId: Config.mainObjects[Config.net],
@@ -615,10 +613,6 @@ const CmdTenantMint = async ({ argv }) => {
 
 const CmdTenantWallets = async ({ argv }) => {
   const max = argv.max_results ? argv.max_results : "unlimited";
-  console.log(
-    `Tenant wallets tenant: ${argv.tenant} max_results: ${max}`
-  );
-
   try {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
@@ -626,6 +620,9 @@ const CmdTenantWallets = async ({ argv }) => {
       tenant: argv.tenant,
       maxNumber: argv.max_results,
     });
+
+    res.tenant = argv.tenant;
+    res.max_results = max;
 
     if (argv.csv && argv.csv != "") {
       console.log(`CSV: ${argv.csv}`);
