@@ -15,6 +15,7 @@ const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
 const prompt = require("prompt-sync")({ sigint: true });
+const exec = require('child_process').exec;
 
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
@@ -45,21 +46,56 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
 };
 
 const CmdTenantAuthToken = async ({ argv }) => {
-  await Init({debugLogging: argv.verbose})
+  await Init({debugLogging: argv.verbose});
 
-  let ts = Date.now()
-  let message = argv.path_or_body + "?ts=" + ts
+  let ts = Date.now();
+  let message = argv.path_or_body + "?ts=" + ts;
   try {
-    let j = JSON.parse(argv.path_or_body)
-    j.ts = ts
-    message = JSON.stringify(j)
+    let j = JSON.parse(argv.path_or_body);
+    j.ts = ts;
+    message = JSON.stringify(j);
   } catch (e) {}
 
   const { multiSig } = await elvlv.TenantSign({
     message: message
-  })
-  console.log(`Timestamped path or body: ${message}`)
-  console.log(`Token: Authorization: Bearer ${multiSig}`)
+  });
+  console.log(`Timestamped path or body: ${message}`);
+  console.log(`Token: Authorization: Bearer ${multiSig}`);
+};
+
+const CmdTenantAuthCurl = async ({ argv }) => {
+  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+  let ts = Date.now();
+  let message = argv.url_path + "?ts=" + ts;
+  try {
+    let j = JSON.parse(argv.url_path);
+    j.ts = ts;
+    message = JSON.stringify(j);
+  } catch (e) {}
+
+  const { multiSig } = await elvlv.TenantSign({
+    message: message
+  });
+
+  let prefix = elvlv.client.authServiceURIs[0];
+  if (argv.as_url) {
+    prefix = argv.as_url;
+  }
+
+  let cmd = `curl -s -H "Authorization: Bearer ${multiSig}" ${prefix}${message}`;
+  if (argv.post_body) {
+    cmd = cmd + ` -d '${argv.post_body}'`;
+  }
+  console.log(cmd);
+  exec(cmd, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+      return;
+    }
+    console.log(stdout);
+  });
+
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
@@ -538,7 +574,10 @@ const CmdTenantTicketsGenerate = async ({ argv }) => {
     let res = await elvlv.TenantTicketsGenerate({
       tenant: argv.tenant,
       otp: argv.otp,
-      quantity: argv.quantity
+      otpClass: argv.otp_class,
+      quantity: argv.quantity,
+      emails: argv.emails,
+      embedUrlBase: argv.embed_url_base
     });
 
     console.log("Tickets: ", res);
@@ -1110,7 +1149,7 @@ const CmdNftAddRedeemableOffer = async ({ argv }) => {
     res = await elvlv.NFTAddRedeemableOffer({ addr: argv.addr });
 
     console.log(yaml.dump(res));
-    console.log("Offer ID: ",res.logs[0].values.offerId);
+    console.log("added offerId", res?.logs[0]?.args[0] ?? "unknown offerId");
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1608,6 +1647,67 @@ const CmdTokenCreate = async ({ argv }) => {
     console.error("ERROR:", e);
   }
 };
+
+const CmdTokenTransfer = async ({ argv }) => {
+  console.log(`token transfer, 
+    token_addr=${argv.token_addr}
+    to_addr=${argv.to_addr}
+    amount=${argv.amount}`);
+
+  try {
+    let elvToken = new ElvToken({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvToken.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res;
+    res = await elvToken.ElvTokenTransfer({
+      tokenAddr: argv.token_addr,
+      toAddr: argv.to_addr,
+      amount: argv.amount,
+    });
+    var status = await res.status;
+    if (status === 1){
+      console.log("status: transfer successful")
+    }else {
+      console.log("status: transfer failed")
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTokenBalanceOf = async ({ argv }) => {
+
+  console.log(`token_addr: ${argv.token_addr}`);
+  console.log(`user_addr: ${argv.user_addr}`);
+
+  try {
+    let elvToken = new ElvToken({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvToken.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res;
+    res = await elvToken.ElvTokenBalance({
+      tokenAddr: argv.token_addr,
+      userAddr : argv.user_addr,
+    });
+    console.log("token_balance:",yaml.dump(await res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 
 const CmdContentSetPolicy  = async ({ argv }) => {
   console.log("Content Set Policy");
@@ -2242,6 +2342,25 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "tenant_auth_curl <url_path> [post_body]",
+    "Generate a tenant token and use it to call an authd endpoint.",
+    (yargs) => {
+      yargs
+        .positional("url_path", {
+          describe: "URL path",
+          type: "string",
+        })
+        .positional("post_body", {
+          describe: "optional body; if set will POST, if not, will GET",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantAuthCurl({argv}).then();
+    }
+  )
+
+  .command(
     "tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]",
     "Reset the token URI(s) for tenant NFT contract(s)",
     (yargs) => {
@@ -2434,6 +2553,18 @@ yargs(hideBin(process.argv))
         })
         .option("quantity", {
           describe: "Specify how many to generate (default 1)",
+          type: "integer",
+        })
+        .option("emails", {
+          describe: "File containing one email per line (or any user identifier). Generate codes bound to these identifiers",
+          type: "string",
+        })
+        .option("embed_url_base", {
+          describe: "Generate embed URLs for each ticket based on this template",
+          type: "string",
+        })
+        .option("otp_class", {
+          describe: "Use authority services (class 5) or contract (class 4) (default 5)",
           type: "integer",
         });
     },
@@ -3168,6 +3299,49 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTokenCreate({ argv });
+    }
+  )
+
+  .command(
+    "token_transfer <token_addr> <to_addr> <amount> [options]",
+    "Transfer given elv tokens to address provided",
+    (yargs) => {
+      yargs
+        .positional("token_addr", {
+          describe: "elv_token address",
+          type: "string",
+        })
+        .positional("to_addr", {
+          describe: "to address",
+          type: "string",
+        })
+        .positional("amount", {
+          describe: "transfer amount",
+          type: "number",
+        });
+    },
+    (argv) => {
+      CmdTokenTransfer({ argv });
+    }
+  )
+
+
+  .command(
+    "token_balance_of <token_addr> <user_addr> [options]",
+    "Get the token balance of a given user",
+    (yargs) => {
+      yargs
+        .positional("token_addr", {
+          describe: "elv_token address",
+          type: "string",
+        })
+        .positional("user_addr", {
+          describe: "user address",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdTokenBalanceOf({ argv });
     }
   )
 

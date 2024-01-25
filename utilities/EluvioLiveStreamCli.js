@@ -216,6 +216,49 @@ const CmdStreamConfig = async ({ argv }) => {
   }
 };
 
+const CmdStreamCopyToVod = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let status = await elvStream.StreamCopyToVod({
+      name: argv.stream,
+      object: argv.object,
+      eventId: argv.event_id});
+    console.log(yaml.dump(status));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdWatermark = async ({op, argv}) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvStream.Watermark({
+      op,
+      objectId: argv.stream,
+      fileName: argv.file});
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+}
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -438,6 +481,70 @@ yargs(hideBin(process.argv))
       CmdStreamDownload({ argv });
     }
   )
+
+  .command(
+    "copy_as_vod <stream>",
+    "Copy the stream to a new VoD object.",
+    (yargs) => {
+      yargs
+        .positional("stream", {
+          describe:
+            "Stream name or QID (content ID)",
+          type: "string",
+        })
+        .option("object", {
+          describe:
+            "Copy to an existing object instead of creating a new one",
+          type: "string",
+        })
+        .option("event_id", {
+          describe:
+            "Optional SCTE35 program or chapter event ID",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdStreamCopyToVod({ argv });
+    }
+  )
+
+  .command(
+    "watermark_set <stream> <file>",
+    "Set watermark for this stream.",
+    (yargs) => {
+      yargs
+      .positional("stream", {
+        describe:
+          "Stream name or QID (content ID)",
+        type: "string",
+      })
+      .positional("file", {
+          describe:
+            "File containing JSON watermark spec",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdWatermark({ op: "set", argv });
+    }
+  )
+
+  .command(
+    "watermark_remove <stream>",
+    "Remove watermark from the stream.",
+    (yargs) => {
+      yargs
+      .positional("stream", {
+        describe:
+          "Stream name or QID (content ID)",
+        type: "string",
+      })
+  },
+    (argv) => {
+      CmdWatermark({ op: "rm", argv });
+    }
+  )
+
 
   .strict()
   .help()

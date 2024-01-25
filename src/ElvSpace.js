@@ -4,7 +4,7 @@ const { ElvAccount } = require("./ElvAccount");
 const { ElvClient } = require("@eluvio/elv-client-js");
 
 const Ethers = require("ethers");
-const CBOR = require("cbor");
+const CBOR = require("cbor-x");
 
 class ElvSpace {
   /**
@@ -142,7 +142,7 @@ class ElvSpace {
       console.log("[Error]: TenantDeploy can only be called by the space owner.");
       throw (e);
     }
- 
+
     let res = {};
 
     let tenantFuncsContract = await ElvUtils.DeployContractFile({
