@@ -534,7 +534,7 @@ class EluvioLiveStream {
     return res;
   }
 
-  async Config({name}) {
+  async StreamConfig({name}) {
     return this.client.StreamConfig({name});
   }
 
