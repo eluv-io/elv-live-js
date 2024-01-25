@@ -50,7 +50,6 @@
     "keccak256": "^1.0.6",
     "postgres": "^3.3.5",
     "prompt-sync": "^4.2.0",
-    "request": "^2.88.2",
     "seedrandom": "^3.0.5",
     "url-join": "^4.0.1",
     "uuid": "^8.3.2"
