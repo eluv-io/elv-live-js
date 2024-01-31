@@ -712,6 +712,66 @@ const CmdTenantSecondarySales = async ({ argv }) => {
   }
 };
 
+const CmdTenantActionsReport = async ({ argv }) => {
+  console.log(`Tenant Actions Report: ${argv.tenant}`);
+  if (argv.verbose) {
+    if (argv.actions) {
+      console.log(`actions: ${argv.actions}`);
+    }
+    if (argv.offset) {
+      console.log(`offset: ${argv.offset}`);
+    }
+    if (argv.count) {
+      console.log(`count: ${argv.count}`);
+    }
+    if (argv.start_ts) {
+      console.log(`start_ts: ${argv.start_ts}`);
+    }
+    if (argv.end_ts) {
+      console.log(`end_ts: ${argv.end_ts}`);
+    }
+
+    if (argv.start_date) {
+      console.log(`start_date: ${argv.start_date}`);
+    }
+    if (argv.end_date) {
+      console.log(`end_date: ${argv.end_date}`);
+    }
+
+    if (argv.fileout) { 
+      console.log(`fileout: ${argv.fileout}`);
+    }
+  }
+
+  try {
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+
+    let res = await elvlv.TenantActionsReport({
+      tenant: argv.tenant,
+      actions: argv.actions,
+      offset: argv.offset,
+      count: argv.count,
+      start_ts: argv.start_ts,
+      end_ts: argv.end_ts,
+      start_date: argv.start_date,
+      end_date: argv.end_date,
+
+      fileout: argv.fileout,
+      verbose: argv.verbose,
+    });
+
+    if (argv.fileout && argv.fileout != "") {
+      fs.writeFileSync( argv.fileout, res);
+    } else {
+      console.log(res);
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
+
 const CmdTenantUnifiedSales = async ({ argv }) => {
   console.log(`Tenant Unified Sales: ${argv.tenant}`);
   console.log(`Processor: ${argv.processor}`);
@@ -2600,6 +2660,60 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantSecondarySales({ argv });
+    }
+  )
+
+  .command(
+    "tenant_actions_report <tenant>",
+    "Show tenant actions report history",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        // offset in hours
+        .option("offset", {
+          describe: "Offset in hours to dump data where 0 is the current hour",
+          type: "number",
+          //default: 0,
+        })
+        // count of hours, combine with offset
+        .option("count", {
+          describe: "Count of hours to dump data",
+          type: "number",
+          //default: 0,
+        })
+        // start_ts, end_ts - unix timestamp
+        .option("start_ts", {
+          describe: "Start timestamp to dump data",
+          type: "number",
+          //default: 0,
+        })
+        .option("end_ts", {
+          describe: "End timestamp to dump data",
+          type: "number",
+          //default: 0,   // default is current time in API
+        })
+        // start_date, end_date - ISO date string format
+        .option("start_date", {
+          describe: "Start date string to dump data",
+          type: "string",
+          //default: 0,
+        })
+        .option("end_date", {
+          describe: "End date string to dump data",
+          type: "string",
+          //default: 0,   // default is current time in API
+        })
+        
+        .option("fileout", {
+          describe: "File path to output to",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantActionsReport({ argv });
     }
   )
 
