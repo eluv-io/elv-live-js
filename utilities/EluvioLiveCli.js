@@ -255,7 +255,6 @@ const CmdNftShow = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
-    console.log(JSON.stringify(res, null, 4));
   } catch (e) {
     console.error("ERROR:", e);
   }
