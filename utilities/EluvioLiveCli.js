@@ -65,9 +65,14 @@ const CmdTenantAuthCurl = async ({ argv }) => {
   await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
   let ts = Date.now();
-  let message = argv.url_path + "?ts=" + ts;
+
+  let message = argv.url_path;
+  let msgNoArgs = message.includes("?") ? message.split("?")[0] : message;
+  let args = message.includes("?") ? ("&" + message.split("?")[1]) : "";
+  message = msgNoArgs + "?ts=" + ts;
+
   try {
-    let j = JSON.parse(argv.url_path);
+    let j = JSON.parse(message);
     j.ts = ts;
     message = JSON.stringify(j);
   } catch (e) {}
@@ -81,7 +86,7 @@ const CmdTenantAuthCurl = async ({ argv }) => {
     prefix = argv.as_url;
   }
 
-  let cmd = `curl -s -H "Authorization: Bearer ${multiSig}" ${prefix}${message}`;
+  let cmd = `curl -s -H "Authorization: Bearer ${multiSig}" ${prefix}${message}${args}`;
   if (argv.post_body) {
     cmd = cmd + ` -d '${argv.post_body}'`;
   }
@@ -250,6 +255,7 @@ const CmdNftShow = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    console.log(JSON.stringify(res, null, 4));
   } catch (e) {
     console.error("ERROR:", e);
   }
