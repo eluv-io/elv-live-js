@@ -14,7 +14,6 @@ const url = require("url");
 const crypto = require("crypto");
 const ethers = require("ethers");
 const { parse } = require("csv-parse");
-const { start } = require("repl");
 
 /**
  * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
@@ -3098,7 +3097,7 @@ class EluvioLive {
    */
   async TenantActionsReport({   
     tenant, 
-    actions = "nft-open,nft-buy,nft-claim,nft-redeem,nft-offer-redeem,vote-drop", 
+    actions = "nft-open,nft-buy,nft-claim,nft-redeem,nft-offer-redeem,vote-drop,nft-transfer", 
     offset, 
     count, 
     start_ts,
