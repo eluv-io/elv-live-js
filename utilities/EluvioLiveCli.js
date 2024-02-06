@@ -69,7 +69,7 @@ const CmdTenantAuthCurl = async ({ argv }) => {
   let message = argv.url_path;
   let msgNoArgs = message.includes("?") ? message.split("?")[0] : message;
   let args = message.includes("?") ? ("&" + message.split("?")[1]) : "";
-  message = msgNoArgs + "?ts=" + ts;
+  message = msgNoArgs + "?ts=" + ts + args;
 
   try {
     let j = JSON.parse(message);
@@ -86,7 +86,7 @@ const CmdTenantAuthCurl = async ({ argv }) => {
     prefix = argv.as_url;
   }
 
-  let cmd = `curl -s -H "Authorization: Bearer ${multiSig}" ${prefix}${message}${args}`;
+  let cmd = `curl -s -H "Authorization: Bearer ${multiSig}" "${prefix}${message}"`;
   if (argv.post_body) {
     cmd = cmd + ` -d '${argv.post_body}'`;
   }
