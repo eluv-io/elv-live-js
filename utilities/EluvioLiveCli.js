@@ -384,6 +384,7 @@ const CmdTenantShow = async ({ argv }) => {
   }
 };
 
+
 const CmdTenantSetTokenURI = async ({ argv }) => {
   console.log("request_type ", argv.request_type);
   console.log("tenantId ", argv.tenant);
@@ -396,7 +397,14 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
     console.log("csv ", argv?.csv);
   }
 
+  
   try {
+    // Validate the token URI from the command line for single, all requests
+    if ((argv.request_type != "batch") && (!(ElvUtils.IsValidURI(argv.new_token_uri)))) {
+      console.log("Invalid token_uri: ", argv.new_token_uri);
+      return;
+    } 
+
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantSetTokenURI({
@@ -416,7 +424,7 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
     }
 
   } catch (e) {
-    console.error("ERROR:", e);
+    console.error("ERROR: ", e);
   }
 };
 

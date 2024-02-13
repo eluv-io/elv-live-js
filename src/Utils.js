@@ -39,6 +39,15 @@ class ElvUtils {
     return Utils.B58(UUID.parse(UUID.v4()));
   }
 
+  static IsValidURI(uri) {
+    try {
+      const parsedUrl = new URL(uri);
+      return parsedUrl.protocol === "https:"; 
+    } catch (error) {
+      return false; 
+    }
+  }
+  
   /**
    * Read a CSV file and parse into a JSON object
    *
