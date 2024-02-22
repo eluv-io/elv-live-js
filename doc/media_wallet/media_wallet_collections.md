@@ -9,6 +9,7 @@ Create specific views for properties like sports leagues, tournaments, live perf
 
 Each view needs UI elements (hero, trailers, ...) and 'carousels' which are either fixed or dependent on the view (for example "Live Now" carousel will be secific to the tournament stage).
 
+![alt text](media_wallet_collections.png)
 
 ## MAIN CONCEPTS
 
