@@ -7,7 +7,7 @@
 Create specific views for properties like sports leagues, tournaments, live performance events (which may be multi-day 'festivals') as well as live and on-demand media apps (netflix, fox sports, ...).
   - these apps require 'season' views, 'stage' views, 'TV series', ...
 
-Each view needs UI elements (hero, trailers, ...) and 'carousels' which are either fixed or dependent on the view (for example "Live Now" carousel will be secific to the tournament stage).
+Each view needs UI elements (hero, trailers, ...) and 'carousels' which are either fixed or dependent on the view (for example "Live Now" carousel will be specific to the tournament stage).
 
 ![alt text](media_wallet_collections.png)
 
@@ -22,7 +22,7 @@ Content objects
   - content objects storing associated assets - trailers, clips, extras (associated to a primary asset)
 
 Media Catalog
- - points to conetent objects storing primary assets
+ - points to content objects storing primary assets
 
 Collections are needed when we need a 'page' for a grouping (like a TV series, sporting event stage)
   - and so we can structure things in special views (like google NBA, NFL)
@@ -33,12 +33,12 @@ Collections may be
     (we may use a generic asset for all collections - eg. all seasons of a series, all 'days' of a tournament)
 
 Collections are not hierarchical (even if conceptually they might be)
-  - if we need somehting like breadcrumbs in the UX we can make a 'parent' field and link them
+  - if we need something like breadcrumbs in the UX we can make a 'parent' field and link them
 
 Carousels are displayed on various pages (property, collection, asset)
 
   - contain items: collections & primary assets (content object)
-  - can be automatic or manual (currated list)
+  - can be automatic or manual (curated list)
   - an automatic carousel may need to match the page it is on
 
 Property 'fields'
@@ -51,7 +51,7 @@ Property 'fields'
 
     - event_type      type: enum   values: ["euro championship", ...]    // much like content type definitions
     - event_season    ("2023", "2023/2024", ...)
-    - event_stage     (preseason, groups, playoffs, playin, roundof16, quarterfials, semifinals, ...)
+    - event_stage     (preseason, groups, playoffs, play_in, round_of_16, quarterfials, semifinals, ...)
     - event_day       (event_week for NFL)
 
 #### collections
@@ -218,7 +218,7 @@ Returns all carousels for the property page
 User clicks on tournament "Six Nations" then has a "Current Seasons" carousel
 - then user clicks on "Quarterfinals" item in the carousel which is a collection of type 'event_stage'
 
-#### GET /collections/event_stage ? event_type=six_nationsp & event_instance=2024 & event_stage=quarterfinals
+#### GET /collections/event_stage ? event_type=six_nations & event_instance=2024 & event_stage=quarterfinals
 
 Returns the info for this collection:
 
