@@ -47,13 +47,14 @@ Property 'fields'
 
 ## PROPERTY
 
-  fields
+#### fields
+
     - event_type      type: enum   values: ["euro championship", ...]    // much like content type definitions
     - event_season    ("2023", "2023/2024", ...)
     - event_stage     (preseason, groups, playoffs, playin, roundof16, quarterfials, semifinals, ...)
     - event_day       (event_week for NFL)
 
-  collections
+#### collections
 
     - event_type      // can be also called 'tournament'
 
@@ -96,7 +97,7 @@ Property 'fields'
         - event_stage
         - event_day
 
-  carousels
+#### carousels
 
     tournaments:
       - for_property
@@ -146,6 +147,7 @@ Property 'fields'
 
 Under `/public/asset_metadata`:
 
+```
   asset_type:  primary | attachment | trailer | clip
   title_type
     - live_match
@@ -161,7 +163,7 @@ Under `/public/asset_metadata`:
   event_day
 
   associated_assets  // may just have one list and use `asset_type` of the objects we point to for queries
-
+```
 
 
 
@@ -174,6 +176,7 @@ Under `/public/asset_metadata`:
 
 Returns all carousels for the property page
 
+```
 {
     "carousels" : {
 
@@ -208,7 +211,7 @@ Returns all carousels for the property page
         }
     }
 }
-
+```
 
 ### Make an event stage page
 
@@ -219,6 +222,7 @@ User clicks on tournament "Six Nations" then has a "Current Seasons" carousel
 
 Returns the info for this collection:
 
+```
 {
     "title" : "Six Nations 2024 Quarterfinals"
     "images" : {
@@ -230,6 +234,7 @@ Returns the info for this collection:
     }
 
 }
+```
 
 ### Make a match page under the above stage page (quarterfinals)
 
@@ -237,6 +242,7 @@ Returns the info for this collection:
 
 Returns the content info and corresponding carousels:
 
+```
 {
     "title" : "Six Nations 2024 Quarterfinals"
     "images" : {
@@ -249,13 +255,15 @@ Returns the content info and corresponding carousels:
     }
 
 }
-
+```
 
 ## EXAMPLE USE CASES
 
 ### PROPERTY - RUGBY
 
-    CAROUSEL - TOURNAMENTS
+CAROUSEL - TOURNAMENTS
+
+```
     - Six Nations
     - Heineken Cup
     - HSBC Rugby Sevens
@@ -272,9 +280,11 @@ Returns the content info and corresponding carousels:
 
     ENTERTAINMENT - CAROUSEL
     - movies and series
+```
 
 TOURNAMENT PAGE (eg. Six Nations)
 
+```
   Collection: event_type: "six nations"
 
   CAROUSEL - LIVE NOW
@@ -282,13 +292,14 @@ TOURNAMENT PAGE (eg. Six Nations)
 
   CAROUSEL - ARCHIVE
   - list of seasons, newest first (2023, 2022, ...)
-
+```
 
 SERIES PAGE (eg. Scurm)   // Entertainment content - movies, series, misc videos
 
+```
   CAROUSEL - Current Season
   - list of episodes, newest first
   CAROUSEL - Seasons
   - list of seasons
-
+```
 
