@@ -230,7 +230,7 @@ Returns the info for this collection:
         "title_treatment" : ""
     },
     "carousels" : {
-        ... // all the carousels that match "for_collection 'event_stage' with filter `event_type=six_nationsp & event_instance=2024 & event_stage=quarterfinals`
+        ... // all the carousels that match "for_collection 'event_stage' with filter `event_type=six_nations & event_instance=2024 & event_stage=quarterfinals`
     }
 
 }
@@ -238,7 +238,7 @@ Returns the info for this collection:
 
 ### Make a match page under the above stage page (quarterfinals)
 
-#### GET /content/id ? event_type=six_nationsp & event_instance=2024 & event_stage=quarterfinals
+#### GET /content/id ? event_type=six_nations & event_instance=2024 & event_stage=quarterfinals
 
 Returns the content info and corresponding carousels:
 
@@ -251,7 +251,7 @@ Returns the content info and corresponding carousels:
     },
     "playout": ... (link to options.json or resolve options.json inside here)
     "carousels" : {
-        ... // all the carousels that match "for_titles 'live_match' with filter `event_type=six_nationsp & event_instance=2024 & event_stage=quarterfinals`
+        ... // all the carousels that match "for_titles 'live_match' with filter `event_type=six_nations & event_instance=2024 & event_stage=quarterfinals`
     }
 
 }
