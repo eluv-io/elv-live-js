@@ -41,15 +41,10 @@ For web, have two separate instances of the app:
   as the media wallet, but the header/footer and front page can be customized
 
   - customizable login
+    - including style, workflow, text, consent
   - all logins are reported to the tenant
-  - 
-
-  Configurable in the CMS:
-
-  - custom domain  eg.  uefa.tv  web3.wb.com
-  - sign on customizations
-  - site elements - show 'My Items' (button text and style)
-  - header - home icon, etc
-  - footer - terms, faq, support
+  - customizable My Media and My Items links 
+  - customizable header (home button, maybe other things)
+  - customizable footer (terms, faq, support links)
 
  
