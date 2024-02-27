@@ -34,7 +34,6 @@ const Entitlement = async({tenant, marketplaceObjectId, sku, amount}) => {
     nonce: getNonce(),
     purchaseId: getPurchaseId(),
   };
-  await client.Sign(json);
   const sig = await client.Sign(json);
 
   return { entitlement_json: json, signature: sig };
