@@ -50,7 +50,7 @@ const Run = async ({}) => {
       privateKey: process.env.PRIVATE_KEY
     });
     client.SetSigner({signer});
-    client.ToggleLogging(true);
+    client.ToggleLogging(false);
 
     const { entitlement_json, signature } = await Entitlement({tenant, marketplaceObjectId, sku, amount});
     console.log("ENTITLEMENT", entitlement_json);
