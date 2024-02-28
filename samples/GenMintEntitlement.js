@@ -28,11 +28,11 @@ const getPurchaseId = () => {
  */
 const Entitlement = async({tenant, marketplaceObjectId, sku, amount}) => {
   const json = {
-    tenantId: tenant,
-    marketplaceId: marketplaceObjectId,
+    tenant_id: tenant,
+    marketplace_id: marketplaceObjectId,
     items: [ { sku: sku, amount: amount } ],
     nonce: getNonce(),
-    purchaseId: getPurchaseId(),
+    purchase_id: getPurchaseId(),
   };
   const sig = await client.Sign(json);
 
@@ -50,6 +50,8 @@ const Run = async ({}) => {
     });
     client.SetSigner({signer});
     client.ToggleLogging(false);
+    console.log("SIGNER", client.CurrentAccountAddress());
+    console.log("AUTH TOKEN", await client.CreateFabricToken({}));
 
     const { entitlement_json, signature } = await Entitlement({tenant, marketplaceObjectId, sku, amount});
     console.log("ENTITLEMENT", entitlement_json);
