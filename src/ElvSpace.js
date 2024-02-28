@@ -77,10 +77,10 @@ class ElvSpace {
         isManager: true,
       });
 
-      await elvAccount.SetAccountTenantAdminsAddress({
-        tenantAdminsAddress: tenantAdminGroup.address,
-      });
-      account.tenantAdminsId = await elvAccount.client.userProfileClient.TenantId();
+      // await elvAccount.SetAccountTenantAdminsAddress({
+      //   tenantAdminsAddress: tenantAdminGroup.address,
+      // });
+      // account.tenantAdminsId = await elvAccount.client.userProfileClient.TenantId();
 
       // Create Content Admin Access Group
       let contentAdminGroup = await elvAccount.CreateAccessGroup({
@@ -106,15 +106,14 @@ class ElvSpace {
         contentAdminGroupAddress: contentAdminGroup.address,
       });
 
-      // Assign the created tenant to account
+      // Assign the created tenant and tenant_admin group to account
       elvAccount.SetAccountTenantContractId({tenantId: tenant.id});
 
-      // Add _ELV_TENANT_ID to groups' metadata so we can identify the tenant these groups belong to
+      // Add tenant details to group
       await elvAccount.SetGroupTenantConfig({
         tenantId: tenant.id,
         groupAddress: tenantAdminGroup.address
       });
-
       await elvAccount.SetGroupTenantConfig({
         tenantId: tenant.id,
         groupAddress: contentAdminGroup.address
