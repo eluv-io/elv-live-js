@@ -538,6 +538,10 @@ class EluvioLiveStream {
     return this.client.StreamConfig({name});
   }
 
+  async StreamListUrls({siteId}) {
+    return this.client.StreamListUrls({siteId});
+  }
+
   async ReadEdgeMeta() {
 
   }
