@@ -88,9 +88,7 @@ class ElvAccount {
       }
     }
 
-    let client = await ElvClient.FromConfigurationUrl({
-      configUrl: this.configUrl,
-    });
+    // create new account
     let wallet = this.client.GenerateWallet();
     const mnemonic = wallet.GenerateMnemonic();
     const signer = wallet.AddAccountFromMnemonic({ mnemonic });
@@ -103,8 +101,6 @@ class ElvAccount {
     }
 
     try {
-      client.SetSigner({ signer });
-
       let res = await this.client.SendFunds({
         recipient: address,
         ether: funds,
@@ -114,14 +110,22 @@ class ElvAccount {
         console.log("Send Funds result: ", res);
       }
 
-      await client.userProfileClient.CreateWallet();
+      // new account
+      let account = await ElvClient.FromConfigurationUrl({
+        configUrl: this.configUrl,
+      });
+      await account.SetSigner({signer});
+      // the new account can create wallet when it has funds
+      await account.userProfileClient.CreateWallet();
 
       if (tenantId) {
+        // set tenant info for new account
+        this.client = account;
         await this.SetAccountTenantContractId({tenantId});
       }
 
       if (accountName) {
-        await client.userProfileClient.ReplaceUserMetadata({
+        await account.userProfileClient.ReplaceUserMetadata({
           metadataSubtree: "public/name",
           metadata: accountName,
         });
@@ -143,7 +147,7 @@ class ElvAccount {
     } catch (e) {
       // Return funds in case of error
       if (funds > 0.01) {
-        await client.SendFunds({
+        await elvAccount.SendFunds({
           recipient: this.client.signer.address,
           ether: funds - 0.01,
         });

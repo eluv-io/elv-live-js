@@ -107,7 +107,7 @@ class ElvSpace {
       });
 
       // Assign the created tenant and tenant_admin group to account
-      elvAccount.SetAccountTenantContractId({tenantId: tenant.id});
+      await elvAccount.SetAccountTenantContractId({tenantId: tenant.id});
 
       // Add tenant details to group
       await elvAccount.SetGroupTenantConfig({

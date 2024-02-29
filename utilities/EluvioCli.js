@@ -51,6 +51,7 @@ const CmdAccountCreate = async ({ argv }) => {
       accountName: argv.account_name,
       tenantId: argv.tenant,
     });
+
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -69,7 +70,7 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
     await elvAccount.InitWithId({
       privateKey: process.env.PRIVATE_KEY,
       id: argv.tenant,
-    })
+    });
     console.log("Success!");
   } catch (e) {
     console.error("ERROR:", e);
