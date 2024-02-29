@@ -256,8 +256,27 @@ const CmdWatermark = async ({op, argv}) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
+};
 
-}
+const CmdStreamListUrls = async ({ argv }) => {
+  try {
+    const elvStream = new EluvioLiveStream({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvStream.StreamListUrls({
+      siteId: argv.site
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
 
 yargs(hideBin(process.argv))
   .option("verbose", {
@@ -542,6 +561,22 @@ yargs(hideBin(process.argv))
   },
     (argv) => {
       CmdWatermark({ op: "rm", argv });
+    }
+  )
+
+  .command(
+    "list",
+    "List stream urls and their status.",
+    (yargs) => {
+      yargs
+        .option("site", {
+          describe:
+            "Site ID",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdStreamListUrls({argv});
     }
   )
 
