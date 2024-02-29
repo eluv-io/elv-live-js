@@ -77,6 +77,7 @@ class ElvSpace {
         isManager: true,
       });
 
+      // TODO: fix elv-client-js tenantId
       // await elvAccount.SetAccountTenantAdminsAddress({
       //   tenantAdminsAddress: tenantAdminGroup.address,
       // });
