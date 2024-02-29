@@ -188,21 +188,6 @@ class ElvAccount {
     let balance = await wallet.GetAccountBalance({ signer: this.client.signer });
     let userId = ElvUtils.AddressToId({prefix:"iusr", address});
 
-    const abi = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/BaseAccessWallet.abi")
-    );
-
-    let userTenantIdHex = await this.client.CallContractMethod({
-      contractAddress: walletAddress,
-      abi: JSON.parse(abi),
-      methodName: "getMeta",
-      methodArgs: ["_ELV_TENANT_ID"],
-    });
-    const userTenantId = ethers.utils.toUtf8String(userTenantIdHex);
-
-    if (tenantId != userTenantId) {
-      console.log("Bad user - inconsistent tenant ID", tenantId, userTenantId);
-    }
     return { address, userId, tenantId, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
   }
 
