@@ -12,10 +12,12 @@ const sku = "C9Zct19CoEAZYWug9tyavX"; // Goat Pack One
 const amount = 1;
 
 const getNonce = () => {
+  return "nonce_6f9f53ecc09a7e223cf7d47f";
   return "nonce_" + crypto.randomBytes(12).toString('hex');
 };
 
 const getPurchaseId = () => {
+  return "pid_e852572c6e84626892da049a";
   return "pid_" + crypto.randomBytes(12).toString('hex');
 };
 
@@ -57,8 +59,8 @@ const Entitlement = async({tenant, marketplaceObjectId, sku, amount}) => {
     tenant_id: tenant,
     marketplace_id: marketplaceObjectId,
     items: [ { sku: sku, amount: amount } ],
-    nonce: "nonce_e5b8a4b3f39e776a453d6f8a", //getNonce(),
-    purchase_id: "pid_7e72117c3f3d8e669bef50ba", // getPurchaseId(),
+    nonce: getNonce(),
+    purchase_id: getPurchaseId(),
   };
 
   const jsonString = JSON.stringify(message);
