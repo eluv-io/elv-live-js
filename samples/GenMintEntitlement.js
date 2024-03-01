@@ -59,19 +59,12 @@ const Entitlement = async({tenant, marketplaceObjectId, sku, amount, nonce, purc
   console.log("ENTITLEMENT TO SIGN", jsonString);
   const sig = await client.Sign(jsonString);
 
-  // let sig, formattedSig;
-  // const hexPrivateKey = process.env.PRIVATE_KEY;
-  // const signingKey = new ethers.utils.SigningKey(hexPrivateKey);
-  // const signature = signingKey.signDigest(ethers.utils.id("bou"));
-  // sig = ethers.utils.joinSignature(signature);
-  // sig = await client.Sign(jsonString);
-  // formattedSig = sig;
-  // //formattedSig = FormatSignature(sig);
-  //console.log("SIG", sig, "formattedSign", formattedSig);
-
   return { entitlement_json: message, signature: sig };
 };
 
+/**
+ * run this as `node GenMintEntitlement.js <tenant> <marketplaceObjectId> <sku> <amount> <nonce> <purchaseId>`
+ */
 const Run = async ({}) => {
   try {
     // Initialize client using environment variable PRIVATE_KEY
