@@ -1,5 +1,7 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const crypto = require("crypto");
+const { ethers } = require('ethers');
+const bs58 = require("bs58");
 
 let client;
 
@@ -17,6 +19,30 @@ const getPurchaseId = () => {
   return "pid_" + crypto.randomBytes(12).toString('hex');
 };
 
+const FormatSignature = (sig) => {
+  sig = sig.replace("0x", "");
+  return "ES256K_" + bs58.encode(Buffer.from(sig, "hex"));
+};
+
+// /**
+//  * Decode the specified signed token into its component parts
+//  * @param {string} token - The token to decode
+//  * @return {Object} - Components of the signed token
+//  */
+// const DecodeSignedToken = (token) => {
+//   const decodedToken = Utils.FromB58(token.slice(6));
+//   const signature = `0x${decodedToken.slice(0, 65).toString("hex")}`;
+//
+//   let payload = JSON.parse(Buffer.from(Pako.inflateRaw(decodedToken.slice(65))).toString("utf-8"));
+//   payload.adr = Utils.FormatAddress(`0x${Buffer.from(payload.adr, "base64").toString("hex")}`);
+//
+//   return {
+//     payload,
+//     signature
+//   };
+// };
+
+
 /**
  * Generate a mint entitlement
  *
@@ -27,16 +53,41 @@ const getPurchaseId = () => {
  * @returns {Promise<Object>} - the entitlement JSON and signature
  */
 const Entitlement = async({tenant, marketplaceObjectId, sku, amount}) => {
-  const json = {
+  const message = {
     tenant_id: tenant,
     marketplace_id: marketplaceObjectId,
     items: [ { sku: sku, amount: amount } ],
-    nonce: getNonce(),
-    purchase_id: getPurchaseId(),
+    nonce: "nonce_e5b8a4b3f39e776a453d6f8a", //getNonce(),
+    purchase_id: "pid_7e72117c3f3d8e669bef50ba", // getPurchaseId(),
   };
-  const sig = await client.Sign(json);
 
-  return { entitlement_json: json, signature: sig };
+  const jsonString = JSON.stringify(message);
+  const jsonStringManual = '{"tenant_id":"iten4TXq2en3qtu3JREnE5tSLRf9zLod","marketplace_id":"iq__2dXeKyUVhpcsd1RM6xaC1jdeZpyr","items":[{"sku":"C9Zct19CoEAZYWug9tyavX","amount":1}],"nonce":"nonce_e5b8a4b3f39e776a453d6f8a","purchase_id":"pid_7e72117c3f3d8e669bef50ba"}';
+  console.log("jsonString    ", jsonString);
+  console.log("jsonStringMan ", jsonStringManual);
+
+  const sig = await client.Sign(jsonString);
+  console.log("jsonString sig      ", sig);
+  const sigMan = await client.Sign(jsonStringManual);
+  console.log("jsonStringMan sigMan", sigMan);
+
+  // console.log("ENTITLEMENT TO SIGN", jsonString);
+  //
+  // let sig, formattedSig;
+  //
+  // const hexPrivateKey = process.env.PRIVATE_KEY;
+  // const signingKey = new ethers.utils.SigningKey(hexPrivateKey);
+  //
+  // const signature = signingKey.signDigest(ethers.utils.id("bou"));
+  // sig = ethers.utils.joinSignature(signature);
+  //
+  // sig = await client.Sign(jsonString);
+  // formattedSig = sig;
+  //
+  // //formattedSig = FormatSignature(sig);
+  //console.log("SIG", sig, "formattedSign", formattedSig);
+
+  return { entitlement_json: message, signature: sig };
 };
 
 const Run = async ({}) => {
@@ -51,11 +102,12 @@ const Run = async ({}) => {
     client.SetSigner({signer});
     client.ToggleLogging(false);
     console.log("SIGNER", client.CurrentAccountAddress());
-    console.log("AUTH TOKEN", await client.CreateFabricToken({}));
+    //console.log("AUTH TOKEN", await client.CreateFabricToken({}));
 
     const { entitlement_json, signature } = await Entitlement({tenant, marketplaceObjectId, sku, amount});
     console.log("ENTITLEMENT", entitlement_json);
     console.log("ENTITLEMENT SIG", signature);
+    //console.log("DECODED", DecodeSignedToken(signature));
 
     console.log("ALL DONE");
   } catch (e) {
