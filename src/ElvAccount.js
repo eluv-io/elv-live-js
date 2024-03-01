@@ -1,7 +1,5 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const ethers = require("ethers");
-const fs = require("fs");
-const path = require("path");
 const { ElvUtils } = require("./Utils");
 
 const TOKEN_DURATION = 120000; //2 min
@@ -89,6 +87,9 @@ class ElvAccount {
     }
 
     // create new account
+    let account = await ElvClient.FromConfigurationUrl({
+      configUrl: this.configUrl,
+    });
     let wallet = this.client.GenerateWallet();
     const mnemonic = wallet.GenerateMnemonic();
     const signer = wallet.AddAccountFromMnemonic({ mnemonic });
@@ -110,10 +111,6 @@ class ElvAccount {
         console.log("Send Funds result: ", res);
       }
 
-      // new account
-      let account = await ElvClient.FromConfigurationUrl({
-        configUrl: this.configUrl,
-      });
       await account.SetSigner({signer});
       // the new account can create wallet when it has funds
       await account.userProfileClient.CreateWallet();
@@ -131,7 +128,7 @@ class ElvAccount {
         });
       }
 
-      let balance = await wallet.GetAccountBalance({ signer });
+      let balance = await wallet.GetAccountBalance({signer});
 
       let accountInfo = {
         accountName,
@@ -147,7 +144,7 @@ class ElvAccount {
     } catch (e) {
       // Return funds in case of error
       if (funds > 0.01) {
-        await elvAccount.SendFunds({
+        await account.SendFunds({
           recipient: this.client.signer.address,
           ether: funds - 0.01,
         });
