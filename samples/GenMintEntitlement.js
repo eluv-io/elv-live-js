@@ -1,5 +1,6 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const crypto = require("crypto");
+const Ethers = require("ethers");
 
 let client;
 
@@ -28,13 +29,13 @@ const getPurchaseId = () => {
  */
 const Entitlement = async({tenant, marketplaceObjectId, sku, amount}) => {
   const json = {
-    tenant_id: tenant,
-    marketplace_id: marketplaceObjectId,
-    items: [ { sku: sku, amount: amount } ],
-    nonce: getNonce(),
-    purchase_id: getPurchaseId(),
+    tenant_id: "iten4TXq2en3qtu3JREnE5tSLRf9zLod",
+    marketplace_id: "iq__2dXeKyUVhpcsd1RM6xaC1jdeZpyr",
+    items: [ { sku: "C9Zct19CoEAZYWug9tyavX", amount: 1 } ],
+    nonce: "nonce_e5b8a4b3f39e776a453d6f8a", //getNonce(),
+    purchase_id: "pid_7e72117c3f3d8e669bef50ba", // getPurchaseId(),
   };
-  const sig = await client.Sign(JSON.stringify(json));
+  const sig = await client.Sign(Ethers.utils.keccak256(Ethers.utils.toUtf8Bytes(json)));
 
   return { entitlement_json: json, signature: sig };
 };
