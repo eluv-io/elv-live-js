@@ -10,11 +10,11 @@ const sku = "C9Zct19CoEAZYWug9tyavX"; // Goat Pack One
 const amount = 1;
 
 const getNonce = () => {
-  return "nonce_" + crypto.randomBytes(12).toString('hex');
+  return "nonce_" + crypto.randomBytes(12).toString("hex");
 };
 
 const getPurchaseId = () => {
-  return "pid_" + crypto.randomBytes(12).toString('hex');
+  return "pid_" + crypto.randomBytes(12).toString("hex");
 };
 
 /**
@@ -34,12 +34,12 @@ const Entitlement = async({tenant, marketplaceObjectId, sku, amount}) => {
     nonce: getNonce(),
     purchase_id: getPurchaseId(),
   };
-  const sig = await client.Sign(json);
+  const sig = await client.Sign(JSON.stringify(json));
 
   return { entitlement_json: json, signature: sig };
 };
 
-const Run = async ({}) => {
+const Run = async () => {
   try {
     // Initialize client using environment variable PRIVATE_KEY
     client = await ElvClient.FromNetworkName({networkName: "demov3"}); // "demov3" "main"
