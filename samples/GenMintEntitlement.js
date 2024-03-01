@@ -13,30 +13,6 @@ let amount = 1;
 let nonce = "nonce_6f9f53ecc09a7e223cf7d47f";
 let purchaseId = "pid_e852572c6e84626892da049a";
 
-const FormatSignature = (sig) => {
-  sig = sig.replace("0x", "");
-  return "ES256K_" + bs58.encode(Buffer.from(sig, "hex"));
-};
-
-// /**
-//  * Decode the specified signed token into its component parts
-//  * @param {string} token - The token to decode
-//  * @return {Object} - Components of the signed token
-//  */
-// const DecodeSignedToken = (token) => {
-//   const decodedToken = Utils.FromB58(token.slice(6));
-//   const signature = `0x${decodedToken.slice(0, 65).toString("hex")}`;
-//
-//   let payload = JSON.parse(Buffer.from(Pako.inflateRaw(decodedToken.slice(65))).toString("utf-8"));
-//   payload.adr = Utils.FormatAddress(`0x${Buffer.from(payload.adr, "base64").toString("hex")}`);
-//
-//   return {
-//     payload,
-//     signature
-//   };
-// };
-
-
 /**
  * Generate a mint entitlement
  *
