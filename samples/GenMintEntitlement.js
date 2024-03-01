@@ -53,7 +53,6 @@ const Run = async ({}) => {
     client.SetSigner({signer});
     client.ToggleLogging(false);
     console.log("SIGNER", client.CurrentAccountAddress());
-    //console.log("AUTH TOKEN", await client.CreateFabricToken({}));
 
     tenant = process.argv[2] ?? tenant;
     marketplaceObjectId = process.argv[3] ?? marketplaceObjectId;
@@ -66,7 +65,6 @@ const Run = async ({}) => {
       await Entitlement({tenant, marketplaceObjectId, sku, amount, nonce, purchaseId});
     console.log("ENTITLEMENT", entitlement_json);
     console.log("ENTITLEMENT_SIGNATURE", signature);
-    //console.log("DECODED", DecodeSignedToken(signature));
 
     console.log("ALL DONE");
   } catch (e) {
