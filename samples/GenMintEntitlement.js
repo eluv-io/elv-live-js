@@ -6,20 +6,12 @@ const bs58 = require("bs58");
 let client;
 
 /* Sample configuration */
-const tenant = "iten4TXq2en3qtu3JREnE5tSLRf9zLod"; // paladin
-const marketplaceObjectId = "iq__2dXeKyUVhpcsd1RM6xaC1jdeZpyr"; // A Place for Goats
-const sku = "C9Zct19CoEAZYWug9tyavX"; // Goat Pack One
-const amount = 1;
-
-const getNonce = () => {
-  return "nonce_6f9f53ecc09a7e223cf7d47f";
-  return "nonce_" + crypto.randomBytes(12).toString('hex');
-};
-
-const getPurchaseId = () => {
-  return "pid_e852572c6e84626892da049a";
-  return "pid_" + crypto.randomBytes(12).toString('hex');
-};
+let tenant = "iten4TXq2en3qtu3JREnE5tSLRf9zLod"; // paladin
+let marketplaceObjectId = "iq__2dXeKyUVhpcsd1RM6xaC1jdeZpyr"; // A Place for Goats
+let sku = "C9Zct19CoEAZYWug9tyavX"; // Goat Pack One
+let amount = 1;
+let nonce = "nonce_6f9f53ecc09a7e223cf7d47f";
+let purchaseId = "pid_e852572c6e84626892da049a";
 
 const FormatSignature = (sig) => {
   sig = sig.replace("0x", "");
@@ -54,38 +46,26 @@ const FormatSignature = (sig) => {
  * @param {number} amount - number of items of that SKU
  * @returns {Promise<Object>} - the entitlement JSON and signature
  */
-const Entitlement = async({tenant, marketplaceObjectId, sku, amount}) => {
+const Entitlement = async({tenant, marketplaceObjectId, sku, amount, nonce, purchaseId}) => {
   const message = {
     tenant_id: tenant,
     marketplace_id: marketplaceObjectId,
     items: [ { sku: sku, amount: amount } ],
-    nonce: getNonce(),
-    purchase_id: getPurchaseId(),
+    nonce: nonce,
+    purchase_id: purchaseId,
   };
 
   const jsonString = JSON.stringify(message);
-  const jsonStringManual = '{"tenant_id":"iten4TXq2en3qtu3JREnE5tSLRf9zLod","marketplace_id":"iq__2dXeKyUVhpcsd1RM6xaC1jdeZpyr","items":[{"sku":"C9Zct19CoEAZYWug9tyavX","amount":1}],"nonce":"nonce_e5b8a4b3f39e776a453d6f8a","purchase_id":"pid_7e72117c3f3d8e669bef50ba"}';
-  console.log("jsonString    ", jsonString);
-  console.log("jsonStringMan ", jsonStringManual);
-
+  console.log("ENTITLEMENT TO SIGN", jsonString);
   const sig = await client.Sign(jsonString);
-  console.log("jsonString sig      ", sig);
-  const sigMan = await client.Sign(jsonStringManual);
-  console.log("jsonStringMan sigMan", sigMan);
 
-  // console.log("ENTITLEMENT TO SIGN", jsonString);
-  //
   // let sig, formattedSig;
-  //
   // const hexPrivateKey = process.env.PRIVATE_KEY;
   // const signingKey = new ethers.utils.SigningKey(hexPrivateKey);
-  //
   // const signature = signingKey.signDigest(ethers.utils.id("bou"));
   // sig = ethers.utils.joinSignature(signature);
-  //
   // sig = await client.Sign(jsonString);
   // formattedSig = sig;
-  //
   // //formattedSig = FormatSignature(sig);
   //console.log("SIG", sig, "formattedSign", formattedSig);
 
@@ -95,7 +75,7 @@ const Entitlement = async({tenant, marketplaceObjectId, sku, amount}) => {
 const Run = async ({}) => {
   try {
     // Initialize client using environment variable PRIVATE_KEY
-    client = await ElvClient.FromNetworkName({networkName: "demov3"}); // "demov3" "main"
+    client = await ElvClient.FromNetworkName({networkName: "demov3"});
 
     let wallet = client.GenerateWallet();
     let signer = wallet.AddAccount({
@@ -106,9 +86,17 @@ const Run = async ({}) => {
     console.log("SIGNER", client.CurrentAccountAddress());
     //console.log("AUTH TOKEN", await client.CreateFabricToken({}));
 
-    const { entitlement_json, signature } = await Entitlement({tenant, marketplaceObjectId, sku, amount});
+    tenant = process.argv[2] ?? tenant;
+    marketplaceObjectId = process.argv[3] ?? marketplaceObjectId;
+    sku = process.argv[4] ?? sku;
+    if (process.argv[5]) { amount = parseInt(process.argv[5]); };
+    nonce = process.argv[6] ?? nonce;
+    purchaseId = process.argv[7] ?? purchaseId;
+
+    const { entitlement_json, signature } =
+      await Entitlement({tenant, marketplaceObjectId, sku, amount, nonce, purchaseId});
     console.log("ENTITLEMENT", entitlement_json);
-    console.log("ENTITLEMENT SIG", signature);
+    console.log("ENTITLEMENT_SIGNATURE", signature);
     //console.log("DECODED", DecodeSignedToken(signature));
 
     console.log("ALL DONE");
