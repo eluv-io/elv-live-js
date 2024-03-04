@@ -32,7 +32,7 @@ class ElvAccount {
 
   async InitWithId({ privateKey, id }) {
     await this.Init({privateKey});
-    await this.SetAccountTenantContractId({ tenantId: id });
+    await this.SetAccountTenantContractId({ tenantContractId: id });
   }
 
   InitWithClient({ elvClient }) {
@@ -56,27 +56,27 @@ class ElvAccount {
    * @namedParams
    * @param {number} funds - The amount in ETH to fund the new account.
    * @param {string} accountName - The name of the account to set in it's wallet metadata (Optional)
-   * @param {string} tenantId - The tenant ID (iten) (Optional)
+   * @param {string} tenantContractId - The tenant contract ID (iten) (Optional)
    * @return {Promise<Object>} - An object containing the new account mnemonic, privateKey, address, accountName, balance
    */
-  async Create({ funds = 0.25, accountName, tenantId }) {
+  async Create({ funds = 0.25, accountName, tenantContractId }) {
     if (!this.client) {
       throw Error("ElvAccount not intialized");
     }
 
     // We don't require the key is part of a tenant (for example when creating a tenant root key)
-    if (tenantId) {
+    if (tenantContractId) {
       // Validate tenant ID (make sure it is not the tenant admins ID)
-      const idType = await this.client.AccessType({ id: tenantId });
+      const idType = await this.client.AccessType({ id: tenantContractId });
       if (idType != this.client.authClient.ACCESS_TYPES.TENANT) {
-        throw Error("Bad tenant ID");
+        throw Error("Bad tenant contract ID");
       }
 
       // Find tenant admins address
-      let tenantAddr = this.client.utils.HashToAddress(tenantId);
+      let tenantContractAddr = this.client.utils.HashToAddress(tenantContractId);
       try {
         await this.client.CallContractMethod({
-          contractAddress: tenantAddr,
+          contractAddress: tenantContractAddr,
           methodName: "groupsMapping",
           methodArgs: ["tenant_admin", 0],
           formatArguments: true,
@@ -115,10 +115,13 @@ class ElvAccount {
       // the new account can create wallet when it has funds
       await account.userProfileClient.CreateWallet();
 
-      if (tenantId) {
+
+      if (tenantContractId) {
         // set tenant info for new account
+        let temp = this.client;
         this.client = account;
-        await this.SetAccountTenantContractId({tenantId});
+        await this.SetAccountTenantContractId({tenantContractId});
+        this.client = temp;
       }
 
       if (accountName) {
@@ -137,8 +140,8 @@ class ElvAccount {
         privateKey,
         balance
       };
-      if (typeof tenantId !== "undefined"){
-        accountInfo.tenantId = tenantId;
+      if (typeof tenantContractId !== "undefined"){
+        accountInfo.tenantContractId = tenantContractId;
       }
       return accountInfo;
     } catch (e) {
@@ -163,7 +166,7 @@ class ElvAccount {
     }
 
     let address = await this.client.signer.address;
-    let tenantId = "";
+    let tenantContractId = "";
     let tenantAdminsId = "";
     let userMetadata = "";
     try {
@@ -171,7 +174,7 @@ class ElvAccount {
     } catch (e){ console.log("No tenantAdminsId set."); }
 
     try {
-      tenantId = await this.client.userProfileClient.TenantContractId();
+      tenantContractId = await this.client.userProfileClient.TenantContractId();
     } catch (e){ console.log("No tenantContractId set."); }
 
     try {
@@ -185,7 +188,7 @@ class ElvAccount {
     let balance = await wallet.GetAccountBalance({ signer: this.client.signer });
     let userId = ElvUtils.AddressToId({prefix:"iusr", address});
 
-    return { address, userId, tenantId, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
+    return { address, userId, tenantContractId, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
   }
 
   async SetAccountTenantAdminsAddress({ tenantAdminsAddress }) {
@@ -198,30 +201,28 @@ class ElvAccount {
     });
   }
 
-  async SetAccountTenantContractId({ tenantId }) {
+  async SetAccountTenantContractId({ tenantContractId }) {
     if (!this.client) {
       throw Error("ElvAccount not intialized");
     }
 
-    console.log("tenantId", tenantId);
-    const idType = await this.client.AccessType({ id: tenantId });
+    console.log("tenantContractId", tenantContractId);
+    const idType = await this.client.AccessType({ id: tenantContractId });
     if (idType === this.client.authClient.ACCESS_TYPES.GROUP) {
-      throw Error("Bad tenant ID", tenantId);
+      throw Error("Bad tenant contract ID", tenantContractId);
     }
 
     // check if the user has tenant contract id set
-    const userTenantId = await this.client.userProfileClient.TenantContractId();
-    if (typeof userTenantId !== "undefined"){
-      console.log("User wallet tenant ID", userTenantId);
-      if (userTenantId !== "" && userTenantId !== tenantId) {
-        console.log("User wallet has a different tenant ID", userTenantId);
+    const userTenantContractId = await this.client.userProfileClient.TenantContractId();
+    if (typeof userTenantContractId !== "undefined"){
+      console.log("User wallet tenant ID", userTenantContractId);
+      if (userTenantContractId !== "" && userTenantContractId !== tenantContractId) {
+        console.log("User wallet has a different tenant ID", userTenantContractId);
       }
     }
 
     // set tenant contract id and tenant_admin group
-    await this.client.userProfileClient.SetTenantContractId({
-      tenantContractId: tenantId,
-    });
+    await this.client.userProfileClient.SetTenantContractId({tenantContractId});
   }
 
   async CreateAccessGroup({ name }) {
@@ -261,32 +262,32 @@ class ElvAccount {
   }
 
   /**
-   * Associate group with the tenant with tenantId.
-   * @param {string} tenantId - The ID of the tenant (iten***)
+   * Associate group with the tenant with tenantContractId.
+   * @param {string} tenantContractId - The ID of the tenant contract (iten***)
    * @param {string} groupAddress - Address of the group we want to remove.
    */
-  async SetGroupTenantConfig({ tenantId, groupAddress }) {
-    const tenantContractId = await this.client.TenantContractId({
+  async SetGroupTenantConfig({ tenantContractId, groupAddress }) {
+    const groupTenantContractId = await this.client.TenantContractId({
       contractAddress: groupAddress
     });
-    if (typeof tenantContractId !== "undefined" ){
-      if (tenantContractId === tenantId){
-        console.log(`Group ${groupAddress} has tenantContractId = ${tenantId}`);
+    if (typeof groupTenantContractId !== "undefined" ){
+      if (groupTenantContractId === tenantContractId){
+        console.log(`Group ${groupAddress} has tenantContractId = ${tenantContractId}`);
       } else {
         throw Error(`Group ${groupAddress} has different tenantContractId = ${tenantContractId}, aborting...`);
       }
     } else {
       await this.client.SetTenantContractId({
         contractAddress: groupAddress,
-        tenantContractId: tenantId
+        tenantContractId: tenantContractId
       });
 
-      // Set the tenant field on the contract to tenantId so that it is consistent with the metadata
+      // Set the tenant field on the contract to tenantContractId so that it is consistent with the metadata
       try {
         await this.client.CallContractMethod({
           contractAddress: groupAddress,
           methodName: "setTenant",
-          methodArgs: [this.client.utils.HashToAddress(tenantId)],
+          methodArgs: [this.client.utils.HashToAddress(tenantContractId)],
         });
       } catch (e) {
         if (e.message.includes("Unknown method: setTenant")) {

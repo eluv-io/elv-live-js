@@ -49,7 +49,7 @@ const CmdAccountCreate = async ({ argv }) => {
     let res = await elvAccount.Create({
       funds: argv.funds,
       accountName: argv.account_name,
-      tenantId: argv.tenant,
+      tenantContractId: argv.tenant,
     });
 
     console.log(yaml.dump(res));
@@ -264,7 +264,7 @@ const CmdTenantShow = async({ argv }) => {
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     let res = await t.TenantShow({
-      tenantId: argv.tenant,
+      tenantContractId: argv.tenant,
       show_metadata: argv.show_metadata
     });
 

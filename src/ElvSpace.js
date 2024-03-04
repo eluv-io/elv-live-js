@@ -112,11 +112,11 @@ class ElvSpace {
 
       // Add tenant details to group
       await elvAccount.SetGroupTenantConfig({
-        tenantId: tenant.id,
+        tenantContractId: tenant.id,
         groupAddress: tenantAdminGroup.address
       });
       await elvAccount.SetGroupTenantConfig({
-        tenantId: tenant.id,
+        tenantContractId: tenant.id,
         groupAddress: contentAdminGroup.address
       });
 
