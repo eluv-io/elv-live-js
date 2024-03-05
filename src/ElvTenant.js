@@ -137,8 +137,8 @@ class ElvTenant {
     });
 
     const m = await this.client.ContentObjectMetadata({
-      libraryId: ElvUtils.AddressToId({prefix: "ilib", address: tenantAddr}),
-      objectId: ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr}),
+      libraryId: ElvUtils.AddressToId({prefix: "ilib", address: tenantContractAddr}),
+      objectId: ElvUtils.AddressToId({prefix: "iq__", address: tenantContractAddr}),
       noAuth: true
     });
 
@@ -241,7 +241,7 @@ class ElvTenant {
 
     if (show_metadata) {
       let services = [];
-      let tenantObjectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr});
+      let tenantObjectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantContractAddr});
       let tenantLibraryId = await this.client.ContentObjectLibraryId({objectId: tenantObjectId});
 
       try {
@@ -378,8 +378,10 @@ class ElvTenant {
     let tid = await this.client.TenantContractId({
       contractAddress: groupAddress
     });
-    if (tid !== ""){
-      throw Error(`Group ${groupAddress} has tenant contract ID set to ${tid}, aborting...`);
+    if (typeof tid !== "undefined"){
+      if (tid !== tenantContractId){
+        throw Error(`Group ${groupAddress} has different tenant contract ID set to ${tid}, aborting...`);
+      }
     }
 
     return await this.client.SetTenantContractId({

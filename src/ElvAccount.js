@@ -30,9 +30,18 @@ class ElvAccount {
     this.client.ToggleLogging(this.debug);
   }
 
-  async InitWithId({ privateKey, id }) {
+  async InitWithId({ privateKey, tenantContractId, tenantId }) {
     await this.Init({privateKey});
-    await this.SetAccountTenantContractId({ tenantContractId: id });
+
+    if (typeof tenantContractId !== "undefined"){
+      await this.SetAccountTenantContractId({ tenantContractId });
+    } else {
+      if (typeof tenantId !== "undefined") {
+        await this.SetAccountTenantId({tenantId});
+      }
+    }
+    console.log(`tenantContractID: ${this.client.userProfileClient.tenantContractId}`);
+    console.log(`tenantAdminGroup: ${this.client.userProfileClient.tenantId}`);
   }
 
   InitWithClient({ elvClient }) {
@@ -191,13 +200,13 @@ class ElvAccount {
     return { address, userId, tenantContractId, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
   }
 
-  async SetAccountTenantAdminsAddress({ tenantAdminsAddress }) {
+  async SetAccountTenantId({ tenantId }) {
     if (!this.client) {
       throw Error("ElvAccount not intialized");
     }
 
     await this.client.userProfileClient.SetTenantId({
-      address: tenantAdminsAddress,
+      id: tenantId,
     });
   }
 

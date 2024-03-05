@@ -60,7 +60,9 @@ const CmdAccountCreate = async ({ argv }) => {
 
 const CmdAccountSetTenantContractId = async ({ argv }) => {
   console.log("Account Set Tenant Contract ID\n");
-  console.log(`tenant_contract_id: ${argv.tenant}`);
+  console.log(`tenant_contract_id: ${argv.tenantContractId}`);
+  console.log(`tenant_admin: ${argv.tenantId}`)
+
 
   try {
     let elvAccount = new ElvAccount({
@@ -69,7 +71,8 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
     });
     await elvAccount.InitWithId({
       privateKey: process.env.PRIVATE_KEY,
-      id: argv.tenant,
+      tenantContractId: argv.tenantContractId,
+      tenantId: argv.tenantId,
     });
     console.log("Success!");
   } catch (e) {
@@ -355,7 +358,7 @@ const CmdTenantFixSuite = async({ argv }) => {
         throw Error(`The account with private key ${process.env.PRIVATE_KEY} is already associated with tenant ${tenantContractId}`);
       }
     } else {
-      elvAccount.SetAccountTenantContractId({ tenantId: argv.tenant });
+      await elvAccount.SetAccountTenantContractId({tenantContractId: argv.tenant});
     }
 
     //Set content admins group ID and fix problems related to the tenant and its admin groups
@@ -569,7 +572,6 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
 
 const CmdTenantRemoveContentAdmin = async ({ argv }) => {
   console.log(`Removing a Content Admin from Tenant ${argv.tenant}`);
-  console.log(`Removed Content Admin's Address: ${argv.content_admin_address}`);
   console.log("Network: " + Config.net);
 
   try {
@@ -584,6 +586,7 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
       contentAdminsAddress: argv.content_admin_address
     });
 
+    console.log(`Removed Content Admin's Address: ${argv.content_admin_address}`);
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -1112,13 +1115,19 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "account_set_tenant <tenant>",
-    "Associate this account to the tenant - if an admins group ID is used, it will be converted to the tenant ID.",
+    "account_set_tenant <tenantContractId> [tenantId]",
+    "Associate this account to the tenant contract id and its tenant_admin group. " +
+    "We can provide tenantContractId or tenantId",
     (yargs) => {
-      yargs.option("tenant", {
-        describe: "Tenant contract ID (iten...)",
-        type: "string",
-      })
+      yargs
+        .positional("tenantContractId", {
+          describe: "Tenant contract ID (iten...)",
+          type: "string"
+        })
+        .positional("tenantId", {
+          describe: "Tenant admin group ID (iten...)",
+          type: "string"
+        });
     },
     (argv) => {
       CmdAccountSetTenantContractId({ argv });
