@@ -243,7 +243,7 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     res = await t.TenantInfo({
-      tenantId: argv.tenant
+      tenantContractId: argv.tenant
     });
 
     console.log(yaml.dump(res));
@@ -289,7 +289,7 @@ const CmdTenantFix = async({ argv }) => {
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     let res = await t.TenantShow({
-      tenantId: argv.tenant
+      tenantContractId: argv.tenant
     });
     let errors = res.errors;
     let unresolved = [];
@@ -307,16 +307,16 @@ const CmdTenantFix = async({ argv }) => {
       let error = errors[i];
       switch(error) {
         case 'missing content admins':
-          let addr = await t.TenantSetContentAdmins({tenantId: argv.tenant, contentAdminAddr: argv.content_admin_address});
+          let addr = await t.TenantSetContentAdmins({tenantContractId: argv.tenant, contentAdminAddr: argv.content_admin_address});
           console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`);
           break;
 
         case `tenant admin group can't be verified or is not associated with any tenant`:
-          await t.TenantSetGroupConfig({tenantId: argv.tenant, groupAddress: res.tenant_admin_address});
+          await t.TenantSetGroupConfig({tenantContractId: argv.tenant, groupAddress: res.tenant_admin_address});
           break;
 
         case `content admin group can't be verified or is not associated with any tenant`:
-          await t.TenantSetGroupConfig({tenantId: argv.tenant, groupAddress: res.content_admin_address});
+          await t.TenantSetGroupConfig({tenantContractId: argv.tenant, groupAddress: res.content_admin_address});
           break;
 
         default:
@@ -483,7 +483,7 @@ const CmdQuery = async ({ argv }) => {
               formatArguments: true
             });
 
-            res = await t.TenantShow({tenantId: tenant_contract_id});
+            res = await t.TenantShow({tenantContractId: tenant_contract_id});
             if (!res.errors) {
               success_count += 1
               continue;
@@ -557,7 +557,7 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     let res = await t.TenantSetContentAdmins({
-      tenantId: argv.tenant,
+      tenantContractId: argv.tenant,
       contentAdminAddr: argv.content_admin_address,
     });
 
@@ -580,7 +580,7 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     let res = await t.TenantRemoveContentAdmin({
-      tenantId: argv.tenant,
+      tenantContractId: argv.tenant,
       contentAdminsAddress: argv.content_admin_address
     });
 

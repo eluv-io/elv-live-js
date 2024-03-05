@@ -281,21 +281,6 @@ class ElvAccount {
         contractAddress: groupAddress,
         tenantContractId: tenantContractId
       });
-
-      // Set the tenant field on the contract to tenantContractId so that it is consistent with the metadata
-      try {
-        await this.client.CallContractMethod({
-          contractAddress: groupAddress,
-          methodName: "setTenant",
-          methodArgs: [this.client.utils.HashToAddress(tenantContractId)],
-        });
-      } catch (e) {
-        if (e.message.includes("Unknown method: setTenant")) {
-          console.log(`Log: The group contract with address ${groupAddress} doesn't support setTenant method`);
-        } else {
-          throw e;
-        }
-      }
     }
   }
 

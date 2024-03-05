@@ -77,12 +77,6 @@ class ElvSpace {
         isManager: true,
       });
 
-      // TODO: fix elv-client-js tenantId
-      // await elvAccount.SetAccountTenantAdminsAddress({
-      //   tenantAdminsAddress: tenantAdminGroup.address,
-      // });
-      // account.tenantAdminsId = await elvAccount.client.userProfileClient.TenantId();
-
       // Create Content Admin Access Group
       let contentAdminGroup = await elvAccount.CreateAccessGroup({
         name: `${tenantName} Content Admins`,
@@ -108,7 +102,7 @@ class ElvSpace {
       });
 
       // Assign the created tenant and tenant_admin group to account
-      await elvAccount.SetAccountTenantContractId({tenantId: tenant.id});
+      await elvAccount.SetAccountTenantContractId({tenantContractId: tenant.id});
 
       // Add tenant details to group
       await elvAccount.SetGroupTenantConfig({
