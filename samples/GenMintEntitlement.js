@@ -1,4 +1,4 @@
-const { ElvClient } = require("@eluvio/elv-client-js");
+const { ElvClient, Utils} = require("@eluvio/elv-client-js");
 const crypto = require("crypto");
 const { ethers } = require('ethers');
 const bs58 = require("bs58");
@@ -30,12 +30,28 @@ const Entitlement = async({tenant, marketplaceObjectId, sku, amount, nonce, purc
     nonce: nonce,
     purchase_id: purchaseId,
   };
-
-  const jsonString = JSON.stringify(message);
-  console.log("ENTITLEMENT TO SIGN", jsonString);
-  const sig = await client.Sign(jsonString);
+  const sig = await CreateSignedMessageJSON({client, obj: message});
 
   return { entitlement_json: message, signature: sig };
+};
+
+
+// Create a signed JSON message
+const CreateSignedMessageJSON = async ({
+    client,
+    obj,
+}) => {
+    // Only one kind of signature supported currently
+    const type = `mje_` // JSON message, EIP192 signature
+    const msg = JSON.stringify(obj);
+
+    const signature = await client.PersonalSign({message: msg, addEthereumPrefix: true});
+    return `${type}${Utils.B58(
+      Buffer.concat([
+        Buffer.from(signature.replace(/^0x/, ""), "hex"),
+        Buffer.from(msg)
+      ])
+    )}`;
 };
 
 /**
