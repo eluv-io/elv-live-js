@@ -378,7 +378,7 @@ class ElvTenant {
     let tid = await this.client.TenantContractId({
       contractAddress: groupAddress
     });
-    if (typeof tid !== "undefined"){
+    if (tid !== ""){
       if (tid !== tenantContractId){
         throw Error(`Group ${groupAddress} has different tenant contract ID set to ${tid}, aborting...`);
       }
@@ -405,7 +405,7 @@ class ElvTenant {
       return {success: false, message: "on the tenant contract is not a group", need_format: true};
     }
 
-    //Retrieve tenant contract id assoicated with this group from the contract's metadata
+    //Retrieve tenant contract id assoicated with this group
     try {
       let groupTenantContractId = await this.client.TenantContractId({
         contractAddress: groupAddr,

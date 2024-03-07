@@ -308,7 +308,7 @@ const CmdTenantFix = async({ argv }) => {
 
     for (let i = 0; i < errors.length; i++) {
       let error = errors[i];
-      switch(error) {
+      switch (error) {
         case 'missing content admins':
           let addr = await t.TenantSetContentAdmins({tenantContractId: argv.tenant, contentAdminAddr: argv.content_admin_address});
           console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`);
@@ -332,77 +332,71 @@ const CmdTenantFix = async({ argv }) => {
     return unresolved;
   } catch (e) {
     console.log(e);
-    return;
   }
-}
+};
 
 const CmdTenantFixSuite = async({ argv }) => {
-  try {
-    //Add tenantContractId to the account's metadata if not already exists
-    let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
-    });
-    await elvAccount.Init({
-      privateKey: process.env.PRIVATE_KEY,
-    });
+  let elvAccount = new ElvAccount({
+    configUrl: Config.networks[Config.net],
+    debugLogging: argv.verbose
+  });
+  await elvAccount.Init({
+    privateKey: process.env.PRIVATE_KEY,
+  });
 
-    let tenantContractId;
-    try {
-      tenantContractId  = await elvAccount.client.userProfileClient.TenantContractId();
-    } catch (e) {
-      throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${Config.net} network, aborting...`);
-    }
-    if (tenantContractId) {
-      if (!elvAccount.client.utils.EqualHash(tenantContractId, argv.tenant)) {
-        throw Error(`The account with private key ${process.env.PRIVATE_KEY} is already associated with tenant ${tenantContractId}`);
-      }
-    } else {
-      await elvAccount.SetAccountTenantContractId({tenantContractId: argv.tenant});
-    }
-
-    //Set content admins group ID and fix problems related to the tenant and its admin groups
-    await CmdTenantFix({argv})
-
-    //Set _ELV_TENANT_ID metadata for the libraries if they are owned by the account
-    if (argv.libraries) {
-      let failedLibraries = [];
-      for (let i = 0; i < argv.libraries.length; i++) {
-        let lib = argv.libraries[i];
-        let libAddr = elvAccount.client.utils.HashToAddress(lib);
-
-        try {
-          await elvAccount.client.CallContractMethod({
-            contractAddress: libAddr,
-            methodName: "putMeta",
-            methodArgs: [
-              "_ELV_TENANT_ID",
-              argv.tenant,
-            ],
-            formatArguments: true
-          });
-        } catch (e) {
-          let libOwner = await elvAccount.client.CallContractMethod({
-            contractAddress: libAddr,
-            methodName: "owner",
-            methodArgs: [],
-            formatArguments: true
-          });
-          console.log(`Failed to set _ELV_TENANT_ID of ${lib} - doesn't belong to this account and can only be set by the account with address ${libOwner}`);
-          failedLibraries.push(lib);
-        }
-      }
-      if (failedLibraries.length == 0) {
-        console.log('Tenant successfully fixed!');
-      } else {
-        console.log(`_ELV_ACCOUNT_ID couldn't be added to the following libraries:`);
-        console.log(failedLibraries);
-      }
-    }
-  } catch (e) {
-    throw(e);
+  // tenantId present for old and new objects
+  const tenantId = await elvAccount.client.userProfileClient.TenantId();
+  if (tenantId === ""){
+    throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${Config.net} network, aborting...`);
   }
-}
+
+  //Set content admins group ID and fix problems related to the tenant and its admin groups
+  await CmdTenantFix({argv});
+
+  // check tenantContractId set for tenant admin grouup
+  let tenantContractId = await elvAccount.client.TenantContractId({objectId: tenantId});
+  if (tenantContractId !== argv.tenant || tenantContractId === ""){
+    throw Error(`TenantContractId mismatch:
+      From User:
+        TenantId=${tenantId},
+      From TenantId ${tenantId}:
+        TenantContractId=${tenantContractId},
+      Given TenantContractId=${argv.tenant}`);
+  }
+
+  await elvAccount.client.userProfileClient.SetTenantContractId({tenantContractId: argv.tenant});
+
+  //Set tenantContractId to libraries, if owned by the user
+  if (argv.libraries) {
+    let failedLibraries = [];
+    for (let i = 0; i < argv.libraries.length; i++) {
+      let lib = argv.libraries[i];
+      let libAddr = elvAccount.client.utils.HashToAddress(lib);
+
+      try {
+        await elvAccount.client.SetTenantContractId({
+          contractAddress: libAddr,
+          tenantContractId: argv.tenant,
+        });
+      } catch (e) {
+        let libOwner = await elvAccount.client.CallContractMethod({
+          contractAddress: libAddr,
+          methodName: "owner",
+          methodArgs: [],
+          formatArguments: true
+        });
+        console.log(`Failed to set tenantContractId for ${lib} - doesn't belong to this account and can only be set by the account with address ${libOwner}`);
+        failedLibraries.push(lib);
+      }
+    }
+    if (failedLibraries.length === 0) {
+      console.log("Tenant successfully fixed!");
+    } else {
+      console.log("tenantContractId couldn't be added to the following libraries:");
+      console.log(failedLibraries);
+    }
+  }
+};
 
 const CmdQuery = async ({ argv }) => {
   REP1V_TENANT_ADDRESSES = [
@@ -1354,10 +1348,10 @@ yargs(hideBin(process.argv))
           describe: "List of libraries that belong to this tenant",
           type: "array",
         });
-      },
-      (argv) => {
-        CmdTenantFixSuite({ argv });
-      }
+    },
+    (argv) => {
+      CmdTenantFixSuite({ argv });
+    }
   )
 
   .command(
