@@ -10,7 +10,7 @@ let tenant = "iten4TXq2en3qtu3JREnE5tSLRf9zLod"; // paladin
 let marketplaceObjectId = "iq__2dXeKyUVhpcsd1RM6xaC1jdeZpyr"; // A Place for Goats
 let sku = "C9Zct19CoEAZYWug9tyavX"; // Goat Pack One
 let amount = 1;
-let nonce = "nonce_6f9f53ecc09a7e223cf7d47f";
+let user = "0x1111111111111111111111111111111111111111";
 let purchaseId = "pid_e852572c6e84626892da049a";
 
 /**
@@ -20,14 +20,15 @@ let purchaseId = "pid_e852572c6e84626892da049a";
  * @param {string} marketplaceObjectId - marketplace object ID in 'iq__' format
  * @param {string} sku - SKU of the item
  * @param {number} amount - number of items of that SKU
+ * @param {string} user - user ID in '0x' address format
  * @returns {Promise<Object>} - the entitlement JSON and signature
  */
-const Entitlement = async({tenant, marketplaceObjectId, sku, amount, nonce, purchaseId}) => {
+const Entitlement = async({tenant, marketplaceObjectId, sku, amount, user, purchaseId}) => {
   const message = {
     tenant_id: tenant,
     marketplace_id: marketplaceObjectId,
     items: [ { sku: sku, amount: amount } ],
-    nonce: nonce,
+    user: user,
     purchase_id: purchaseId,
   };
   const sig = await CreateSignedMessageJSON({client, obj: message});
@@ -55,7 +56,7 @@ const CreateSignedMessageJSON = async ({
 };
 
 /**
- * run this as `node GenMintEntitlement.js <tenant> <marketplaceObjectId> <sku> <amount> <nonce> <purchaseId>`
+ * run this as `node GenMintEntitlement.js <tenant> <marketplaceObjectId> <sku> <amount> <user> <purchaseId>`
  */
 const Run = async ({}) => {
   try {
@@ -74,11 +75,11 @@ const Run = async ({}) => {
     marketplaceObjectId = process.argv[3] ?? marketplaceObjectId;
     sku = process.argv[4] ?? sku;
     if (process.argv[5]) { amount = parseInt(process.argv[5]); };
-    nonce = process.argv[6] ?? nonce;
+    user = process.argv[6] ?? user;
     purchaseId = process.argv[7] ?? purchaseId;
 
     const { entitlement_json, signature } =
-      await Entitlement({tenant, marketplaceObjectId, sku, amount, nonce, purchaseId});
+      await Entitlement({tenant, marketplaceObjectId, sku, amount, user, purchaseId});
     console.log("ENTITLEMENT", entitlement_json);
     console.log("ENTITLEMENT_SIGNATURE", signature);
 
