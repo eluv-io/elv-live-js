@@ -10,7 +10,7 @@ let tenant = "iten4TXq2en3qtu3JREnE5tSLRf9zLod"; // paladin
 let marketplaceObjectId = "iq__2dXeKyUVhpcsd1RM6xaC1jdeZpyr"; // A Place for Goats
 let sku = "C9Zct19CoEAZYWug9tyavX"; // Goat Pack One
 let amount = 1;
-let user = "0x1111111111111111111111111111111111111111";
+let user = "sample.user@example.com";
 let purchaseId = "pid_e852572c6e84626892da049a";
 
 /**
@@ -20,7 +20,7 @@ let purchaseId = "pid_e852572c6e84626892da049a";
  * @param {string} marketplaceObjectId - marketplace object ID in 'iq__' format
  * @param {string} sku - SKU of the item
  * @param {number} amount - number of items of that SKU
- * @param {string} user - user ID in '0x' address format
+ * @param {string} user - user ID in any format, usually the 'sub' of the id/access token
  * @returns {Promise<Object>} - the entitlement JSON and signature
  */
 const Entitlement = async({tenant, marketplaceObjectId, sku, amount, user, purchaseId}) => {
