@@ -359,11 +359,119 @@ class ElvTenant {
 
     const tenantAddr = Utils.HashToAddress(tenantContractId);
 
+    //Remove tenant from group
+    await this.TenantRemoveGroupConfig({groupAddress: contentAdminsAddress});
+
     return await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),
       methodName: "removeGroup",
       methodArgs: ["content_admin", contentAdminsAddress],
+      formatArguments: true,
+    });
+  }
+
+  /**
+   * Create a new tenant user group corresponding to this tenant.
+   * @param {string} tenantContractId - The ID of the tenant (iten***)
+   * @param {string} tenantUserGroupAddr - Tenant User Group's address, new group will be created if not specified (optional)
+   * @returns {string} Tenant User Group's address
+   */
+  async SetTenantUserGroup({ tenantContractId, tenantUserGroupAddr }) {
+
+    let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+    elvAccount.InitWithClient({elvClient:this.client});
+
+    //Check that the user is the owner of the tenant
+    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("Tenant User Group must be set by the owner of tenant " + tenantContractId);
+    }
+
+    //The tenant must not already have a tenant user group - can only have 1 tenant user group for each tenant.
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantContractAddr = Utils.HashToAddress(tenantContractId);
+    let tenantUserGroup;
+    try {
+      tenantUserGroup = await this.client.CallContractMethod({
+        contractAddress: tenantContractAddr,
+        abi: JSON.parse(abi),
+        methodName: "groupsMapping",
+        methodArgs: ["tenant_user_group", 0],
+        formatArguments: true,
+      });
+      if (tenantUserGroup) {
+        return `Tenant ${tenantContractId} already has a tenant User Group: ${tenantUserGroup}, aborting...`;
+      }
+    } catch (e) {
+      //call cannot override gasLimit error will be thrown if content admin group doesn't exist for this tenant.
+      tenantUserGroup = null;
+    }
+
+    //Arguments don't contain tenant user group address, creating a new group for the user's account.
+    if (!tenantUserGroupAddr) {
+      let accountName = await this.client.userProfileClient.UserMetadata({
+        metadataSubtree: "public/name"
+      });
+
+      tenantUserGroup = await elvAccount.CreateAccessGroup({
+        name: `${accountName} Tenant User Group`,
+      });
+
+      tenantUserGroupAddr = tenantUserGroup.address;
+
+      await elvAccount.AddToAccessGroup({
+        groupAddress: tenantUserGroupAddr,
+        accountAddress: this.client.signer.address.toLowerCase(),
+        isManager: true,
+      });
+    }
+
+    //Associate the group with this tenant - set the tenant_user_group
+    await this.TenantSetGroupConfig({tenantContractId, groupAddress: tenantUserGroupAddr});
+
+    //Associate the tenant with this group - set tenant user group on the tenant's contract.
+    await this.client.CallContractMethodAndWait({
+      contractAddress: tenantContractAddr,
+      abi: JSON.parse(abi),
+      methodName: "addGroup",
+      methodArgs: ["tenant_user_group", tenantUserGroupAddr],
+      formatArguments: true,
+    });
+
+    return tenantUserGroupAddr;
+  }
+
+  /**
+   * Remove tenant user group from this tenant.
+   * @param {string} tenantContractId - The ID of the tenant Id (iten***)
+   * @param {string} tenantUserGroupAddr - Address of tenant user group we want to remove.
+   */
+  async RemoveTenantUserGroup({ tenantContractId, tenantUserGroupAddr }) {
+
+    //Check that the user is the owner of the tenant
+    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("Tenant User Group must be set by the owner of tenant " + tenantContractId);
+    }
+
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantContractAddr = Utils.HashToAddress(tenantContractId);
+
+    //Remove tenant from group
+    await this.TenantRemoveGroupConfig({groupAddress: tenantUserGroupAddr});
+
+    return await this.client.CallContractMethodAndWait({
+      contractAddress: tenantContractAddr,
+      abi: JSON.parse(abi),
+      methodName: "removeGroup",
+      methodArgs: ["tenant_user_group", tenantUserGroupAddr],
       formatArguments: true,
     });
   }
@@ -387,6 +495,16 @@ class ElvTenant {
     return await this.client.SetTenantContractId({
       contractAddress: groupAddress,
       tenantContractId
+    });
+  }
+
+  /**
+   * Remove tenant from group
+   * @param {string} groupAddress - Address of the group we want to remove.
+   */
+  async TenantRemoveGroupConfig({ groupAddress }) {
+    return await this.client.RemoveTenant({
+      contractAddress: groupAddress,
     });
   }
 

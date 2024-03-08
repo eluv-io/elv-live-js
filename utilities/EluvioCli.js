@@ -471,7 +471,7 @@ const CmdSetTenantId = async({objectId, contractAddress, versionHash, tenantId})
     objectId: tenantId,
   });
   if (tenantContractId === ""){
-    throw Error("tenantId provided requires tenantContractId to be set, run tenant-fix command");
+    throw Error("tenantId provided requires tenantContractId to be set, run ./elv-admin tenant-fix command");
   }
 
   const objTenantId = await elvAccount.client.TenantId({
@@ -690,7 +690,7 @@ const CmdQuery = async ({ argv }) => {
   }
 
   return;
-}
+};
 
 const CmdTenantSetContentAdmins = async ({ argv }) => {
   console.log(`Setting a new content admin group for Tenant ${argv.tenant}`);
