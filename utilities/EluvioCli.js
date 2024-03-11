@@ -398,7 +398,7 @@ const CmdTenantFixSuite = async({ argv }) => {
   }
 };
 
-const CmdSetTenantContractId = async ({objectId, contractAddress, versionHash, tenantContractId}) => {
+const CmdSetTenantContractId = async ({objectId, tenantContractId}) => {
 
   let elvAccount = new ElvAccount({
     configUrl: Config.networks[Config.net],
@@ -410,8 +410,6 @@ const CmdSetTenantContractId = async ({objectId, contractAddress, versionHash, t
 
   const objTenantId = await elvAccount.client.TenantId({
     objectId,
-    contractAddress,
-    versionHash,
   });
 
   if (objTenantId !== "") {
@@ -439,7 +437,7 @@ const CmdSetTenantContractId = async ({objectId, contractAddress, versionHash, t
   return `object is set with tenantContractId ${res.tenantContractId} and tenantId ${res.tenantId}`;
 };
 
-const CmdTenantContractId = async ({objectId, contractAddress, versionHash}) => {
+const CmdTenantContractId = async ({objectId}) => {
 
   let elvAccount = new ElvAccount({
     configUrl: Config.networks[Config.net],
@@ -451,13 +449,11 @@ const CmdTenantContractId = async ({objectId, contractAddress, versionHash}) => 
 
   const objTenantContractId = await elvAccount.client.TenantContractId({
     objectId,
-    contractAddress,
-    versionHash
   });
   return `object TenantContractId: ${objTenantContractId}`;
 };
 
-const CmdSetTenantId = async({objectId, contractAddress, versionHash, tenantId}) => {
+const CmdSetTenantId = async({objectId, tenantId}) => {
   let elvAccount = new ElvAccount({
     configUrl: Config.networks[Config.net],
     debugLogging: argv.verbose
@@ -476,8 +472,6 @@ const CmdSetTenantId = async({objectId, contractAddress, versionHash, tenantId})
 
   const objTenantId = await elvAccount.client.TenantId({
     objectId,
-    contractAddress,
-    versionHash,
   });
   if (objTenantId !== "" && objTenantId !== tenantId) {
     throw Error(` object provided have different tenantId set:
@@ -488,13 +482,11 @@ const CmdSetTenantId = async({objectId, contractAddress, versionHash, tenantId})
 
   const res = await elvAccount.client.SetTenantId({
     objectId,
-    contractAddress,
-    versionHash,
   });
-  return `object is set with tenantId: ${res.tenantId} and tenantContractId: ${res.tenantContractId}`;
+  return `object ${objectId} is set with tenantId: ${res.tenantId} and tenantContractId: ${res.tenantContractId}`;
 };
 
-const CmdTenantId = async ({objectId, contractAddress, versionHash}) => {
+const CmdTenantId = async ({objectId}) => {
   let elvAccount = new ElvAccount({
     configUrl: Config.networks[Config.net],
     debugLogging: argv.verbose
@@ -505,13 +497,11 @@ const CmdTenantId = async ({objectId, contractAddress, versionHash}) => {
 
   const objTenantId = await elvAccount.client.TenantId({
     objectId,
-    contractAddress,
-    versionHash
   });
-  return `object TenantId: ${objTenantId}`;
+  return `${objectId} TenantId: ${objTenantId}`;
 };
 
-const CmdRemoveTenant = async ({objectId, contractAddress, versionHash}) => {
+const CmdTenantRemove = async ({objectId}) => {
   let elvAccount = new ElvAccount({
     configUrl: Config.networks[Config.net],
     debugLogging: argv.verbose
@@ -522,19 +512,13 @@ const CmdRemoveTenant = async ({objectId, contractAddress, versionHash}) => {
 
   await elvAccount.client.RemoveTenant({
     objectId,
-    contractAddress,
-    versionHash
   });
 
   const tenantId = await elvAccount.client.TenantId({
     objectId,
-    contractAddress,
-    versionHash
   });
-  const tenantContractId = await elvAccount.client.TenantId({
+  const tenantContractId = await elvAccount.client.TenantContractId({
     objectId,
-    contractAddress,
-    vesionHash,
   });
 
   if (tenantId !== "" || tenantContractId !== "") {
@@ -543,7 +527,7 @@ const CmdRemoveTenant = async ({objectId, contractAddress, versionHash}) => {
       TenantContractId: ${tenantContractId}
     `);
   }
-  return "Removed tenant details from object";
+  return `Removed tenant details from object ${objectId}`;
 };
 
 
@@ -707,7 +691,6 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
       tenantContractId: argv.tenant,
       contentAdminAddr: argv.content_admin_address,
     });
-
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -736,6 +719,51 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
     console.error("ERROR:", e);
   }
 };
+
+const CmdTenantSetTenantUserGroup = async ({ argv }) => {
+  console.log(`Setting a new tenant user group for Tenant ${argv.tenant}`);
+  console.log("Network: " + Config.net);
+
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantSetTenantUserGroup({
+      tenantContractId: argv.tenant,
+      tenantUserGroupAddr: argv.tenant_user_group_addr
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantRemoveTenantUserGroup = async ({ argv }) => {
+  console.log(`Removing a tenant user group from Tenant ${argv.tenant}`);
+  console.log("Network: " + Config.net);
+
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantRemoveTenantUserGroup({
+      tenantContractId: argv.tenant,
+      tenantUserGroupAddr: argv.tenant_user_group_addr
+    });
+
+    console.log(`Removed tenant user group Address: ${argv.tenant_user_group_addr}`);
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 
 const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
   console.log("Tenant set Eluvio Live ID");
@@ -1506,20 +1534,12 @@ yargs(hideBin(process.argv))
 
 
   .command(
-    "set_tenant_contract_id <objectId> <contractAddress> <versionHash> <tenantContractId> [options]",
+    "set_tenant_contract_id <objectId> <tenantContractId> [options]",
     "Set tenant_contract_id and tenant_id to given object when tenantContractId is provided",
     (yargs) => {
       yargs
         .positional("objectId", {
           describe: "Object ID",
-          type: "string",
-        })
-        .positional("contractAddress", {
-          describe: "object address",
-          type: "string",
-        })
-        .positional("versionHash", {
-          describe: "object hash",
           type: "string",
         })
         .positional("tenantContractId", {
@@ -1530,29 +1550,18 @@ yargs(hideBin(process.argv))
     (argv) => {
       CmdSetTenantContractId({
         objectId: argv.objectId,
-        contractAddress: argv.contractAddress,
-        versionHash: argv.versionHash,
         tenantContractId: argv.tenantContractId,
       });
     }
   )
 
-
   .command(
-    "set_tenant_id <objectId> <contractAddress> <versionHash> <tenantContractId> [options]",
+    "set_tenant_id <objectId> <tenantContractId> [options]",
     "Set tenant_contract_id and tenant_id to given object when tenantId is provided",
     (yargs) => {
       yargs
         .positional("objectId", {
           describe: "Object ID",
-          type: "string",
-        })
-        .positional("contractAddress", {
-          describe: "object address",
-          type: "string",
-        })
-        .positional("versionHash", {
-          describe: "object hash",
           type: "string",
         })
         .positional("tenantId", {
@@ -1563,91 +1572,59 @@ yargs(hideBin(process.argv))
     (argv) => {
       CmdSetTenantId({
         objectId: argv.objectId,
-        contractAddress: argv.contractAddress,
-        versionHash: argv.versionHash,
         tenantId: argv.tenantId,
       });
     }
   )
 
   .command(
-    "tenant_contract_id <objectId> <contractAddress> <versionHash> [options]",
+    "tenant_contract_id <objectId> [options]",
     "Retrieve tenant_contract_id for given object",
     (yargs) => {
       yargs
         .positional("objectId", {
           describe: "Object ID",
           type: "string",
-        })
-        .positional("contractAddress", {
-          describe: "object address",
-          type: "string",
-        })
-        .positional("versionHash", {
-          describe: "object hash",
-          type: "string",
         });
     },
     (argv) => {
       CmdTenantContractId({
         objectId: argv.objectId,
-        contractAddress: argv.contractAddress,
-        versionHash: argv.versionHash,
       });
     }
   )
 
   .command(
-    "tenant_id <objectId> <contractAddress> <versionHash> [options]",
+    "tenant_id <objectId> [options]",
     "Retrieve tenant_id for given object",
     (yargs) => {
       yargs
         .positional("objectId", {
           describe: "Object ID",
           type: "string",
-        })
-        .positional("contractAddress", {
-          describe: "object address",
-          type: "string",
-        })
-        .positional("versionHash", {
-          describe: "object hash",
-          type: "string",
         });
     },
     (argv) => {
       CmdTenantId({
         objectId: argv.objectId,
-        contractAddress: argv.contractAddress,
-        versionHash: argv.versionHash,
       });
     }
   )
 
 
   .command(
-    "remove_tenant <objectId> <contractAddress> <versionHash> [options]",
+    "tenant_remove <objectId> [options]",
     "Remove tenant_id and tenant_contract_id for given object",
     (yargs) => {
       yargs
         .positional("objectId", {
           describe: "Object ID",
           type: "string",
-        })
-        .positional("contractAddress", {
-          describe: "object address",
-          type: "string",
-        })
-        .positional("versionHash", {
-          describe: "object hash",
-          type: "string",
         });
     },
     (argv) => {
-      CmdRemoveTenant({
+      CmdTenantRemove({
         objectId: argv.objectId,
-        contractAddress: argv.contractAddress,
-        versionHash: argv.versionHash,
       });
     }
   )
@@ -1688,6 +1665,44 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantRemoveContentAdmin({ argv });
+    }
+  )
+
+  .command(
+    "tenant_set_user_group <tenant> [options]",
+    "Set new tenant user group",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .options("tenant_user_group_address", {
+          describe: "Address of the tenant user groups",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantSetTenantUserGroup({ argv });
+    }
+  )
+
+  .command(
+    "tenant_remove_user_group <tenant> <tenant_user_group_addr>",
+    "Remove a tenant user group",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("tenant_user_group_addr", {
+          describe: "Tenant user group address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantRemoveTenantUserGroup({ argv });
     }
   )
 
@@ -2024,6 +2039,6 @@ yargs(hideBin(process.argv))
 
   .strict()
   .help()
-  .usage("EluvioLive Admin CLI\n\nUsage: elv-admin <command>")
+  .usage("Eluvio Live Admin CLI\n\nUsage: elv-admin <command>")
   .scriptName("")
   .demandCommand(1).argv;

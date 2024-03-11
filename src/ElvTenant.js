@@ -377,7 +377,7 @@ class ElvTenant {
    * @param {string} tenantUserGroupAddr - Tenant User Group's address, new group will be created if not specified (optional)
    * @returns {string} Tenant User Group's address
    */
-  async SetTenantUserGroup({ tenantContractId, tenantUserGroupAddr }) {
+  async TenantSetTenantUserGroup({ tenantContractId, tenantUserGroupAddr }) {
 
     let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
     elvAccount.InitWithClient({elvClient:this.client});
@@ -450,7 +450,7 @@ class ElvTenant {
    * @param {string} tenantContractId - The ID of the tenant Id (iten***)
    * @param {string} tenantUserGroupAddr - Address of tenant user group we want to remove.
    */
-  async RemoveTenantUserGroup({ tenantContractId, tenantUserGroupAddr }) {
+  async TenantRemoveTenantUserGroup({ tenantContractId, tenantUserGroupAddr }) {
 
     //Check that the user is the owner of the tenant
     const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
