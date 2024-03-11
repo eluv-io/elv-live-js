@@ -4,6 +4,7 @@ const { ElvAccount } = require("../src/ElvAccount.js");
 const { ElvContracts } = require("../src/ElvContracts.js");
 const { ElvFabric } = require("../src/ElvFabric.js");
 const { Config } = require("../src/Config.js");
+const constants = require("../src/Constants");
 const Ethers = require("ethers");
 
 const yargs = require("yargs/yargs");
@@ -310,7 +311,11 @@ const CmdTenantFix = async({ argv }) => {
       let error = errors[i];
       switch (error) {
         case 'missing content admins':
-          let addr = await t.TenantSetContentAdmins({tenantContractId: argv.tenant, contentAdminAddr: argv.content_admin_address});
+          let addr = await t.TenantSetGroup({
+            tenantContractId: argv.tenant,
+            groupType: "content_admin",
+            groupAddr: argv.content_admin_address
+          });
           console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`);
           break;
 
@@ -676,8 +681,26 @@ const CmdQuery = async ({ argv }) => {
   return;
 };
 
-const CmdTenantSetContentAdmins = async ({ argv }) => {
-  console.log(`Setting a new content admin group for Tenant ${argv.tenant}`);
+const CmdTenantGroup = async({tenantContractId, groupType}) => {
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    const res = await t.TenantGroup({
+      tenantContractId,
+      groupType
+    })
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+const CmdTenantSetGroup = async ({ tenant, groupType, groupAddress }) => {
+  console.log(`Setting a new ${groupType} group for Tenant ${tenant}`);
   console.log("Network: " + Config.net);
 
   try {
@@ -687,9 +710,10 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    let res = await t.TenantSetContentAdmins({
-      tenantContractId: argv.tenant,
-      contentAdminAddr: argv.content_admin_address,
+    const res = await t.TenantSetGroup({
+      tenantContractId: tenant,
+      groupType,
+      groupAddr: groupAddress,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -697,8 +721,8 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
   }
 };
 
-const CmdTenantRemoveContentAdmin = async ({ argv }) => {
-  console.log(`Removing a Content Admin from Tenant ${argv.tenant}`);
+const CmdTenantRemoveGroup = async ({ argv }) => {
+  console.log(`Removing a ${argv.group_type} from Tenant ${argv.tenant}`);
   console.log("Network: " + Config.net);
 
   try {
@@ -708,22 +732,20 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    let res = await t.TenantRemoveContentAdmin({
+    let res = await t.TenantRemoveGroup({
       tenantContractId: argv.tenant,
-      contentAdminsAddress: argv.content_admin_address
+      groupType: argv.group_type,
+      groupAddress: argv.group_address
     });
 
-    console.log(`Removed Content Admin's Address: ${argv.content_admin_address}`);
+    console.log(`Removed ${argv.group_type} address: ${argv.group_address}`);
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
 
-const CmdTenantSetTenantUserGroup = async ({ argv }) => {
-  console.log(`Setting a new tenant user group for Tenant ${argv.tenant}`);
-  console.log("Network: " + Config.net);
-
+const CmdTenantSetStatus = async ({tenantContractId, tenantStatus }) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
@@ -731,20 +753,18 @@ const CmdTenantSetTenantUserGroup = async ({ argv }) => {
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    let res = await t.TenantSetTenantUserGroup({
-      tenantContractId: argv.tenant,
-      tenantUserGroupAddr: argv.tenant_user_group_addr
+    let res = await t.TenantSetStatus({
+      tenantContractId: tenantContractId,
+      tenantStatus: tenantStatus,
     });
+
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
-};
+}
 
-const CmdTenantRemoveTenantUserGroup = async ({ argv }) => {
-  console.log(`Removing a tenant user group from Tenant ${argv.tenant}`);
-  console.log("Network: " + Config.net);
-
+const CmdTenantStatus = async ({tenantContractId}) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
@@ -752,17 +772,14 @@ const CmdTenantRemoveTenantUserGroup = async ({ argv }) => {
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    let res = await t.TenantRemoveTenantUserGroup({
-      tenantContractId: argv.tenant,
-      tenantUserGroupAddr: argv.tenant_user_group_addr
+    let res = await t.TenantStatus({
+      tenantContractId: tenantContractId,
     });
-
-    console.log(`Removed tenant user group Address: ${argv.tenant_user_group_addr}`);
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
-};
+}
 
 
 const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
@@ -1556,7 +1573,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "set_tenant_id <objectId> <tenantContractId> [options]",
+    "set_tenant_id <objectId> <tenantId> [options]",
     "Set tenant_contract_id and tenant_id to given object when tenantId is provided",
     (yargs) => {
       yargs
@@ -1629,80 +1646,118 @@ yargs(hideBin(process.argv))
     }
   )
 
-
   .command(
-    "tenant_set_content_admins <tenant> [options]",
-    "Set new content admin",
+    "tenant_group <tenant> [group_type]",
+    "Retrieve all of specific group from tenant",
     (yargs) => {
       yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
+        .positional("tenant",{
+          describe: "Tenant contract ID",
           type: "string",
         })
-        .options("content_admin_address", {
-          describe: "Address of the content admins groups",
+        .options("group_type", {
+          describe: "retrieve address for group type provided",
+          choices: [constants.TENANT_ADMIN, constants.CONTENT_ADMIN, constants.TENANT_USER_GROUP],
           type: "string",
-        });
+        })
     },
     (argv) => {
-      CmdTenantSetContentAdmins({ argv });
+      CmdTenantGroup({
+        tenantContractId: argv.tenant,
+        groupType: argv.group_type,
+      })
     }
   )
 
   .command(
-    "tenant_remove_content_admin <tenant> <content_admin_address>",
-    "Remove a content admin",
+    "tenant_set_group <tenant> <group_type> [group_address]",
+    "Set new content admin or user group",
     (yargs) => {
       yargs
         .positional("tenant", {
-          describe: "Tenant ID",
+          describe: "Tenant contract ID",
           type: "string",
         })
-        .positional("content_admin_address", {
-          describe: "Content Admin's address",
+        .positional("group_type", {
+          describe: "group type",
+          type: "string",
+          choices: [constants.TENANT_ADMIN, constants.CONTENT_ADMIN, constants.TENANT_USER_GROUP],
+        })
+        .options("group_address", {
+          describe: "Address of the group",
           type: "string",
         });
     },
     (argv) => {
-      CmdTenantRemoveContentAdmin({ argv });
+      CmdTenantSetGroup({
+        tenant: argv.tenant,
+        groupType: argv.group_type,
+        groupAddress: argv.group_address,
+      });
     }
   )
 
   .command(
-    "tenant_set_user_group <tenant> [options]",
-    "Set new tenant user group",
+    "tenant_remove_group <tenant> <group_type> <group_address>",
+    "Remove tenant_admin, content_admin or tenant_user_group address for give tenant",
     (yargs) => {
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
         })
-        .options("tenant_user_group_address", {
-          describe: "Address of the tenant user groups",
+        .positional("group_type", {
+          describe: "Group type",
+          choices: [constants.TENANT_ADMIN, constants.CONTENT_ADMIN, constants.TENANT_USER_GROUP],
+          type: "string",
+        })
+        .positional("group_address", {
+          describe: "Group Address",
           type: "string",
         });
     },
     (argv) => {
-      CmdTenantSetTenantUserGroup({ argv });
+      CmdTenantRemoveGroup({ argv });
     }
   )
 
   .command(
-    "tenant_remove_user_group <tenant> <tenant_user_group_addr>",
-    "Remove a tenant user group",
+    "tenant_set_status <tenant> <tenant_status>",
+    "Set tenant status for give tenant",
     (yargs) => {
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
         })
-        .positional("tenant_user_group_addr", {
-          describe: "Tenant user group address",
+        .positional("tenant_status", {
+          describe: "Tenant Status",
+          choices: [constants.TENANT_STATE_ACTIVE, constants.TENANT_STATE_INACTIVE, constants.TENANT_STATE_FROZEN],
           type: "string",
-        });
+        })
     },
     (argv) => {
-      CmdTenantRemoveTenantUserGroup({ argv });
+      CmdTenantSetStatus({
+        tenantContractId: argv.tenant,
+        tenantStatus: argv.tenant_status,
+      });
+    }
+  )
+
+  .command(
+    "tenant_status <tenant>",
+    "Get tenant status for give tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdTenantStatus({
+        tenantContractId: argv.tenant,
+      });
     }
   )
 

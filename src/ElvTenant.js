@@ -1,11 +1,13 @@
 const { ElvUtils } = require("./Utils");
 const { ElvAccount } = require("./ElvAccount");
+const constants = require("./Constants")
 
 const { ElvClient } = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 
 const fs = require("fs");
 const path = require("path");
+
 
 class ElvTenant {
   /**
@@ -272,87 +274,160 @@ class ElvTenant {
   }
 
   /**
-   * Create a new content admin group corresponding to this tenant.
+   * Retrieve tenant groups
+   *
    * @param {string} tenantContractId - The ID of the tenant (iten***)
-   * @param {string} contentAdminAddr - Content Admin Group's address, new group will be created if not specified (optional)
-   * @returns {string} Content Admin Group's address
+   * @param {string} groupType - tenant_admin | content_admin | tenant_user_group
+   * @returns {Promise<*[]>} - list of groups
    */
-  async TenantSetContentAdmins({ tenantContractId, contentAdminAddr }) {
+  async TenantGroup({ tenantContractId, groupType }) {
     //Check that the user is the owner of the tenant
     const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
-    if (tenantOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
-      throw Error("Content Admin must be set by the owner of tenant " + tenantContractId);
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("tenant group must be set by the owner of tenant " + tenantContractId);
     }
 
-    //The tenant must not already have a content admin group - can only have 1 content admin group for each tenant.
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
 
     const tenantAddr = Utils.HashToAddress(tenantContractId);
 
-    let contentAdmin;
+    if(groupType){
+      if (groupType !== constants.TENANT_ADMIN ||
+        groupType !== constants.CONTENT_ADMIN ||
+        groupType !== constants.TENANT_USER_GROUP){
+        throw Error(`Invalid groupType, require tenant_admin | content_admin | tenant_user_group: ${groupType}`);
+      }
+    }
+
+    const groupTypes = [constants.TENANT_ADMIN, constants.CONTENT_ADMIN, constants.TENANT_USER_GROUP];
+
+    let groupList = [];
+    let groupAddress
+    for (let i = 0; i < groupTypes.length; i++) {
+      if(typeof groupType === "undefined" || groupType === groupTypes[i]){
+        try {
+          let groupAddress = await this.client.CallContractMethod({
+            contractAddress: tenantAddr,
+            abi: JSON.parse(abi),
+            methodName: "groupsMapping",
+            methodArgs: [groupTypes[i], 0],
+            formatArguments: true,
+          });
+        } catch (e) {
+          //call cannot override gasLimit error will be thrown if content admin group doesn't exist for this tenant.
+          groupAddress = null;
+        }
+        groupList.push({ [groupTypes[i]]:groupAddress})
+      }
+    }
+    return groupList;
+  }
+
+  /**
+   * Set new tenant admin | content admin | user group corresponding to this tenant.
+   *
+   * @param {string} tenantContractId - The ID of the tenant (iten***)
+   * @param {string} groupType - tenant_admin | content_admin | tenant_user_group
+   * @param {string} groupAddress - Group's address, new group will be created if not specified (optional)
+   * @returns {Promise<string|*>} Group's address
+   */
+  async TenantSetGroup({ tenantContractId, groupType, groupAddress }) {
+    //Check that the user is the owner of the tenant
+    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("tenant group must be set by the owner of tenant " + tenantContractId);
+    }
+
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
+
+    if (groupType !== constants.TENANT_ADMIN ||
+      groupType !== constants.CONTENT_ADMIN ||
+      groupType !== constants.TENANT_USER_GROUP){
+      throw Error(`Invalid groupType, require tenant_admin | content_admin | tenant_user_group: ${groupType}`);
+    }
+
+    let tenantGroupAddr;
     try {
-      contentAdmin = await this.client.CallContractMethod({
+      tenantGroupAddr = await this.client.CallContractMethod({
         contractAddress: tenantAddr,
         abi: JSON.parse(abi),
         methodName: "groupsMapping",
-        methodArgs: ["content_admin", 0],
+        methodArgs: [groupType, 0],
         formatArguments: true,
       });
     } catch (e) {
       //call cannot override gasLimit error will be thrown if content admin group doesn't exist for this tenant.
-      contentAdmin = null;
+      tenantGroupAddr = null;
     }
 
-    if (contentAdmin) {
-      let logMsg = `Tenant ${tenantContractId} already has a content admin group: ${contentAdmin}, aborting...`;
+    if (tenantGroupAddr) {
+      let logMsg = `Tenant ${tenantContractId} already has a group: ${tenantGroupAddr} for ${groupType} aborting...`;
       return logMsg;
     }
 
     let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
     elvAccount.InitWithClient({elvClient:this.client});
 
-    //Arguments don't contain content admin group address, creating a new content admin group for the user's account.
-    if (!contentAdminAddr) {
+    // create new group if not provided
+    if (!groupAddress) {
       let accountName = await this.client.userProfileClient.UserMetadata({
         metadataSubtree: "public/name"
       });
 
-      let contentAdminGroup = await elvAccount.CreateAccessGroup({
-        name: `${accountName} Content Admins`,
+      let newGroup = await elvAccount.CreateAccessGroup({
+        name: `${accountName} ${groupType.replace(/_/g, ' ').toUpperCase()}`,
       });
 
-      contentAdminAddr = contentAdminGroup.address;
+      groupAddress = newGroup.address;
 
       await elvAccount.AddToAccessGroup({
-        groupAddress: contentAdminAddr,
+        groupAddress,
         accountAddress: this.client.signer.address.toLowerCase(),
         isManager: true,
       });
     }
 
-    //Associate the group with this tenant - set the content admin group's _ELV_TENANT_ID to this tenant's tenant id.
-    await this.TenantSetGroupConfig({tenantContractId, groupAddress: contentAdminAddr});
+    //Associate the group with this tenant
+    await this.TenantSetGroupConfig({tenantContractId, groupAddress});
 
-    //Associate the tenant with this group - set tenant's content admin group on the tenant's contract.
+    //Associate the tenant with this group - set tenant's group on the tenant's contract.
     await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),
       methodName: "addGroup",
-      methodArgs: ["content_admin", contentAdminAddr],
+      methodArgs: [groupType, groupAddress],
       formatArguments: true,
     });
 
-    return contentAdminAddr;
+    return groupAddress;
   }
 
   /**
-   * Remove a content admin from this tenant.
+   * Remove a tenant_amdin | content_admin | tenant_user_group from this tenant.
    * @param {string} tenantContractId - The ID of the tenant Id (iten***)
-   * @param {string} contentAdminsAddress - Address of content admin we want to remove.
+   * @param {string} groupType - tenant_admin | content_admin | tenant_user_group
+   * @param {string} groupAddress - Address of group we want to remove.
    */
-  async TenantRemoveContentAdmin({ tenantContractId, contentAdminsAddress }) {
+  async TenantRemoveGroup({ tenantContractId, groupType, groupAddress }) {
+
+    if (groupType !== constants.TENANT_ADMIN ||
+      groupType !== constants.CONTENT_ADMIN ||
+      groupType !== constants.TENANT_USER_GROUP){
+      throw Error(`Invalid groupType, require tenant_admin or content_admin or tenant_user_group: ${groupType}`);
+    }
+
+    //Check that the user is the owner of the tenant
+    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("tenant group must be removed by the owner of tenant " + tenantContractId);
+    }
+
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
@@ -360,120 +435,67 @@ class ElvTenant {
     const tenantAddr = Utils.HashToAddress(tenantContractId);
 
     //Remove tenant from group
-    await this.TenantRemoveGroupConfig({groupAddress: contentAdminsAddress});
+    await this.TenantRemoveGroupConfig({groupAddress});
 
     return await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),
       methodName: "removeGroup",
-      methodArgs: ["content_admin", contentAdminsAddress],
+      methodArgs: [groupType, groupAddress],
       formatArguments: true,
     });
   }
 
   /**
-   * Create a new tenant user group corresponding to this tenant.
-   * @param {string} tenantContractId - The ID of the tenant (iten***)
-   * @param {string} tenantUserGroupAddr - Tenant User Group's address, new group will be created if not specified (optional)
-   * @returns {string} Tenant User Group's address
-   */
-  async TenantSetTenantUserGroup({ tenantContractId, tenantUserGroupAddr }) {
-
-    let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
-    elvAccount.InitWithClient({elvClient:this.client});
-
-    //Check that the user is the owner of the tenant
-    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
-    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
-      throw Error("Tenant User Group must be set by the owner of tenant " + tenantContractId);
-    }
-
-    //The tenant must not already have a tenant user group - can only have 1 tenant user group for each tenant.
-    const abi = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
-    );
-
-    const tenantContractAddr = Utils.HashToAddress(tenantContractId);
-    let tenantUserGroup;
-    try {
-      tenantUserGroup = await this.client.CallContractMethod({
-        contractAddress: tenantContractAddr,
-        abi: JSON.parse(abi),
-        methodName: "groupsMapping",
-        methodArgs: ["tenant_user_group", 0],
-        formatArguments: true,
-      });
-      if (tenantUserGroup) {
-        return `Tenant ${tenantContractId} already has a tenant User Group: ${tenantUserGroup}, aborting...`;
-      }
-    } catch (e) {
-      //call cannot override gasLimit error will be thrown if content admin group doesn't exist for this tenant.
-      tenantUserGroup = null;
-    }
-
-    //Arguments don't contain tenant user group address, creating a new group for the user's account.
-    if (!tenantUserGroupAddr) {
-      let accountName = await this.client.userProfileClient.UserMetadata({
-        metadataSubtree: "public/name"
-      });
-
-      tenantUserGroup = await elvAccount.CreateAccessGroup({
-        name: `${accountName} Tenant User Group`,
-      });
-
-      tenantUserGroupAddr = tenantUserGroup.address;
-
-      await elvAccount.AddToAccessGroup({
-        groupAddress: tenantUserGroupAddr,
-        accountAddress: this.client.signer.address.toLowerCase(),
-        isManager: true,
-      });
-    }
-
-    //Associate the group with this tenant - set the tenant_user_group
-    await this.TenantSetGroupConfig({tenantContractId, groupAddress: tenantUserGroupAddr});
-
-    //Associate the tenant with this group - set tenant user group on the tenant's contract.
-    await this.client.CallContractMethodAndWait({
-      contractAddress: tenantContractAddr,
-      abi: JSON.parse(abi),
-      methodName: "addGroup",
-      methodArgs: ["tenant_user_group", tenantUserGroupAddr],
-      formatArguments: true,
-    });
-
-    return tenantUserGroupAddr;
-  }
-
-  /**
-   * Remove tenant user group from this tenant.
+   * Add tenant status
+   *
    * @param {string} tenantContractId - The ID of the tenant Id (iten***)
-   * @param {string} tenantUserGroupAddr - Address of tenant user group we want to remove.
+   * @param {string} tenantStatus - tenant status: acive | inactive | frozen
+   * @returns {Promise<string>}
    */
-  async TenantRemoveTenantUserGroup({ tenantContractId, tenantUserGroupAddr }) {
+  async TenantSetStatus({tenantContractId, tenantStatus}) {
+    if (tenantStatus !== constants.TENANT_STATE_ACTIVE ||
+      tenantStatus !== constants.TENANT_STATE_INACTIVE ||
+      tenantStatus !== constants.TENANT_STATE_FROZEN){
+      throw Error(`Invalid tenant status, require active | inactive | frozen: ${tenantStatus}`);
+    }
 
     //Check that the user is the owner of the tenant
     const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
     if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
-      throw Error("Tenant User Group must be set by the owner of tenant " + tenantContractId);
+      throw Error("tenant group must be set by the owner of tenant " + tenantContractId);
     }
 
-    const abi = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
-    );
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
 
-    const tenantContractAddr = Utils.HashToAddress(tenantContractId);
-
-    //Remove tenant from group
-    await this.TenantRemoveGroupConfig({groupAddress: tenantUserGroupAddr});
-
-    return await this.client.CallContractMethodAndWait({
-      contractAddress: tenantContractAddr,
-      abi: JSON.parse(abi),
-      methodName: "removeGroup",
-      methodArgs: ["tenant_user_group", tenantUserGroupAddr],
-      formatArguments: true,
+    await this.client.ReplaceContractMetadata({
+      contractAddress: tenantAddr,
+      metadataKey: constants.TENANT_STATE,
+      metadata: tenantStatus,
     });
+
+    tenantStatus = await this.TenantStatus({tenantContractId});
+    return `{tenantContractId:${tenantContractId}, tenantState:${tenantStatus}}`;
+  }
+
+  /**
+   * Retrieve tenant status
+   *
+   * @param {string} tenantContractId - The ID of the tenant Id (iten***)
+   * @returns {Promise<string>}
+   */
+  async TenantStatus({tenantContractId}) {
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
+    let tenantStatus;
+    try {
+      tenantStatus = await this.client.ContractMetadata({
+        contractAddress: tenantAddr,
+        metadataKey: constants.TENANT_STATE
+      });
+    }catch (e) {
+      tenantStatus = "";
+    }
+    return `{tenantContractId:${tenantContractId}, tenantState:${tenantStatus}}`;
   }
 
   /**
