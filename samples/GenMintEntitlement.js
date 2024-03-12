@@ -5,10 +5,10 @@ const bs58 = require("bs58");
 
 let client;
 
-/* Sample configuration -- demov3 network */
-let tenant = "iten4TXq2en3qtu3JREnE5tSLRf9zLod"; // paladin
-let marketplaceObjectId = "iq__2dXeKyUVhpcsd1RM6xaC1jdeZpyr"; // A Place for Goats
-let sku = "C9Zct19CoEAZYWug9tyavX"; // Goat Pack One
+/* Sample configuration */
+let tenant = "iten4TXq2en3qtu3JREnE5tSLRf9zLod";
+let marketplaceObjectId = "iq__2dXeKyUVhpcsd1RM6xaC1jdeZpyr";
+let sku = "C9Zct19CoEAZYWug9tyavX";
 let amount = 1;
 let user = "sample.user@example.com";
 let purchaseId = "pid_e852572c6e84626892da049a";
