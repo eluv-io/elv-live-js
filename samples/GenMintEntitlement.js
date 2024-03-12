@@ -5,7 +5,7 @@ const bs58 = require("bs58");
 
 let client;
 
-/* Sample configuration */
+/* Sample configuration -- demov3 network */
 let tenant = "iten4TXq2en3qtu3JREnE5tSLRf9zLod"; // paladin
 let marketplaceObjectId = "iq__2dXeKyUVhpcsd1RM6xaC1jdeZpyr"; // A Place for Goats
 let sku = "C9Zct19CoEAZYWug9tyavX"; // Goat Pack One
@@ -20,7 +20,7 @@ let purchaseId = "pid_e852572c6e84626892da049a";
  * @param {string} marketplaceObjectId - marketplace object ID in 'iq__' format
  * @param {string} sku - SKU of the item
  * @param {number} amount - number of items of that SKU
- * @param {string} user - user ID in any format, usually the 'sub' of the id/access token
+ * @param {string} user - user ID in any format, usually the 'sub' of the id/access token; an email, username,  address, etc.
  * @returns {Promise<Object>} - the entitlement JSON and signature
  */
 const Entitlement = async({tenant, marketplaceObjectId, sku, amount, user, purchaseId}) => {
@@ -62,7 +62,6 @@ const Run = async ({}) => {
   try {
     // Initialize client using environment variable PRIVATE_KEY
     client = await ElvClient.FromNetworkName({networkName: "demov3"});
-
     let wallet = client.GenerateWallet();
     let signer = wallet.AddAccount({
       privateKey: process.env.PRIVATE_KEY
