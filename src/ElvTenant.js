@@ -114,20 +114,7 @@ class ElvTenant {
       tenant.warns.push(`Bad space ID creator id=${tenant.creatorId}`);
     }
 
-    tenant.adminsGroup = await this.client.CallContractMethod({
-      contractAddress: tenantContractAddr,
-      abi: JSON.parse(abi),
-      methodName: "groupsMapping",
-      methodArgs: ["tenant_admin", 0],
-      formatArguments: true,
-    });
-    tenant.contentAdminsGroup = await this.client.CallContractMethod({
-      contractAddress: tenantContractAddr,
-      abi: JSON.parse(abi),
-      methodName: "groupsMapping",
-      methodArgs: ["content_admin", 0],
-      formatArguments: true,
-    });
+    tenant.tenantGroups = await this.TenantGroup({tenantContractId});
 
     // Fabric object information
     tenant.fabric_object_visibility = await this.client.CallContractMethod({
@@ -157,7 +144,7 @@ class ElvTenant {
 
     tenant.libs = await this.client.ContentLibraries();
     for (var i = 0; i < tenant.libs.length; i ++) {
-      const libTenantContractId = this.client.TenantContractId({
+      const libTenantContractId = await this.client.TenantContractId({
         contractAddress: Utils.HashToAddress(tenant.libs[i])
       });
 
@@ -170,7 +157,8 @@ class ElvTenant {
   }
 
   /**
-   * Return tenant admins group and content admins group corresponding to this tenant.
+   * Show tenant information like root key, tenant_admin, cotent_admin, tenant_user_group and metadata.
+   *
    * @param {string} tenantContractId - The ID of the tenant contract (iten***)
    * @param {boolean} show_metadata - show metadata of tenant
    */

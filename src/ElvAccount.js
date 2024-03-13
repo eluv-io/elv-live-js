@@ -1,6 +1,7 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const ethers = require("ethers");
 const { ElvUtils } = require("./Utils");
+const constants = require("./Constants");
 
 const TOKEN_DURATION = 120000; //2 min
 class ElvAccount {
@@ -75,22 +76,17 @@ class ElvAccount {
 
     // We don't require the key is part of a tenant (for example when creating a tenant root key)
     if (tenantContractId) {
-      // Validate tenant ID (make sure it is not the tenant admins ID)
+      // Validate tenantContractID (make sure it is not the tenant admins ID)
       const idType = await this.client.AccessType({ id: tenantContractId });
-      if (idType != this.client.authClient.ACCESS_TYPES.TENANT) {
+      if (idType !== this.client.authClient.ACCESS_TYPES.TENANT) {
         throw Error("Bad tenant contract ID");
       }
 
-      // Find tenant admins address
-      let tenantContractAddr = this.client.utils.HashToAddress(tenantContractId);
-      try {
-        await this.client.CallContractMethod({
-          contractAddress: tenantContractAddr,
-          methodName: "groupsMapping",
-          methodArgs: ["tenant_admin", 0],
-          formatArguments: true,
-        });
-      } catch (e) {
+      const tenantGroups = await this.client.TenantGroup({
+        tenantContractId,
+        groupType: constants.TENANT_ADMIN
+      });
+      if (!tenantGroups[constants.TENANT_ADMIN]){
         throw Error("Bad tenant - missing tenant admins group");
       }
     }

@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { ElvUtils } = require("../src/Utils");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
+const constants = require("Constants");
 
 const TYPE_LIVE_DROP_EVENT_SITE = "Eluvio LIVE Drop Event Site";
 const TYPE_LIVE_TENANT = "Eluvio LIVE Tenant";
@@ -99,38 +100,29 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     throw Error("No tenant admin group set for account.");
   }
 
-  if (tenantId != tenantContractId) {
+  if (tenantId !== tenantContractId) {
     throw Error("Signer associated with different tenant", tenantId, tenantContractId);
   }
 
-  const tenantAddr = Utils.HashToAddress(tenantId);
+  const tenantContractAddr = Utils.HashToAddress(tenantId);
   const abi = fs.readFileSync(
     path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
   );
 
   const tenantName = await client.CallContractMethod({
-    contractAddress: tenantAddr,
+    contractAddress: tenantContractAddr,
     abi: JSON.parse(abi),
     methodName: "name",
     methodArgs: [],
     formatArguments: true,
   });
 
-  let tenantAdminGroupAddress = await client.CallContractMethod({
-    contractAddress: tenantAddr,
-    abi: JSON.parse(abi),
-    methodName: "groupsMapping",
-    methodArgs : ["tenant_admin", 0],
-    formatArguments: true,
-  });
-  
-  let contentAdminGroupAddress = await client.CallContractMethod({
-    contractAddress: tenantAddr,
-    abi: JSON.parse(abi),
-    methodName: "groupsMapping",
-    methodArgs: ["content_admin", 0],
-    formatArguments: true,
-  });
+  let groupList = await client.TenantGroup({
+    tenantContractId: tenantContractId,
+  })
+  const tenantAdminGroupAddress = groupList[constants.TENANT_ADMIN]
+  const contentAdminGroupAddress = groupList[constants.CONTENT_ADMIN]
+  const tenantUserGroupAddress = groupList[constants.TENANT_USER_GROUP]
 
   const contentViewersGroupAddress = await client.CreateAccessGroup({
     name: `${tenantName} Content Viewers`
@@ -157,6 +149,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   let groups = {
     tenantAdminGroupAddress,
     contentAdminGroupAddress,
+    tenantUserGroupAddress,
     contentViewersGroupAddress
   };
 
@@ -354,12 +347,12 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     }
   };
 
-  let siteId = await CreateFabricObject({client, 
-    libraryId: propertiesLibraryId, 
-    typeId: titleCollectionTypeId, 
-    publicMetadata, 
-    tenantAdminGroupAddress, 
-    contentAdminGroupAddress, 
+  let siteId = await CreateFabricObject({client,
+    libraryId: propertiesLibraryId,
+    typeId: titleCollectionTypeId,
+    publicMetadata,
+    tenantAdminGroupAddress,
+    contentAdminGroupAddress,
     contentViewersGroupAddress});
 
   if (debug) {
@@ -386,12 +379,12 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     }
   };
 
-  let marketplaceId = await CreateFabricObject({client, 
-    libraryId: propertiesLibraryId, 
-    typeId: liveTypeIds[TYPE_LIVE_MARKETPLACE], 
-    publicMetadata, 
-    tenantAdminGroupAddress, 
-    contentAdminGroupAddress, 
+  let marketplaceId = await CreateFabricObject({client,
+    libraryId: propertiesLibraryId,
+    typeId: liveTypeIds[TYPE_LIVE_MARKETPLACE],
+    publicMetadata,
+    tenantAdminGroupAddress,
+    contentAdminGroupAddress,
     contentViewersGroupAddress});
 
   if (debug) {
@@ -419,12 +412,12 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     }
   };
 
-  let dropEventId = await CreateFabricObject({client, 
-    libraryId: propertiesLibraryId, 
-    typeId: liveTypeIds[TYPE_LIVE_DROP_EVENT_SITE], 
-    publicMetadata, 
-    tenantAdminGroupAddress, 
-    contentAdminGroupAddress, 
+  let dropEventId = await CreateFabricObject({client,
+    libraryId: propertiesLibraryId,
+    typeId: liveTypeIds[TYPE_LIVE_DROP_EVENT_SITE],
+    publicMetadata,
+    tenantAdminGroupAddress,
+    contentAdminGroupAddress,
     contentViewersGroupAddress});
 
   let dropEventHash = await client.LatestVersionHash({objectId: dropEventId});
@@ -460,12 +453,12 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     }
   };
 
-  let tenantObjectId = await CreateFabricObject({client, 
-    libraryId: propertiesLibraryId, 
-    typeId: liveTypeIds[TYPE_LIVE_TENANT], 
-    publicMetadata, 
-    tenantAdminGroupAddress, 
-    contentAdminGroupAddress, 
+  let tenantObjectId = await CreateFabricObject({client,
+    libraryId: propertiesLibraryId,
+    typeId: liveTypeIds[TYPE_LIVE_TENANT],
+    publicMetadata,
+    tenantAdminGroupAddress,
+    contentAdminGroupAddress,
     contentViewersGroupAddress});
 
   if (debug) {
