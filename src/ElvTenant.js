@@ -196,11 +196,11 @@ class ElvTenant {
       methodArgs: [],
     });
 
-    const groupList = await this.TenantGroup({tenantContractId})
-    for(let group in groupList) {
-      let groupName = group.replace(/_/g, ' ');
-      if(!groupList[group]){
-        errors.push(`missing ${groupName}`)
+    const groupList = await this.TenantGroup({tenantContractId});
+    for (let group in groupList) {
+      let groupName = group.replace(/_/g, " ");
+      if (!groupList[group]){
+        errors.push(`missing ${groupName}`);
       } else {
         // check _ELV_TENANT_ID set on these groups
         let res = await this.TenantCheckGroupConfig({

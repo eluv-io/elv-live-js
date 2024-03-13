@@ -292,6 +292,13 @@ const CmdTenantFix = async({ argv }) => {
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
+    if (argv.tenant_status) {
+      await t.TenantSetStatus({
+        tenantContractId,
+        tenantStatus: argv.tenant_status,
+      });
+    }
+
     let res = await t.TenantShow({
       tenantContractId: argv.tenant
     });
@@ -1560,6 +1567,15 @@ yargs(hideBin(process.argv))
           describe: "Address of the tenant user group",
           type: "string"
         })
+        .options("tenant_status", {
+          describe: "Status of tenant",
+          type: "string",
+          choices: [
+            constants.TENANT_STATE_ACTIVE,
+            constants.TENANT_STATE_INACTIVE,
+            constants.TENANT_STATE_FROZEN
+          ],
+        })
     },
     (argv) => {
       CmdTenantFix({ argv });
@@ -1586,6 +1602,15 @@ yargs(hideBin(process.argv))
         .options("libraries", {
           describe: "List of libraries that belong to this tenant",
           type: "array",
+        })
+        .options("tenant_status", {
+          describe: "Status of tenant",
+          type: "string",
+          choices: [
+            constants.TENANT_STATE_ACTIVE,
+            constants.TENANT_STATE_INACTIVE,
+            constants.TENANT_STATE_FROZEN
+          ],
         });
     },
     (argv) => {
