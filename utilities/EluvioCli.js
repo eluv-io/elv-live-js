@@ -298,8 +298,8 @@ const CmdTenantFix = async({ argv }) => {
     let errors = res.errors;
     let unresolved = [];
 
-    if (argv.content_admin_address && res.content_admin_address && !t.client.utils.EqualAddress(res.content_admin_address, argv.content_admin_address)) {
-      throw Error(`Tenant ${argv.tenant} already has a content admin group: ${res.content_admin_address}, aborting...`);
+    if (argv.content_admin_address && res.groups[constants.CONTENT_ADMIN] && !t.client.utils.EqualAddress(res.groups[constants.CONTENT_ADMIN], argv.content_admin_address)) {
+      throw Error(`Tenant ${argv.tenant} already has a content admin group: ${res.groups[constants.CONTENT_ADMIN]}, aborting...`);
     }
 
     if (!errors) {
@@ -310,23 +310,60 @@ const CmdTenantFix = async({ argv }) => {
     for (let i = 0; i < errors.length; i++) {
       let error = errors[i];
       switch (error) {
-        case 'missing content admins':
-          let addr = await t.TenantSetGroup({
-            tenantContractId: argv.tenant,
-            groupType: "content_admin",
-            groupAddr: argv.content_admin_address
-          });
-          console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`);
+        case 'missing content admin':
+          if(argv.content_admin_address){
+            let addr = await t.TenantSetGroup({
+              tenantContractId: argv.tenant,
+              groupType: constants.CONTENT_ADMIN,
+              groupAddress: argv.content_admin_address
+            });
+            console.log(`Set content admin group for tenant with tenantContractId ${argv.tenant} to ${addr}`);
+          } else {
+            unresolved.push(error, `${constants.CONTENT_ADMIN} is not provided`);
+          }
           break;
-
-        case `tenant admin group can't be verified or is not associated with any tenant`:
-          await t.TenantSetGroupConfig({tenantContractId: argv.tenant, groupAddress: res.tenant_admin_address});
+        case 'missing tenant user group':
+          if(argv.tenant_user_group){
+            let addr = await t.TenantSetGroup({
+              tenantContractId: argv.tenant,
+              groupType: constants.TENANT_USER_GROUP,
+              groupAddress: argv.tenant_user_group
+            });
+            console.log(`Set tenant user group for tenant with tenantContractId ${argv.tenant} to ${addr}`)
+          } else {
+            unresolved.push(error, `${constants.TENANT_USER_GROUP} is not provided`);
+          }
           break;
-
-        case `content admin group can't be verified or is not associated with any tenant`:
-          await t.TenantSetGroupConfig({tenantContractId: argv.tenant, groupAddress: res.content_admin_address});
+        case `tenant admin can't be verified or is not associated with any tenant`:
+          if(res.groups[constants.TENANT_ADMIN]){
+            await t.TenantSetGroupConfig({
+              tenantContractId: argv.tenant,
+              groupAddress: res.groups[constants.TENANT_ADMIN]
+            });
+          } else {
+            unresolved.push(error);
+          }
           break;
-
+        case `content admin can't be verified or is not associated with any tenant`:
+          if(res.groups[constants.CONTENT_ADMIN]) {
+            await t.TenantSetGroupConfig({
+              tenantContractId: argv.tenant,
+              groupAddress: res.groups[constants.CONTENT_ADMIN]
+            });
+          } else {
+            unresolved.push(error);
+          }
+          break;
+        case `tenant user group can't be verified or is not associated with any tenant`:
+          if(res.groups[constants.TENANT_USER_GROUP]) {
+            await t.TenantSetGroupConfig({
+              tenantContractId: argv.tenant,
+              groupAddress: res.groups[constants.TENANT_USER_GROUP]
+            });
+          } else {
+            unresolved.push(error);
+          }
+          break;
         default:
           console.log(`No fix actions available for error: ${error}.`);
           unresolved.push(error);
@@ -349,27 +386,26 @@ const CmdTenantFixSuite = async({ argv }) => {
     privateKey: process.env.PRIVATE_KEY,
   });
 
-  // tenantId present for old and new objects
-  const tenantId = await elvAccount.client.userProfileClient.TenantId();
-  if (tenantId === ""){
+  let tenantContractId;
+  try {
+    tenantContractId  = await elvAccount.client.userProfileClient.TenantContractId();
+  } catch (e) {
     throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${Config.net} network, aborting...`);
+  }
+  if (tenantContractId) {
+    if (!elvAccount.client.utils.EqualHash(tenantContractId, argv.tenant)) {
+      throw Error(`The account with private key ${process.env.PRIVATE_KEY} is already associated with different tenant ${tenantContractId}`);
+    }
   }
 
   //Set content admins group ID and fix problems related to the tenant and its admin groups
-  await CmdTenantFix({argv});
-
-  // check tenantContractId set for tenant admin grouup
-  let tenantContractId = await elvAccount.client.TenantContractId({objectId: tenantId});
-  if (tenantContractId !== argv.tenant || tenantContractId === ""){
-    throw Error(`TenantContractId mismatch:
-      From User:
-        TenantId=${tenantId},
-      From TenantId ${tenantId}:
-        TenantContractId=${tenantContractId},
-      Given TenantContractId=${argv.tenant}`);
+  const unresolvedError = await CmdTenantFix({argv});
+  if (unresolvedError.length > 0){
+    console.log("unresolved error:")
+    unresolvedError.forEach(err => {
+      console.log(err);
+    });
   }
-
-  await elvAccount.client.userProfileClient.SetTenantContractId({tenantContractId: argv.tenant});
 
   //Set tenantContractId to libraries, if owned by the user
   if (argv.libraries) {
@@ -1517,9 +1553,13 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .options("content_admin_address", {
-          describe: "Address of the content admins groups",
+          describe: "Address of the content admins group",
           type: "string",
-        });
+        })
+        .options("tenant_user_group_address", {
+          describe: "Address of the tenant user group",
+          type: "string"
+        })
     },
     (argv) => {
       CmdTenantFix({ argv });
@@ -1527,17 +1567,21 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_fix_suite <tenant> <content_admin_address> [options]",
+    "tenant_fix_suite <tenant> <content_admin_address> <tenant_user_group_address> [options]",
     "Fix old-gen tenant",
     (yargs) => {
       yargs
         .positional("tenant", {
-          describe: "Tenant ID",
+          describe: "Tenant contract ID",
           type: "string",
         })
         .positional("content_admin_address", {
-          describe: "Address of the content admins groups",
+          describe: "Address of the content admins group",
           type: "string",
+        })
+        .positional("tenant_user_group_address", {
+          describe: "Address of the tenant user group",
+          type: "string"
         })
         .options("libraries", {
           describe: "List of libraries that belong to this tenant",

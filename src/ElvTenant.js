@@ -172,6 +172,7 @@ class ElvTenant {
   /**
    * Return tenant admins group and content admins group corresponding to this tenant.
    * @param {string} tenantContractId - The ID of the tenant contract (iten***)
+   * @param {boolean} show_metadata - show metadata of tenant
    */
   async TenantShow({ tenantContractId, show_metadata = false }) {
     let contractType = await this.client.authClient.AccessType(tenantContractId);
@@ -195,50 +196,23 @@ class ElvTenant {
       methodArgs: [],
     });
 
-    let tenantAdminAddr;
-    try {
-      tenantAdminAddr = await this.client.CallContractMethod({
-        contractAddress: tenantContractAddr,
-        abi: JSON.parse(abi),
-        methodName: "groupsMapping",
-        methodArgs: ["tenant_admin", 0],
-        formatArguments: true,
-      });
-    } catch (e) {
-      tenantAdminAddr = null;
-      errors.push("missing tenant admins");
-    }
-    tenantInfo["tenant_admin_address"] = tenantAdminAddr;
-
-    //Content admins group might not exist for the tenant with this tenantContractId due to legacy reasons.
-    //Running ./elv-admin tenant-fix to update this tenant.
-    let contentAdminAddr;
-    try {
-      contentAdminAddr = await this.client.CallContractMethod({
-        contractAddress: tenantContractAddr,
-        abi: JSON.parse(abi),
-        methodName: "groupsMapping",
-        methodArgs: ["content_admin", 0],
-        formatArguments: true,
-      });
-    } catch (e) {
-      contentAdminAddr = null;
-      errors.push("missing content admins");
-    }
-    tenantInfo["content_admin_address"] = contentAdminAddr;
-
-    //Check if the groups have _ELV_TENANT_ID set correctly
-    for (const group in tenantInfo) {
-      let groupAddr = tenantInfo[group];
-      let args = group.split("_");
-      if (groupAddr) {
-        let res = await this.TenantCheckGroupConfig({tenantContractId, groupAddr, tenantOwner: owner});
+    const groupList = await this.TenantGroup({tenantContractId})
+    for(let group in groupList) {
+      let groupName = group.replace(/_/g, ' ');
+      if(!groupList[group]){
+        errors.push(`missing ${groupName}`)
+      } else {
+        // check _ELV_TENANT_ID set on these groups
+        let res = await this.TenantCheckGroupConfig({
+          tenantContractId,
+          groupAddr: groupList[group],
+          tenantOwner: owner});
         if (!res.success) {
-          errors.push(`${args[0]} ${args[1]} ${res.message}`);
+          errors.push(`${groupName} ${res.message}`);
         }
       }
     }
-
+    tenantInfo["groups"] = groupList;
     tenantInfo["tenant_root_key"] = owner;
 
     if (show_metadata) {
@@ -303,7 +277,7 @@ class ElvTenant {
 
     const groupTypes = [constants.TENANT_ADMIN, constants.CONTENT_ADMIN, constants.TENANT_USER_GROUP];
 
-    let groupList = [];
+    let groupList = {};
     let groupAddress;
     for (let i = 0; i < groupTypes.length; i++) {
       if (typeof groupType === "undefined" || groupType === groupTypes[i]){
@@ -319,7 +293,7 @@ class ElvTenant {
           //call cannot override gasLimit error will be thrown if content admin group doesn't exist for this tenant.
           groupAddress = null;
         }
-        groupList.push({ [groupTypes[i]]:groupAddress});
+        groupList[groupTypes[i]]=groupAddress;
       }
     }
     return groupList;
@@ -552,7 +526,7 @@ class ElvTenant {
       });
 
       if (groupTenantContractId === "") {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+        return {success: false, message: "can't be verified or is not associated with any tenant", need_format: true};
       }
 
       if (tenantContractId !== groupTenantContractId) {
