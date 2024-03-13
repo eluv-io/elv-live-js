@@ -1,6 +1,6 @@
 const { ElvUtils } = require("./Utils");
 const { ElvAccount } = require("./ElvAccount");
-const constants = require("./Constants")
+const constants = require("./Constants");
 
 const { ElvClient } = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
@@ -293,7 +293,7 @@ class ElvTenant {
 
     const tenantAddr = Utils.HashToAddress(tenantContractId);
 
-    if(groupType){
+    if (groupType){
       if (groupType !== constants.TENANT_ADMIN ||
         groupType !== constants.CONTENT_ADMIN ||
         groupType !== constants.TENANT_USER_GROUP){
@@ -304,11 +304,11 @@ class ElvTenant {
     const groupTypes = [constants.TENANT_ADMIN, constants.CONTENT_ADMIN, constants.TENANT_USER_GROUP];
 
     let groupList = [];
-    let groupAddress
+    let groupAddress;
     for (let i = 0; i < groupTypes.length; i++) {
-      if(typeof groupType === "undefined" || groupType === groupTypes[i]){
+      if (typeof groupType === "undefined" || groupType === groupTypes[i]){
         try {
-          let groupAddress = await this.client.CallContractMethod({
+          groupAddress = await this.client.CallContractMethod({
             contractAddress: tenantAddr,
             abi: JSON.parse(abi),
             methodName: "groupsMapping",
@@ -319,7 +319,7 @@ class ElvTenant {
           //call cannot override gasLimit error will be thrown if content admin group doesn't exist for this tenant.
           groupAddress = null;
         }
-        groupList.push({ [groupTypes[i]]:groupAddress})
+        groupList.push({ [groupTypes[i]]:groupAddress});
       }
     }
     return groupList;
@@ -381,7 +381,7 @@ class ElvTenant {
       });
 
       let newGroup = await elvAccount.CreateAccessGroup({
-        name: `${accountName} ${groupType.replace(/_/g, ' ').toUpperCase()}`,
+        name: `${accountName} ${groupType.replace(/_/g, " ").toUpperCase()}`,
       });
 
       groupAddress = newGroup.address;
@@ -492,7 +492,7 @@ class ElvTenant {
         contractAddress: tenantAddr,
         metadataKey: constants.TENANT_STATE
       });
-    }catch (e) {
+    } catch (e) {
       tenantStatus = "";
     }
     return `{tenantContractId:${tenantContractId}, tenantState:${tenantStatus}}`;
