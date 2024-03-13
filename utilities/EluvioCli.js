@@ -198,9 +198,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
       tenantName: argv.tenant_name,
       funds: argv.funds,
     });
-
     console.log(yaml.dump(res));
-
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -230,7 +228,6 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
       contentAdminGroupAddress: argv.content_admin_addr,
       tenantUserGroupAddress: argv.tenant_user_group_addr,
     });
-
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -273,7 +270,6 @@ const CmdTenantShow = async({ argv }) => {
       tenantContractId: argv.tenant,
       show_metadata: argv.show_metadata
     });
-
     console.log(yaml.dump(res));
     if (res.errors) {
       console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
@@ -327,6 +323,11 @@ const CmdTenantFix = async({ argv }) => {
               groupAddress: argv.content_admin_address
             });
             console.log(`Set content admin group for tenant with tenantContractId ${argv.tenant} to ${addr}`);
+
+            await t.TenantSetGroupConfig({
+              tenantContractId,
+              groupAddress: argv.content_admin_address
+            })
           } else {
             unresolved.push(error, `${constants.CONTENT_ADMIN} is not provided`);
           }
@@ -339,6 +340,11 @@ const CmdTenantFix = async({ argv }) => {
               groupAddress: argv.tenant_user_group
             });
             console.log(`Set tenant user group for tenant with tenantContractId ${argv.tenant} to ${addr}`)
+
+            await t.TenantSetGroupConfig({
+              tenantContractId,
+              groupAddress: argv.tenant_user_group
+            })
           } else {
             unresolved.push(error, `${constants.TENANT_USER_GROUP} is not provided`);
           }
@@ -448,136 +454,162 @@ const CmdTenantFixSuite = async({ argv }) => {
   }
 };
 
-const CmdSetTenantContractId = async ({objectId, tenantContractId}) => {
+const CmdSetTenantContractId = async ({argv}) => {
 
-  let elvAccount = new ElvAccount({
-    configUrl: Config.networks[Config.net],
-    debugLogging: argv.verbose
-  });
-  await elvAccount.Init({
-    privateKey: process.env.PRIVATE_KEY,
-  });
+  try {
+    const objectId = argv.objectId
+    const tenantContractId = argv.tenantContractId
 
-  const objTenantId = await elvAccount.client.TenantId({
-    objectId,
-  });
-
-  if (objTenantId !== "") {
-    // get tenantContractId from tenantId
-    const tenantContractIdFromTenantAdminGrp = await elvAccount.client.TenantId({
-      objectId: objTenantId,
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
     });
-    if (tenantContractIdFromTenantAdminGrp !== ""){
-      if (tenantContractIdFromTenantAdminGrp !== tenantContractId){
-        throw Error(`object tenantId have different tenantContractId set:
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const objTenantId = await elvAccount.client.TenantId({
+      objectId,
+    });
+
+    if (objTenantId !== "") {
+      // get tenantContractId from tenantId
+      const tenantContractIdFromTenantAdminGrp = await elvAccount.client.TenantId({
+        objectId: objTenantId,
+      });
+      if (tenantContractIdFromTenantAdminGrp !== ""){
+        if (tenantContractIdFromTenantAdminGrp !== tenantContractId){
+          throw Error(`object tenantId have different tenantContractId set:
           Given TenantId: ${tenantContractId}
           From TenantId: ${tenantContractIdFromTenantAdminGrp},
         `);
+        }
+        console.log `object has ${tenantContractId} already set`;
       }
-      return `object has ${tenantContractId} already set`;
     }
-  }
 
-  const res = await elvAccount.client.SetTenantContractId({
-    objectId,
-    contractAddress,
-    versionHash,
-    tenantContractId
-  });
-  return `object is set with tenantContractId ${res.tenantContractId} and tenantId ${res.tenantId}`;
+    const res = await elvAccount.client.SetTenantContractId({
+      objectId,
+      contractAddress,
+      versionHash,
+      tenantContractId
+    });
+    console.log `object is set with tenantContractId ${res.tenantContractId} and tenantId ${res.tenantId}`;
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
-const CmdTenantContractId = async ({objectId}) => {
+const CmdTenantContractId = async ({argv}) => {
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
 
-  let elvAccount = new ElvAccount({
-    configUrl: Config.networks[Config.net],
-    debugLogging: argv.verbose
-  });
-  await elvAccount.Init({
-    privateKey: process.env.PRIVATE_KEY,
-  });
-
-  const objTenantContractId = await elvAccount.client.TenantContractId({
-    objectId,
-  });
-  return `object TenantContractId: ${objTenantContractId}`;
+    const objTenantContractId = await elvAccount.client.TenantContractId({
+      objectId: argv.objectId,
+    });
+    console.log(`object TenantContractId: ${objTenantContractId}`);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
-const CmdSetTenantId = async({objectId, tenantId}) => {
-  let elvAccount = new ElvAccount({
-    configUrl: Config.networks[Config.net],
-    debugLogging: argv.verbose
-  });
-  await elvAccount.Init({
-    privateKey: process.env.PRIVATE_KEY,
-  });
+const CmdSetTenantId = async({argv}) => {
+  try {
+    const objectId = argv.objectId;
+    const tenantId = argv.tenantId;
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
 
-  // check if the tenant admin has tenant contract id set
-  const tenantContractId = await elvAccount.client.TenantContractId({
-    objectId: tenantId,
-  });
-  if (tenantContractId === ""){
-    throw Error("tenantId provided requires tenantContractId to be set, run ./elv-admin tenant-fix command");
-  }
+    // check if the tenant admin has tenant contract id set
+    const tenantContractId = await elvAccount.client.TenantContractId({
+      objectId: tenantId,
+    });
+    if (tenantContractId === ""){
+      throw Error("tenantId provided requires tenantContractId to be set, run ./elv-admin tenant-fix command");
+    }
 
-  const objTenantId = await elvAccount.client.TenantId({
-    objectId,
-  });
-  if (objTenantId !== "" && objTenantId !== tenantId) {
-    throw Error(` object provided have different tenantId set:
+    const objTenantId = await elvAccount.client.TenantId({
+      objectId,
+    });
+    if (objTenantId !== "" && objTenantId !== tenantId) {
+      throw Error(` object provided have different tenantId set:
        Object TenantId: ${objTenantId};
        Given TenantId: ${tenantId};
     `);
+    }
+
+    const res = await elvAccount.client.SetTenantId({
+      objectId,
+    });
+    console.log(`object ${objectId} is set with tenantId: ${res.tenantId} and tenantContractId: ${res.tenantContractId}`);
+  } catch (e) {
+    console.error("ERROR:", e);
   }
 
-  const res = await elvAccount.client.SetTenantId({
-    objectId,
-  });
-  return `object ${objectId} is set with tenantId: ${res.tenantId} and tenantContractId: ${res.tenantContractId}`;
 };
 
-const CmdTenantId = async ({objectId}) => {
-  let elvAccount = new ElvAccount({
-    configUrl: Config.networks[Config.net],
-    debugLogging: argv.verbose
-  });
-  await elvAccount.Init({
-    privateKey: process.env.PRIVATE_KEY,
-  });
+const CmdTenantId = async ({argv}) => {
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
 
-  const objTenantId = await elvAccount.client.TenantId({
-    objectId,
-  });
-  return `${objectId} TenantId: ${objTenantId}`;
+    const objTenantId = await elvAccount.client.TenantId({
+      objectId: argv.objectId,
+    });
+    console.log(`${argv.objectId} TenantId: ${objTenantId}`);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
-const CmdTenantRemove = async ({objectId}) => {
-  let elvAccount = new ElvAccount({
-    configUrl: Config.networks[Config.net],
-    debugLogging: argv.verbose
-  });
-  await elvAccount.Init({
-    privateKey: process.env.PRIVATE_KEY,
-  });
+const CmdTenantRemove = async ({argv}) => {
+  try {
+    const objectId = argv.objectId;
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
 
-  await elvAccount.client.RemoveTenant({
-    objectId,
-  });
+    await elvAccount.client.RemoveTenant({
+      objectId,
+    });
 
-  const tenantId = await elvAccount.client.TenantId({
-    objectId,
-  });
-  const tenantContractId = await elvAccount.client.TenantContractId({
-    objectId,
-  });
+    const tenantId = await elvAccount.client.TenantId({
+      objectId,
+    });
+    const tenantContractId = await elvAccount.client.TenantContractId({
+      objectId,
+    });
 
-  if (tenantId !== "" || tenantContractId !== "") {
-    throw Error(`Tenant details present in object: 
+    if (tenantId !== "" || tenantContractId !== "") {
+      throw Error(`Tenant details present in object: 
       TenantId: ${tenantId},
       TenantContractId: ${tenantContractId}
     `);
+    }
+    console.log(`Removed tenant details from object ${objectId}`);
+  } catch (e) {
+    console.error("ERROR", e);
   }
-  return `Removed tenant details from object ${objectId}`;
 };
 
 
@@ -726,7 +758,7 @@ const CmdQuery = async ({ argv }) => {
   return;
 };
 
-const CmdTenantGroup = async({tenantContractId, groupType}) => {
+const CmdTenantGroup = async({argv}) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
@@ -735,8 +767,8 @@ const CmdTenantGroup = async({tenantContractId, groupType}) => {
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     const res = await t.TenantGroup({
-      tenantContractId,
-      groupType
+      tenantContractId: argv.tenant,
+      groupType: argv.group_type
     })
     console.log(yaml.dump(res));
   } catch (e) {
@@ -744,8 +776,8 @@ const CmdTenantGroup = async({tenantContractId, groupType}) => {
   }
 }
 
-const CmdTenantSetGroup = async ({ tenant, groupType, groupAddress }) => {
-  console.log(`Setting a new ${groupType} group for Tenant ${tenant}`);
+const CmdTenantSetGroup = async ({ argv }) => {
+  console.log(`Setting a new ${argv.groupType} group for Tenant ${argv.tenant}`);
   console.log("Network: " + Config.net);
 
   try {
@@ -755,10 +787,16 @@ const CmdTenantSetGroup = async ({ tenant, groupType, groupAddress }) => {
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    const res = await t.TenantSetGroup({
-      tenantContractId: tenant,
-      groupType,
-      groupAddr: groupAddress,
+    let res = await t.TenantSetGroup({
+      tenantContractId: argv.tenant,
+      groupType: argv.group_type,
+      groupAddress: argv.group_address,
+    });
+    console.log(yaml.dump(res));
+
+    res = await t.TenantSetGroupConfig({
+      tenantContractId: argv.tenant,
+      groupAddress: argv.group_address,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -784,14 +822,15 @@ const CmdTenantRemoveGroup = async ({ argv }) => {
     });
 
     console.log(`Removed ${argv.group_type} address: ${argv.group_address}`);
-    console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
 
-const CmdTenantSetStatus = async ({tenantContractId, tenantStatus }) => {
+const CmdTenantSetStatus = async ({argv}) => {
   try {
+    const tenantContractId =  argv.tenant;
+    const tenantStatus =  argv.tenant_status;
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
@@ -809,8 +848,9 @@ const CmdTenantSetStatus = async ({tenantContractId, tenantStatus }) => {
   }
 }
 
-const CmdTenantStatus = async ({tenantContractId}) => {
+const CmdTenantStatus = async ({argv}) => {
   try {
+    const tenantContractId = argv.tenant;
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
@@ -1636,10 +1676,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdSetTenantContractId({
-        objectId: argv.objectId,
-        tenantContractId: argv.tenantContractId,
-      });
+      CmdSetTenantContractId({ argv });
     }
   )
 
@@ -1658,10 +1695,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdSetTenantId({
-        objectId: argv.objectId,
-        tenantId: argv.tenantId,
-      });
+      CmdSetTenantId({argv});
     }
   )
 
@@ -1676,9 +1710,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdTenantContractId({
-        objectId: argv.objectId,
-      });
+      CmdTenantContractId({ argv });
     }
   )
 
@@ -1693,9 +1725,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdTenantId({
-        objectId: argv.objectId,
-      });
+      CmdTenantId({argv});
     }
   )
 
@@ -1733,10 +1763,7 @@ yargs(hideBin(process.argv))
         })
     },
     (argv) => {
-      CmdTenantGroup({
-        tenantContractId: argv.tenant,
-        groupType: argv.group_type,
-      })
+      CmdTenantGroup({argv})
     }
   )
 
@@ -1760,11 +1787,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdTenantSetGroup({
-        tenant: argv.tenant,
-        groupType: argv.group_type,
-        groupAddress: argv.group_address,
-      });
+      CmdTenantSetGroup({argv});
     }
   )
 
@@ -1808,10 +1831,7 @@ yargs(hideBin(process.argv))
         })
     },
     (argv) => {
-      CmdTenantSetStatus({
-        tenantContractId: argv.tenant,
-        tenantStatus: argv.tenant_status,
-      });
+      CmdTenantSetStatus({argv});
     }
   )
 
@@ -1826,9 +1846,7 @@ yargs(hideBin(process.argv))
         })
     },
     (argv) => {
-      CmdTenantStatus({
-        tenantContractId: argv.tenant,
-      });
+      CmdTenantStatus({argv});
     }
   )
 

@@ -104,7 +104,7 @@ class ElvSpace {
       if (this.debug){
         console.log("tenant admins:", tenantAdminGroup);
         console.log("content admins:", contentAdminGroup);
-        console.log("tenant user group:", tenantUserGroup)
+        console.log("tenant user group:", tenantUserGroup);
       }
       let adminGroups = {tenantAdminGroup, contentAdminGroup, tenantUserGroup};
 
@@ -162,7 +162,7 @@ class ElvSpace {
     });
     await elvTenant.Init({
       privateKey: process.env.PRIVATE_KEY,
-    })
+    });
 
     let res = {};
 
@@ -193,7 +193,7 @@ class ElvSpace {
 
     const tenantContractId = ElvUtils.AddressToId({
       prefix:"iten",
-      address: tenantContract.address})
+      address: tenantContract.address});
 
     if (tenantAdminGroupAddress) {
       res = await elvTenant.TenantSetGroup({
