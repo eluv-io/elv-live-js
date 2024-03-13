@@ -212,6 +212,7 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
   console.log(`Owner address: ${argv.owner_addr}`);
   console.log(`Tenant admin group address: ${argv.tenant_admin_addr}`);
   console.log(`Content admin group address: ${argv.content_admin_addr}`);
+  console.log(`Tenant user group address: ${argv.tenant_user_group_addr}`)
 
   try {
     let space = new ElvSpace({
@@ -227,6 +228,7 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
       ownerAddress: argv.owner_addr,
       tenantAdminGroupAddress: argv.tenant_admin_addr,
       contentAdminGroupAddress: argv.content_admin_addr,
+      tenantUserGroupAddress: argv.tenant_user_group_addr,
     });
 
     console.log(yaml.dump(res));
@@ -1848,6 +1850,10 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("content_admin_addr", {
+          describe: "Address of the content admins groups",
+          type: "string",
+        })
+      .positional("tenant_user_group_addr", {
           describe: "Address of the content admins groups",
           type: "string",
         });

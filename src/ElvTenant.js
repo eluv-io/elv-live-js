@@ -256,8 +256,8 @@ class ElvTenant {
     const tenantAddr = Utils.HashToAddress(tenantContractId);
 
     if (groupType){
-      if (groupType !== constants.TENANT_ADMIN ||
-        groupType !== constants.CONTENT_ADMIN ||
+      if (groupType !== constants.TENANT_ADMIN &&
+        groupType !== constants.CONTENT_ADMIN &&
         groupType !== constants.TENANT_USER_GROUP){
         throw Error(`Invalid groupType, require tenant_admin | content_admin | tenant_user_group: ${groupType}`);
       }
@@ -308,8 +308,8 @@ class ElvTenant {
 
     const tenantAddr = Utils.HashToAddress(tenantContractId);
 
-    if (groupType !== constants.TENANT_ADMIN ||
-      groupType !== constants.CONTENT_ADMIN ||
+    if (groupType !== constants.TENANT_ADMIN &&
+      groupType !== constants.CONTENT_ADMIN &&
       groupType !== constants.TENANT_USER_GROUP){
       throw Error(`Invalid groupType, require tenant_admin | content_admin | tenant_user_group: ${groupType}`);
     }
@@ -355,8 +355,8 @@ class ElvTenant {
       });
     }
 
-    //Associate the group with this tenant
-    await this.TenantSetGroupConfig({tenantContractId, groupAddress});
+    //Associate the group with this tenant -- needs group owner to run
+    //await this.TenantSetGroupConfig({tenantContractId, groupAddress});
 
     //Associate the tenant with this group - set tenant's group on the tenant's contract.
     await this.client.CallContractMethodAndWait({
@@ -378,8 +378,8 @@ class ElvTenant {
    */
   async TenantRemoveGroup({ tenantContractId, groupType, groupAddress }) {
 
-    if (groupType !== constants.TENANT_ADMIN ||
-      groupType !== constants.CONTENT_ADMIN ||
+    if (groupType !== constants.TENANT_ADMIN &&
+      groupType !== constants.CONTENT_ADMIN &&
       groupType !== constants.TENANT_USER_GROUP){
       throw Error(`Invalid groupType, require tenant_admin or content_admin or tenant_user_group: ${groupType}`);
     }
@@ -413,11 +413,11 @@ class ElvTenant {
    *
    * @param {string} tenantContractId - The ID of the tenant Id (iten***)
    * @param {string} tenantStatus - tenant status: acive | inactive | frozen
-   * @returns {Promise<string>}
+   * @returns {Promise<{tenantStatus: string, tenantContractId: string}>}
    */
   async TenantSetStatus({tenantContractId, tenantStatus}) {
-    if (tenantStatus !== constants.TENANT_STATE_ACTIVE ||
-      tenantStatus !== constants.TENANT_STATE_INACTIVE ||
+    if (tenantStatus !== constants.TENANT_STATE_ACTIVE &&
+      tenantStatus !== constants.TENANT_STATE_INACTIVE &&
       tenantStatus !== constants.TENANT_STATE_FROZEN){
       throw Error(`Invalid tenant status, require active | inactive | frozen: ${tenantStatus}`);
     }
@@ -437,7 +437,7 @@ class ElvTenant {
     });
 
     tenantStatus = await this.TenantStatus({tenantContractId});
-    return `{tenantContractId:${tenantContractId}, tenantState:${tenantStatus}}`;
+    return {tenantContractId, tenantStatus};
   }
 
   /**
@@ -457,7 +457,7 @@ class ElvTenant {
     } catch (e) {
       tenantStatus = "";
     }
-    return `{tenantContractId:${tenantContractId}, tenantState:${tenantStatus}}`;
+    return tenantStatus;
   }
 
   /**

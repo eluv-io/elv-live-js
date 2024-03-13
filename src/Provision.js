@@ -119,10 +119,10 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
 
   let groupList = await client.TenantGroup({
     tenantContractId: tenantContractId,
-  })
-  const tenantAdminGroupAddress = groupList[constants.TENANT_ADMIN]
-  const contentAdminGroupAddress = groupList[constants.CONTENT_ADMIN]
-  const tenantUserGroupAddress = groupList[constants.TENANT_USER_GROUP]
+  });
+  const tenantAdminGroupAddress = groupList[constants.TENANT_ADMIN];
+  const contentAdminGroupAddress = groupList[constants.CONTENT_ADMIN];
+  const tenantUserGroupAddress = groupList[constants.TENANT_USER_GROUP];
 
   const contentViewersGroupAddress = await client.CreateAccessGroup({
     name: `${tenantName} Content Viewers`

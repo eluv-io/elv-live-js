@@ -275,11 +275,11 @@ class ElvAccount {
     const groupTenantContractId = await this.client.TenantContractId({
       contractAddress: groupAddress
     });
-    if (typeof groupTenantContractId !== "undefined" ){
+    if (groupTenantContractId){
       if (groupTenantContractId === tenantContractId){
         console.log(`Group ${groupAddress} has tenantContractId = ${tenantContractId}`);
       } else {
-        throw Error(`Group ${groupAddress} has different tenantContractId = ${tenantContractId}, aborting...`);
+        throw Error(`Group ${groupAddress} has different tenantContractId = ${groupTenantContractId}, aborting...`);
       }
     } else {
       await this.client.SetTenantContractId({
