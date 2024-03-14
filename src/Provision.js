@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { ElvUtils } = require("../src/Utils");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
-const constants = require("Constants");
+const constants = require("../src/Constants");
 
 const TYPE_LIVE_DROP_EVENT_SITE = "Eluvio LIVE Drop Event Site";
 const TYPE_LIVE_TENANT = "Eluvio LIVE Tenant";
