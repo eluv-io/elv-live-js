@@ -330,7 +330,7 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({name, object, eventId}) {
+  async StreamCopyToVod({name, object, eventId, streams}) {
 
     let conf = await this.client.LoadConf({name});
 
@@ -399,7 +399,7 @@ class EluvioLiveStream {
           "live_qhash": liveHash,
           "start_time": startTime, // eg. "2023-10-03T02:09:02.00Z",
           "end_time": endTime, // eg. "2023-10-03T02:15:00.00Z",
-          "streams": ["video", "audio"],
+          "streams": streams,
           "recording_period": -1,
           "variant_key": "default"
         },
