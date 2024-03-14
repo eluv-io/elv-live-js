@@ -203,6 +203,8 @@ class ElvTenant {
     tenantInfo["groups"] = groupList;
     tenantInfo["tenant_root_key"] = owner;
 
+    tenantInfo["tenant_status"] = await this.TenantStatus({tenantContractId});
+
     if (show_metadata) {
       let services = [];
       let tenantObjectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantContractAddr});

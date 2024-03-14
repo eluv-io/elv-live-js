@@ -61,8 +61,8 @@ const CmdAccountCreate = async ({ argv }) => {
 
 const CmdAccountSetTenantContractId = async ({ argv }) => {
   console.log("Account Set Tenant Contract ID\n");
-  console.log(`tenant_contract_id: ${argv.tenantContractId}`);
-  console.log(`tenant_admin: ${argv.tenantId}`)
+  console.log(`Given tenant_contract_id: ${argv.tenantContractId}`);
+  console.log(`Given tenant_admin: ${argv.tenantId}`)
 
 
   try {
@@ -292,7 +292,7 @@ const CmdTenantFix = async({ argv }) => {
 
     if (argv.tenant_status) {
       await t.TenantSetStatus({
-        tenantContractId,
+        tenantContractId: argv.tenant,
         tenantStatus: argv.tenant_status,
       });
     }
@@ -305,6 +305,10 @@ const CmdTenantFix = async({ argv }) => {
 
     if (argv.content_admin_address && res.groups[constants.CONTENT_ADMIN] && !t.client.utils.EqualAddress(res.groups[constants.CONTENT_ADMIN], argv.content_admin_address)) {
       throw Error(`Tenant ${argv.tenant} already has a content admin group: ${res.groups[constants.CONTENT_ADMIN]}, aborting...`);
+    }
+
+    if (argv.tenant_user_group_address && res.groups[constants.TENANT_USER_GROUP] && !t.client.utils.EqualAddress(res.groups[constants.TENANT_USER_GROUP], argv.tenant_user_group_address)) {
+      throw Error(`Tenant ${argv.tenant} already has a tenant user group: ${res.groups[constants.TENANT_USER_GROUP]}, aborting...`);
     }
 
     if (!errors) {
@@ -325,7 +329,7 @@ const CmdTenantFix = async({ argv }) => {
             console.log(`Set content admin group for tenant with tenantContractId ${argv.tenant} to ${addr}`);
 
             await t.TenantSetGroupConfig({
-              tenantContractId,
+              tenantContractId: argv.tenant,
               groupAddress: argv.content_admin_address
             })
           } else {
@@ -333,20 +337,20 @@ const CmdTenantFix = async({ argv }) => {
           }
           break;
         case 'missing tenant user group':
-          if(argv.tenant_user_group){
+          if(argv.tenant_user_group_address){
             let addr = await t.TenantSetGroup({
               tenantContractId: argv.tenant,
               groupType: constants.TENANT_USER_GROUP,
-              groupAddress: argv.tenant_user_group
+              groupAddress: argv.tenant_user_group_address
             });
             console.log(`Set tenant user group for tenant with tenantContractId ${argv.tenant} to ${addr}`)
 
             await t.TenantSetGroupConfig({
-              tenantContractId,
-              groupAddress: argv.tenant_user_group
+              tenantContractId: argv.tenant,
+              groupAddress: argv.tenant_user_group_address
             })
           } else {
-            unresolved.push(error, `${constants.TENANT_USER_GROUP} is not provided`);
+            unresolved.push(`missing tenant user group: ${constants.TENANT_USER_GROUP} is not provided`);
           }
           break;
         case `tenant admin can't be verified or is not associated with any tenant`:
@@ -386,6 +390,7 @@ const CmdTenantFix = async({ argv }) => {
     }
 
     console.log(`${errors.length - unresolved.length} errors fixed, ${unresolved.length} errors remaining.`);
+    console.log(unresolved);
     return unresolved;
   } catch (e) {
     console.log(e);
@@ -415,12 +420,6 @@ const CmdTenantFixSuite = async({ argv }) => {
 
   //Set content admins group ID and fix problems related to the tenant and its admin groups
   const unresolvedError = await CmdTenantFix({argv});
-  if (unresolvedError.length > 0){
-    console.log("unresolved error:")
-    unresolvedError.forEach(err => {
-      console.log(err);
-    });
-  }
 
   //Set tenantContractId to libraries, if owned by the user
   if (argv.libraries) {
@@ -474,7 +473,7 @@ const CmdSetTenantContractId = async ({argv}) => {
 
     if (objTenantId !== "") {
       // get tenantContractId from tenantId
-      const tenantContractIdFromTenantAdminGrp = await elvAccount.client.TenantId({
+      const tenantContractIdFromTenantAdminGrp = await elvAccount.client.TenantContractId({
         objectId: objTenantId,
       });
       if (tenantContractIdFromTenantAdminGrp !== ""){
@@ -484,17 +483,16 @@ const CmdSetTenantContractId = async ({argv}) => {
           From TenantId: ${tenantContractIdFromTenantAdminGrp},
         `);
         }
-        console.log `object has ${tenantContractId} already set`;
+        console.log(`object has ${tenantContractId} already set`);
+        return;
       }
     }
 
     const res = await elvAccount.client.SetTenantContractId({
       objectId,
-      contractAddress,
-      versionHash,
       tenantContractId
     });
-    console.log `object is set with tenantContractId ${res.tenantContractId} and tenantId ${res.tenantId}`;
+    console.log(`object is set with tenantContractId ${res.tenantContractId} and tenantId ${res.tenantId}`);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -520,9 +518,9 @@ const CmdTenantContractId = async ({argv}) => {
 };
 
 const CmdSetTenantId = async({argv}) => {
+  const objectId = argv.objectId;
+  const tenantId = argv.tenantId;
   try {
-    const objectId = argv.objectId;
-    const tenantId = argv.tenantId;
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
@@ -551,6 +549,7 @@ const CmdSetTenantId = async({argv}) => {
 
     const res = await elvAccount.client.SetTenantId({
       objectId,
+      tenantId,
     });
     console.log(`object ${objectId} is set with tenantId: ${res.tenantId} and tenantContractId: ${res.tenantContractId}`);
   } catch (e) {
@@ -1741,9 +1740,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdTenantRemove({
-        objectId: argv.objectId,
-      });
+      CmdTenantRemove({argv});
     }
   )
 
