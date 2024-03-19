@@ -245,11 +245,6 @@ class ElvTenant {
    * @returns {Promise<*[]>} - list of groups
    */
   async TenantGroup({ tenantContractId, groupType }) {
-    //Check that the user is the owner of the tenant
-    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
-    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
-      throw Error("tenant group must be set by the owner of tenant " + tenantContractId);
-    }
 
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
