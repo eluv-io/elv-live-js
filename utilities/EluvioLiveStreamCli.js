@@ -227,10 +227,23 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
+    let streams = null;
+    if (argv.streams) { // 'video:0,audio:1,audio_spa:2'
+      streams = {};
+      streamsList = argv.streams.split(",");
+      for (let i = 0; i < streamsList.length; i++) {
+        const s = streamsList[i].split(":");
+        console.log("s", s);
+        streams[s[0]] = {stream_index: parseInt(s[1])};
+      }
+      console.log("Streams: ", streams);
+    }
+
     let status = await elvStream.StreamCopyToVod({
       name: argv.stream,
       object: argv.object,
-      eventId: argv.event_id});
+      eventId: argv.event_id,
+      streams});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -519,6 +532,11 @@ yargs(hideBin(process.argv))
         .option("event_id", {
           describe:
             "Optional SCTE35 program or chapter event ID",
+          type: "string",
+        })
+        .option("streams", {
+          describe:
+            "List specific streams to be copied (eg. 'video:0,audio:1,audio_spa:2')",
           type: "string",
         })
     },
