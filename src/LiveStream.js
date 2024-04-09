@@ -30,8 +30,10 @@ class EluvioLiveStream {
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
   constructor({ configUrl, debugLogging = false }) {
-    if (/^host-\d+-\d+-\d+-\d+\.contentfabric.io$/.test(configUrl)) {
-      configUrl = "https://"+configUrl+"/config?self&qspace="+Config.net
+    if (configUrl === undefined) {
+      configUrl = Config.networks[Config.net]
+    } else if (/^host-\d+-\d+-\d+-\d+\.contentfabric.io$/.test(configUrl)) {
+      configUrl = "https://"+configUrl+"/config?self&qspace="+Config.net;
     }
     this.configUrl = configUrl || ElvClient.main;
 
@@ -39,7 +41,6 @@ class EluvioLiveStream {
   }
 
   async Init() {
-    console.log(this.configUrl)
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
