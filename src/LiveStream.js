@@ -5,6 +5,7 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { execSync } = require("child_process");
+const { Config } = require("./Config.js");
 
 const fs = require("fs");
 const got = require("got");
@@ -29,12 +30,16 @@ class EluvioLiveStream {
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
   constructor({ configUrl, debugLogging = false }) {
+    if (/^host-\d+-\d+-\d+-\d+\.contentfabric.io$/.test(configUrl)) {
+      configUrl = "https://"+configUrl+"/config?self&qspace="+Config.net
+    }
     this.configUrl = configUrl || ElvClient.main;
 
     this.debug = debugLogging;
   }
 
   async Init() {
+    console.log(this.configUrl)
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });

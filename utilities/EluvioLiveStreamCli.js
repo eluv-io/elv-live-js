@@ -19,8 +19,12 @@ process.emit = function (name, data, ...args) {
 
 const CmdInit = async ({ argv }) => {
   try {
+    if (argv.host === undefined) {
+      argv.host = Config.networks[Config.net]
+    }
+
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      configUrl: argv.host,
       debugLogging: argv.verbose
     });
 
@@ -81,8 +85,12 @@ const CmdStreamTerminate = async ({ argv }) => {
 
 const CmdStreamStatus = async ({ argv }) => {
   try {
+    if (argv.host === undefined) {
+      argv.host = Config.networks[Config.net]
+    }
+
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      configUrl: argv.host,
       debugLogging: argv.verbose
     });
 
@@ -218,8 +226,12 @@ const CmdStreamConfig = async ({ argv }) => {
 
 const CmdStreamCopyToVod = async ({ argv }) => {
   try {
+    if (argv.host === undefined) {
+      argv.host = Config.networks[Config.net]
+    }
+
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      configUrl: argv.host,
       debugLogging: argv.verbose
     });
 
@@ -300,6 +312,11 @@ yargs(hideBin(process.argv))
     describe: "Verbose mode",
     type: "boolean",
     alias: "v"
+  })
+  .option("host", {
+    describe: "Use specified host (eg. host-x-x-x-x.contentfabric.io)",
+    type: "string",
+    alias: "h"
   })
 
   .command(
