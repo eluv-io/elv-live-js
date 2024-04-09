@@ -227,15 +227,15 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let streams = null;
     if (argv.streams) { // 'video:0,audio:1,audio_spa:2'
-      streams = {};
+      let streams = {};
       streamsList = argv.streams.split(",");
       for (let i = 0; i < streamsList.length; i++) {
         const s = streamsList[i].split(":");
         console.log("s", s);
         streams[s[0]] = {stream_index: parseInt(s[1])};
       }
+      argv.streams = streams
       console.log("Streams: ", streams);
     }
 
@@ -243,7 +243,11 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       name: argv.stream,
       object: argv.object,
       eventId: argv.event_id,
-      streams});
+      startTime: argv.start_time,
+      endTime: argv.end_time,
+      recordingPeriod: argv.recording_period,
+      streams: argv.streams
+    });
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -533,6 +537,21 @@ yargs(hideBin(process.argv))
           describe:
             "Optional SCTE35 program or chapter event ID",
           type: "string",
+        })
+        .option("start_time", {
+          describe:
+            "Start at the specified time in the stream",
+          type: "string",
+        })
+        .option("end_time", {
+          describe:
+            "End at the specified time in the stream",
+          type: "string",
+        })
+        .option("recording_period", {
+          describe:
+            "Use only the specified recording period",
+          type: "int",
         })
         .option("streams", {
           describe:
