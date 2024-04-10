@@ -227,6 +227,11 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
+    // PENDING(jon): Remove default recording_period after live-to-vod supports copying multiple recording_periods
+    if (argv.recording_period === undefined) {
+      argv.recording_period = -1
+    }
+
     if (argv.streams) { // 'video:0,audio:1,audio_spa:2'
       let streams = {};
       streamsList = argv.streams.split(",");
@@ -543,11 +548,12 @@ yargs(hideBin(process.argv))
             "Optional SCTE35 program or chapter event ID",
           type: "string",
         })
-        .option("start_time", {
-          describe:
-            "Start at the specified time in the stream",
-          type: "string",
-        })
+        // PENDING(jon): Disabled until live-to-vod supports starting at an offset into a recording_period`
+        // .option("start_time", {
+        //   describe:
+        //     "Start at the specified time in the stream",
+        //   type: "string",
+        // })
         .option("end_time", {
           describe:
             "End at the specified time in the stream",

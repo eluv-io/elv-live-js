@@ -31,7 +31,7 @@ class EluvioLiveStream {
    */
   constructor({ configUrl, debugLogging = false }) {
     if (configUrl === undefined) {
-      configUrl = Config.networks[Config.net]
+      configUrl = Config.networks[Config.net];
     } else if (/^host-\d+-\d+-\d+-\d+\.contentfabric.io$/.test(configUrl)) {
       configUrl = "https://"+configUrl+"/config?self&qspace="+Config.net;
     }
