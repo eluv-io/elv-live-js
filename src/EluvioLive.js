@@ -2221,6 +2221,8 @@ class EluvioLive {
     pnft.playable = m.nft.playable;
 
     pnft.style = m.nft.style;
+    pnft.collection_name = m.nft.collection_name;
+    pnft.collection_image = m.nft.collection_image;
 
     let total_supply = pnft.total_supply.toString();
 
