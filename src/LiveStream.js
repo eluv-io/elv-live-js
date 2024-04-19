@@ -5,6 +5,7 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { execSync } = require("child_process");
+const { Config } = require("./Config.js");
 
 const fs = require("fs");
 const got = require("got");
@@ -25,12 +26,17 @@ class EluvioLiveStream {
    * Instantiate the EluvioLiveStream
    *
    * @namedParams
-   * @param {string} configUrl - The Content Fabric configuration URL
+   * @param {string} url - Optional node endpoint URL (overwrites config URL)
+   * @param {bool} debugLogging - Optional debug logging flag
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
-  constructor({ configUrl, debugLogging = false }) {
-    this.configUrl = configUrl || ElvClient.main;
+  constructor({ url, debugLogging = false }) {
 
+    if (url) {
+      this.configUrl = url+"/config?self&qspace="+Config.net;
+    } else {
+      this.configUrl = Config.networks[Config.net];
+    }
     this.debug = debugLogging;
   }
 
@@ -330,7 +336,7 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({name, object, eventId, streams}) {
+  async StreamCopyToVod({name, object, eventId, startTime, endTime, recordingPeriod, streams}) {
 
     let conf = await this.client.LoadConf({name});
 
@@ -359,9 +365,6 @@ class EluvioLiveStream {
     if (!kmsCap) {
       throw Error("No content encryption key set for this object");
     }
-
-    let startTime = "";
-    let endTime = "";
 
     try {
 
@@ -400,7 +403,7 @@ class EluvioLiveStream {
           "start_time": startTime, // eg. "2023-10-03T02:09:02.00Z",
           "end_time": endTime, // eg. "2023-10-03T02:15:00.00Z",
           "streams": streams,
-          "recording_period": -1,
+          "recording_period": recordingPeriod,
           "variant_key": "default"
         },
         constant: false,
@@ -431,7 +434,10 @@ class EluvioLiveStream {
         objectId: object,
         writeToken: edt.write_token,
         method: "/media/live_to_vod/copy",
-        body: {},
+        body: {
+          "variant_key": "default",
+          "offering_key": "default",
+        },
         constant: false,
         format: "text"
       });
