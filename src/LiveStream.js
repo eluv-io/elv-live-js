@@ -26,17 +26,17 @@ class EluvioLiveStream {
    * Instantiate the EluvioLiveStream
    *
    * @namedParams
-   * @param {string} configUrl - The Content Fabric configuration URL
+   * @param {string} url - Optional node endpoint URL (overwrites config URL)
+   * @param {bool} debugLogging - Optional debug logging flag
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
-  constructor({ configUrl, debugLogging = false }) {
-    if (configUrl === undefined) {
-      configUrl = Config.networks[Config.net];
-    } else if (/^host-\d+-\d+-\d+-\d+\.contentfabric.io$/.test(configUrl)) {
-      configUrl = "https://"+configUrl+"/config?self&qspace="+Config.net;
-    }
-    this.configUrl = configUrl || ElvClient.main;
+  constructor({ url, debugLogging = false }) {
 
+    if (url) {
+      this.configUrl = url+"/config?self&qspace="+Config.net;
+    } else {
+      this.configUrl = Config.networks[Config.net];
+    }
     this.debug = debugLogging;
   }
 

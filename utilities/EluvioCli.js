@@ -178,7 +178,6 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
 
   try {
     let space = new ElvSpace({
-      configUrl: Config.networks[Config.net],
       spaceAddress: Config.consts[Config.net].spaceAddress,
       kmsAddress: Config.consts[Config.net].kmsAddress,
       debugLogging: argv.verbose

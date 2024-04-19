@@ -20,7 +20,7 @@ process.emit = function (name, data, ...args) {
 const CmdInit = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -42,7 +42,7 @@ const CmdInit = async ({ argv }) => {
 const CmdStreamCreate = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -64,7 +64,7 @@ const CmdStreamCreate = async ({ argv }) => {
 const CmdStreamTerminate = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -82,7 +82,7 @@ const CmdStreamTerminate = async ({ argv }) => {
 const CmdStreamStatus = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -107,7 +107,7 @@ const CmdStreamStatus = async ({ argv }) => {
 const CmdStreamOp = async ({ argv, op }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -125,7 +125,7 @@ const CmdStreamOp = async ({ argv, op }) => {
 const CmdStreamInsertion = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -175,7 +175,7 @@ const CmdStreamInsertion = async ({ argv }) => {
 const CmdStreamDownload = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -193,7 +193,7 @@ const CmdStreamDownload = async ({ argv }) => {
 const CmdStreamConfig = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -202,7 +202,7 @@ const CmdStreamConfig = async ({ argv }) => {
     });
 
     let space = new ElvSpace({
-      configUrl: argv.host,
+      url: argv.url,
       spaceAddress: Config.consts[Config.net].spaceAddress,
       kmsAddress: Config.consts[Config.net].kmsAddress,
       debugLogging: argv.verbose
@@ -219,7 +219,7 @@ const CmdStreamConfig = async ({ argv }) => {
 const CmdStreamCopyToVod = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -262,7 +262,7 @@ const CmdStreamCopyToVod = async ({ argv }) => {
 const CmdWatermark = async ({op, argv}) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -283,7 +283,7 @@ const CmdWatermark = async ({op, argv}) => {
 const CmdStreamListUrls = async ({ argv }) => {
   try {
     const elvStream = new EluvioLiveStream({
-      configUrl: argv.host,
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -306,10 +306,9 @@ yargs(hideBin(process.argv))
     type: "boolean",
     alias: "v"
   })
-  .option("host", {
-    describe: "Use specified host (eg. host-x-x-x-x.contentfabric.io)",
+  .option("url", {
+    describe: "Optional node endpoint (eg. https://host-x-x-x-x.contentfabric.io)",
     type: "string",
-    alias: "h"
   })
 
   .command(
