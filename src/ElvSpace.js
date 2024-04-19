@@ -11,16 +11,12 @@ class ElvSpace {
    * Instantiate the ElvSpace Object
    *
    * @namedParams
-   * @param {string} url - Optional node endpoint URL (overwrites config URL)
+   * @param {string} configUrl - The Content Fabric configuration URL
    * @param {string} mainObjectId - The top-level Eluvio Live object ID
    * @return {ElvSpace} - New ElvSpace object connected to the specified content fabric and blockchain
    */
-  constructor({ spaceAddress, kmsAddress, debugLogging = false }) {
-    if (url) {
-      this.configUrl = url+"/config?self&qspace="+Config.net;
-    } else {
-      this.configUrl = Config.networks[Config.net];
-    }
+  constructor({ configUrl, spaceAddress, kmsAddress, debugLogging = false }) {
+    this.configUrl = configUrl;
     (this.spaceAddress = spaceAddress), (this.kmsAddress = kmsAddress);
     this.debug = debugLogging;
   }

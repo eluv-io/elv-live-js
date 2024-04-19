@@ -202,7 +202,7 @@ const CmdStreamConfig = async ({ argv }) => {
     });
 
     let space = new ElvSpace({
-      url: argv.url,
+      configUrl: Config.networks[Config.net],
       spaceAddress: Config.consts[Config.net].spaceAddress,
       kmsAddress: Config.consts[Config.net].kmsAddress,
       debugLogging: argv.verbose
