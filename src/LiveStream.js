@@ -541,7 +541,17 @@ class EluvioLiveStream {
   }
 
   async StreamConfig({name}) {
-    return this.client.StreamConfig({name});
+
+    const objectId = name;
+    // Read user config (meta /live_recording_config)
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    let userConfig = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      metadataSubtree: "live_recording_config",
+      resolveLinks: false
+    });
+    return this.client.StreamConfig({name, customSettings: userConfig});
   }
 
   async StreamListUrls({siteId}) {
