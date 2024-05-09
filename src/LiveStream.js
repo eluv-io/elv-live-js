@@ -55,12 +55,13 @@ class EluvioLiveStream {
 
   async StatusPrep({name}) {
 
-    let conf = await this.client.LoadConf({name});
+    const objectId = name;
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
 
     try {
 
       // Set static token - avoid individual auth for separate channels/streams
-      let token = await MakeTxLessToken({client: this.client, libraryId: conf.libraryId});
+      let token = await MakeTxLessToken({client: this.client, libraryId});
       this.client.SetStaticToken({token});
 
     } catch (error) {
@@ -177,19 +178,18 @@ class EluvioLiveStream {
 
   async StreamDownload({name, period}) {
 
-    let conf = await this.client.LoadConf({name});
-
+    let objectId = name;
     let status = {name};
 
     try {
 
-      let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
+      const libraryId = await this.client.ContentObjectLibraryId({objectId: objectId});
       status.library_id = libraryId;
-      status.object_id = conf.objectId;
+      status.object_id = objectId;
 
       let mainMeta = await this.client.ContentObjectMetadata({
         libraryId: libraryId,
-        objectId: conf.objectId
+        objectId: objectId
       });
 
       let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
@@ -207,7 +207,7 @@ class EluvioLiveStream {
       let edgeWriteToken = mainMeta.live_recording.fabric_config.edge_write_token;
       let edgeMeta = await this.client.ContentObjectMetadata({
         libraryId: libraryId,
-        objectId: conf.objectId,
+        objectId: objectId,
         writeToken: edgeWriteToken
       });
 
@@ -237,20 +237,20 @@ class EluvioLiveStream {
       let dpath = "DOWNLOAD/" + edgeWriteToken + "." + period;
       !fs.existsSync(dpath) && fs.mkdirSync(dpath, {recursive: true});
 
-      let mts = ["audio", "video"];
+      let mts = ["video", "audio_0"];
       for (let mi = 0; mi < mts.length; mi ++) {
         let mt = mts[mi];
         console.log("Downloading ", mt);
         let mtpath = dpath + "/" + mt;
         let partsfile = dpath + "/parts_" + mt + ".txt";
         !fs.existsSync(mtpath) && fs.mkdirSync(mtpath);
-        var sources = recording.sources[mt];
+        var sources = recording.sources[mt].parts;
         for (let i = 0; i < sources.length - 1; i++) {
           console.log(sources[i].hash);
           let partHash = sources[i].hash;
           let buf = await this.client.DownloadPart({
             libraryId,
-            objectId: conf.objectId,
+            objectId: objectId,
             partHash,
             format: "buffer",
             chunked: false,
@@ -338,8 +338,7 @@ class EluvioLiveStream {
   */
   async StreamCopyToVod({name, object, eventId, startTime, endTime, recordingPeriod, streams}) {
 
-    let conf = await this.client.LoadConf({name});
-
+    const objectId = name;
     const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
 
     let status = await this.Status({name});
@@ -352,7 +351,7 @@ class EluvioLiveStream {
       throw "Must specify a target object ID";
     }
 
-    let targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
+    const targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
 
     // Validation - ensure target object has content encryption keys
     const kmsAddress = await this.client.authClient.KMSAddress({objectId: object});
@@ -368,9 +367,9 @@ class EluvioLiveStream {
 
     try {
 
-      status.live_object_id = conf.objectId;
+      status.live_object_id = objectId;
 
-      let liveHash = await this.client.LatestVersionHash({objectId: conf.objectId, libraryId});
+      let liveHash = await this.client.LatestVersionHash({objectId: objectId, libraryId});
       status.live_hash = liveHash;
 
       if (eventId) {
