@@ -28,6 +28,7 @@
     "url": "https://github.com/eluv-io/elv-live-js/issues"
   },
   "files": [
+    "/common-policies",
     "/contracts",
     "/src",
     "/utilities",
