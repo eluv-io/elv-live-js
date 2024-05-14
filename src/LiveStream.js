@@ -238,8 +238,11 @@ class EluvioLiveStream {
       !fs.existsSync(dpath) && fs.mkdirSync(dpath, {recursive: true});
 
       let mts = ["video", "audio_0"];
+      let inputs = "";
+      //let inputs_map = "";
       for (let mi = 0; mi < mts.length; mi ++) {
         let mt = mts[mi];
+        inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
         console.log("Downloading ", mt);
         let mtpath = dpath + "/" + mt;
         let partsfile = dpath + "/parts_" + mt + ".txt";
@@ -278,7 +281,7 @@ class EluvioLiveStream {
 
       // Create final mp4 file
       let f = dpath + "/download.mp4";
-      let cmd = "ffmpeg -i " + dpath + "/video.mp4"  + "  -i " +  dpath + "/audio.mp4" + "  -map 0:v:0  -map 1:a:0  -c copy  -shortest " + f;
+      let cmd = "ffmpeg  " + inputs + "  -map 0:v:0  -map 1:a:0  -c copy  -shortest " + f;
       console.log("Running", cmd);
       execSync(cmd);
 
