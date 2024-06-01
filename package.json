@@ -3,6 +3,9 @@
   "version": "1.5.1",
   "description": "Eluvio Live SDK and Tools",
   "main": "EluvioLive.js",
+  "bin": {
+    "elv-live": "installer/elv-live-bin"
+   },
   "scripts": {
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
     "test": "jest",
