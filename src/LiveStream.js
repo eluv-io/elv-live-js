@@ -11,8 +11,6 @@ const fs = require("fs");
 const got = require("got");
 const https = require("https");
 
-const PRINT_DEBUG = false;
-
 const MakeTxLessToken = async({client, libraryId, objectId, versionHash}) => {
   const tok = await client.authClient.AuthorizationToken({libraryId, objectId,
 						    versionHash, channelAuth: false, noCache: true,
@@ -230,19 +228,31 @@ class EluvioLiveStream {
       console.log("Downloading stream", name, " period", period, " latest", sequence - 1);
 
       let recording = recordings.live_offering[period];
-      if (recording == undefined) {
+      if (recording == undefined || recording.sources == undefined) {
         console.log("ERROR - recording period not found: ", period);
       }
+
+      let streams = Object.keys(recording.sources);
+      console.log("Streams", streams);
 
       let dpath = "DOWNLOAD/" + edgeWriteToken + "." + period;
       !fs.existsSync(dpath) && fs.mkdirSync(dpath, {recursive: true});
 
-      let mts = ["video", "audio_0"];
+      let mts = streams;
       let inputs = "";
-      //let inputs_map = "";
+      let inputs_map = "";
+      let aidx = 0;
+      let vidx = 0;
       for (let mi = 0; mi < mts.length; mi ++) {
         let mt = mts[mi];
         inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
+        if (mt.includes("video")) {
+          inputs_map = inputs_map + ` -map ${mi}:v:${vidx}`;
+          vidx ++;
+        } else {
+          inputs_map = inputs_map + ` -map ${mi}:a:${aidx}`;
+          aidx ++;
+        }
         console.log("Downloading ", mt);
         let mtpath = dpath + "/" + mt;
         let partsfile = dpath + "/parts_" + mt + ".txt";
@@ -281,7 +291,7 @@ class EluvioLiveStream {
 
       // Create final mp4 file
       let f = dpath + "/download.mp4";
-      let cmd = "ffmpeg  " + inputs + "  -map 0:v:0  -map 1:a:0  -c copy  -shortest " + f;
+      let cmd = "ffmpeg  " + inputs + " " + inputs_map + "  -c copy  -shortest " + f;
       console.log("Running", cmd);
       execSync(cmd);
 
@@ -770,173 +780,61 @@ class EluvioLiveStream {
     return {eventStart, eventEnd, eventId};
   }
 
+  async StreamSwitch({name, source, backupHash}) {
+
+    console.log("Switch", name, source, backupHash);
+    const objectId = name;
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+
+    const edt = await this.client.EditContentObject({
+      libraryId,
+      objectId
+    });
+
+    const writeToken = edt.write_token;
+
+    let sources = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "public/asset_metadata/sources",
+      resolveLinks: false
+    });
+
+    var rep = "/rep/playout/default/options.json";
+    var lk = "." + rep;
+    if (source == "backup") {
+      if (!backupHash) {
+        throw "Bad backup hash";
+      }
+      lk = "/qfab/" + backupHash + rep;
+    }
+    sources.default["/"] = lk;
+
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "public/asset_metadata/sources",
+      metadata: sources
+    });
+
+    const fin = await this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken
+    });
+    return {
+      ...fin,
+      source,
+      link: lk
+    };
+  }
+
 } // End class
 
-
-const ChannelStatus = async ({client, name}) => {
-
-  let status = {name: name};
-
-  const conf = channels[name];
-  if (conf == null) {
-    console.log("Bad name: ", name);
-    return;
-  }
-
-  try {
-
-    let meta = await client.ContentObjectMetadata({
-      libraryId: conf.libraryId,
-      objectId: conf.objectId
-    });
-
-    status.channel_title = meta.public.asset_metadata.title;
-    let source = meta.channel.offerings.default.items[0].source["/"];
-    let hash = source.split("/")[2];
-    status.stream_hash = hash;
-    latestHash = await client.LatestVersionHash({
-	  versionHash: hash
-    });
-    status.stream_latest_hash = latestHash;
-
-    if (hash != latestHash) {
-	  status.warnings = ["Stream version is not the latest"];
-    }
-
-    let channelFormatsUrl = await client.FabricUrl({
-      libraryId: conf.libraryId,
-      objectId: conf.objectId,
-	  rep: "channel/options.json"
-    });
-
-    try {
-	  let offerings = await got(channelFormatsUrl);
-	  status.offerings = JSON.parse(offerings.body);
-    } catch (error) {
-	  console.log(error);
-	  status.offerings_error = "Failed to retrieve channel offerings";
-    }
-
-    status.playout = await ChannelPlayout({client, libraryId: conf.libraryId, objectId: conf.objectId});
-
-  } catch (error) {
-    console.error(error);
-  }
-
-  return status;
-};
-
+// TODO fix and add as CLI command
 /*
- * Performs client-side playout operations - open the channel, read offerings,
- * retrieve playlist and one video init segment.
- */
-const ChannelPlayout = async({client, libraryId, objectId}) => {
-
-  let playout = {};
-
-  const offerings = await client.AvailableOfferings({
-    libraryId,
-    objectId,
-    handler: "channel",
-    linkPath: "/public/asset_metadata/offerings"
-  });
-
-  // Choosing offering 'default'
-  let offering = offerings.default;
-
-  const playoutOptions = await client.PlayoutOptions({
-    libraryId,
-    objectId,
-    offeringURI: offering.uri
-  });
-
-  // Retrieve master playlist
-  let masterPlaylistUrl = playoutOptions["hls"]["playoutMethods"]["fairplay"]["playoutUrl"];
-  playout.master_playlist_url = masterPlaylistUrl;
-  try {
-    //let masterPlaylist =  await got(masterPlaylistUrl);
-    playout.master_playlist = "success";
-  } catch (error) {
-    playout.master_playlist = "fail";
-  }
-
-  let url = new URL(masterPlaylistUrl);
-  let p = url.pathname.split("/");
-
-  // Retrieve media playlist
-  p[p.length - 1] = "video/720@14000000/live.m3u8";
-  let pathMediaPlaylist = p.join("/");
-  url.pathname = pathMediaPlaylist;
-  let mediaPlaylistUrl = url.toString();
-  playout.media_playlist_url = mediaPlaylistUrl;
-  let mediaPlaylist;
-  try {
-    mediaPlaylist = await got(mediaPlaylistUrl);
-    playout.media_playlist = "success";
-  } catch (error) {
-    playout.media_playlist = "fail";
-  }
-
-  // Retrieve init segment
-  var regex = new RegExp("^#EXT-X-MAP:URI=\"init.m4s.(.*)\"$", "m");
-  var match = regex.exec(mediaPlaylist.body);
-  let initQueryParams;
-  if (match) {
-    initQueryParams = match[1];
-  }
-
-  p[p.length - 1] = "video/720@14000000/init.m4s";
-  let pathInit = p.join("/");
-  url.pathname = pathInit;
-  url.search=initQueryParams;
-  let initUrl = url.toString();
-  playout.init_segment_url = initUrl;
-  /*
-  try {
-	let initSegment = await got(initUrl);
-	playout.init_segment = "success"
-  } catch (error) {
-	playout.init_segment = "fail";
-  }
-*/
-  return playout;
-};
-
-
-const Summary = async ({client}) => {
-
-  let summary = {};
-
-  try {
-    for (const [key] of Object.entries(streams)) {
-	  conf = streams[key];
-	  summary[key] = await Status({client, name: key, stopLro: false});
-    }
-
-  } catch (error) {
-    console.error(error);
-  }
-  return summary;
-};
-
-const ChannelSummary = async ({client}) => {
-
-  let summary = {};
-
-  try {
-    for (const [key] of Object.entries(channels)) {
-	  conf = channels[key];
-	  summary[key] = await ChannelStatus({client, name: key});
-    }
-
-  } catch (error) {
-    console.error(error);
-  }
-  return summary;
-};
-
-
-
 const ConfigStreamRebroadcast = async () => {
 
   const t = 1619850660;
@@ -983,7 +881,6 @@ const ConfigStreamRebroadcast = async () => {
     // Set rebroadcast start
     edgeMeta.live_recording_parameters.live_playout_config.rebroadcast_start_time_sec_epoch = t;
 
-    if (PRINT_DEBUG) console.log("MergeMetadata", conf.libraryId, conf.objectId, writeToken);
     await client.MergeMetadata({
       libraryId: conf.libraryId,
       objectId: conf.objectId,
@@ -999,105 +896,6 @@ const ConfigStreamRebroadcast = async () => {
     console.error(error);
   }
 };
-
-async function EnsureAll() {
-  client = await StatusPrep({name: null});
-  let summary = await Summary({client});
-
-  var res = {
-    running: 0,
-    stalled: 0,
-    terminated: 0
-  };
-
-  try {
-    for (const [key, value] of Object.entries(summary)) {
-	  if (value.state == "stalled") {
-        console.log("Stream stalled: ", key, " - restarting");
-        console.log("todo ...");
-	  }
-	  res[value.state] = res[value.state] + 1;
-    }
-  } catch (error) {
-    console.error(error);
-  }
-
-  return res;
-}
-
-
-/*
- * Original Run() function - kept for reference
- */
-async function Run() {
-
-  var client;
-
-  switch (command) {
-
-    case "start":
-      StartStream({name});
-      break;
-
-    case "status":
-      client = await StatusPrep({name});
-      let status = await Status({client, name, stopLro: false});
-      console.log(JSON.stringify(status, null, 4));
-      break;
-
-    case "stop":
-      client = await UpdatePrep({name});
-      Status({client, name, stopLro: true});
-      break;
-
-    case "summary":
-      client = await StatusPrep({name: null});
-      let summary = await Summary({client});
-      console.log(JSON.stringify(summary, null, 4));
-      break;
-
-    case "init": // Set up DRM
-      SetOfferingAndDRM();
-      break;
-
-    case "reset": // Stop and start LRO recording (same edge write token)
-      client = await StatusPrep({name});
-      let reset = await Reset({client, name, stopLro: false});
-      console.log(JSON.stringify(reset, null, 4));
-      break;
-
-    case "channel":
-      client = await StatusPrep({name});
-      let channelStatus = await ChannelStatus({client, name});
-      console.log(JSON.stringify(channelStatus, null, 4));
-      break;
-
-    case "channel_summary":
-      client = await StatusPrep({name});
-      let channelSummary = await ChannelSummary({client, name});
-      console.log(JSON.stringify(channelSummary, null, 4));
-      break;
-
-    case "ensure_all": // Check all and restart stalled
-      let ensureSummary = await EnsureAll();
-      console.log(JSON.stringify(ensureSummary, null, 4));
-      break;
-
-    case "future_use_config":
-      ConfigStreamRebroadcast();
-      break;
-
-    default:
-      console.log("Bad command: ", command);
-      break;
-
-  }
-}
-
-const useOldRunFunction = false;
-if (useOldRunFunction) {
-  Run();
-}
-
+*/
 
 exports.EluvioLiveStream = EluvioLiveStream;

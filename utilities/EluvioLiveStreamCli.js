@@ -300,6 +300,29 @@ const CmdStreamListUrls = async ({ argv }) => {
   }
 };
 
+const CmdStreamSwitch = async ({ argv }) => {
+  try {
+    const elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvStream.StreamSwitch({
+      name: argv.stream,
+      source: argv.source,
+      backupHash: argv.backup_hash
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -627,6 +650,31 @@ yargs(hideBin(process.argv))
     }
   )
 
+  .command(
+    "switch <stream> <source>",
+    "Switch the live stream to the primary or alternate",
+    (yargs) => {
+      yargs
+        .positional("stream", {
+          describe:
+            "Stream content ID",
+          type: "string"
+        })
+        .positional("source", {
+          describe:
+            "Stream source: primary | backup",
+          type: "string"
+        })
+        .option("backup_hash", {
+          describe:
+            "Object hash of the backup stream",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdStreamSwitch({argv});
+    }
+  )
 
   .strict()
   .help()
