@@ -173,7 +173,6 @@ class EluvioLiveStream {
     return this.client.StreamInsertion({name, insertionTime, sinceStart, duration, targetHash, remove});
   }
 
-
   async StreamDownload({name, period}) {
 
     let objectId = name;
@@ -238,20 +237,23 @@ class EluvioLiveStream {
       let dpath = "DOWNLOAD/" + edgeWriteToken + "." + period;
       !fs.existsSync(dpath) && fs.mkdirSync(dpath, {recursive: true});
 
-      let mts = streams;
+      // Reorder streams list so it starts with video
+      let mts = ["video"];
+      for (let mi = 0; mi < streams.length; mi ++) {
+        if (streams[mi].includes("video"))
+           continue;
+        mts.push(streams[mi]);
+      }
+
       let inputs = "";
       let inputs_map = "";
-      let aidx = 0;
-      let vidx = 0;
       for (let mi = 0; mi < mts.length; mi ++) {
         let mt = mts[mi];
         inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
         if (mt.includes("video")) {
-          inputs_map = inputs_map + ` -map ${mi}:v:${vidx}`;
-          vidx ++;
+          inputs_map = inputs_map + ` -map ${mi}:v:0`;
         } else {
-          inputs_map = inputs_map + ` -map ${mi}:a:${aidx}`;
-          aidx ++;
+          inputs_map = inputs_map + ` -map ${mi}:a:0`;
         }
         console.log("Downloading ", mt);
         let mtpath = dpath + "/" + mt;
