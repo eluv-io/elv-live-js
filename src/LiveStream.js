@@ -241,7 +241,7 @@ class EluvioLiveStream {
       let mts = ["video"];
       for (let mi = 0; mi < streams.length; mi ++) {
         if (streams[mi].includes("video"))
-           continue;
+          continue;
         mts.push(streams[mi]);
       }
 
