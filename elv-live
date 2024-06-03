@@ -9,6 +9,6 @@ elif [ -e $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/EluvioLi
 then
   node $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/EluvioLiveCli.js $* 2>&1
 else
-  echo "cannot find elv-live"
+  echo "(elv-live-js) cannot find utilities/EluvioLiveCli.js"
 fi
 
