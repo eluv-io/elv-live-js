@@ -4,10 +4,10 @@ desc: |
   owner of a non-fungible token governed by a linked ERC-721 smart contract.
 type: ast
 expr:
-  rule: main
+  rule: authorize
 rules:
 
-  main:
+  authorize:
     or:
       - fn.isOwnerOfLinkedNft:
           - env: call/subject
