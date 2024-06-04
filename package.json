@@ -4,7 +4,9 @@
   "description": "Eluvio Live SDK and Tools",
   "main": "EluvioLive.js",
   "bin": {
-    "elv-live": "elv-live"
+    "elv-live": "elv-live",
+    "elv-stream": "elv-stream",
+    "elv-admin": "elv-admin"
    },
   "scripts": {
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
