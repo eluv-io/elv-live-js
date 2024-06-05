@@ -5,10 +5,10 @@ SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [ -e $SOURCE_DIR/utilities/EluvioLiveStreamCli.js ]
 then
-  node $SOURCE_DIR/utilities/EluvioLiveStreamCli.js $* 2>&1
+  exec node $SOURCE_DIR/utilities/EluvioLiveStreamCli.js "$@" 2>&1
 elif [ -e $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/EluvioLiveStreamCli.js ]
 then
-  node $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/EluvioLiveStreamCli.js $* 2>&1
+  exec node $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/EluvioLiveStreamCli.js "$@" 2>&1
 else
   echo "(elv-live-js) cannot find utilities/EluvioLiveStreamCli.js" 1>&2
   exit 1
