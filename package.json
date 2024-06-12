@@ -7,7 +7,7 @@
     "elv-live": "elv-live",
     "elv-stream": "elv-stream",
     "elv-admin": "elv-admin"
-   },
+  },
   "scripts": {
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
     "test": "jest",
@@ -44,6 +44,7 @@
   "homepage": "https://github.com/eluv-io/elv-live-js#readme",
   "dependencies": {
     "@eluvio/elv-client-js": "^4.0.85",
+    "@eluvio/elv-utils-js": "^1.0.0",
     "big-number": "^2.0.0",
     "cbor-x": "^1.5.4",
     "csv-parse": "^5.3.0",

@@ -101,6 +101,41 @@ const CmdTenantAuthCurl = async ({ argv }) => {
 
 };
 
+const CmdContentTagger = async ({ argv }) => {
+
+  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+  let cmd;
+  switch (argv.command) {
+    case 'tag':
+      cmd = `elv-tagger/bin/tag-cli ${argv.command} ${argv.library_id} ${argv.content_id} --config ${argv.config} -c ${argv.container_id} -s ${argv.start_time} -e ${argv.end_time} -i ${argv.interval} -f ${argv.features} --mode ${argv.mode}`;
+    break;
+    case 'status':
+      cmd = `elv-tagger/bin/tag-cli ${argv.command} ${argv.library_id} ${argv.content_id} --config ${argv.config} -c ${argv.container_id} --lro_handle ${argv.lro_handle}`;
+    break;
+    case 'stop':
+      cmd = `elv-tagger/bin/tag-cli ${argv.command} ${argv.library_id} ${argv.content_id} --config ${argv.config} -c ${argv.container_id}`;
+    break;
+    case 'finalize':
+      cmd = `elv-tagger/bin/tag-cli ${argv.command} ${argv.library_id} ${argv.content_id} ${argv.write_token} --config ${argv.config}`;
+    break;
+  }
+  exec(cmd, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+      return;
+    }
+    if (stderr) {
+      console.error(`stderr: ${stderr}`);
+      return;
+    }
+    console.log(stdout);
+  });
+  console.log(cmd);
+
+}
+
+
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
   console.log(
     "\nNFT Template - set contract",
@@ -2313,6 +2348,66 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNFTSetPolicyPermissions({ argv });
+    }
+  )
+
+  .command(
+    "content_tagger <command> <library_id> <content_id> <config> [options]",
+    "Start content object tagging process based on ML model features",
+    (yargs) => {
+      yargs
+        .positional("command", {
+          describe: 
+            "Specific process to run. Available commands are: tag (Invoke a tagging process), status (Check the status of a tagging process), stop (Stop a tagging process) or finalize (Finalize the content object with tag files/links uploaded)",
+          string: "string",
+        })
+        .positional("library_id", {
+          describe: "Library id of the content object (form of ilib*)",
+          string: "string",
+        })
+        .positional("content_id", {
+          describe: "Object id of the content object (form of iq__*)",
+          string: "string",
+        })
+        .positional("config", {
+          describe: "Path to .json file with client configuration for fabric networks",
+          string: "string",
+        })
+        .option("write_token", {
+          describe: "Write token for editing the content (form of tqw_*) [required only when invoking finalize command]",
+          string: "string",
+        })
+        .option("mode", {
+          describe: `Tagging mode, "video" or "image" [required only when invoking tag command]`,
+          string: "string",
+        })
+        .option("container_id", {
+          describe: "Container index to run the tagger, [0, 1, 2] [required only when invoking tag command]",
+          string: "string",
+        })
+        .option("start_time", {
+          describe: "Start time of the video to run the tagger [required only when invoking tag command]",
+          string: "string",
+        })
+        .option("end_time", {
+          describe: "End time of the video to run the tagger [required only when invoking tag command]",
+          string: "string",
+        })
+        .option("interval", {
+          describe: "Time interval, multiple of which one tagging process aims for [required only when invoking tag command]",
+          string: "string",
+        })
+        .option("features", {
+          describe: `Machine learning features to tag, string joined by space, subset of {"celeb", "ocr", "od", "landmark", "action", "segment", "logo", "shot", "speech"}, must include "shot" for video mode [required only when invoking tag command]`,
+          string: "string",
+        })
+        .option("lro_handle", {
+          describe: "LRO handle returned by the tagging process [required only when invoking status command]",
+          string: "string",
+        })
+    },
+    (argv) => {
+      CmdContentTagger({ argv });
     }
   )
 
