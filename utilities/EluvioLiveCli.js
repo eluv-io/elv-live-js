@@ -119,7 +119,6 @@ const CmdTaggerStart = async ({ argv }) => {
         "features": `${argv.features}`,
         "mode": `${argv.mode}`
       },
-      config: `${argv.config}`,
       constant: false,
       format: "text"
     });
@@ -145,7 +144,6 @@ const CmdTaggerStatus = async ({ argv }) => {
       body: {
         "lro_handle": `${argv.lro_handle}`
       },
-      config: `${argv.config}`,
       constant: false,
       format: "text"
     })
@@ -168,7 +166,6 @@ const CmdTaggerStop = async ({ argv }) => {
       objectId: argv.content_id,
       libraryId: argv.library_id,
       method: "/tag_stop",
-      config: `${argv.config}`,
       constant: false,
       format: "text"
     })
@@ -191,7 +188,6 @@ const CmdTaggerFinalize = async ({ argv }) => {
       objectId: argv.content_id,
       libraryId: argv.library_id,
       writeToken: argv.write_token,
-      config: `${argv.config}`,
       commitMessage: "Video tags created"
     })
 
@@ -2456,10 +2452,6 @@ yargs(hideBin(process.argv))
         describe: `Machine learning features to tag, string joined by space, subset of {"celeb", "ocr", "od", "landmark", "action", "segment", "logo", "shot", "speech"}, must include "shot" for video mode`,
         type: "string",
       })
-      .positional("config", {
-        describe: 'Client configuration for fabric networks (See sample .json files)',
-        type: "string"
-      })
     },
     (argv) => {
       CmdTaggerStart({ argv });
@@ -2483,10 +2475,6 @@ yargs(hideBin(process.argv))
         describe: "LRO handle returned by the tagging process",
         type: "string",
       })
-      .positional("config", {
-        describe: 'Client configuration for fabric networks (See sample files of *.json)',
-        type: "string"
-      })
       .positional("container_id", {
         describe: "Container index to run the tagger, [0, 1, 2]",
         type: "string",
@@ -2509,10 +2497,6 @@ yargs(hideBin(process.argv))
       .positional("content_id", {
         describe: "Object id of the content object (form of iq__*)",
         type: "string",
-      })
-      .positional("config", {
-        describe: 'Client configuration for fabric networks (See sample files of *.json)',
-        type: "string"
       })
       .positional("container_id", {
         describe: "Container index to run the tagger, [0, 1, 2]",
@@ -2540,10 +2524,6 @@ yargs(hideBin(process.argv))
       .positional("write_token", {
         describe: "Write token (tqw_...) returned when starting tagging process",
         type: "string",
-      })
-      .positional("config", {
-        describe: 'Client configuration for fabric networks',
-        type: "string"
       })
     },
     (argv) => {
