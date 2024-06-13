@@ -106,28 +106,23 @@ const CmdTaggerStart = async ({ argv }) => {
 
   await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
-  // const authToken = await elvlv.client.authClient.AuthorizationToken({
-  //   objectId: argv.content_id,
-  //   libraryId: argv.library_id,
-  //   versionHash: "",
-  //   channelAuth: false,
-  //   noCache: true,
-  //   update: true,
-  // });
-
   try {
 
-    let res = await client.CallBitcodeMethod({
+    let res = await elvlv.client.CallBitcodeMethod({
       objectId: argv.content_id,
       libraryId: argv.library_id,
       method: '/tag',
+      queryParams: {
+        container_id: `${argv.container_id}`
+      },
       body: {
         "start_time": `${argv.start_time}`,
         "end_time": `${argv.end_time}`,
         "interval": `${argv.interval}`,
         "features": `${argv.features}`,
-        "mode": `${argv.mode}`,
+        "mode": `${argv.mode}`
       },
+      config: `${argv.config}`,
       constant: false,
       format: "text"
     });
@@ -146,13 +141,17 @@ const CmdTaggerStatus = async ({ argv }) => {
 
   try {
 
-    let status = await client.CallBitcodeMethod({
+    let status = await elvlv.client.CallBitcodeMethod({
       objectId: argv.content_id,
       libraryId: argv.library_id,
       method: "/tag_status",
+      queryParams: {
+        container_id: `${argv.container_id}`
+      },
       body: {
         "lro_handle": `${argv.lro_handle}`
       },
+      config: `${argv.config}`,
       constant: false,
       format: "text"
     })
@@ -171,10 +170,14 @@ const CmdTaggerStop = async ({ argv }) => {
 
   try {
 
-    let res = await client.CallBitcodeMethod({
+    let res = await elvlv.client.CallBitcodeMethod({
       objectId: argv.content_id,
       libraryId: argv.library_id,
       method: "/tag_stop",
+      queryParams: {
+        container_id: `${argv.container_id}`,
+      },
+      config: `${argv.config}`,
       constant: false,
       format: "text"
     })
@@ -193,10 +196,11 @@ const CmdTaggerFinalize = async ({ argv }) => {
 
   try {
 
-    let fin = await client.FinalizeContentObject({
+    let fin = await elvlv.client.FinalizeContentObject({
       objectId: argv.content_id,
       libraryId: argv.library_id,
       writeToken: argv.write_token,
+      config: `${argv.config}`,
       commitMessage: "Video tags created"
     })
 
@@ -2431,35 +2435,39 @@ yargs(hideBin(process.argv))
       yargs
       .positional("library_id", {
         describe: "Library id of the content object (form of ilib*)",
-        string: "string",
+        type: "string",
       })
       .positional("content_id", {
         describe: "Object id of the content object (form of iq__*)",
-        string: "string",
+        type: "string",
       })
       .positional("mode", {
         describe: 'Tagging mode, "video" or "image"',
-        string: "string",
+        type: "string",
       })
       .positional("container_id", {
         describe: "Container index to run the tagger, [0, 1, 2]",
-        string: "string",
+        type: "string",
       })
       .positional("start_time", {
         describe: "Start time of the video to run the tagger",
-        string: "string",
+        type: "string",
       })
       .positional("end_time", {
         describe: "End time of the video to run the tagger",
-        string: "string",
+        type: "string",
       })
       .positional("interval", {
         describe: "Time interval, multiple of which one tagging process aims for",
-        string: "string",
+        type: "string",
       })
       .positional("features", {
         describe: `Machine learning features to tag, string joined by space, subset of {"celeb", "ocr", "od", "landmark", "action", "segment", "logo", "shot", "speech"}, must include "shot" for video mode`,
-        string: "string",
+        type: "string",
+      })
+      .positional("config", {
+        describe: 'Client configuration for fabric networks (See sample files of *.json)',
+        type: "string"
       })
     },
     (argv) => {
@@ -2474,21 +2482,28 @@ yargs(hideBin(process.argv))
       yargs
       .positional("library_id", {
         describe: "Library id of the content object (form of ilib*)",
-        string: "string",
+        type: "string",
       })
       .positional("content_id", {
         describe: "Object id of the content object (form of iq__*)",
-        string: "string",
+        type: "string",
       })
       .positional("lro_handle", {
         describe: "LRO handle returned by the tagging process",
-        string: "string",
+        type: "string",
+      })
+      .positional("config", {
+        describe: 'Client configuration for fabric networks (See sample files of *.json)',
+        type: "string"
+      })
+      .positional("container_id", {
+        describe: "Container index to run the tagger, [0, 1, 2]",
+        type: "string",
       })
     },
     (argv) => {
       CmdTaggerStatus({ argv });
     }
-
   )
 
   .command(
@@ -2498,11 +2513,19 @@ yargs(hideBin(process.argv))
       yargs
       .positional("library_id", {
         describe: "Library id of the content object (form of ilib*)",
-        string: "string",
+        type: "string",
       })
       .positional("content_id", {
         describe: "Object id of the content object (form of iq__*)",
-        string: "string",
+        type: "string",
+      })
+      .positional("config", {
+        describe: 'Client configuration for fabric networks (See sample files of *.json)',
+        type: "string"
+      })
+      .positional("container_id", {
+        describe: "Container index to run the tagger, [0, 1, 2]",
+        type: "string",
       })
     },
     (argv) => {
@@ -2517,15 +2540,19 @@ yargs(hideBin(process.argv))
       yargs
       .positional("library_id", {
         describe: "Library id of the content object (form of ilib*)",
-        string: "string",
+        type: "string",
       })
       .positional("content_id", {
         describe: "Object id of the content object (form of iq__*)",
-        string: "string",
+        type: "string",
       })
       .positional("write_token", {
         describe: "Write token (tqw_...) returned when starting tagging process",
-        string: "string",
+        type: "string",
+      })
+      .positional("config", {
+        describe: 'Client configuration for fabric networks',
+        type: "string"
       })
     },
     (argv) => {
