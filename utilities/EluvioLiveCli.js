@@ -112,9 +112,6 @@ const CmdTaggerStart = async ({ argv }) => {
       objectId: argv.content_id,
       libraryId: argv.library_id,
       method: '/tag',
-      queryParams: {
-        container_id: `${argv.container_id}`
-      },
       body: {
         "start_time": `${argv.start_time}`,
         "end_time": `${argv.end_time}`,
@@ -145,9 +142,6 @@ const CmdTaggerStatus = async ({ argv }) => {
       objectId: argv.content_id,
       libraryId: argv.library_id,
       method: "/tag_status",
-      queryParams: {
-        container_id: `${argv.container_id}`
-      },
       body: {
         "lro_handle": `${argv.lro_handle}`
       },
@@ -174,9 +168,6 @@ const CmdTaggerStop = async ({ argv }) => {
       objectId: argv.content_id,
       libraryId: argv.library_id,
       method: "/tag_stop",
-      queryParams: {
-        container_id: `${argv.container_id}`,
-      },
       config: `${argv.config}`,
       constant: false,
       format: "text"
@@ -2466,7 +2457,7 @@ yargs(hideBin(process.argv))
         type: "string",
       })
       .positional("config", {
-        describe: 'Client configuration for fabric networks (See sample files of *.json)',
+        describe: 'Client configuration for fabric networks (See sample .json files)',
         type: "string"
       })
     },
