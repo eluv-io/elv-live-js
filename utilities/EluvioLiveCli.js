@@ -2432,10 +2432,6 @@ yargs(hideBin(process.argv))
         describe: 'Tagging mode, "video" or "image"',
         type: "string",
       })
-      .positional("container_id", {
-        describe: "Container index to run the tagger, [0, 1, 2]",
-        type: "string",
-      })
       .positional("start_time", {
         describe: "Start time of the video to run the tagger",
         type: "string",
@@ -2475,10 +2471,6 @@ yargs(hideBin(process.argv))
         describe: "LRO handle returned by the tagging process",
         type: "string",
       })
-      .positional("container_id", {
-        describe: "Container index to run the tagger, [0, 1, 2]",
-        type: "string",
-      })
     },
     (argv) => {
       CmdTaggerStatus({ argv });
@@ -2496,10 +2488,6 @@ yargs(hideBin(process.argv))
       })
       .positional("content_id", {
         describe: "Object id of the content object (form of iq__*)",
-        type: "string",
-      })
-      .positional("container_id", {
-        describe: "Container index to run the tagger, [0, 1, 2]",
         type: "string",
       })
     },
