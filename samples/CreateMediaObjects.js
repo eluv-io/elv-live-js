@@ -24,7 +24,6 @@ const configUrl = "https://demov3.net955210.contentfabric.io/config";
 
 
 
-
 /**
  * Create Content Library
  *  
@@ -134,7 +133,7 @@ const Run = async ({}) => {
                 name: "Title Master - test library ii", 
                 description: "Creating master library for master objects test",
                 tenant: tenant,
-                metadata: 'samples/example_files/library_metadata_ simple_ingest.json'
+                metadata: 'samples/example_files/library_metadata_simple_ingest.json'
             });
         console.log("NEW MASTER LIB", masterLibId);
 
@@ -142,7 +141,7 @@ const Run = async ({}) => {
                 name: "Titles - test library ii", 
                 description: "Creating mezzanine library for mezzanine objects test",
                 tenant: tenant,
-                metadata: 'samples/example_files/library_metadata_ simple_ingest.json'
+                metadata: 'samples/example_files/library_metadata_simple_ingest.json'
             });
         console.log("NEW MEZ LIB", mezLibId);
 
@@ -153,7 +152,7 @@ const Run = async ({}) => {
                 masterLibId,
                 mezLibId,
                 files: [
-                    "/Users/victoramigo/Desktop/NACDA BOOTH TV VIDEO_4K.mp4"
+                    "/Users/Desktop/NACDA BOOTH TV VIDEO_4K.mp4"
                 ],
                 masterType, 
                 mezType,

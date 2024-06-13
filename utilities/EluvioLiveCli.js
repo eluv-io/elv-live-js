@@ -14,6 +14,7 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
+const { argv } = require("process");
 const prompt = require("prompt-sync")({ sigint: true });
 const exec = require('child_process').exec;
 
@@ -90,6 +91,7 @@ const CmdTenantAuthCurl = async ({ argv }) => {
   if (argv.post_body) {
     cmd = cmd + ` -d '${argv.post_body}'`;
   }
+
   console.log(cmd);
   exec(cmd, (error, stdout, stderr) => {
     if (error) {
@@ -98,40 +100,111 @@ const CmdTenantAuthCurl = async ({ argv }) => {
     }
     console.log(stdout);
   });
-
 };
 
-const CmdContentTagger = async ({ argv }) => {
+const CmdTaggerStart = async ({ argv }) => {
 
   await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
-  let cmd;
-  switch (argv.command) {
-    case 'tag':
-      cmd = `elv-tagger/bin/tag-cli ${argv.command} ${argv.library_id} ${argv.content_id} --config ${argv.config} -c ${argv.container_id} -s ${argv.start_time} -e ${argv.end_time} -i ${argv.interval} -f ${argv.features} --mode ${argv.mode}`;
-    break;
-    case 'status':
-      cmd = `elv-tagger/bin/tag-cli ${argv.command} ${argv.library_id} ${argv.content_id} --config ${argv.config} -c ${argv.container_id} --lro_handle ${argv.lro_handle}`;
-    break;
-    case 'stop':
-      cmd = `elv-tagger/bin/tag-cli ${argv.command} ${argv.library_id} ${argv.content_id} --config ${argv.config} -c ${argv.container_id}`;
-    break;
-    case 'finalize':
-      cmd = `elv-tagger/bin/tag-cli ${argv.command} ${argv.library_id} ${argv.content_id} ${argv.write_token} --config ${argv.config}`;
-    break;
+  // const authToken = await elvlv.client.authClient.AuthorizationToken({
+  //   objectId: argv.content_id,
+  //   libraryId: argv.library_id,
+  //   versionHash: "",
+  //   channelAuth: false,
+  //   noCache: true,
+  //   update: true,
+  // });
+
+  try {
+
+    let res = await client.CallBitcodeMethod({
+      objectId: argv.content_id,
+      libraryId: argv.library_id,
+      method: '/tag',
+      body: {
+        "start_time": `${argv.start_time}`,
+        "end_time": `${argv.end_time}`,
+        "interval": `${argv.interval}`,
+        "features": `${argv.features}`,
+        "mode": `${argv.mode}`,
+      },
+      constant: false,
+      format: "text"
+    });
+
+    console.log("Write Token: ", res.writeToken);
+    console.log("LRO Handle: ", res.lroHandle);
+
+  } catch (e) {
+    console.log("ERROR", e);
   }
-  exec(cmd, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`exec error: ${error}`);
-      return;
-    }
-    if (stderr) {
-      console.error(`stderr: ${stderr}`);
-      return;
-    }
-    console.log(stdout);
-  });
-  console.log(cmd);
+}
+
+const CmdTaggerStatus = async ({ argv }) => {
+
+  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+  try {
+
+    let status = await client.CallBitcodeMethod({
+      objectId: argv.content_id,
+      libraryId: argv.library_id,
+      method: "/tag_status",
+      body: {
+        "lro_handle": `${argv.lro_handle}`
+      },
+      constant: false,
+      format: "text"
+    })
+
+    console.log(status);
+
+  } catch (e) {
+    console.log("ERROR", e);
+  }
+
+}
+
+const CmdTaggerStop = async ({ argv }) => {
+
+  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+  try {
+
+    let res = await client.CallBitcodeMethod({
+      objectId: argv.content_id,
+      libraryId: argv.library_id,
+      method: "/tag_stop",
+      constant: false,
+      format: "text"
+    })
+
+    console.log(res);
+
+  } catch (e) {
+    console.log("ERROR", e);
+  }
+
+}
+
+const CmdTaggerFinalize = async ({ argv }) => {
+  
+  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+  try {
+
+    let fin = await client.FinalizeContentObject({
+      objectId: argv.content_id,
+      libraryId: argv.library_id,
+      writeToken: argv.write_token,
+      commitMessage: "Video tags created"
+    })
+
+    console.log(fin);
+
+  } catch (e) {
+    console.log("ERROR", e);
+  }
 
 }
 
@@ -2352,62 +2425,111 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "content_tagger <command> <library_id> <content_id> <config> [options]",
+    "content_tagger_start <library_id> <content_id> [options]",
     "Start content object tagging process based on ML model features",
     (yargs) => {
       yargs
-        .positional("command", {
-          describe: 
-            "Specific process to run. Available commands are: tag (Invoke a tagging process), status (Check the status of a tagging process), stop (Stop a tagging process) or finalize (Finalize the content object with tag files/links uploaded)",
-          string: "string",
-        })
-        .positional("library_id", {
-          describe: "Library id of the content object (form of ilib*)",
-          string: "string",
-        })
-        .positional("content_id", {
-          describe: "Object id of the content object (form of iq__*)",
-          string: "string",
-        })
-        .positional("config", {
-          describe: "Path to .json file with client configuration for fabric networks",
-          string: "string",
-        })
-        .option("write_token", {
-          describe: "Write token for editing the content (form of tqw_*) [required only when invoking finalize command]",
-          string: "string",
-        })
-        .option("mode", {
-          describe: `Tagging mode, "video" or "image" [required only when invoking tag command]`,
-          string: "string",
-        })
-        .option("container_id", {
-          describe: "Container index to run the tagger, [0, 1, 2] [required only when invoking tag command]",
-          string: "string",
-        })
-        .option("start_time", {
-          describe: "Start time of the video to run the tagger [required only when invoking tag command]",
-          string: "string",
-        })
-        .option("end_time", {
-          describe: "End time of the video to run the tagger [required only when invoking tag command]",
-          string: "string",
-        })
-        .option("interval", {
-          describe: "Time interval, multiple of which one tagging process aims for [required only when invoking tag command]",
-          string: "string",
-        })
-        .option("features", {
-          describe: `Machine learning features to tag, string joined by space, subset of {"celeb", "ocr", "od", "landmark", "action", "segment", "logo", "shot", "speech"}, must include "shot" for video mode [required only when invoking tag command]`,
-          string: "string",
-        })
-        .option("lro_handle", {
-          describe: "LRO handle returned by the tagging process [required only when invoking status command]",
-          string: "string",
-        })
+      .positional("library_id", {
+        describe: "Library id of the content object (form of ilib*)",
+        string: "string",
+      })
+      .positional("content_id", {
+        describe: "Object id of the content object (form of iq__*)",
+        string: "string",
+      })
+      .positional("mode", {
+        describe: 'Tagging mode, "video" or "image"',
+        string: "string",
+      })
+      .positional("container_id", {
+        describe: "Container index to run the tagger, [0, 1, 2]",
+        string: "string",
+      })
+      .positional("start_time", {
+        describe: "Start time of the video to run the tagger",
+        string: "string",
+      })
+      .positional("end_time", {
+        describe: "End time of the video to run the tagger",
+        string: "string",
+      })
+      .positional("interval", {
+        describe: "Time interval, multiple of which one tagging process aims for",
+        string: "string",
+      })
+      .positional("features", {
+        describe: `Machine learning features to tag, string joined by space, subset of {"celeb", "ocr", "od", "landmark", "action", "segment", "logo", "shot", "speech"}, must include "shot" for video mode`,
+        string: "string",
+      })
     },
     (argv) => {
-      CmdContentTagger({ argv });
+      CmdTaggerStart({ argv });
+    }
+  )
+
+  .command(
+    "content_tagger_status <library_id> <content_id> <lro_handle>",
+    "Check status of started tagging process",
+    (yargs) => {
+      yargs
+      .positional("library_id", {
+        describe: "Library id of the content object (form of ilib*)",
+        string: "string",
+      })
+      .positional("content_id", {
+        describe: "Object id of the content object (form of iq__*)",
+        string: "string",
+      })
+      .positional("lro_handle", {
+        describe: "LRO handle returned by the tagging process",
+        string: "string",
+      })
+    },
+    (argv) => {
+      CmdTaggerStatus({ argv });
+    }
+
+  )
+
+  .command(
+    "content_tagger_stop <library_id> <content_id>",
+    "Stop tagging process",
+    (yargs) => {
+      yargs
+      .positional("library_id", {
+        describe: "Library id of the content object (form of ilib*)",
+        string: "string",
+      })
+      .positional("content_id", {
+        describe: "Object id of the content object (form of iq__*)",
+        string: "string",
+      })
+    },
+    (argv) => {
+      CmdTaggerStop({ argv });
+    }
+  )
+
+  .command(
+    "content_tagger_finalize <library_id> <content_id> <write_token>",
+    "Finalize tagging process",
+    (yargs) => {
+      yargs
+      .positional("library_id", {
+        describe: "Library id of the content object (form of ilib*)",
+        string: "string",
+      })
+      .positional("content_id", {
+        describe: "Object id of the content object (form of iq__*)",
+        string: "string",
+      })
+      .positional("write_token", {
+        describe: "Write token (tqw_...) returned when starting tagging process",
+        string: "string",
+      })
+    },
+    (argv) => {
+      CmdTaggerFinalize({ argv });
     }
   )
 
