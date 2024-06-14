@@ -374,7 +374,7 @@ const CmdTenantShow = async ({ argv }) => {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.TenantShow({
-      tenantId: argv.tenant,
+      tenantContractId: argv.tenant,
       checkNft: argv.check_nfts,
     });
 
@@ -397,13 +397,13 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
     console.log("csv ", argv?.csv);
   }
 
-  
+
   try {
     // Validate the token URI from the command line for single, all requests
     if ((argv.request_type != "batch") && (!(ElvUtils.IsValidURI(argv.new_token_uri)))) {
       console.log("Invalid token_uri: ", argv.new_token_uri);
       return;
-    } 
+    }
 
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
