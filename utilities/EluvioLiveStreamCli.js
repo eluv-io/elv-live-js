@@ -183,7 +183,7 @@ const CmdStreamDownload = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset});
+    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset, makeFrame: argv.frames});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -548,6 +548,11 @@ yargs(hideBin(process.argv))
           describe:
             "Start downloading at this offset (seconds).",
           type: "int",
+        })
+        .option("frames", {
+          describe:
+            "Create a frame JPG for each video part",
+          type: "bool",
         })
 
       },

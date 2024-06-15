@@ -247,6 +247,8 @@ class EluvioLiveStream {
 
       let inputs = "";
       let inputs_map = "";
+      let makeFrameCmds = [];
+
       for (let mi = 0; mi < mts.length; mi ++) {
         let mt = mts[mi];
         inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
@@ -264,7 +266,7 @@ class EluvioLiveStream {
 
           if (i * 30 <= offset) {
             console.log(sources[i].hash, "skipped");
-            continue
+            continue;
           }
 
           console.log(sources[i].hash);
@@ -291,13 +293,18 @@ class EluvioLiveStream {
               console.log(err);
           });
 
-          makeFrame = false;
-          if (makeFrame) {
-            const cmd = "ffmpeg -i " + partfile+ " -vframes 1 -update 1 -q:v 1 " + partfile + ".jpg"
-            console.log("Frame cmd", cmd);
-            execSync(cmd);
+          if (makeFrame && mt.includes("video")) {
+            const makeFrameCmd = "ffmpeg -i " + partfile+ " -vframes 1 -update 1 -q:v 1 " + mtpath + "/" + partHash + ".jpg";
+            makeFrameCmds.push(makeFrameCmd);
           }
+        }
 
+        // Make frames from parts
+        if (makeFrame && mt.includes("video")) {
+          for (let i = 0; i < makeFrameCmds.length - 1; i++) {
+            console.log("Frame cmd", makeFrameCmds[i]);
+            execSync(makeFrameCmds[i]);
+          }
         }
 
         // Concatenate parts into one mp4
