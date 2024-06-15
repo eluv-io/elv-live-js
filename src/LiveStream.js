@@ -301,7 +301,7 @@ class EluvioLiveStream {
 
         // Make frames from parts
         if (makeFrame && mt.includes("video")) {
-          for (let i = 0; i < makeFrameCmds.length - 1; i++) {
+          for (let i = 0; i < makeFrameCmds.length; i++) {
             console.log("Frame cmd", makeFrameCmds[i]);
             execSync(makeFrameCmds[i]);
           }
