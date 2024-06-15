@@ -183,7 +183,7 @@ const CmdStreamDownload = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period});
+    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -544,7 +544,13 @@ yargs(hideBin(process.argv))
             "Download a specific recording period (instead of the lastone)",
           type: "int",
         })
-    },
+        .option("offset", {
+          describe:
+            "Start downloading at this offset (seconds).",
+          type: "int",
+        })
+
+      },
     (argv) => {
       CmdStreamDownload({ argv });
     }
