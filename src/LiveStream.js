@@ -173,7 +173,7 @@ class EluvioLiveStream {
     return this.client.StreamInsertion({name, insertionTime, sinceStart, duration, targetHash, remove});
   }
 
-  async StreamDownload({name, period}) {
+  async StreamDownload({name, period, offset, makeFrame}) {
 
     let objectId = name;
     let status = {name};
@@ -247,6 +247,8 @@ class EluvioLiveStream {
 
       let inputs = "";
       let inputs_map = "";
+      let makeFrameCmds = [];
+
       for (let mi = 0; mi < mts.length; mi ++) {
         let mt = mts[mi];
         inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
@@ -261,7 +263,14 @@ class EluvioLiveStream {
         !fs.existsSync(mtpath) && fs.mkdirSync(mtpath);
         var sources = recording.sources[mt].parts;
         for (let i = 0; i < sources.length - 1; i++) {
+
+          if (i * 30 <= offset) {
+            console.log(sources[i].hash, "skipped");
+            continue;
+          }
+
           console.log(sources[i].hash);
+
           let partHash = sources[i].hash;
           let buf = await this.client.DownloadPart({
             libraryId,
@@ -283,6 +292,19 @@ class EluvioLiveStream {
             if (err)
               console.log(err);
           });
+
+          if (makeFrame && mt.includes("video")) {
+            const makeFrameCmd = "ffmpeg -i " + partfile+ " -vframes 1 -update 1 -q:v 1 " + mtpath + "/" + partHash + ".jpg";
+            makeFrameCmds.push(makeFrameCmd);
+          }
+        }
+
+        // Make frames from parts
+        if (makeFrame && mt.includes("video")) {
+          for (let i = 0; i < makeFrameCmds.length; i++) {
+            console.log("Frame cmd", makeFrameCmds[i]);
+            execSync(makeFrameCmds[i]);
+          }
         }
 
         // Concatenate parts into one mp4
