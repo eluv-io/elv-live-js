@@ -373,13 +373,43 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({name, object, eventId, startTime, endTime, recordingPeriod, streams}) {
+  async StreamCopyToVod({name, object, library, eventId, startTime, endTime, recordingPeriod, streams}) {
 
     const objectId = name;
     const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
 
     let status = await this.Status({name});
     let libraryId = status.libraryId;
+
+    let targetLibraryId;
+    let targetWriteToken;
+
+    // If a target object is not specified, create it here
+    if (object == undefined) {
+      if (library == undefined) {
+        throw "one of object or library must be specified"
+      }
+      const typeId = await this.FindContentType({label: "title"});
+      if (typeId == undefined) {
+        throw "content type not found: title";
+      }
+      console.log("Creating new object in library " + library);
+      const newObject = await this.client.CreateContentObject({libraryId: library, options: {
+        type: typeId,
+        meta: {
+          public: {
+            name: "VOD - Live Stream " + name + " - " + new Date().toISOString()
+          }
+        }
+      }});
+      await this.client.SetPermission({objectId: newObject.objectId, writeToken: newObject.writeToken, permission: "editable"});
+
+      object = newObject.objectId;
+      targetWriteToken = newObject.writeToken;
+      targetLibraryId = library;
+    } else {
+      targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
+    }
 
     console.log("Copying stream", name, "object", object);
 
@@ -388,14 +418,13 @@ class EluvioLiveStream {
       throw "Must specify a target object ID";
     }
 
-    const targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
-
     // Validation - ensure target object has content encryption keys
     const kmsAddress = await this.client.authClient.KMSAddress({objectId: object});
     const kmsCapId = `eluv.caps.ikms${Utils.AddressToHash(kmsAddress)}`;
     const kmsCap = await this.client.ContentObjectMetadata({
       libraryId: targetLibraryId,
       objectId: object,
+      writeToken: targetWriteToken,
       metadataSubtree: kmsCapId
     });
     if (!kmsCap) {
@@ -419,20 +448,23 @@ class EluvioLiveStream {
         }
       }
 
-      let edt = await this.client.EditContentObject({
-        objectId: object,
-        libraryId: targetLibraryId
-      });
-      console.log("Target write token", edt.write_token);
+      if (targetWriteToken == undefined) {
+        let edt = await this.client.EditContentObject({
+          objectId: object,
+          libraryId: targetLibraryId
+        });
+        targetWriteToken = edt.writeToken;
+      }
+      console.log("Target write token", targetWriteToken);
       status.target_object_id = object;
       status.target_library_id = targetLibraryId;
-      status.target_write_token = edt.write_token;
+      status.target_write_token = targetWriteToken;
 
       console.log("Process live source (takes around 20 sec per hour of content)");
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
-        writeToken: edt.write_token,
+        writeToken: targetWriteToken,
         method: "/media/live_to_vod/init",
         body: {
           "live_qhash": liveHash,
@@ -450,14 +482,14 @@ class EluvioLiveStream {
       let abrMezInitBody = {
         abr_profile: abrProfileLiveToVod,
         "offering_key": "default",
-        "prod_master_hash": edt.write_token,
+        "prod_master_hash": targetWriteToken,
         "variant_key": "default",
         "keep_other_streams": false
       };
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
-        writeToken: edt.write_token,
+        writeToken: targetWriteToken,
         method: "/media/abr_mezzanine/init",
         body: abrMezInitBody,
         constant: false,
@@ -468,7 +500,7 @@ class EluvioLiveStream {
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
-        writeToken: edt.write_token,
+        writeToken: targetWriteToken,
         method: "/media/live_to_vod/copy",
         body: {
           "variant_key": "default",
@@ -482,7 +514,7 @@ class EluvioLiveStream {
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
-        writeToken: edt.write_token,
+        writeToken: targetWriteToken,
         method: "/media/abr_mezzanine/offerings/default/finalize",
         body: abrMezInitBody,
         constant: false,
@@ -495,7 +527,7 @@ class EluvioLiveStream {
         let fin = await this.client.FinalizeContentObject({
           libraryId: targetLibraryId,
           objectId: object,
-          writeToken: edt.write_token,
+          writeToken: targetWriteToken,
           commitMessage: "Live Stream to VoD"
         });
         status.target_hash = fin.hash;
@@ -855,6 +887,15 @@ class EluvioLiveStream {
     };
   }
 
+  // Find a content type by label (e.g. 'live-stream', 'title') based on the
+  // content types stored in the tenant object
+  async FindContentType({label}) {
+    const tenantId = await this.client.userProfileClient.TenantContractId();
+    const objectId = "iq__" + tenantId.substring(4);
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    const m = await this.client.ContentObjectMetadata({objectId, libraryId, metadataSubtree: "/public/content_types"});
+    return m[label];
+  }
 } // End class
 
 // TODO fix and add as CLI command
