@@ -247,6 +247,7 @@ const CmdStreamCopyToVod = async ({ argv }) => {
     let status = await elvStream.StreamCopyToVod({
       name: argv.stream,
       object: argv.object,
+      library: argv.library,
       eventId: argv.event_id,
       startTime: argv.start_time,
       endTime: argv.end_time,
@@ -574,6 +575,11 @@ yargs(hideBin(process.argv))
         .option("object", {
           describe:
             "Copy to an existing object instead of creating a new one",
+          type: "string",
+        })
+        .option("library", {
+          describe:
+            "Copy to a new object in this library",
           type: "string",
         })
         .option("event_id", {
