@@ -387,7 +387,7 @@ class EluvioLiveStream {
     // If a target object is not specified, create it here
     if (object == undefined) {
       if (library == undefined) {
-        throw "one of object or library must be specified"
+        throw "one of object or library must be specified";
       }
       const typeId = await this.FindContentType({label: "title"});
       if (typeId == undefined) {

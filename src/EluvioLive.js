@@ -3399,7 +3399,9 @@ class EluvioLive {
 
       latestVersionHash = await this.client.LatestVersionHash({objectId});
       contentHash = latestVersionHash;
-      console.log("Submitting latest version hash:", contentHash, "objectId:", objectId, "libraryId:", libraryId);
+      if (this.debug) {
+        console.log("Submitting latest version hash:", contentHash, "objectId:", objectId, "libraryId:", libraryId);
+      }
     }
 
     let tenantConfigResult = null;
