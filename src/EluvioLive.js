@@ -349,7 +349,7 @@ class EluvioLive {
       tenantInfo.marketplaces[key] = {};
       tenantInfo.marketplaces[key].items = {};
       tenantInfo.marketplaces[key].summary = {};
-      var totalNfts = m.marketplaces[key].info.items.length || 0;
+      var totalNfts = m.marketplaces[key]?.info?.items?.length || 0;
       tenantInfo.marketplaces[key].summary.total_nfts = totalNfts;
 
       var totalMinted = 0;
@@ -358,7 +358,7 @@ class EluvioLive {
       var topMintedValue = 0;
       var topMintedList = [];
 
-      for (var i in m.marketplaces[key].info.items) {
+      for (var i in m.marketplaces[key]?.info?.items) {
         const item = m.marketplaces[key].info.items[i];
 
         const sku = item.sku;
@@ -3399,9 +3399,7 @@ class EluvioLive {
 
       latestVersionHash = await this.client.LatestVersionHash({objectId});
       contentHash = latestVersionHash;
-      if (this.debug){
-        console.log("Update links latest version hash: ", contentHash, " object Id ", objectId, " library Id ", libraryId);
-      }
+      console.log("Submitting latest version hash:", contentHash, "objectId:", objectId, "libraryId:", libraryId);
     }
 
     let tenantConfigResult = null;
