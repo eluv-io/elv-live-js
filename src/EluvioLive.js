@@ -1520,7 +1520,7 @@ class EluvioLive {
           delete nftInfo.tokens[i].token_owner;
           delete nftInfo.tokens[i].token_uri;
         } catch (e) {
-          warns.push("Failed to re-process token ID (index: " + i + ") for " + addr + ", error: " + e +
+          warns.push("Failed to process token " + addr + " index " + i + "/" + (totalSupply-1) + ", error: " + e +
             ", token: " + JSON.stringify(nftInfo.tokens[i]));
           continue;
         }
