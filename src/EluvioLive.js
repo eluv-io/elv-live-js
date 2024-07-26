@@ -1489,6 +1489,11 @@ class EluvioLive {
       }
 
       for (var i = 0; i < maxShowOwners && i < nftInfo.totalSupply; i++) {
+        if (nftInfo.tokens[i] === undefined) {
+          warns.push("missing token information for index " + i + " of " + (totalSupply-1) + " (totalSupply=" + totalSupply +
+            "); likely the blockchain indexer is not up to date; try using --show_owners_via_contract instead.");
+          continue;
+        }
         try {
           // adapt to format:
           // hold -> holdSecs
@@ -1515,7 +1520,8 @@ class EluvioLive {
           delete nftInfo.tokens[i].token_owner;
           delete nftInfo.tokens[i].token_uri;
         } catch (e) {
-          warns.push("Failed to re-process token ID (index: " + i + "): " + addr);
+          warns.push("Failed to re-process token ID (index: " + i + ") for " + addr + ", error: " + e +
+            ", token: " + JSON.stringify(nftInfo.tokens[i]));
           continue;
         }
 
