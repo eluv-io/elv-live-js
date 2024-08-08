@@ -25,15 +25,16 @@ class EluvioLiveStream {
    *
    * @namedParams
    * @param {string} url - Optional node endpoint URL (overwrites config URL)
+   * @param {string} network - Optional network name
    * @param {bool} debugLogging - Optional debug logging flag
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
-  constructor({ url, debugLogging = false }) {
+  constructor({ url, network = Config.net, debugLogging = false }) {
 
     if (url) {
-      this.configUrl = url+"/config?self&qspace="+Config.net;
+      this.configUrl = url+"/config?self&qspace="+network;
     } else {
-      this.configUrl = Config.networks[Config.net];
+      this.configUrl = Config.networks[network];
     }
     this.debug = debugLogging;
   }

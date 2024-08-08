@@ -13,10 +13,12 @@ class ElvContracts {
     * @namedParams
     * @param {string} configUrl - The Content Fabric configuration URL
     * @param {string} mainObjectId - The top-level Eluvio Live object ID
+    * @param {string} netName - The Fabric Network Name
     */
-  constructor({ configUrl, mainObjectId }) {
+  constructor({ configUrl, mainObjectId, netName }) {
     this.configUrl = configUrl || ElvClient.main;
     this.mainObjectId = mainObjectId;
+    this.netName = netName;
 
     this.debug = false;
   }
@@ -47,7 +49,7 @@ class ElvContracts {
     var epochTime = new Date(String(expirationDate).replaceAll("_", "/")).getTime() / 1000;
 
     var res = await this.client.CallContractMethodAndWait({
-      contractAddress: Config.consts[Config.net].claimerAddress,
+      contractAddress: Config.consts[this.netName].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "allocate",
       methodArgs: [address, amount, epochTime],
@@ -67,7 +69,7 @@ class ElvContracts {
     );
 
     var res = await this.client.CallContractMethodAndWait({
-      contractAddress: Config.consts[Config.net].claimerAddress,
+      contractAddress: Config.consts[this.netName].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "claim",
       methodArgs: [ amount ],
@@ -87,7 +89,7 @@ class ElvContracts {
     );
 
     var res = await this.client.CallContractMethodAndWait({
-      contractAddress: Config.consts[Config.net].claimerAddress,
+      contractAddress: Config.consts[this.netName].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "burn",
       methodArgs: [ amount ],
@@ -107,7 +109,7 @@ class ElvContracts {
     );
 
     var res = await this.client.CallContractMethodAndWait({
-      contractAddress: Config.consts[Config.net].claimerAddress,
+      contractAddress: Config.consts[this.netName].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "addAuthorizedAddr",
       methodArgs: [ address ],
@@ -127,7 +129,7 @@ class ElvContracts {
     );
 
     var res = await this.client.CallContractMethodAndWait({
-      contractAddress: Config.consts[Config.net].claimerAddress,
+      contractAddress: Config.consts[this.netName].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "rmAuthorizedAddr",
       methodArgs: [ address ],
@@ -148,7 +150,7 @@ class ElvContracts {
     );
 
     var res = await this.client.CallContractMethodAndWait({
-      contractAddress: Config.consts[Config.net].claimerAddress,
+      contractAddress: Config.consts[this.netName].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "clearAllocations",
       methodArgs: [ address ],
@@ -170,7 +172,7 @@ class ElvContracts {
     await this.ClaimerClearAllocations({address});
 
     var lengthList = await this.client.CallContractMethod({
-      contractAddress: Config.consts[Config.net].claimerAddress,
+      contractAddress: Config.consts[this.netName].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "getNumAllocations",
       methodArgs: [ address ],
@@ -183,7 +185,7 @@ class ElvContracts {
       var idx = i.toString();
       try {
         var elemAmount = await this.client.CallContractMethod({
-          contractAddress: Config.consts[Config.net].claimerAddress,
+          contractAddress: Config.consts[this.netName].claimerAddress,
           abi: JSON.parse(abi),
           methodName: "getAllocationAmount",
           methodArgs: [ address, idx ],
@@ -191,7 +193,7 @@ class ElvContracts {
         });
 
         var elemExpirationDate = await this.client.CallContractMethod({
-          contractAddress: Config.consts[Config.net].claimerAddress,
+          contractAddress: Config.consts[this.netName].claimerAddress,
           abi: JSON.parse(abi),
           methodName: "getAllocationExpirationDate",
           methodArgs: [ address, idx ],
@@ -217,7 +219,7 @@ class ElvContracts {
     );
 
     var res = await this.client.CallContractMethod({
-      contractAddress: Config.consts[Config.net].claimerAddress,
+      contractAddress: Config.consts[this.netName].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "balanceOf",
       methodArgs: [ address ],
@@ -237,7 +239,7 @@ class ElvContracts {
     );
 
     var res = await this.client.CallContractMethod({
-      contractAddress: Config.consts[Config.net].claimerAddress,
+      contractAddress: Config.consts[this.netName].claimerAddress,
       abi: JSON.parse(abi),
       methodName: "burnOf",
       methodArgs: [ address ],

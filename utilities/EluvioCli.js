@@ -37,7 +37,7 @@ const CmdAccountCreate = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -62,7 +62,7 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await elvAccount.InitWithId({
@@ -81,7 +81,7 @@ const CmdAccountShow = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -101,7 +101,7 @@ const CmdGroupCreate = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -125,7 +125,7 @@ const CmdAccountSend = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -151,7 +151,7 @@ const CmdGroupAdd = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -178,9 +178,9 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
 
   try {
     let space = new ElvSpace({
-      configUrl: Config.networks[Config.net],
-      spaceAddress: Config.consts[Config.net].spaceAddress,
-      kmsAddress: Config.consts[Config.net].kmsAddress,
+      configUrl: Config.networks[argv.network],
+      spaceAddress: Config.consts[argv.network].spaceAddress,
+      kmsAddress: Config.consts[argv.network].kmsAddress,
       debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
@@ -206,9 +206,9 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
 
   try {
     let space = new ElvSpace({
-      configUrl: Config.networks[Config.net],
-      spaceAddress: Config.consts[Config.net].spaceAddress,
-      kmsAddress: Config.consts[Config.net].kmsAddress,
+      configUrl: Config.networks[argv.network],
+      spaceAddress: Config.consts[argv.network].spaceAddress,
+      kmsAddress: Config.consts[argv.network].kmsAddress,
       debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
@@ -232,7 +232,7 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -253,7 +253,7 @@ const CmdTenantShow = async({ argv }) => {
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -278,7 +278,7 @@ const CmdTenantFix = async({ argv }) => {
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -332,7 +332,7 @@ const CmdTenantFixSuite = async({ argv }) => {
   try {
     //Add tenantContractId to the account's metadata if not already exists
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await elvAccount.Init({
@@ -425,7 +425,7 @@ const CmdQuery = async ({ argv }) => {
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -546,7 +546,7 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -569,7 +569,7 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
   
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -592,7 +592,7 @@ const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -615,7 +615,7 @@ const CmdAccountOfferSignature = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -642,7 +642,7 @@ const CmdAccountFabricToken = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -666,7 +666,7 @@ const CmdAccountSignedToken = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -701,7 +701,7 @@ const CmdAccountSignedToken = async ({ argv }) => {
 const CmdFabricGetMetaBatch = async ({ argv }) => {
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -726,7 +726,7 @@ const CmdFabricSetMetaBatch = async ({ argv }) => {
 
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -754,7 +754,7 @@ const CmdContractGetMeta = async ({ argv }) => {
 
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -782,7 +782,7 @@ const CmdContractSetMeta = async ({ argv }) => {
 
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -809,7 +809,7 @@ const CmdAccessGroupMember = async ({ argv }) => {
 
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -834,7 +834,7 @@ const CmdAccessGroupMembers = async ({ argv }) => {
 
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -858,8 +858,9 @@ const CmdClaimerAllocate = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -884,7 +885,7 @@ const CmdClaimerClaim = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -908,8 +909,9 @@ const CmdClaimerBurn = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -933,7 +935,7 @@ const CmdClaimerListAllocations = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -957,8 +959,9 @@ const CmdClaimerAddAuthAddr = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -981,8 +984,9 @@ const CmdClaimerRmAuthAddr = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -1005,8 +1009,9 @@ const CmdClaimerBalanceOf = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -1029,8 +1034,9 @@ const CmdClaimerBurnOf = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -1050,9 +1056,9 @@ const CmdClaimerBurnOf = async ({ argv }) => {
 const CmdNodes = async ({ argv }) => {
   try {
     let space = new ElvSpace({
-      configUrl: Config.networks[Config.net],
-      spaceAddress: Config.consts[Config.net].spaceAddress,
-      kmsAddress: Config.consts[Config.net].kmsAddress,
+      configUrl: Config.networks[argv.network],
+      spaceAddress: Config.consts[argv.network].spaceAddress,
+      kmsAddress: Config.consts[argv.network].kmsAddress,
       debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
@@ -1073,6 +1079,12 @@ yargs(hideBin(process.argv))
     describe: "Verbose mode",
     type: "boolean",
     alias: "v"
+  })
+  .default("network", 'main')
+  .option("network", {
+    describe: "Network to use",
+    choices: ('n', ['main', 'demo', 'demov3', 'test', 'dev']),
+    alias: "n"
   })
   .command(
     "account_create <funds> <account_name> <tenant>",
