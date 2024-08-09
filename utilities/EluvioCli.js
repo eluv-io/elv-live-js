@@ -249,7 +249,7 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
 
 const CmdTenantShow = async({ argv }) => {
   console.log("Tenant - show", argv.tenant);
-  console.log("Network: " + Config.net);
+  console.log(`Network: ${argv.network}`);
 
   try {
     let t = new ElvTenant({
@@ -274,7 +274,7 @@ const CmdTenantShow = async({ argv }) => {
 
 const CmdTenantFix = async({ argv }) => {
   console.log("Tenant - fix", argv.tenant);
-  console.log("Network: " + Config.net);
+  console.log(`Network: ${argv.network}`);
 
   try {
     let t = new ElvTenant({
@@ -343,7 +343,7 @@ const CmdTenantFixSuite = async({ argv }) => {
     try {
       tenantContractId  = await elvAccount.client.userProfileClient.TenantContractId();
     } catch (e) {
-      throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${Config.net} network, aborting...`);
+      throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${argv.network} network, aborting...`);
     }
     if (tenantContractId) {
       if (!elvAccount.client.utils.EqualHash(tenantContractId, argv.tenant)) {
@@ -542,7 +542,7 @@ const CmdQuery = async ({ argv }) => {
 
 const CmdTenantSetContentAdmins = async ({ argv }) => {
   console.log(`Setting a new content admin group for Tenant ${argv.tenant}`);
-  console.log("Network: " + Config.net);
+  console.log(`Network: ${argv.network}`);
 
   try {
     let t = new ElvTenant({
@@ -565,7 +565,7 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
 const CmdTenantRemoveContentAdmin = async ({ argv }) => {
   console.log(`Removing a Content Admin from Tenant ${argv.tenant}`);
   console.log(`Removed Content Admin's Address: ${argv.content_admin_address}`);
-  console.log("Network: " + Config.net);
+  console.log(`Network: ${argv.network}`);
   
   try {
     let t = new ElvTenant({
