@@ -154,6 +154,8 @@ Commands:
 Options:
       --version  Show version number                                   [boolean]
   -v, --verbose  Verbose mode                                          [boolean]
+  -n, --network  Network to use
+            [choices: "main", "demo", "demov3", "test", "dev"] [default: "main"]
       --host     Alternate URL endpoint                                 [string]
       --help     Show help                                             [boolean]
 ```

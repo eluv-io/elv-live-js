@@ -8,6 +8,7 @@ const Ethers = require("ethers");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
+const fs = require('node:fs');
 
 const postgres = require('postgres');
 const sql = postgres({
@@ -37,7 +38,7 @@ const CmdAccountCreate = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -51,6 +52,13 @@ const CmdAccountCreate = async ({ argv }) => {
       tenantId: argv.tenant,
     });
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -62,7 +70,7 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await elvAccount.InitWithId({
@@ -75,13 +83,12 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
   }
 }
 
-
 const CmdAccountShow = async ({ argv }) => {
   console.log("Account Show\n");
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -101,7 +108,7 @@ const CmdGroupCreate = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -113,6 +120,13 @@ const CmdGroupCreate = async ({ argv }) => {
       name: argv.name,
     });
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -125,7 +139,7 @@ const CmdAccountSend = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -151,7 +165,7 @@ const CmdGroupAdd = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -165,22 +179,29 @@ const CmdGroupAdd = async ({ argv }) => {
       isManager: argv.is_manager,
     });
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
 
 const CmdSpaceTenantCreate = async ({ argv }) => {
-  console.log("Tenant Deploy");
+  console.log("Tenant Create");
   console.log(`Tenant name: ${argv.tenant_name}`);
   console.log(`Funds: ${argv.funds}`);
   console.log(`verbose: ${argv.verbose}`);
 
   try {
     let space = new ElvSpace({
-      configUrl: Config.networks[Config.net],
-      spaceAddress: Config.consts[Config.net].spaceAddress,
-      kmsAddress: Config.consts[Config.net].kmsAddress,
+      configUrl: Config.networks[argv.network],
+      spaceAddress: Config.consts[argv.network].spaceAddress,
+      kmsAddress: Config.consts[argv.network].kmsAddress,
       debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
@@ -191,6 +212,13 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
 
   } catch (e) {
     console.error("ERROR:", e);
@@ -206,9 +234,9 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
 
   try {
     let space = new ElvSpace({
-      configUrl: Config.networks[Config.net],
-      spaceAddress: Config.consts[Config.net].spaceAddress,
-      kmsAddress: Config.consts[Config.net].kmsAddress,
+      configUrl: Config.networks[argv.network],
+      spaceAddress: Config.consts[argv.network].spaceAddress,
+      kmsAddress: Config.consts[argv.network].kmsAddress,
       debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
@@ -221,6 +249,13 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -232,7 +267,7 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -242,6 +277,13 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -249,11 +291,11 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
 
 const CmdTenantShow = async({ argv }) => {
   console.log("Tenant - show", argv.tenant);
-  console.log("Network: " + Config.net);
+  console.log(`Network: ${argv.network}`);
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -264,6 +306,13 @@ const CmdTenantShow = async({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
     if (res.errors) { 
       console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
     }
@@ -274,11 +323,11 @@ const CmdTenantShow = async({ argv }) => {
 
 const CmdTenantFix = async({ argv }) => {
   console.log("Tenant - fix", argv.tenant);
-  console.log("Network: " + Config.net);
+  console.log(`Network: ${argv.network}`);
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -332,7 +381,7 @@ const CmdTenantFixSuite = async({ argv }) => {
   try {
     //Add tenantContractId to the account's metadata if not already exists
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await elvAccount.Init({
@@ -343,7 +392,7 @@ const CmdTenantFixSuite = async({ argv }) => {
     try {
       tenantContractId  = await elvAccount.client.userProfileClient.TenantContractId();
     } catch (e) {
-      throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${Config.net} network, aborting...`);
+      throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${argv.network} network, aborting...`);
     }
     if (tenantContractId) {
       if (!elvAccount.client.utils.EqualHash(tenantContractId, argv.tenant)) {
@@ -425,7 +474,7 @@ const CmdQuery = async ({ argv }) => {
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -520,7 +569,7 @@ const CmdQuery = async ({ argv }) => {
     console.log("Number of tenants that need to be fixed: ", failure_count);
     console.log("Number of tenants that the check needed access to their content fabric metadata: ", need_further_check);
 
-    require('fs').writeFile(
+    require('fs').appendFile(
       './tenant_contracts_fix_info.json',
 
       JSON.stringify(failure_log, null, 1),
@@ -542,11 +591,11 @@ const CmdQuery = async ({ argv }) => {
 
 const CmdTenantSetContentAdmins = async ({ argv }) => {
   console.log(`Setting a new content admin group for Tenant ${argv.tenant}`);
-  console.log("Network: " + Config.net);
+  console.log(`Network: ${argv.network}`);
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -557,6 +606,13 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -565,11 +621,11 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
 const CmdTenantRemoveContentAdmin = async ({ argv }) => {
   console.log(`Removing a Content Admin from Tenant ${argv.tenant}`);
   console.log(`Removed Content Admin's Address: ${argv.content_admin_address}`);
-  console.log("Network: " + Config.net);
+  console.log(`Network: ${argv.network}`);
   
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -580,6 +636,13 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -592,7 +655,7 @@ const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
 
   try {
     let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
@@ -603,6 +666,13 @@ const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -615,7 +685,7 @@ const CmdAccountOfferSignature = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -631,6 +701,13 @@ const CmdAccountOfferSignature = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -642,7 +719,7 @@ const CmdAccountFabricToken = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -655,6 +732,13 @@ const CmdAccountFabricToken = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -666,7 +750,7 @@ const CmdAccountSignedToken = async ({ argv }) => {
 
   try {
     let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -693,6 +777,13 @@ const CmdAccountSignedToken = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -701,7 +792,7 @@ const CmdAccountSignedToken = async ({ argv }) => {
 const CmdFabricGetMetaBatch = async ({ argv }) => {
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -726,7 +817,7 @@ const CmdFabricSetMetaBatch = async ({ argv }) => {
 
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -741,6 +832,13 @@ const CmdFabricSetMetaBatch = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -754,7 +852,7 @@ const CmdContractGetMeta = async ({ argv }) => {
 
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -768,6 +866,13 @@ const CmdContractGetMeta = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -782,7 +887,7 @@ const CmdContractSetMeta = async ({ argv }) => {
 
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -797,6 +902,13 @@ const CmdContractSetMeta = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -809,7 +921,7 @@ const CmdAccessGroupMember = async ({ argv }) => {
 
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -823,6 +935,13 @@ const CmdAccessGroupMember = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -834,7 +953,7 @@ const CmdAccessGroupMembers = async ({ argv }) => {
 
   try {
     let elvFabric = new ElvFabric({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -847,6 +966,13 @@ const CmdAccessGroupMembers = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -858,8 +984,9 @@ const CmdClaimerAllocate = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -873,6 +1000,13 @@ const CmdClaimerAllocate = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -884,7 +1018,7 @@ const CmdClaimerClaim = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -897,6 +1031,13 @@ const CmdClaimerClaim = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -908,8 +1049,9 @@ const CmdClaimerBurn = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -921,6 +1063,13 @@ const CmdClaimerBurn = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -933,7 +1082,7 @@ const CmdClaimerListAllocations = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
@@ -946,6 +1095,13 @@ const CmdClaimerListAllocations = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -957,8 +1113,9 @@ const CmdClaimerAddAuthAddr = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -970,6 +1127,13 @@ const CmdClaimerAddAuthAddr = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -981,8 +1145,9 @@ const CmdClaimerRmAuthAddr = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -994,6 +1159,13 @@ const CmdClaimerRmAuthAddr = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1005,8 +1177,9 @@ const CmdClaimerBalanceOf = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -1018,6 +1191,13 @@ const CmdClaimerBalanceOf = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1029,8 +1209,9 @@ const CmdClaimerBurnOf = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      configUrl: Config.networks[argv.network],
+      debugLogging: argv.verbose,
+      netName: argv.network
     });
 
     await elvContract.Init({
@@ -1042,6 +1223,13 @@ const CmdClaimerBurnOf = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1050,9 +1238,9 @@ const CmdClaimerBurnOf = async ({ argv }) => {
 const CmdNodes = async ({ argv }) => {
   try {
     let space = new ElvSpace({
-      configUrl: Config.networks[Config.net],
-      spaceAddress: Config.consts[Config.net].spaceAddress,
-      kmsAddress: Config.consts[Config.net].kmsAddress,
+      configUrl: Config.networks[argv.network],
+      spaceAddress: Config.consts[argv.network].spaceAddress,
+      kmsAddress: Config.consts[argv.network].kmsAddress,
       debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
@@ -1063,6 +1251,13 @@ const CmdNodes = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1073,6 +1268,17 @@ yargs(hideBin(process.argv))
     describe: "Verbose mode",
     type: "boolean",
     alias: "v"
+  })
+  .default("network", 'main')
+  .option("network", {
+    describe: "Network to use",
+    choices: ('n', ['main', 'demo', 'demov3', 'test', 'dev']),
+    alias: "n"
+  })
+  .option("file", {
+    describe: "YAML file to write output to",
+    type: "string",
+    alias: "f"
   })
   .command(
     "account_create <funds> <account_name> <tenant>",

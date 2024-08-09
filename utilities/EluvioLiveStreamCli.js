@@ -202,9 +202,9 @@ const CmdStreamConfig = async ({ argv }) => {
     });
 
     let space = new ElvSpace({
-      configUrl: Config.networks[Config.net],
-      spaceAddress: Config.consts[Config.net].spaceAddress,
-      kmsAddress: Config.consts[Config.net].kmsAddress,
+      configUrl: Config.networks[argv.network],
+      spaceAddress: Config.consts[argv.network].spaceAddress,
+      kmsAddress: Config.consts[argv.network].kmsAddress,
       debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
@@ -333,6 +333,13 @@ yargs(hideBin(process.argv))
   .option("url", {
     describe: "Optional node endpoint (eg. https://host-x-x-x-x.contentfabric.io)",
     type: "string",
+  })
+
+  .default("network", 'main')
+  .option("network", {
+    describe: "Network to use",
+    choices: ('n', ['main', 'demo', 'demov3', 'test', 'dev']),
+    alias: "n"
   })
 
   .command(
