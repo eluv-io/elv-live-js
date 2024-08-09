@@ -8,6 +8,7 @@ const Ethers = require("ethers");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
+const fs = require('node:fs');
 
 const postgres = require('postgres');
 const sql = postgres({
@@ -51,6 +52,13 @@ const CmdAccountCreate = async ({ argv }) => {
       tenantId: argv.tenant,
     });
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -74,7 +82,6 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
     console.error("ERROR:", e);
   }
 }
-
 
 const CmdAccountShow = async ({ argv }) => {
   console.log("Account Show\n");
@@ -113,6 +120,13 @@ const CmdGroupCreate = async ({ argv }) => {
       name: argv.name,
     });
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -165,13 +179,20 @@ const CmdGroupAdd = async ({ argv }) => {
       isManager: argv.is_manager,
     });
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
 
 const CmdSpaceTenantCreate = async ({ argv }) => {
-  console.log("Tenant Deploy");
+  console.log("Tenant Create");
   console.log(`Tenant name: ${argv.tenant_name}`);
   console.log(`Funds: ${argv.funds}`);
   console.log(`verbose: ${argv.verbose}`);
@@ -191,6 +212,13 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
 
   } catch (e) {
     console.error("ERROR:", e);
@@ -221,6 +249,13 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -242,6 +277,13 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -264,6 +306,13 @@ const CmdTenantShow = async({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
     if (res.errors) { 
       console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
     }
@@ -520,7 +569,7 @@ const CmdQuery = async ({ argv }) => {
     console.log("Number of tenants that need to be fixed: ", failure_count);
     console.log("Number of tenants that the check needed access to their content fabric metadata: ", need_further_check);
 
-    require('fs').writeFile(
+    require('fs').appendFile(
       './tenant_contracts_fix_info.json',
 
       JSON.stringify(failure_log, null, 1),
@@ -557,6 +606,13 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -580,6 +636,13 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -603,6 +666,13 @@ const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -631,6 +701,13 @@ const CmdAccountOfferSignature = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -655,6 +732,13 @@ const CmdAccountFabricToken = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -693,6 +777,13 @@ const CmdAccountSignedToken = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -741,6 +832,13 @@ const CmdFabricSetMetaBatch = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -768,6 +866,13 @@ const CmdContractGetMeta = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -797,6 +902,13 @@ const CmdContractSetMeta = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -823,6 +935,13 @@ const CmdAccessGroupMember = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -847,6 +966,13 @@ const CmdAccessGroupMembers = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -874,6 +1000,13 @@ const CmdClaimerAllocate = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -898,6 +1031,13 @@ const CmdClaimerClaim = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -923,6 +1063,13 @@ const CmdClaimerBurn = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -948,6 +1095,13 @@ const CmdClaimerListAllocations = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -973,6 +1127,13 @@ const CmdClaimerAddAuthAddr = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -998,6 +1159,13 @@ const CmdClaimerRmAuthAddr = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1023,6 +1191,13 @@ const CmdClaimerBalanceOf = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1048,6 +1223,13 @@ const CmdClaimerBurnOf = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1069,6 +1251,13 @@ const CmdNodes = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
+    if (argv.file) {
+      fs.appendFile(argv.file, yaml.dump(res), err => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1085,6 +1274,11 @@ yargs(hideBin(process.argv))
     describe: "Network to use",
     choices: ('n', ['main', 'demo', 'demov3', 'test', 'dev']),
     alias: "n"
+  })
+  .option("file", {
+    describe: "YAML file to write output to",
+    type: "string",
+    alias: "f"
   })
   .command(
     "account_create <funds> <account_name> <tenant>",
