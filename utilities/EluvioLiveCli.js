@@ -28,6 +28,20 @@ process.emit = function (name, data, ...args) {
   return originalEmit.apply(process, arguments);
 };
 
+// Dumps the result as YAML to the console
+// If a file is provided from the CLI, then write the YAML to this file
+const doDump = (res, argv) => {
+  const d = yaml.dump(res);
+  console.log(d);
+  if (argv.file) {
+    fs.appendFile(argv.file, d, err => {
+      if (err) {
+        console.error(err);
+      }
+    });
+  }
+};
+
 let elvlv;
 let marketplace;
 
@@ -137,7 +151,7 @@ const CmdTokenAddMinter = async ({ argv }) => {
       addr: argv.addr,
       minterAddr: argv.minter,
     });
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -150,7 +164,7 @@ const CmdTokenRenounceMinter= async ({ argv }) => {
     res = await elvlv.RenounceMinter({
       addr: argv.addr,
     });
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -164,7 +178,7 @@ const CmdTokenIsMinter= async ({ argv }) => {
       addr: argv.addr,
       minterAddr: argv.minter,
     });
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -197,7 +211,7 @@ const CmdNftBalanceOf = async ({ argv }) => {
       ownerAddr: argv.owner,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -213,7 +227,7 @@ const CmdNftBurn = async ({ argv }) => {
       tokenId: argv.token_id,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error(`${e}`);
   }
@@ -229,7 +243,7 @@ const CmdNftProxyBurn = async ({ argv }) => {
       tokenId: argv.token_id,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error(`${e}`);
   }
@@ -254,7 +268,7 @@ const CmdNftShow = async ({ argv }) => {
       tokenId: argv.token_id
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -274,7 +288,7 @@ const CmdNftBuild = async ({ argv }) => {
       nftDir: argv.nft_dir,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -290,7 +304,7 @@ const CmdNftPackGetDist = async ({ argv }) => {
       versionHash: argv.hash,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -306,7 +320,7 @@ const CmdNftPackSetDist = async ({ argv }) => {
       versionHash: argv.hash,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -329,7 +343,7 @@ const CmdNftProxyTransfer = async ({ argv }) => {
       toAddr: argv.to_addr,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -361,7 +375,7 @@ const CmdNftTransfer = async ({ argv }) => {
       });
     }
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -378,7 +392,7 @@ const CmdTenantShow = async ({ argv }) => {
       checkNft: argv.check_nfts,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -461,7 +475,7 @@ const CmdSiteShow = async ({ argv }) => {
       objectId: argv.object,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -485,7 +499,7 @@ const CmdSiteSetDrop = async ({ argv }) => {
       update: argv.update,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -517,7 +531,7 @@ const CmdTenantBalanceOf = async ({ argv }) => {
       }
       fs.writeFileSync(argv.csv, out);
     } else {
-      console.log(yaml.dump(res));
+      doDump(res, argv);
     }
 
   } catch (e) {
@@ -535,7 +549,7 @@ const CmdFabricTenantBalanceOf = async ({ argv }) => {
       ownerAddr: argv.owner,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -647,7 +661,7 @@ const CmdTenantWallets = async ({ argv }) => {
       }
       fs.writeFileSync(argv.csv, out);
     } else {
-      console.log(yaml.dump(res));
+      doDump(res, argv);
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -667,7 +681,7 @@ const CmdNFTRefresh = async ({ argv }) => {
       address: argv.addr,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -698,7 +712,7 @@ const CmdList = async ({ argv }) => {
       }
     }
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error(e);
   }
@@ -728,7 +742,7 @@ const CmdTenantPrimarySales = async ({ argv }) => {
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
     } else {
-      console.log(yaml.dump(res));
+      doDump(res, argv);
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -754,7 +768,7 @@ const CmdTenantSecondarySales = async ({ argv }) => {
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
     } else {
-      console.log(yaml.dump(res));
+      doDump(res, argv);
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -780,7 +794,7 @@ const CmdTenantUnifiedSales = async ({ argv }) => {
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
     } else {
-      console.log(yaml.dump(res));
+      doDump(res, argv);
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -796,7 +810,7 @@ const CmdTenantTransferFailures = async ({ argv }) => {
     let res = await elvlv.TenantTransferFailures({
       tenant: argv.tenant,
     });
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -866,7 +880,7 @@ const CmdAccountCreate = async ({ argv }) => {
       accountName: argv.account_name,
       tenantAdminsId: argv.tenant_admins,
     });
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -878,7 +892,7 @@ const CmdAccountShow = async () => {
   try {
     await Init({ debugLogging: false, network: argv.network });
     let res = await elvlv.AccountShow();
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -907,7 +921,7 @@ const CmdTenantNftRemove = async ({ argv }) => {
     delete res.warns;
     delete res.tokens;
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
     const ans = prompt("Do you want to remove the above contract? (y/n)");
     if (ans.toLowerCase() != "y") {
       console.log("Aborting...");
@@ -933,7 +947,7 @@ const CmdTenantNftList = async ({ argv }) => {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     res = await elvlv.TenantNftList({ tenantId: argv.tenant });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -951,7 +965,7 @@ const CmdTenantHasNft = async ({ argv }) => {
       nftAddr: argv.addr,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -969,7 +983,7 @@ const CmdTenantAddConsumers = async ({ argv }) => {
       accountAddresses: argv.addrs,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -987,7 +1001,7 @@ const CmdTenantRemoveConsumer = async ({ argv }) => {
       accountAddress: argv.addr,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1014,7 +1028,7 @@ const CmdMarketplaceAddItem = async ({ argv }) => {
       forSale: argv.forSale
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1033,7 +1047,7 @@ const CmdMarketplaceAddItemBatch = async ({ argv }) => {
       csv: argv.csv
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1051,7 +1065,7 @@ const CmdMarketplaceRemoveItem = async ({ argv }) => {
       marketplaceObjectId: argv.marketplace,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1069,7 +1083,7 @@ const CmdTenantHasConsumer = async ({ argv }) => {
       accountAddress: argv.addr,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1089,7 +1103,7 @@ const CmdStorefrontSectionAddItem = async ({ argv }) => {
       name: argv.section,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1109,7 +1123,7 @@ const CmdStorefrontSectionRemoveItem = async ({ argv }) => {
       writeToken: argv.writeToken,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1128,7 +1142,7 @@ const CmdNftSetTransferFee = async ({ argv }) => {
       fee: argv.fee
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1143,7 +1157,7 @@ const CmdNftGetTransferFee = async ({ argv }) => {
 
     res = await elvlv.NftGetTransferFee({ address: argv.addr });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1158,7 +1172,7 @@ const CmdNftAddRedeemableOffer = async ({ argv }) => {
 
     res = await elvlv.NFTAddRedeemableOffer({ addr: argv.addr });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
     console.log("added offerId", res?.logs[0]?.args[0] ?? "unknown offerId");
   } catch (e) {
     console.error("ERROR:", e);
@@ -1176,7 +1190,7 @@ const CmdNftRemoveRedeemableOffer = async ({ argv }) => {
     res = await elvlv.NFTRemoveRedeemableOffer({ addr: argv.addr,
       offerId:argv.id });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1193,7 +1207,7 @@ const CmdNftIsOfferActive = async ({ argv }) => {
     res = await elvlv.NFTIsOfferActive({ addr: argv.addr,
       offerId:argv.offer_id });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1212,7 +1226,7 @@ const CmdNftIsOfferRedeemed = async ({ argv }) => {
       tokenId: argv.token_id,
       offerId: argv.offer_id});
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1235,7 +1249,7 @@ const CmdNftRedeemOffer = async ({ argv }) => {
       offerId: argv.offer_id,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1261,7 +1275,7 @@ const CmdASNftRedeemOffer = async ({ argv }) => {
       mintHelperAddr: argv.mint_helper_addr
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1289,7 +1303,7 @@ const CmdTenantProvision = async ({ argv }) => {
       debug: true
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1309,7 +1323,7 @@ const CmdTenantAddConsumerGroup = async ({ argv }) => {
 
     res = await AddConsumerGroup({ client, tenantAddress, debug: argv.verbose });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1652,7 +1666,7 @@ const CmdTokenCreate = async ({ argv }) => {
       amount: argv.amount,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1819,6 +1833,12 @@ yargs(hideBin(process.argv))
     describe: "Network to use",
     choices: ('n', ['main', 'demo', 'demov3', 'test', 'dev']),
     alias: "n"
+  })
+
+  .option("file", {
+    describe: "YAML file to write output to",
+    type: "string",
+    alias: "f"
   })
 
   .option("as_url", {
