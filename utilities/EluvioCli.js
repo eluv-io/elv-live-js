@@ -30,6 +30,20 @@ process.emit = function (name, data, ...args) {
   return originalEmit.apply(process, arguments);
 };
 
+// Dumps the result as YAML to the console
+// If a file is provided from the CLI, then write the YAML to this file
+const doDump = (res, argv) => {
+  const d = yaml.dump(res);
+  console.log(d);
+  if (argv.file) {
+    fs.appendFile(argv.file, d, err => {
+      if (err) {
+        console.error(err);
+      }
+    });
+  }
+};
+
 const CmdAccountCreate = async ({ argv }) => {
   console.log("Account Create\n");
   console.log(`funds: ${argv.funds}`);
@@ -51,14 +65,7 @@ const CmdAccountCreate = async ({ argv }) => {
       accountName: argv.account_name,
       tenantId: argv.tenant,
     });
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -96,7 +103,7 @@ const CmdAccountShow = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
     let res = await elvAccount.Show();
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -119,14 +126,7 @@ const CmdGroupCreate = async ({ argv }) => {
     let res = await elvAccount.CreateAccessGroup({
       name: argv.name,
     });
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -178,14 +178,7 @@ const CmdGroupAdd = async ({ argv }) => {
       accountAddress: argv.account_address,
       isManager: argv.is_manager,
     });
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -211,15 +204,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
       funds: argv.funds,
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
-
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -248,14 +233,7 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
       contentAdminGroupAddress: argv.content_admin_addr,
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -276,14 +254,7 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
       tenantId: argv.tenant
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -305,14 +276,8 @@ const CmdTenantShow = async({ argv }) => {
       show_metadata: argv.show_metadata
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
+
     if (res.errors) { 
       console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
     }
@@ -605,14 +570,7 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
       contentAdminAddr: argv.content_admin_address,
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -635,14 +593,7 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
       contentAdminsAddress: argv.content_admin_address
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -665,14 +616,7 @@ const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
       eluvioLiveId: argv.eluvio_live_id
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -700,14 +644,7 @@ const CmdAccountOfferSignature = async ({ argv }) => {
       offerId: argv.offer_id
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -731,14 +668,7 @@ const CmdAccountFabricToken = async ({ argv }) => {
       duration: argv.duration
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -776,14 +706,7 @@ const CmdAccountSignedToken = async ({ argv }) => {
       context
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -831,14 +754,7 @@ const CmdFabricSetMetaBatch = async ({ argv }) => {
       duplicate: argv.duplicate
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -865,14 +781,7 @@ const CmdContractGetMeta = async ({ argv }) => {
       key: argv.key
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -901,14 +810,7 @@ const CmdContractSetMeta = async ({ argv }) => {
       value: argv.value
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -934,14 +836,7 @@ const CmdAccessGroupMember = async ({ argv }) => {
       addr: argv.addr
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -965,14 +860,7 @@ const CmdAccessGroupMembers = async ({ argv }) => {
       group: argv.group
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -999,14 +887,7 @@ const CmdClaimerAllocate = async ({ argv }) => {
       expirationDate: argv.yyyy_mm_dd
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1030,14 +911,7 @@ const CmdClaimerClaim = async ({ argv }) => {
       amount: argv.amount
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1062,14 +936,7 @@ const CmdClaimerBurn = async ({ argv }) => {
       amount: argv.amount
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1094,14 +961,7 @@ const CmdClaimerListAllocations = async ({ argv }) => {
       address: argv.address
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1126,14 +986,7 @@ const CmdClaimerAddAuthAddr = async ({ argv }) => {
       address: argv.address
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1158,14 +1011,7 @@ const CmdClaimerRmAuthAddr = async ({ argv }) => {
       address: argv.address
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1190,14 +1036,7 @@ const CmdClaimerBalanceOf = async ({ argv }) => {
       address: argv.address
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1222,14 +1061,7 @@ const CmdClaimerBurnOf = async ({ argv }) => {
       address: argv.address
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1250,14 +1082,7 @@ const CmdNodes = async ({ argv }) => {
       matchNodeId: argv.node_id
     });
 
-    console.log(yaml.dump(res));
-    if (argv.file) {
-      fs.appendFile(argv.file, yaml.dump(res), err => {
-        if (err) {
-          console.error(err);
-        }
-      });
-    }
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
