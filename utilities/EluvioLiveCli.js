@@ -1339,7 +1339,7 @@ const CmdNFTGetPolicyPermissions = async ({ argv }) => {
 
     res = await elvlv.NftGetPolicyAndPermissions({ address: argv.object });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1381,7 +1381,7 @@ const CmdTenantGetMinter = async ({ argv }) => {
       tenant: argv.tenant
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1402,7 +1402,7 @@ const CmdNotifSend = async ({ argv }) => {
       tokenId: argv.token_id
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1417,7 +1417,7 @@ const CmdAdminHealth = async ({ argv }) => {
 
     res = await elvlv.AdminHealth();
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1438,7 +1438,7 @@ const CmdTenantCreateMinter = async ({ argv }) => {
       deploy: argv.deploy
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1468,7 +1468,7 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
       purge: argv.purge
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1533,7 +1533,7 @@ const CmdTenantPublishData  = async ({ argv }) => {
       updateLinks: argv.update_links
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1794,7 +1794,7 @@ const CmdContentGetPolicy  = async ({ argv }) => {
       objectId: argv.object
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
