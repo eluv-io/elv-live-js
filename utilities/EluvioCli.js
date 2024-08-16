@@ -35,8 +35,8 @@ process.emit = function (name, data, ...args) {
 const doDump = (res, argv) => {
   const d = yaml.dump(res);
   console.log(d);
-  if (argv.file) {
-    fs.appendFile(argv.file, d, err => {
+  if (argv.output) {
+    fs.appendFile(argv.output, d, err => {
       if (err) {
         console.error(err);
       }
@@ -1100,10 +1100,10 @@ yargs(hideBin(process.argv))
     choices: ('n', ['main', 'demo', 'demov3', 'test', 'dev']),
     alias: "n"
   })
-  .option("file", {
+  .option("output", {
     describe: "YAML file to write output to",
     type: "string",
-    alias: "f"
+    alias: "o"
   })
   .command(
     "account_create <funds> <account_name> <tenant>",
