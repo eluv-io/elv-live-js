@@ -11,12 +11,12 @@ function checkShuffled() {
   let f = Shuffler.shuffledPath(__dirname + "/../test/shuffle.in.txt");
   expect(fs.readFileSync(f, "utf8")).toEqual(
     "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n" +
-      "0xffffffffffffffffffffffffffffffffffffffff\n" +
-      "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n" +
-      "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n" +
-      "0xcccccccccccccccccccccccccccccccccccccccc\n" +
-      "0xdddddddddddddddddddddddddddddddddddddddd\n" +
-      "0xcccccccccccccccccccccccccccccccccccccccc\n"
+    "0xffffffffffffffffffffffffffffffffffffffff\n" +
+    "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n" +
+    "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n" +
+    "0xcccccccccccccccccccccccccccccccccccccccc\n" +
+    "0xdddddddddddddddddddddddddddddddddddddddd\n" +
+    "0xcccccccccccccccccccccccccccccccccccccccc\n"
   );
   fs.rmSync(f);
 }

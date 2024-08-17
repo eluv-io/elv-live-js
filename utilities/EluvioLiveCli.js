@@ -28,13 +28,27 @@ process.emit = function (name, data, ...args) {
   return originalEmit.apply(process, arguments);
 };
 
+// Dumps the result as YAML to the console
+// If a file is provided from the CLI, then write the YAML to this file
+const doDump = (res, argv) => {
+  const d = yaml.dump(res);
+  console.log(d);
+  if (argv.output) {
+    fs.appendFile(argv.output, d, err => {
+      if (err) {
+        console.error(err);
+      }
+    });
+  }
+};
+
 let elvlv;
 let marketplace;
 
-const Init = async ({debugLogging = false, asUrl}={}) => {
+const Init = async ({debugLogging = false, asUrl, network = Config.net}={}) => {
   const config = {
-    configUrl: Config.networks[Config.net],
-    mainObjectId: Config.mainObjects[Config.net],
+    configUrl: Config.networks[network],
+    mainObjectId: Config.mainObjects[network],
   };
   elvlv = new EluvioLive(config);
   await elvlv.Init({ debugLogging, asUrl });
@@ -44,7 +58,7 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
 };
 
 const CmdTenantAuthToken = async ({ argv }) => {
-  await Init({debugLogging: argv.verbose});
+  await Init({debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
   let ts = Date.now();
   let message = argv.path_or_body + "?ts=" + ts;
@@ -62,7 +76,7 @@ const CmdTenantAuthToken = async ({ argv }) => {
 };
 
 const CmdTenantAuthCurl = async ({ argv }) => {
-  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
   let ts = Date.now();
 
@@ -113,7 +127,7 @@ const CmfNftTemplateAddNftContract = async ({ argv }) => {
     "\nVerbose ", argv.verbose
   );
   try {
-    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     await elvlv.NftTemplateAddNftContract({
       objectId: argv.object,
@@ -131,13 +145,13 @@ const CmfNftTemplateAddNftContract = async ({ argv }) => {
 
 const CmdTokenAddMinter = async ({ argv }) => {
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.AddMinter({
       addr: argv.addr,
       minterAddr: argv.minter,
     });
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -145,12 +159,12 @@ const CmdTokenAddMinter = async ({ argv }) => {
 
 const CmdTokenRenounceMinter= async ({ argv }) => {
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.RenounceMinter({
       addr: argv.addr,
     });
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -158,13 +172,13 @@ const CmdTokenRenounceMinter= async ({ argv }) => {
 
 const CmdTokenIsMinter= async ({ argv }) => {
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.IsMinter({
       addr: argv.addr,
       minterAddr: argv.minter,
     });
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -175,7 +189,7 @@ const CmdTokenIsMinter= async ({ argv }) => {
 const CmfNftSetProxy = async ({ argv }) => {
   console.log("NFT - set proxy", argv.addr, argv.proxy_addr);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let p = await elvlv.NftSetTransferProxy({
       addr: argv.addr,
@@ -190,14 +204,14 @@ const CmfNftSetProxy = async ({ argv }) => {
 const CmdNftBalanceOf = async ({ argv }) => {
   console.log("NFT - call", argv.addr, argv.owner);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.NftBalanceOf({
       addr: argv.addr,
       ownerAddr: argv.owner,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -206,14 +220,14 @@ const CmdNftBalanceOf = async ({ argv }) => {
 const CmdNftBurn = async ({ argv }) => {
   console.log("NFT burn ", argv.addr, argv.token_id);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.NftBurn({
       addr: argv.addr,
       tokenId: argv.token_id,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error(`${e}`);
   }
@@ -222,14 +236,14 @@ const CmdNftBurn = async ({ argv }) => {
 const CmdNftProxyBurn = async ({ argv }) => {
   console.log("NFT Proxy burn ", argv.addr, argv.token_id);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.NftProxyBurn({
       addr: argv.addr,
       tokenId: argv.token_id,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error(`${e}`);
   }
@@ -243,7 +257,7 @@ const CmdNftShow = async ({ argv }) => {
   console.log("include_email ", argv.include_email);
   console.log("token_id ", argv.token_id);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.NftShow({
       addr: argv.addr,
@@ -254,7 +268,7 @@ const CmdNftShow = async ({ argv }) => {
       tokenId: argv.token_id
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -266,7 +280,7 @@ const CmdNftBuild = async ({ argv }) => {
   console.log("NFT - objectId ", argv.object);
   console.log("NFT - nftDir ", argv.nft_dir);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.NftBuild({
       libraryId: argv.library,
@@ -274,7 +288,7 @@ const CmdNftBuild = async ({ argv }) => {
       nftDir: argv.nft_dir,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -284,13 +298,13 @@ const CmdNftPackGetDist = async ({ argv }) => {
   console.log("NFT - pack get dist");
   console.log("NFT - hash ", argv.hash);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.NftPackGetDist({
       versionHash: argv.hash,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -300,13 +314,13 @@ const CmdNftPackSetDist = async ({ argv }) => {
   console.log("NFT - pack set dist");
   console.log("NFT - hash ", argv.hash);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.NftPackSetDist({
       versionHash: argv.hash,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -320,7 +334,7 @@ const CmdNftProxyTransfer = async ({ argv }) => {
     argv.to_addr
   );
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.NftProxyTransferFrom({
       addr: argv.addr,
@@ -329,7 +343,7 @@ const CmdNftProxyTransfer = async ({ argv }) => {
       toAddr: argv.to_addr,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -344,7 +358,7 @@ const CmdNftTransfer = async ({ argv }) => {
     argv.auth_service
   );
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res;
     if (argv.auth_service) {
@@ -361,7 +375,7 @@ const CmdNftTransfer = async ({ argv }) => {
       });
     }
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -371,14 +385,14 @@ const CmdTenantShow = async ({ argv }) => {
   console.log("Tenant - show", argv.tenant);
   console.log("check_nfts", argv.check_nfts);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantShow({
       tenantId: argv.tenant,
       checkNft: argv.check_nfts,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -405,7 +419,7 @@ const CmdTenantSetTokenURI = async ({ argv }) => {
       return;
     } 
 
-    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantSetTokenURI({
       requestType: argv.request_type,
@@ -434,7 +448,7 @@ const CmdTenantUpdateTokenURI = async ({ argv }) => {
   console.log("Dry run", argv.dry_run);
 
   try {
-    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantUpdateTokenURI({
       tenantId: argv.tenant,
@@ -454,14 +468,14 @@ const CmdTenantUpdateTokenURI = async ({ argv }) => {
 const CmdSiteShow = async ({ argv }) => {
   console.log("Site - show", argv.object);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.SiteShow({
       libraryId: argv.library,
       objectId: argv.object,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -471,7 +485,7 @@ const CmdSiteSetDrop = async ({ argv }) => {
   console.log("Site - set drop", argv.object, argv.uuid, "update", argv.update);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.SiteSetDrop({
       libraryId: argv.library,
@@ -485,7 +499,7 @@ const CmdSiteSetDrop = async ({ argv }) => {
       update: argv.update,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -494,7 +508,7 @@ const CmdSiteSetDrop = async ({ argv }) => {
 const CmdTenantBalanceOf = async ({ argv }) => {
   console.log("Tenant - balance of", argv.tenant, argv.owner, argv.max_results);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantBalanceOf({
       tenantId: argv.tenant,
@@ -517,7 +531,7 @@ const CmdTenantBalanceOf = async ({ argv }) => {
       }
       fs.writeFileSync(argv.csv, out);
     } else {
-      console.log(yaml.dump(res));
+      doDump(res, argv);
     }
 
   } catch (e) {
@@ -528,14 +542,14 @@ const CmdTenantBalanceOf = async ({ argv }) => {
 const CmdFabricTenantBalanceOf = async ({ argv }) => {
   console.log("Fabric Tenant - balance of", argv.object, argv.owner);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.FabricTenantBalanceOf({
       objectId: argv.object,
       ownerAddr: argv.owner,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -580,7 +594,7 @@ const CmdTenantTicketsGenerate = async ({ argv }) => {
   );
 
   try {
-    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network});
 
     let res = await elvlv.TenantTicketsGenerate({
       tenant: argv.tenant,
@@ -608,7 +622,7 @@ const CmdTenantMint = async ({ argv }) => {
   );
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantMint({
       tenant: argv.tenant,
@@ -627,7 +641,7 @@ const CmdTenantMint = async ({ argv }) => {
 const CmdTenantWallets = async ({ argv }) => {
   const max = argv.max_results ? argv.max_results : "unlimited";
   try {
-    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantWallets({
       tenant: argv.tenant,
@@ -647,7 +661,7 @@ const CmdTenantWallets = async ({ argv }) => {
       }
       fs.writeFileSync(argv.csv, out);
     } else {
-      console.log(yaml.dump(res));
+      doDump(res, argv);
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -660,14 +674,14 @@ const CmdNFTRefresh = async ({ argv }) => {
   console.log(`address: ${argv.addr}}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.NFTRefresh({
       tenant: argv.tenant,
       address: argv.addr,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -677,7 +691,7 @@ const CmdNFTRefresh = async ({ argv }) => {
 const CmdList = async ({ argv }) => {
   console.log(`list tenant: ${argv.tenant} tenant_slug: ${argv.tenant_slug}`);
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.List({
       tenantId: argv.tenant,
@@ -698,7 +712,7 @@ const CmdList = async ({ argv }) => {
       }
     }
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error(e);
   }
@@ -714,7 +728,7 @@ const CmdTenantPrimarySales = async ({ argv }) => {
   console.log(`admin: ${argv.admin}`);
 
   try {
-    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantPrimarySales({
         tenant: argv.tenant,
@@ -728,7 +742,7 @@ const CmdTenantPrimarySales = async ({ argv }) => {
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
     } else {
-      console.log(yaml.dump(res));
+      doDump(res, argv);
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -742,7 +756,7 @@ const CmdTenantSecondarySales = async ({ argv }) => {
   console.log(`CSV: ${argv.csv}`);
 
   try {
-    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantSecondarySales({
       tenant: argv.tenant,
@@ -754,7 +768,7 @@ const CmdTenantSecondarySales = async ({ argv }) => {
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
     } else {
-      console.log(yaml.dump(res));
+      doDump(res, argv);
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -768,7 +782,7 @@ const CmdTenantUnifiedSales = async ({ argv }) => {
   console.log(`CSV: ${argv.csv}`);
 
   try {
-    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantUnifiedSales({
       tenant: argv.tenant,
@@ -780,7 +794,7 @@ const CmdTenantUnifiedSales = async ({ argv }) => {
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
     } else {
-      console.log(yaml.dump(res));
+      doDump(res, argv);
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -791,12 +805,12 @@ const CmdTenantTransferFailures = async ({ argv }) => {
   console.log(`Tenant Trasfer Failures: ${argv.tenant}`);
 
   try {
-    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantTransferFailures({
       tenant: argv.tenant,
     });
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -860,13 +874,13 @@ const CmdAccountCreate = async ({ argv }) => {
   console.log(`tenant_admins: ${argv.tenant_admins}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     let res = await elvlv.AccountCreate({
       funds: argv.funds,
       accountName: argv.account_name,
       tenantAdminsId: argv.tenant_admins,
     });
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -876,9 +890,9 @@ const CmdAccountShow = async () => {
   console.log("Account Show\n");
 
   try {
-    await Init({ debugLogging: false });
+    await Init({ debugLogging: false, network: argv.network });
     let res = await elvlv.AccountShow();
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -890,7 +904,7 @@ const CmdTenantNftRemove = async ({ argv }) => {
   console.log(`NFT Address: ${argv.addr}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     console.log("Searching for NFT address in tenant contract...");
     let res = await elvlv.TenantHasNft({
@@ -907,7 +921,7 @@ const CmdTenantNftRemove = async ({ argv }) => {
     delete res.warns;
     delete res.tokens;
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
     const ans = prompt("Do you want to remove the above contract? (y/n)");
     if (ans.toLowerCase() != "y") {
       console.log("Aborting...");
@@ -930,10 +944,10 @@ const CmdTenantNftList = async ({ argv }) => {
   console.log(`Tenant ID: ${argv.tenant}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     res = await elvlv.TenantNftList({ tenantId: argv.tenant });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -945,13 +959,13 @@ const CmdTenantHasNft = async ({ argv }) => {
   console.log(`NFT Address: ${argv.addr}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     res = await elvlv.TenantHasNft({
       tenantId: argv.tenant,
       nftAddr: argv.addr,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -963,13 +977,13 @@ const CmdTenantAddConsumers = async ({ argv }) => {
   console.log(`Account Addresses: ${argv.addrs}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     let res = await elvlv.TenantAddConsumers({
       groupId: argv.group_id,
       accountAddresses: argv.addrs,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -981,13 +995,13 @@ const CmdTenantRemoveConsumer = async ({ argv }) => {
   console.log(`Account Address: ${argv.addr}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     let res = await elvlv.TenantRemoveConsumer({
       groupId: argv.group_id,
       accountAddress: argv.addr,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1002,7 +1016,7 @@ const CmdMarketplaceAddItem = async ({ argv }) => {
   console.log(`NFT For Sale: ${argv.forSale}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     const res = await marketplace.MarketplaceAddItem({
       nftObjectId: argv.object.startsWith("iq__") ? argv.object : undefined,
       nftObjectHash: argv.object.startsWith("hq__") ? argv.object : undefined,
@@ -1014,7 +1028,7 @@ const CmdMarketplaceAddItem = async ({ argv }) => {
       forSale: argv.forSale
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1026,14 +1040,14 @@ const CmdMarketplaceAddItemBatch = async ({ argv }) => {
   console.log(`CSV file containing Object Names and IDs: ${argv.csv}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     const res = await marketplace.MarketplaceAddItemBatch({
       marketplaceObjectId: argv.marketplace,
       csv: argv.csv
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1045,13 +1059,13 @@ const CmdMarketplaceRemoveItem = async ({ argv }) => {
   console.log(`NFT Template Object ID: ${argv.object}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     const res = await marketplace.MarketplaceRemoveItem({
       nftObjectId: argv.object,
       marketplaceObjectId: argv.marketplace,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1063,13 +1077,13 @@ const CmdTenantHasConsumer = async ({ argv }) => {
   console.log(`Account Address: ${argv.addr}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     var res = await elvlv.TenantHasConsumer({
       groupId: argv.group_id,
       accountAddress: argv.addr,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1082,14 +1096,14 @@ const CmdStorefrontSectionAddItem = async ({ argv }) => {
   console.log(`Marketplace Storefront Section: ${argv.section}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     const res = await marketplace.StorefrontSectionAddItem({
       objectId: argv.marketplace,
       sku: argv.sku,
       name: argv.section,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1102,14 +1116,14 @@ const CmdStorefrontSectionRemoveItem = async ({ argv }) => {
   console.log(`Object Write Token: ${argv.writeToken}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     const res = await marketplace.StorefrontSectionRemoveItem({
       objectId: argv.marketplace,
       sku: argv.sku,
       writeToken: argv.writeToken,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1121,14 +1135,14 @@ const CmdNftSetTransferFee = async ({ argv }) => {
   console.log(`Fee: ${argv.fee}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.NftSetTransferFee({
       address: argv.addr,
       fee: argv.fee
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1139,11 +1153,11 @@ const CmdNftGetTransferFee = async ({ argv }) => {
   console.log(`NFT Contract Address: ${argv.addr}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.NftGetTransferFee({ address: argv.addr });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1154,11 +1168,11 @@ const CmdNftAddRedeemableOffer = async ({ argv }) => {
   console.log(`NFT Contract Address: ${argv.addr}`);
 
   try {
-    await Init();
+    await Init({ network: argv.network });
 
     res = await elvlv.NFTAddRedeemableOffer({ addr: argv.addr });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
     console.log("added offerId", res?.logs[0]?.args[0] ?? "unknown offerId");
   } catch (e) {
     console.error("ERROR:", e);
@@ -1171,12 +1185,12 @@ const CmdNftRemoveRedeemableOffer = async ({ argv }) => {
   console.log(`Offer ID: ${argv.id}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.NFTRemoveRedeemableOffer({ addr: argv.addr,
       offerId:argv.id });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1188,12 +1202,12 @@ const CmdNftIsOfferActive = async ({ argv }) => {
   console.log(`Offer ID: ${argv.offer_id}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.NFTIsOfferActive({ addr: argv.addr,
       offerId:argv.offer_id });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1206,13 +1220,13 @@ const CmdNftIsOfferRedeemed = async ({ argv }) => {
   console.log(`Offer ID: ${argv.offer_id}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.NFTIsOfferRedeemed({ addr: argv.addr,
       tokenId: argv.token_id,
       offerId: argv.offer_id});
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1226,7 +1240,7 @@ const CmdNftRedeemOffer = async ({ argv }) => {
   console.log(`Offer ID: ${argv.offer_id}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.NFTRedeemOffer({
       addr: argv.addr,
@@ -1235,7 +1249,7 @@ const CmdNftRedeemOffer = async ({ argv }) => {
       offerId: argv.offer_id,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1251,7 +1265,7 @@ const CmdASNftRedeemOffer = async ({ argv }) => {
 
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.ASNFTRedeemOffer({
       addr: argv.addr,
@@ -1261,7 +1275,7 @@ const CmdASNftRedeemOffer = async ({ argv }) => {
       mintHelperAddr: argv.mint_helper_addr
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1274,11 +1288,11 @@ const CmdTenantProvision = async ({ argv }) => {
   console.log(`verbose: ${argv.verbose}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     let client = elvlv.client;
     let kmsId = ElvUtils.AddressToId({
       prefix: "ikms",
-      address: Config.consts[Config.net].kmsAddress
+      address: Config.consts[argv.network].kmsAddress
     });
     console.log(`kmsId: ${kmsId}`);
 
@@ -1289,7 +1303,7 @@ const CmdTenantProvision = async ({ argv }) => {
       debug: true
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1302,14 +1316,14 @@ const CmdTenantAddConsumerGroup = async ({ argv }) => {
   console.log(`verbose: ${argv.verbose}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     let client = elvlv.client;
     let tenantAddress = Utils.HashToAddress(argv.tenant);
     console.log(`Tenant Contract Address: ${tenantAddress}`);
 
     res = await AddConsumerGroup({ client, tenantAddress, debug: argv.verbose });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1321,11 +1335,11 @@ const CmdNFTGetPolicyPermissions = async ({ argv }) => {
   console.log(`verbose: ${argv.verbose}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.NftGetPolicyAndPermissions({ address: argv.object });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1340,7 +1354,7 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   console.log(`clear: ${argv.clear}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.NftSetPolicyAndPermissions({
       objectId: argv.object,
@@ -1361,13 +1375,13 @@ const CmdTenantGetMinter = async ({ argv }) => {
   console.log(`Host: ${argv.as_url}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.TenantGetMinterConfig({
       tenant: argv.tenant
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1388,7 +1402,7 @@ const CmdNotifSend = async ({ argv }) => {
       tokenId: argv.token_id
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1399,11 +1413,11 @@ const CmdAdminHealth = async ({ argv }) => {
   console.log(`Host: ${argv.as_url}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.AdminHealth();
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1416,7 +1430,7 @@ const CmdTenantCreateMinter = async ({ argv }) => {
   console.log(`Funds: ${argv.funds}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.TenantCreateMinterConfig({
       tenant: argv.tenant,
@@ -1424,7 +1438,7 @@ const CmdTenantCreateMinter = async ({ argv }) => {
       deploy: argv.deploy
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1441,7 +1455,7 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
   console.log(`Purge: ${argv.purge}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url});
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.TenantReplaceMinterConfig({
       tenant: argv.tenant,
@@ -1454,7 +1468,7 @@ const CmdTenantReplaceMinter = async ({ argv }) => {
       purge: argv.purge
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1467,7 +1481,7 @@ const CmdTenantDeleteMinter = async ({ argv }) => {
   console.log(`Force: ${argv.force}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.TenantDeleteMinterConfig({
       tenant: argv.tenant,
@@ -1488,7 +1502,7 @@ const CmdTenantDeployHelpers = async ({ argv }) => {
   console.log(`Mint Helper: ${argv.mint_helper}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.TenantDeployHelperContracts({
       tenant: argv.tenant,
@@ -1511,7 +1525,7 @@ const CmdTenantPublishData  = async ({ argv }) => {
   console.log(`Host: ${argv.as_url}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     let res = await elvlv.TenantPublishData({
       tenant: argv.tenant,
@@ -1519,7 +1533,7 @@ const CmdTenantPublishData  = async ({ argv }) => {
       updateLinks: argv.update_links
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1530,7 +1544,7 @@ const CmdNotifSendTokenUpdate = async ({ argv }) => {
 
   try {
 
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
     let nftInfo = await elvlv.NftShow({
       addr: argv.nft_addr,
       showOwners: 10000000 // 10 mil is code for 'unlimited'
@@ -1567,12 +1581,12 @@ const CmdPaymentCreate = async ({ argv }) => {
   const shares = argv.shares.split(",");
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
     await elvContract.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     res = await elvContract.PaymentDeploy({addresses, shares});
@@ -1588,12 +1602,12 @@ const CmdPaymentRelease = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
     await elvContract.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     res = await elvContract.PaymentRelease({
@@ -1614,12 +1628,12 @@ const CmdPaymentShow = async ({ argv }) => {
 
   try {
     let elvContract = new ElvContracts({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
     await elvContract.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     res = await elvContract.PaymentShow({
@@ -1637,12 +1651,12 @@ const CmdTokenCreate = async ({ argv }) => {
   console.log("Deploy ElvToken contract");
   try {
     let elvToken = new ElvToken({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
     await elvToken.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     res = await elvToken.ElvTokenDeploy({
@@ -1652,7 +1666,7 @@ const CmdTokenCreate = async ({ argv }) => {
       amount: argv.amount,
     });
 
-    console.log(yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1666,12 +1680,12 @@ const CmdTokenTransfer = async ({ argv }) => {
 
   try {
     let elvToken = new ElvToken({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
     await elvToken.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     let res;
@@ -1698,12 +1712,12 @@ const CmdTokenBalanceOf = async ({ argv }) => {
 
   try {
     let elvToken = new ElvToken({
-      configUrl: Config.networks[Config.net],
+      configUrl: Config.networks[argv.network],
       debugLogging: argv.verbose
     });
 
     await elvToken.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     let res;
@@ -1726,7 +1740,7 @@ const CmdContentSetPolicy  = async ({ argv }) => {
   console.log(`Data: ${argv.data}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.ContentSetPolicy({
       objectId: argv.object,
@@ -1752,7 +1766,7 @@ const CmdContentSetPolicyDelegate  = async ({ argv }) => {
   console.log(`Data: ${argv.data}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.ContentSetPolicyDelegate({
       objectId: argv.object,
@@ -1774,13 +1788,13 @@ const CmdContentGetPolicy  = async ({ argv }) => {
   console.log(`Object: ${argv.object}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.ContentGetPolicy({
       objectId: argv.object
     });
 
-    console.log("\n" + yaml.dump(res));
+    doDump(res, argv);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1791,7 +1805,7 @@ const CmdContentClearPolicy = async ({ argv }) => {
   console.log(`Object: ${argv.object}`);
 
   try {
-    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url, network: argv.network });
 
     res = await elvlv.ContentClearPolicy({
       objectId: argv.object
@@ -1813,6 +1827,25 @@ yargs(hideBin(process.argv))
     type: "boolean",
     alias: "v"
   })
+
+  .default("network", 'main')
+  .option("network", {
+    describe: "Network to use",
+    choices: ('n', ['main', 'dv3', 'tv4', 'local']),
+    alias: "n"
+  })
+
+  .option("output", {
+    describe: "YAML file to write output to",
+    type: "string",
+    alias: "o"
+  })
+
+  .config('tenant-dump-file', function (configPath) {
+    const res = yaml.load(fs.readFileSync(configPath, 'utf8'));
+    return { privateKey: res.account.privateKey }
+  })
+
   .option("as_url", {
     describe: "Alternate authority service URL (include '/as/' route if necessary)",
     type: "string"
