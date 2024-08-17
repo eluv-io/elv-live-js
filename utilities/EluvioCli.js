@@ -1097,7 +1097,7 @@ yargs(hideBin(process.argv))
   .default("network", 'main')
   .option("network", {
     describe: "Network to use",
-    choices: ('n', ['main', 'demo', 'demov3', 'test', 'dev']),
+    choices: ('n', ['main', 'dv3', 'tv4', 'local']),
     alias: "n"
   })
   .option("output", {

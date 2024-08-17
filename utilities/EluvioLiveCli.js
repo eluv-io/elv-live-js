@@ -1586,7 +1586,7 @@ const CmdPaymentCreate = async ({ argv }) => {
     });
 
     await elvContract.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     res = await elvContract.PaymentDeploy({addresses, shares});
@@ -1607,7 +1607,7 @@ const CmdPaymentRelease = async ({ argv }) => {
     });
 
     await elvContract.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     res = await elvContract.PaymentRelease({
@@ -1633,7 +1633,7 @@ const CmdPaymentShow = async ({ argv }) => {
     });
 
     await elvContract.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     res = await elvContract.PaymentShow({
@@ -1656,7 +1656,7 @@ const CmdTokenCreate = async ({ argv }) => {
     });
 
     await elvToken.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     res = await elvToken.ElvTokenDeploy({
@@ -1685,7 +1685,7 @@ const CmdTokenTransfer = async ({ argv }) => {
     });
 
     await elvToken.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     let res;
@@ -1717,7 +1717,7 @@ const CmdTokenBalanceOf = async ({ argv }) => {
     });
 
     await elvToken.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: argv.privateKey || process.env.PRIVATE_KEY,
     });
 
     let res;
@@ -1831,7 +1831,7 @@ yargs(hideBin(process.argv))
   .default("network", 'main')
   .option("network", {
     describe: "Network to use",
-    choices: ('n', ['main', 'demo', 'demov3', 'test', 'dev']),
+    choices: ('n', ['main', 'dv3', 'tv4', 'local']),
     alias: "n"
   })
 
@@ -1839,6 +1839,11 @@ yargs(hideBin(process.argv))
     describe: "YAML file to write output to",
     type: "string",
     alias: "o"
+  })
+
+  .config('tenant-dump-file', function (configPath) {
+    const res = yaml.load(fs.readFileSync(configPath, 'utf8'));
+    return { privateKey: res.account.privateKey }
   })
 
   .option("as_url", {
