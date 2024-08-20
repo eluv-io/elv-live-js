@@ -3394,9 +3394,13 @@ class EluvioLive {
     * @param {string} tenant - The Tenant ID
     * @param {string} host - Authority Service url (Optional)
     * @param {string} contentHash - Version hash of the new Tenant Object to submit
+    * @param {boolean} updateLinks - True to update links
+    * @param {string} env - Environment to update -- "production" or "staging", default production
     * @return {Promise<Object>} - The API Response for the request
     */
-  async TenantPublishData({tenant, host, contentHash, updateLinks=false}) {
+  async TenantPublishData(
+    {tenant, host, contentHash, updateLinks=false, env="production"}
+  ) {
     let latestVersionHash = contentHash;
     if (updateLinks){
       let objectId = this.client.utils.DecodeVersionHash(contentHash).objectId;
@@ -3413,7 +3417,8 @@ class EluvioLive {
     let tenantConfigResult = null;
 
     var body = {
-      content_hash: contentHash
+      content_hash: contentHash,
+      env: env,
     };
 
     let res = await this.PostServiceRequest({
