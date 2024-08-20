@@ -3398,9 +3398,7 @@ class EluvioLive {
     * @param {string} env - Environment to update -- "production" or "staging", default production
     * @return {Promise<Object>} - The API Response for the request
     */
-  async TenantPublishData(
-    {tenant, host, contentHash, updateLinks=false, env="production"}
-  ) {
+  async TenantPublishData({tenant, host, contentHash, updateLinks=false, env="production"}) {
     let latestVersionHash = contentHash;
     if (updateLinks){
       let objectId = this.client.utils.DecodeVersionHash(contentHash).objectId;
