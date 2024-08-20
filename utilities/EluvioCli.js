@@ -143,6 +143,29 @@ const CmdAccountSend = async ({ argv }) => {
   }
 };
 
+const CmdReplaceStuckTx = async ({ argv }) => {
+  console.log("Replace stuck transaction:\n");
+  console.log(`nonce: ${argv.nonce}`);
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    await elvAccount.ReplaceStuckTx({
+      nonce: argv.nonce,
+    });
+    console.log("Success!");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 const CmdGroupAdd = async ({ argv }) => {
   console.log("Group Add\n");
   console.log(`Group address: ${argv.group_address}`);
@@ -264,7 +287,7 @@ const CmdTenantShow = async({ argv }) => {
     });
 
     console.log(yaml.dump(res));
-    if (res.errors) { 
+    if (res.errors) {
       console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
     }
   } catch (e) {
@@ -306,7 +329,7 @@ const CmdTenantFix = async({ argv }) => {
           console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`);
           break;
 
-        case `tenant admin group can't be verified or is not associated with any tenant`: 
+        case `tenant admin group can't be verified or is not associated with any tenant`:
           await t.TenantSetGroupConfig({tenantId: argv.tenant, groupAddress: res.tenant_admin_address});
           break;
 
@@ -382,7 +405,7 @@ const CmdTenantFixSuite = async({ argv }) => {
           });
           console.log(`Failed to set _ELV_TENANT_ID of ${lib} - doesn't belong to this account and can only be set by the account with address ${libOwner}`);
           failedLibraries.push(lib);
-        } 
+        }
       }
       if (failedLibraries.length == 0) {
         console.log('Tenant successfully fixed!');
@@ -484,17 +507,17 @@ const CmdQuery = async ({ argv }) => {
               continue;
             }
             failure_log.push({
-              owner: owner, 
-              tenant_contract_id: tenant_contract_id, 
-              tenant_admins_id: tenant_admins_id, 
+              owner: owner,
+              tenant_contract_id: tenant_contract_id,
+              tenant_admins_id: tenant_admins_id,
               libraries: tenant.libraries,
               fix_required: res.errors.length});
             failure_count += 1;
 
           } catch (e) {
             failure_log.push({
-              owner: owner, 
-              tenant_contract_id: tenant_contract_id, 
+              owner: owner,
+              tenant_contract_id: tenant_contract_id,
               tenant_admins_id: tenant_admins_id,
               libraries: tenant.libraries,
               errors: e.message});
@@ -566,7 +589,7 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
   console.log(`Removing a Content Admin from Tenant ${argv.tenant}`);
   console.log(`Removed Content Admin's Address: ${argv.content_admin_address}`);
   console.log("Network: " + Config.net);
-  
+
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
@@ -747,7 +770,7 @@ const CmdFabricSetMetaBatch = async ({ argv }) => {
 };
 
 const CmdContractGetMeta = async ({ argv }) => {
-  console.log("Get Contract Metadata", 
+  console.log("Get Contract Metadata",
     `address: ${argv.addr}`,
     `key: ${argv.key}`,
     `verbose: ${argv.verbose}`);
@@ -774,7 +797,7 @@ const CmdContractGetMeta = async ({ argv }) => {
 };
 
 const CmdContractSetMeta = async ({ argv }) => {
-  console.log("Set Contract Metadata", 
+  console.log("Set Contract Metadata",
     `address: ${argv.addr}`,
     `key: ${argv.key}`,
     `value: ${argv.value}`,
@@ -803,7 +826,7 @@ const CmdContractSetMeta = async ({ argv }) => {
 };
 
 const CmdAccessGroupMember = async ({ argv }) => {
-  console.log("AccessGroupMember", 
+  console.log("AccessGroupMember",
     `group: ${argv.group}`,
     `addr: ${argv.addr}`);
 
@@ -829,7 +852,7 @@ const CmdAccessGroupMember = async ({ argv }) => {
 };
 
 const CmdAccessGroupMembers = async ({ argv }) => {
-  console.log("AccessGroupMembers", 
+  console.log("AccessGroupMembers",
     `group: ${argv.group}`);
 
   try {
@@ -1145,6 +1168,21 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "replace_stuck_transaction <nonce>",
+    "replace stuck transaction at given nonce using this key with higher gas-price",
+    (yargs) => {
+      yargs
+        .positional("nonce", {
+          describe: "Nonce of the transaction to be replaced",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdReplaceStuckTx({ argv });
+    }
+  )
+
+  .command(
     "account_offer_signature <nft_addr> <mint_helper_addr> <token_id> <offer_id>",
     "Creates an offer signature for use by the minter to redeem and nft offer. Note the current key must be a token owner of the nft.",
     (yargs) => {
@@ -1327,7 +1365,7 @@ yargs(hideBin(process.argv))
     "tenant_fix_suite <tenant> <content_admin_address> [options]",
     "Fix old-gen tenant",
     (yargs) => {
-      yargs 
+      yargs
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
