@@ -283,6 +283,9 @@ class ElvAccount {
   }
 
   async ReplaceStuckTx({nonce}){
+    const newNonce = nonce? nonce : await this.signer.getTransactionCount("latest") // provides confirmed nonce
+    console.log("nonce:", newNonce);
+
     // get the current gas price from the Ethereum network
     const gasPrice = await this.signer.getGasPrice();
     // increase gas price to prioritize the transaction
@@ -291,7 +294,7 @@ class ElvAccount {
     let receipt = await this.signer.sendTransaction({
       to: await this.signer.getAddress(),
       value: ethers.utils.parseEther("0"),
-      nonce: nonce,
+      nonce: newNonce,
       gasPrice: newGasPrice,
       gasLimit: ethers.utils.hexlify(21000), // typical gas limit for ether transfer
     });

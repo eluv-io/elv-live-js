@@ -145,7 +145,6 @@ const CmdAccountSend = async ({ argv }) => {
 
 const CmdReplaceStuckTx = async ({ argv }) => {
   console.log("Replace stuck transaction:\n");
-  console.log(`nonce: ${argv.nonce}`);
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
@@ -1168,11 +1167,11 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "replace_stuck_transaction <nonce>",
+    "replace_stuck_transaction",
     "replace stuck transaction at given nonce using this key with higher gas-price",
     (yargs) => {
       yargs
-        .positional("nonce", {
+        .option("nonce", {
           describe: "Nonce of the transaction to be replaced",
           type: "integer",
         });
