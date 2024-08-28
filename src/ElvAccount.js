@@ -282,6 +282,26 @@ class ElvAccount {
     });
   }
 
+  async ReplaceStuckTx({nonce}){
+    const newNonce = nonce? nonce : await this.signer.getTransactionCount("latest") // provides confirmed nonce
+    console.log("nonce:", newNonce);
+
+    // get the current gas price from the Ethereum network
+    const gasPrice = await this.signer.getGasPrice();
+    // increase gas price to prioritize the transaction
+    const newGasPrice = gasPrice.mul(ethers.BigNumber.from("2"));
+
+    let receipt = await this.signer.sendTransaction({
+      to: await this.signer.getAddress(),
+      value: ethers.utils.parseEther("0"),
+      nonce: newNonce,
+      gasPrice: newGasPrice,
+      gasLimit: ethers.utils.hexlify(21000), // typical gas limit for ether transfer
+    });
+    console.log("Transaction sent:", receipt.hash);
+    await receipt.wait();
+  }
+
   async AddToAccessGroup({ groupAddress, accountAddress, isManager = false }) {
     let res = {};
     if (isManager) {
@@ -310,7 +330,7 @@ class ElvAccount {
       idHex = await this.client.CallContractMethod({
         contractAddress: groupAddress,
         methodName: "getMeta",
-        methodArgs: ["_ELV_TENANT_ID"], 
+        methodArgs: ["_ELV_TENANT_ID"],
       });
     } catch (e) {
       console.log(`Log: The group contract with group address ${groupAddress} doesn't support metadata. Some operations with this group contract may fail.`);
@@ -342,7 +362,7 @@ class ElvAccount {
         await this.client.CallContractMethod({
           contractAddress: groupAddress,
           methodName: "setTenant",
-          methodArgs: [this.client.utils.HashToAddress(tenantId)], 
+          methodArgs: [this.client.utils.HashToAddress(tenantId)],
         });
       } catch (e) {
         if (e.message.includes("Unknown method: setTenant")) {
@@ -372,18 +392,18 @@ class ElvAccount {
     // Add tenant id to fabric meta
     var e = await this.client.EditContentObject({
       libraryId: groupLibraryId,
-      objectId: groupObjectId, 
+      objectId: groupObjectId,
     });
     await this.client.ReplaceMetadata({
       libraryId: groupLibraryId,
-      objectId: groupObjectId, 
+      objectId: groupObjectId,
       writeToken: e.write_token,
       metadataSubtree: "elv/tenant_id",
       metadata: tenantId,
     });
     await this.client.FinalizeContentObject({
       libraryId: groupLibraryId,
-      objectId: groupObjectId, 
+      objectId: groupObjectId,
       writeToken: e.write_token,
       commitMessage: "Set tenant ID " + tenantId,
     });
