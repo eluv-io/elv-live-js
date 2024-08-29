@@ -3,6 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const { ElvUtils } = require("../src/Utils");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
+const { TenantProvisionConfig } = require("./TenantProvisionConfig.js");
+const t = TenantProvisionConfig.tenantProvisionConfig;
 
 const TYPE_LIVE_DROP_EVENT_SITE = "Eluvio LIVE Drop Event Site";
 const TYPE_LIVE_TENANT = "Eluvio LIVE Tenant";
@@ -29,6 +31,7 @@ const STANDARD_DRM_CERT={
     }
   }
 };
+const OUTPUT_FILE="./src/tenant_status.json";
 
 const SetLibraryPermissions = async (client, libraryId, tenantAdmins, contentAdmins) => {
   const promises = [
@@ -107,6 +110,10 @@ const SetTenantEluvioLiveId = async (client, tenantId, t) => {
   return res;
 };
 
+const writeConfigToFile= (config) => {
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(config, null, 2));
+};
+
 const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   let tenantAdminId = await client.userProfileClient.TenantId();
   let tenantContractId = await client.userProfileClient.TenantContractId();
@@ -123,39 +130,6 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   const abi = fs.readFileSync(
     path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
   );
-
-  // A record of all the objects that are provisioned or need to be provisioned for this tenant
-  // Object that have been previously created can be set here to avoid recreating (good for
-  // resuming interrputed provisioning runs)
-  var t  = {
-    groups : {
-      "tenantAdminGroupAddress": null,
-      "contentAdminGroupAddress": null
-    },
-    tenantTypes: {
-      "titleTypeId": "",
-      "titleCollectionTypeId": null,
-      "masterTypeId": null,
-      "permissionsTypeId": null,
-      "channelTypeId": null,
-      "streamTypeId": null
-    },
-    liveTypes: {
-      "Eluvio LIVE Drop Event Site": null,
-      "Eluvio LIVE Marketplace": null,
-      "Eluvio LIVE Tenant": null,
-      "NFT Collection": null,
-      "NFT Template": null
-    },
-    libraries: {
-      "mastersLibraryId": null,
-      "mezzanineLibraryId": null,
-      "propertiesLibraryId": null
-    },
-    siteId: null,
-    marketplaceId: null,
-    dropEventId: null
-  };
 
   t.tenantName = await client.CallContractMethod({
     contractAddress: tenantAddr,
@@ -182,7 +156,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     methodArgs: ["content_admin", 0],
     formatArguments: true,
   });
-
+  writeConfigToFile(t);
   if (debug){
     console.log("\nAccess Groups:\n");
     console.log(JSON.stringify(t.groups, null, 2));
@@ -216,18 +190,22 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
 
   if (!t.tenantTypes.titleTypeId) {
     t.tenantTypes.titleTypeId = await createAndSetPermissions(`${t.tenantName} - Title`, typeMetadata);
+    writeConfigToFile(t);
   }
 
   if (!t.tenantTypes.titleCollectionTypeId) {
     t.tenantTypes.titleCollectionTypeId = await createAndSetPermissions(`${t.tenantName} - Title Collection`, typeMetadata);
+    writeConfigToFile(t);
   }
 
   if (!t.tenantTypes.masterTypeId) {
     t.tenantTypes.masterTypeId = await createAndSetPermissions(`${t.tenantName} - Title Master`, masterMetadata);
+    writeConfigToFile(t);
   }
 
   if (!t.tenantTypes.permissionsTypeId) {
     t.tenantTypes.permissionsTypeId = await createAndSetPermissions(`${t.tenantName} - Permissions`, { ...typeMetadata, public: { "eluv.manageApp": "avails-manager" } });
+    writeConfigToFile(t);
   }
 
   if (!t.tenantTypes.channelTypeId) {
@@ -240,6 +218,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
         },
       },
     });
+    writeConfigToFile(t);
   }
 
   if (!t.tenantTypes.streamTypeId) {
@@ -253,6 +232,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
         },
       },
     });
+    writeConfigToFile(t);
   }
 
   if (debug) {
@@ -274,6 +254,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
       console.log(`\t${t.tenantName} - ${liveTypes[i].name}: ${typeId}`);
     }
     t.liveTypes[liveTypes[i].name] = typeId;
+    writeConfigToFile(t);
   }
 
   console.log(JSON.stringify(t.liveTypes, null, 2));
@@ -289,14 +270,17 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
 
   if (!t.libraries.propertiesLibraryId) {
     t.libraries.propertiesLibraryId = await createLibrary(`${t.tenantName} - Properties`);
+    writeConfigToFile(t);
   }
 
   if (!t.libraries.mastersLibraryId) {
     t.libraries.mastersLibraryId = await createLibrary(`${t.tenantName} - Title Masters`);
+    writeConfigToFile(t);
   }
 
   if (!t.libraries.mezzanineLibraryId) {
     t.libraries.mezzanineLibraryId = await createLibrary(`${t.tenantName} - Title Mezzanines`, STANDARD_DRM_CERT);
+    writeConfigToFile(t);
   }
 
   if (debug) {
@@ -330,6 +314,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     if (debug) {
       console.log("\nSite Live Streams Object", t.siteId);
     }
+    writeConfigToFile(t);
   }
 
   /* Create a marketplace object */
@@ -358,6 +343,8 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
       tenantAdminGroupAddress: t.groups.tenantAdminGroupAddress,
       contentAdminGroupAddress: t.groups.contentAdminGroupAddress});
 
+    writeConfigToFile(t);
+
     if (debug) {
       console.log("\nMaketplace Object: \n");
       console.log(`\t${objectName}: ${t.marketplaceId}\n\n`);
@@ -365,6 +352,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   }
 
   t.marketplaceHash = await client.LatestVersionHash({objectId: t.marketplaceId});
+  writeConfigToFile(t);
 
   /* Create a drop event object */
   if (!t.dropEventId) {
@@ -391,6 +379,8 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
       tenantAdminGroupAddress: t.groups.tenantAdminGroupAddress,
       contentAdminGroupAddress: t.groups.contentAdminGroupAddress});
 
+    writeConfigToFile(t);
+
     if (debug) {
       console.log("\nDrop Event Site Object: \n");
       console.log(`\t${objectName}: ${t.dropEventId}\n\n`);
@@ -398,7 +388,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   }
 
   t.dropEventHash = await client.LatestVersionHash({objectId: t.dropEventId});
-
+  writeConfigToFile(t);
 
   /* Create the tenant object */
   if (!t.tenantObjectId) {
@@ -432,6 +422,8 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
       publicMetadata,
       tenantAdminGroupAddress: t.groups.tenantAdminGroupAddress,
       contentAdminGroupAddress: t.groups.contentAdminGroupAddress});
+
+    writeConfigToFile(t);
 
     if (debug) {
       console.log("\nDrop Event Site Object: \n");
