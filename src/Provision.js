@@ -110,7 +110,6 @@ const SetTenantEluvioLiveId = async (client, tenantId, t) => {
 const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   let tenantAdminId = await client.userProfileClient.TenantId();
   let tenantContractId = await client.userProfileClient.TenantContractId();
-  let tenantAdminSigner = client.signer;
 
   if (!tenantAdminId){
     throw Error("No tenant admin group set for account.");
@@ -208,84 +207,52 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
     }
   };
 
+  // helper function to create and set permissions for content types
+  const createAndSetPermissions = async (name, metadata) => {
+    const typeId = await client.CreateContentType({ name, metadata });
+    await SetObjectPermissions(client, typeId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
+    return typeId;
+  };
+
   if (!t.tenantTypes.titleTypeId) {
-    t.tenantTypes.titleTypeId = await client.CreateContentType({
-      name: `${t.tenantName} - Title`,
-      metadata: {...typeMetadata}
-    });
-    await SetObjectPermissions(client, t.tenantTypes.titleTypeId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
+    t.tenantTypes.titleTypeId = await createAndSetPermissions(`${t.tenantName} - Title`, typeMetadata);
   }
 
   if (!t.tenantTypes.titleCollectionTypeId) {
-    t.tenantTypes.titleCollectionTypeId = await client.CreateContentType({
-      name: `${t.tenantName} - Title Collection`,
-      metadata: {...typeMetadata}
-    });
-
-    await SetObjectPermissions(client, t.tenantTypes.titleCollectionTypeId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
+    t.tenantTypes.titleCollectionTypeId = await createAndSetPermissions(`${t.tenantName} - Title Collection`, typeMetadata);
   }
 
   if (!t.tenantTypes.masterTypeId) {
-    t.tenantTypes.masterTypeId = await client.CreateContentType({
-      name: `${t.tenantName} - Title Master`,
-      metadata: {...masterMetadata}
-    });
-
-    await SetObjectPermissions(client, t.tenantTypes.masterTypeId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
+    t.tenantTypes.masterTypeId = await createAndSetPermissions(`${t.tenantName} - Title Master`, masterMetadata);
   }
 
   if (!t.tenantTypes.permissionsTypeId) {
-    t.tenantTypes.permissionsTypeId = await client.CreateContentType({
-      name: `${t.tenantName} - Permissions`,
-      metadata: {...typeMetadata, public: {"eluv.manageApp": "avails-manager"}}
-    });
-
-    await SetObjectPermissions(client, t.tenantTypes.permissionsTypeId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
+    t.tenantTypes.permissionsTypeId = await createAndSetPermissions(`${t.tenantName} - Permissions`, { ...typeMetadata, public: { "eluv.manageApp": "avails-manager" } });
   }
 
   if (!t.tenantTypes.channelTypeId) {
-    t.tenantTypes.channelTypeId = await client.CreateContentType({
-      name: `${t.tenantName} - Channel`,
-      metadata: {
-        ...typeMetadata,
-        public: {
-          ...typeMetadata.public,
-          title_configuration: {
-            "controls": [
-              "credits",
-              "playlists",
-              "gallery",
-              "channel"
-            ],
-          }
-        }
-      }
+    t.tenantTypes.channelTypeId = await createAndSetPermissions(`${t.tenantName} - Channel`, {
+      ...typeMetadata,
+      public: {
+        ...typeMetadata.public,
+        title_configuration: {
+          "controls": ["credits", "playlists", "gallery", "channel"],
+        },
+      },
     });
-
-    await SetObjectPermissions(client, t.tenantTypes.channelTypeId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
   }
 
   if (!t.tenantTypes.streamTypeId) {
-    t.tenantTypes.streamTypeId = await client.CreateContentType({
-      name: `${t.tenantName} - Live Stream`,
-      metadata: {
-        bitcode_flags: "playout_live",
-        bitcode_format: "builtin",
-        public: {
-          ...typeMetadata.public,
-          title_configuration: {
-            "controls":[
-              "credits",
-              "playlists",
-              "gallery",
-              "live_stream"
-            ]
-          }
-        }
-      }
+    t.tenantTypes.streamTypeId = await createAndSetPermissions(`${t.tenantName} - Live Stream`, {
+      bitcode_flags: "playout_live",
+      bitcode_format: "builtin",
+      public: {
+        ...typeMetadata.public,
+        title_configuration: {
+          "controls": ["credits", "playlists", "gallery", "live_stream"],
+        },
+      },
     });
-
-    await SetObjectPermissions(client, t.tenantTypes.streamTypeId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
   }
 
   if (debug) {
@@ -295,18 +262,13 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
 
   for (let i = 0; i < liveTypes.length; i++) {
     if (t.liveTypes[liveTypes[i].name]) continue;
-    const typeId = await client.CreateContentType({
-      name: `${t.tenantName} - ${liveTypes[i].name}`,
-      metadata: {
-        ...typeMetadata,
-        public: {
-          ...typeMetadata.public,
-          title_configuration: liveTypes[i].spec
-        }
+    const typeId = await createAndSetPermissions(`${t.tenantName} - ${liveTypes[i].name}`, {
+      ...typeMetadata,
+      public: {
+        ...typeMetadata.public,
+        title_configuration: liveTypes[i].spec
       }
     });
-
-    await SetObjectPermissions(client, typeId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
 
     if (debug) {
       console.log(`\t${t.tenantName} - ${liveTypes[i].name}: ${typeId}`);
@@ -318,32 +280,23 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
 
   /* Create libraries - Properties, Title Masters, Title Mezzanines and add each to the groups */
 
-  if (!t.libraries.propertiesLibraryId) {
-    t.libraries.propertiesLibraryId = await client.CreateContentLibrary({
-      name: `${t.tenantName} - Properties`,
-      kmsId
-    });
+  // Create libraries and set permissions
+  const createLibrary = async (name, metadata) => {
+    const libraryId = await client.CreateContentLibrary({ name, kmsId, metadata });
+    await SetLibraryPermissions(client, libraryId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
+    return libraryId;
+  };
 
-    await SetLibraryPermissions(client, t.libraries.propertiesLibraryId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
+  if (!t.libraries.propertiesLibraryId) {
+    t.libraries.propertiesLibraryId = await createLibrary(`${t.tenantName} - Properties`);
   }
 
   if (!t.libraries.mastersLibraryId) {
-    t.libraries.mastersLibraryId = await client.CreateContentLibrary({
-      name: `${t.tenantName} - Title Masters`,
-      kmsId
-    });
-
-    await SetLibraryPermissions(client, t.libraries.mastersLibraryId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
+    t.libraries.mastersLibraryId = await createLibrary(`${t.tenantName} - Title Masters`);
   }
 
   if (!t.libraries.mezzanineLibraryId) {
-    t.libraries.mezzanineLibraryId = await client.CreateContentLibrary({
-      name: `${t.tenantName} - Title Mezzanines`,
-      kmsId,
-      metadata: STANDARD_DRM_CERT
-    });
-
-    await SetLibraryPermissions(client, t.libraries.mezzanineLibraryId, t.groups.tenantAdminGroupAddress, t.groups.contentAdminGroupAddress);
+    t.libraries.mezzanineLibraryId = await createLibrary(`${t.tenantName} - Title Mezzanines`, STANDARD_DRM_CERT);
   }
 
   if (debug) {
@@ -354,7 +307,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
   /* Create a site object */
   // TODO name this siteLiveStreamsId
   if (!t.siteId) {
-    let objectName = `Site - Live Streams`;
+    let objectName = "Site - Live Streams";
 
     publicMetadata = {
       name: objectName,
