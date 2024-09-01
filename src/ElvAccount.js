@@ -119,9 +119,7 @@ class ElvAccount {
       await client.userProfileClient.CreateWallet();
 
       if (tenantId) {
-
-        await this.SetAccountTenantContractId({tenantId});
-
+        await client.userProfileClient.SetTenantContractId({tenantContractId: tenantId});
         await client.userProfileClient.SetTenantId({
           address: tenantAdminsAddr,
         });
@@ -283,7 +281,7 @@ class ElvAccount {
   }
 
   async ReplaceStuckTx({nonce}){
-    const newNonce = nonce? nonce : await this.signer.getTransactionCount("latest") // provides confirmed nonce
+    const newNonce = nonce? nonce : await this.signer.getTransactionCount("latest"); // provides confirmed nonce
     console.log("nonce:", newNonce);
 
     // get the current gas price from the Ethereum network
