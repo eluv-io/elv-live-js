@@ -1286,9 +1286,10 @@ const CmdTenantProvision = async ({ argv }) => {
       client,
       kmsId,
       tenantId: argv.tenant,
-      debug: true
+      debug: argv.verbose,
     });
 
+    console.log("Output:")
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);

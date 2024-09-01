@@ -456,6 +456,15 @@ class ElvAccount {
     return {encodedData, messageHashBytes, packedData, signedData, signature};
   }
 
+  async GetBalance(){
+    if (!this.client) {
+      throw Error("ElvAccount not intialized");
+    }
+    let wallet = this.client.GenerateWallet();
+    let res = await wallet.GetAccountBalance({signer: this.client.signer});
+    return res;
+  }
+
 }
 
 ElvAccount.TOKEN_DURATION = TOKEN_DURATION;
