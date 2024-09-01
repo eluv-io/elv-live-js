@@ -110,8 +110,8 @@ dist
 .idea
 
 # Config file
-./src/Config.js
-./src/TenantProvisionConfig.js
-./src/tenant_status.json
+src/Config.js
+src/TenantProvisionConfig.js
+src/tenant_status.json
 
 
