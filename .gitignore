@@ -108,3 +108,10 @@ dist
 
 # JetBrains
 .idea
+
+# Config file
+./src/Config.js
+./src/TenantProvisionConfig.js
+./src/tenant_status.json
+
+
