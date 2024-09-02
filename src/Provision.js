@@ -638,7 +638,6 @@ const createOpsKey = async ({groupAddress, opsKeyType, debug})=>{
       t.base.contentOpsKey = res.privateKey;
     }
     writeConfigToFile(t);
-    console.log("write to file");
 
     // add the user as manager to provided group address
     await elvAccount.AddToAccessGroup({
