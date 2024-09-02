@@ -48,9 +48,9 @@ const typeMetadata = {
 const TENANT_OPS_KEY="tenant-ops";
 const CONTENT_OPS_KEY="content-ops";
 
-const EXPECTED_SENDER_BALANCE=1; // provides 2Elv to opsKey TODO
-// Below value needs to be > 0.1
-// (it is checked in elv-client-js when adding as access-group member)
+const EXPECTED_SENDER_BALANCE=1; // provides 1Elv to opsKey
+// This value must be greater than 0.1 Elv
+// (checked by elv-client-js when adding as an access group member)
 const OPS_AMOUNT=0.2;
 
 // ===================================================================
@@ -184,7 +184,7 @@ const SetTenantEluvioLiveId = async ({client}) => {
 };
 
 
-const getTenantGroups = async ({client,tenantId,debug}) => {
+const getTenantGroups = async ({client,tenantId}) => {
   const tenantAddr = Utils.HashToAddress(tenantId);
   const abi = fs.readFileSync(
     path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
@@ -205,10 +205,9 @@ const getTenantGroups = async ({client,tenantId,debug}) => {
     formatArguments: true,
   });
   writeConfigToFile(t);
-  if (debug){
-    console.log("\nAccess Groups:\n");
-    console.log(JSON.stringify(t.base.groups, null, 2));
-  }
+
+  console.log("\nAccess Groups:\n");
+  console.log(JSON.stringify(t.base.groups, null, 2));
 
   if (!t.base.groups.tenantAdminGroupAddress) {
     throw Error(`t.base.groups.tenantAdminGroupAddress not set for ${tenantId}`);
@@ -219,7 +218,7 @@ const getTenantGroups = async ({client,tenantId,debug}) => {
 };
 
 /* Create libraries - Properties, Title Masters, Title Mezzanines and add each to the groups */
-const createLibrariesAndSetPermissions = async({client, kmsId, debug}) => {
+const createLibrariesAndSetPermissions = async({client, kmsId}) => {
   if (isEmptyParams(t.base.tenantName)){
     throw Error("require t.base.tenantName to be set");
   }
@@ -246,10 +245,8 @@ const createLibrariesAndSetPermissions = async({client, kmsId, debug}) => {
     writeConfigToFile(t);
   }
 
-  if (debug) {
-    console.log("\nTenant Libraries:\n");
-    console.log(JSON.stringify(t.base.libraries, null, 2));
-  }
+  console.log("\nTenant Libraries:\n");
+  console.log(JSON.stringify(t.base.libraries, null, 2));
 };
 
 // helper function to create and set permissions for content types
@@ -259,7 +256,7 @@ const createContentTypeAndSetPermissions = async ({client, name, metadata}) => {
   return typeId;
 };
 
-const createTenantTypes = async ({client, debug}) => {
+const createTenantTypes = async ({client}) => {
 
   const masterMetadata = {
     bitcode_flags: "abrmaster",
@@ -320,13 +317,11 @@ const createTenantTypes = async ({client, debug}) => {
     writeConfigToFile(t);
   }
 
-  if (debug) {
-    console.log("\nTenant Types:\n");
-    console.log(JSON.stringify(t.base.tenantTypes, null, 2));
-  }
+  console.log("\nTenant Types:\n");
+  console.log(JSON.stringify(t.base.tenantTypes, null, 2));
 };
 
-const createLiveTypes = async ({client, debug}) => {
+const createLiveTypes = async ({client}) => {
   if (isEmptyParams(t.base.tenantName)){
     throw Error("require t.base.tenantName to be set");
   }
@@ -345,9 +340,7 @@ const createLiveTypes = async ({client, debug}) => {
       }
     }});
 
-    if (debug) {
-      console.log(`\t${t.base.tenantName} - ${liveTypes[i].name}: ${typeId}`);
-    }
+    console.log(`\t${t.base.tenantName} - ${liveTypes[i].name}: ${typeId}`);
     t.mediaWallet.liveTypes[liveTypes[i].name] = typeId;
     writeConfigToFile(t);
   }
@@ -355,7 +348,7 @@ const createLiveTypes = async ({client, debug}) => {
   console.log(JSON.stringify(t.mediaWallet.liveTypes, null, 2));
 };
 
-const createMarketplaceId = async ({client, debug}) => {
+const createMarketplaceId = async ({client}) => {
 
   if (isEmptyParams(t.base.tenantName)){
     throw Error("require t.base.tenantName to be set");
@@ -412,13 +405,11 @@ const createMarketplaceId = async ({client, debug}) => {
     writeConfigToFile(t);
   }
 
-  if (debug) {
-    console.log("\nMaketplace Object: \n");
-    console.log(`\t${objectName}: ${t.mediaWallet.objects.marketplaceId}\n\n`);
-  }
+  console.log("\nMaketplace Object: \n");
+  console.log(`\t${objectName}: ${t.mediaWallet.objects.marketplaceId}\n\n`);
 };
 
-const createDropEventId = async ({client, debug}) => {
+const createDropEventId = async ({client}) => {
 
   if (!t.mediaWallet.objects.dropEventId) {
 
@@ -468,10 +459,8 @@ const createDropEventId = async ({client, debug}) => {
     writeConfigToFile(t);
   }
 
-  if (debug) {
-    console.log("\nDrop Event Site Object: \n");
-    console.log(`\t${objectName}: ${t.mediaWallet.objects.dropEventId}\n\n`);
-  }
+  console.log("\nDrop Event Site Object: \n");
+  console.log(`\t${objectName}: ${t.mediaWallet.objects.dropEventId}\n\n`);
 };
 
 const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata}) => {
@@ -507,7 +496,7 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata}) =
 };
 
 
-const createTenantObjectId = async ({client, debug=false}) => {
+const createTenantObjectId = async ({client}) => {
   if (!t.mediaWallet.objects.tenantObjectId) {
 
     if (isEmptyParams(t.base.tenantName)){
@@ -563,10 +552,8 @@ const createTenantObjectId = async ({client, debug=false}) => {
 
     writeConfigToFile(t);
 
-    if (debug) {
-      console.log("\nDrop Event Site Object: \n");
-      console.log(`\t${objectName}: ${t.mediaWallet.objects.tenantObjectId}\n\n`);
-    }
+    console.log("\nDrop Event Site Object: \n");
+    console.log(`\t${objectName}: ${t.mediaWallet.objects.tenantObjectId}\n\n`);
 
     /* Add ids of services to tenant fabric metadata */
     console.log("Tenant content object - set types and sites");
@@ -575,7 +562,7 @@ const createTenantObjectId = async ({client, debug=false}) => {
   }
 };
 
-const createSiteId = async ({client, debug}) => {
+const createSiteId = async ({client}) => {
   if (!t.liveStreaming.siteId) {
     if (isEmptyParams(t.base.libraries.propertiesLibraryId)){
       throw Error("require t.base.libraries.propertiesLibraryId to be set");
@@ -602,9 +589,7 @@ const createSiteId = async ({client, debug}) => {
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.base.tenantTypes.titleCollectionTypeId,
       publicMetadata});
-    if (debug) {
-      console.log("\nSite Live Streams Object", t.liveStreaming.siteId);
-    }
+    console.log("\nSite Live Streams Object", t.liveStreaming.siteId);
     writeConfigToFile(t);
   }
 };
@@ -669,14 +654,17 @@ const createOpsKey = async ({groupAddress, opsKeyType, debug})=>{
 // ===============================================================================================
 
 const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
-  await ProvisionBase({client, kmsId, tenantId, debug});
-  await ProvisionLiveStreaming({client, tenantId, debug});
-  await ProvisionMediaWallet({client, tenantId, debug});
+  await ProvisionBase({client, kmsId, tenantId});
+  await ProvisionLiveStreaming({client, tenantId});
+  await ProvisionMediaWallet({client, tenantId});
   await ProvisionOps({client, tenantId, debug});
+
+  console.log(`JSON OUTPUT AT: ${OUTPUT_FILE}\n`);
+
   return t;
 };
 
-const ProvisionBase = async ({client, kmsId, tenantId, debug=false}) => {
+const ProvisionBase = async ({client, kmsId, tenantId}) => {
   await checkSignerTenantAccess({client, tenantId});
 
   const tenantAddr = Utils.HashToAddress(tenantId);
@@ -694,22 +682,22 @@ const ProvisionBase = async ({client, kmsId, tenantId, debug=false}) => {
   t.base.tenantSlug = t.base.tenantName.toLowerCase().replace(/ /g, "-");
   t.base.tenantId = tenantId;
 
-  await getTenantGroups({client,tenantId,debug});
-  await createLibrariesAndSetPermissions({client, kmsId, debug});
-  await createTenantTypes({client, debug});
+  await getTenantGroups({client,tenantId});
+  await createLibrariesAndSetPermissions({client, kmsId});
+  await createTenantTypes({client});
 };
 
-const ProvisionLiveStreaming = async({client, tenantId, debug= false}) => {
+const ProvisionLiveStreaming = async({client, tenantId}) => {
   await checkSignerTenantAccess({client, tenantId});
-  await createSiteId({client, debug});
+  await createSiteId({client});
 };
 
-const ProvisionMediaWallet = async({client, tenantId, debug=false}) => {
+const ProvisionMediaWallet = async({client, tenantId}) => {
   await checkSignerTenantAccess({client, tenantId});
-  await createLiveTypes({client, debug});
-  await createMarketplaceId({client, debug});
-  await createDropEventId({client, debug});
-  await createTenantObjectId({client, debug});
+  await createLiveTypes({client});
+  await createMarketplaceId({client});
+  await createDropEventId({client});
+  await createTenantObjectId({client});
 };
 
 const ProvisionOps = async({client, tenantId, debug= false}) => {
