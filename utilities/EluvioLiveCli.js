@@ -15,14 +15,14 @@ const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
 const prompt = require("prompt-sync")({ sigint: true });
-const exec = require('child_process').exec;
+const exec = require("child_process").exec;
 
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
 //  (Use `node --trace-warnings ...` to show where the warning was created)
 const originalEmit = process.emit;
 process.emit = function (name, data, ...args) {
-  if(name === `warning` && typeof data === `object` && data.name === `ExperimentalWarning`) {
+  if (name === "warning" && typeof data === "object" && data.name === "ExperimentalWarning") {
     return false;
   }
   return originalEmit.apply(process, arguments);
@@ -511,8 +511,8 @@ const CmdTenantBalanceOf = async ({ argv }) => {
         let contract = contracts[i];
         let nft = json[contract];
         for (let j = 0; j < nft.tokens.length; j++) {
-            let token = nft.tokens[j];
-            out += `${contract},${token.tokenId},${token.hold},${nft.name}\n`;
+          let token = nft.tokens[j];
+          out += `${contract},${token.tokenId},${token.hold},${nft.name}\n`;
         }
       }
       fs.writeFileSync(argv.csv, out);
@@ -717,13 +717,13 @@ const CmdTenantPrimarySales = async ({ argv }) => {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantPrimarySales({
-        tenant: argv.tenant,
-        marketplace: argv.marketplace,
-        processor: argv.processor,
-        csv: argv.csv,
-        offset: argv.offset,
-        admin: argv.admin,
-      });
+      tenant: argv.tenant,
+      marketplace: argv.marketplace,
+      processor: argv.processor,
+      csv: argv.csv,
+      offset: argv.offset,
+      admin: argv.admin,
+    });
 
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
@@ -1272,6 +1272,8 @@ const CmdTenantProvision = async ({ argv }) => {
   console.log("Tenant Provision");
   console.log(`Tenant ID: ${argv.tenant}`);
   console.log(`verbose: ${argv.verbose}`);
+  console.log(`status: ${argv.status}`);
+  console.log(`init-config: ${argv.init_config}`);
 
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
@@ -1287,11 +1289,18 @@ const CmdTenantProvision = async ({ argv }) => {
       kmsId,
       tenantId: argv.tenant,
       statusFile: argv.status,
+      initConfig: argv.init_config,
       debug: argv.verbose,
     });
 
-    console.log("Output:")
-    console.log(yaml.dump(res));
+    if (argv.init_config){
+      console.log(JSON.stringify(res,null,2));
+    } else {
+      console.log(yaml.dump(res));
+    }
+
+
+
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1686,9 +1695,9 @@ const CmdTokenTransfer = async ({ argv }) => {
     });
     var status = await res.status;
     if (status === 1){
-      console.log("status: transfer successful")
-    }else {
-      console.log("status: transfer failed")
+      console.log("status: transfer successful");
+    } else {
+      console.log("status: transfer failed");
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -2392,7 +2401,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("new_token_uri", {
-          describe: 'New token URI; ignored if CSV batch, use -',
+          describe: "New token URI; ignored if CSV batch, use -",
           type: "string",
         })
         .option("token_id", {
@@ -2426,14 +2435,14 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("hash", {
-          describe: 'New NFT template object hash',
+          describe: "New NFT template object hash",
           type: "string",
         })
         .option("dry_run", {
           describe:
             "Default 'true'",
           type: "boolean",
-        })
+        });
     },
     (argv) => {
       CmdTenantUpdateTokenURI({ argv });
@@ -2975,6 +2984,10 @@ yargs(hideBin(process.argv))
         describe: "Path to the JSON File for existing tenant provision config",
         type: "string",
       });
+      yargs.option("init_config",{
+        describe: "Displays the initial provisioning config, which can be used to input existing objects",
+        type: "boolean",
+      });
     },
     (argv) => {
       CmdTenantProvision({ argv });
@@ -3360,7 +3373,7 @@ yargs(hideBin(process.argv))
         .positional("user_addr", {
           describe: "user address",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdTokenBalanceOf({ argv });
@@ -3543,7 +3556,7 @@ yargs(hideBin(process.argv))
     "admin_health [options]",
     "Checks the health of the Authority Service APIs. Note the current key must be a system admin configured in the AuthD servers.",
     (yargs) => {
-      yargs
+      yargs;
     },
     (argv) => {
       CmdAdminHealth({ argv });

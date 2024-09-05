@@ -683,25 +683,59 @@ let readJsonFile = (filepath) => {
 
 // ===============================================================================================
 
-const InitializeTenant = async ({client, kmsId, tenantId, statusFile, debug=false}) => {
+const InitializeTenant = async ({client, kmsId, tenantId, statusFile, initConfig, debug=false}) => {
 
   let t;
   if (!statusFile) {
     t = {
       base: {
-        groups: {},
-        libraries: {},
-        tenantTypes: {},
+        tenantOpsKey: "",
+        contentOpsKey: "",
+        groups : {
+          "tenantAdminGroupAddress": "",
+          "contentAdminGroupAddress": ""
+        },
+        libraries: {
+          "mastersLibraryId": null,
+          "mezzanineLibraryId": null,
+          "propertiesLibraryId": null
+        },
+        tenantTypes: {
+          "titleTypeId": null,
+          "titleCollectionTypeId": null,
+          "masterTypeId": null,
+          "permissionsTypeId": null,
+          "channelTypeId": null,
+          "streamTypeId": null
+        },
       },
-      liveStreaming: {},
+      liveStreaming: {
+        siteId: null,
+      },
       mediaWallet: {
-        liveTypes: {},
-        objects: {},
-      },
+        liveTypes: {
+          "NFT Collection": null,
+          "NFT Template": null,
+          "Media Wallet Drop Event Site": null,
+          "Media Wallet Marketplace": null,
+          "Media Wallet Tenant": null,
+        },
+        objects: {
+          marketplaceId: "",
+          marketplaceHash: null,
+          dropEventId: null,
+          dropEventHash: null,
+          tenantObjectId: null,
+        }
+      }
     };
   } else {
     t = readJsonFile(statusFile);
     OUTPUT_FILE = statusFile;
+  }
+
+  if (initConfig) {
+    return t;
   }
 
   await ProvisionBase({client, kmsId, tenantId, t});
