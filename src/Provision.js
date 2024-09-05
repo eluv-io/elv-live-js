@@ -5,6 +5,8 @@ const { ElvUtils } = require("../src/Utils");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
 const {Config} = require("./Config");
+const { EluvioLive } = require("../src/EluvioLive.js");
+const { ElvFabric } = require("./ElvFabric");
 
 const TYPE_LIVE_DROP_EVENT_SITE = "Media Wallet Drop Event Site";
 const TYPE_LIVE_TENANT = "Media Wallet Tenant";
@@ -61,14 +63,40 @@ const writeConfigToFile= (config) => {
 };
 
 const checkSignerTenantAccess = async ({client, tenantId}) => {
-  let tenantAdminId = await client.userProfileClient.TenantId();
-  let tenantContractId = await client.userProfileClient.TenantContractId();
 
-  if (!tenantAdminId) {
-    throw Error("No tenant admin group set for account.");
-  }
+  let elvLv = await new EluvioLive({
+    configUrl: Config.networks[Config.net],
+
+  });
+  await elvLv.Init({
+    debugLogging: client.debug,
+  });
+
+  let elvFabric = new ElvFabric({
+    configUrl: Config.networks[Config.net],
+    debugLogging: client.debug
+  });
+  await elvFabric.Init({
+    privateKey: process.env.PRIVATE_KEY
+  });
+
+  let tenantContractId = await client.userProfileClient.TenantContractId();
   if (tenantId !== tenantContractId) {
     throw Error(`Signer associated with different tenant.\n expected_tenant:${tenantId}\n actual_tenant:${tenantContractId}`);
+  }
+
+  // check tenant contract id has tenant admin group set
+  let tenantAdminInfo = await elvLv.TenantGroupInfo({tenantId: tenantContractId});
+  if (!tenantAdminInfo.tenant_admin_address) {
+    throw Error("No tenant admin group set for account.");
+  }
+
+  let addr = await client.signer.getAddress();
+
+  // check the user is member of the tenant admin group
+  const isManager = await elvFabric.AccessGroupManager({group: tenantAdminInfo.tenant_admin_address, addr});
+  if (!isManager) {
+    throw Error(`User ${addr} is not a manager for the tenant admin group: ${tenantAdminInfo.tenant_admin_id}`);
   }
 };
 
