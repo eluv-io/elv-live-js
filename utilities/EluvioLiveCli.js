@@ -1286,6 +1286,7 @@ const CmdTenantProvision = async ({ argv }) => {
       client,
       kmsId,
       tenantId: argv.tenant,
+      statusFile: argv.status,
       debug: argv.verbose,
     });
 
@@ -2963,11 +2964,15 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_provision <tenant>",
+    "tenant_provision <tenant> [options]",
     "Provisions a new tenant account with standard media libraries and content types. Note this account must be created using space_tenant_create.",
     (yargs) => {
       yargs.positional("tenant", {
         describe: "Tenant ID",
+        type: "string",
+      });
+      yargs.option("status",{
+        describe: "Path to the JSON File for existing tenant provision config",
         type: "string",
       });
     },

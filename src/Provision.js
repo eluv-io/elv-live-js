@@ -4,10 +4,7 @@ const path = require("path");
 const { ElvUtils } = require("../src/Utils");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
-
-const { TenantProvisionConfig } = require("./TenantProvisionConfig.js");
 const {Config} = require("./Config");
-const t = TenantProvisionConfig.tenantProvisionConfig;
 
 const TYPE_LIVE_DROP_EVENT_SITE = "Media Wallet Drop Event Site";
 const TYPE_LIVE_TENANT = "Media Wallet Tenant";
@@ -34,7 +31,7 @@ const STANDARD_DRM_CERT={
     }
   }
 };
-const OUTPUT_FILE="./src/tenant_status.json";
+let OUTPUT_FILE="./tenant_status.json";
 
 const typeMetadata = {
   bitcode_flags: "abrmaster",
@@ -48,7 +45,7 @@ const typeMetadata = {
 const TENANT_OPS_KEY="tenant-ops";
 const CONTENT_OPS_KEY="content-ops";
 
-const EXPECTED_SENDER_BALANCE=1; // provides 1Elv to opsKey
+const EXPECTED_SENDER_BALANCE=1;
 // This value must be greater than 0.1 Elv
 // (checked by elv-client-js when adding as an access group member)
 const OPS_AMOUNT=0.2;
@@ -75,7 +72,7 @@ const checkSignerTenantAccess = async ({client, tenantId}) => {
   }
 };
 
-const SetLibraryPermissions = async (client, libraryId) => {
+const SetLibraryPermissions = async (client, libraryId, t) => {
 
   if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)){
     throw Error("require tenantAdminGroupAddress to be set");
@@ -96,7 +93,7 @@ const SetLibraryPermissions = async (client, libraryId) => {
   await Promise.all(promises);
 };
 
-const SetObjectPermissions = async (client, objectId) => {
+const SetObjectPermissions = async (client, objectId, t) => {
 
   if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)){
     throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
@@ -115,7 +112,7 @@ const SetObjectPermissions = async (client, objectId) => {
   await Promise.all(promises);
 };
 
-const SetTenantEluvioLiveId = async ({client}) => {
+const SetTenantEluvioLiveId = async ({client, t}) => {
   if (isEmptyParams(t.base.tenantId)){
     throw Error("require t.base.tenantId to be set");
   }
@@ -184,7 +181,7 @@ const SetTenantEluvioLiveId = async ({client}) => {
 };
 
 
-const getTenantGroups = async ({client,tenantId}) => {
+const getTenantGroups = async ({client,tenantId, t}) => {
   const tenantAddr = Utils.HashToAddress(tenantId);
   const abi = fs.readFileSync(
     path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
@@ -218,30 +215,30 @@ const getTenantGroups = async ({client,tenantId}) => {
 };
 
 /* Create libraries - Properties, Title Masters, Title Mezzanines and add each to the groups */
-const createLibrariesAndSetPermissions = async({client, kmsId}) => {
+const createLibrariesAndSetPermissions = async({client, kmsId, t}) => {
   if (isEmptyParams(t.base.tenantName)){
     throw Error("require t.base.tenantName to be set");
   }
 
   // Create libraries and set permissions
-  const createLibrary = async (name, metadata) => {
+  const createLibrary = async ({name, metadata}) => {
     const libraryId = await client.CreateContentLibrary({ name, kmsId, metadata });
-    await SetLibraryPermissions(client, libraryId);
+    await SetLibraryPermissions(client, libraryId, t);
     return libraryId;
   };
 
   if (!t.base.libraries.propertiesLibraryId) {
-    t.base.libraries.propertiesLibraryId = await createLibrary(`${t.base.tenantName} - Properties`);
+    t.base.libraries.propertiesLibraryId = await createLibrary({ name: `${t.base.tenantName} - Properties`});
     writeConfigToFile(t);
   }
 
   if (!t.base.libraries.mastersLibraryId) {
-    t.base.libraries.mastersLibraryId = await createLibrary(`${t.base.tenantName} - Title Masters`);
+    t.base.libraries.mastersLibraryId = await createLibrary({ name: `${t.base.tenantName} - Title Masters`});
     writeConfigToFile(t);
   }
 
   if (!t.base.libraries.mezzanineLibraryId) {
-    t.base.libraries.mezzanineLibraryId = await createLibrary(`${t.base.tenantName} - Title Mezzanines`, STANDARD_DRM_CERT);
+    t.base.libraries.mezzanineLibraryId = await createLibrary({name: `${t.base.tenantName} - Title Mezzanines`, metadata: STANDARD_DRM_CERT});
     writeConfigToFile(t);
   }
 
@@ -250,13 +247,13 @@ const createLibrariesAndSetPermissions = async({client, kmsId}) => {
 };
 
 // helper function to create and set permissions for content types
-const createContentTypeAndSetPermissions = async ({client, name, metadata}) => {
+const createContentTypeAndSetPermissions = async ({client, name, metadata, t}) => {
   const typeId = await client.CreateContentType({ name, metadata });
-  await SetObjectPermissions(client, typeId);
+  await SetObjectPermissions(client, typeId, t);
   return typeId;
 };
 
-const createTenantTypes = async ({client}) => {
+const createTenantTypes = async ({client, t}) => {
 
   const masterMetadata = {
     bitcode_flags: "abrmaster",
@@ -271,22 +268,22 @@ const createTenantTypes = async ({client}) => {
   }
 
   if (!t.base.tenantTypes.titleTypeId) {
-    t.base.tenantTypes.titleTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title`, metadata:typeMetadata});
+    t.base.tenantTypes.titleTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title`, metadata:typeMetadata, t});
     writeConfigToFile(t);
   }
 
   if (!t.base.tenantTypes.titleCollectionTypeId) {
-    t.base.tenantTypes.titleCollectionTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title Collection`, metadata: typeMetadata});
+    t.base.tenantTypes.titleCollectionTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title Collection`, metadata: typeMetadata, t});
     writeConfigToFile(t);
   }
 
   if (!t.base.tenantTypes.masterTypeId) {
-    t.base.tenantTypes.masterTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title Master`, metadata: masterMetadata});
+    t.base.tenantTypes.masterTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title Master`, metadata: masterMetadata, t });
     writeConfigToFile(t);
   }
 
   if (!t.base.tenantTypes.permissionsTypeId) {
-    t.base.tenantTypes.permissionsTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Permissions`, metadata: { ...typeMetadata, public: { "eluv.manageApp": "avails-manager" } }});
+    t.base.tenantTypes.permissionsTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Permissions`, metadata: { ...typeMetadata, public: { "eluv.manageApp": "avails-manager" } }, t });
     writeConfigToFile(t);
   }
 
@@ -299,7 +296,7 @@ const createTenantTypes = async ({client}) => {
           "controls": ["credits", "playlists", "gallery", "channel"],
         },
       },
-    }});
+    }, t });
     writeConfigToFile(t);
   }
 
@@ -310,10 +307,10 @@ const createTenantTypes = async ({client}) => {
       public: {
         ...typeMetadata.public,
         title_configuration: {
-          "controls": ["credits", "playlists", "gallery", "live_stream"],
+          "controls": ["credits", "gallery", "live_stream"],
         },
       },
-    }});
+    }, t });
     writeConfigToFile(t);
   }
 
@@ -321,7 +318,7 @@ const createTenantTypes = async ({client}) => {
   console.log(JSON.stringify(t.base.tenantTypes, null, 2));
 };
 
-const createLiveTypes = async ({client}) => {
+const createLiveTypes = async ({client, t}) => {
   if (isEmptyParams(t.base.tenantName)){
     throw Error("require t.base.tenantName to be set");
   }
@@ -338,7 +335,7 @@ const createLiveTypes = async ({client}) => {
         ...typeMetadata.public,
         title_configuration: liveTypes[i].spec
       }
-    }});
+    }, t });
 
     console.log(`\t${t.base.tenantName} - ${liveTypes[i].name}: ${typeId}`);
     t.mediaWallet.liveTypes[liveTypes[i].name] = typeId;
@@ -348,7 +345,7 @@ const createLiveTypes = async ({client}) => {
   console.log(JSON.stringify(t.mediaWallet.liveTypes, null, 2));
 };
 
-const createMarketplaceId = async ({client}) => {
+const createMarketplaceId = async ({client, t}) => {
 
   if (isEmptyParams(t.base.tenantName)){
     throw Error("require t.base.tenantName to be set");
@@ -395,7 +392,7 @@ const createMarketplaceId = async ({client}) => {
     t.mediaWallet.objects.marketplaceId = await CreateFabricObject({client,
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.mediaWallet.liveTypes[TYPE_LIVE_MARKETPLACE],
-      publicMetadata});
+      publicMetadata, t });
 
     writeConfigToFile(t);
   }
@@ -409,7 +406,7 @@ const createMarketplaceId = async ({client}) => {
   console.log(`\t${objectName}: ${t.mediaWallet.objects.marketplaceId}\n\n`);
 };
 
-const createDropEventId = async ({client}) => {
+const createDropEventId = async ({client, t}) => {
 
   if (!t.mediaWallet.objects.dropEventId) {
 
@@ -449,7 +446,7 @@ const createDropEventId = async ({client}) => {
     t.mediaWallet.objects.dropEventId = await CreateFabricObject({client,
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.mediaWallet.liveTypes[TYPE_LIVE_DROP_EVENT_SITE],
-      publicMetadata});
+      publicMetadata, t });
 
     writeConfigToFile(t);
   }
@@ -463,7 +460,7 @@ const createDropEventId = async ({client}) => {
   console.log(`\t${objectName}: ${t.mediaWallet.objects.dropEventId}\n\n`);
 };
 
-const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata}) => {
+const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, t}) => {
   if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)){
     throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
   }
@@ -490,13 +487,13 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata}) =
     writeToken: write_token
   });
 
-  await SetObjectPermissions(client, id, t.base.groups.tenantAdminGroupAddress, t.base.groups.contentAdminGroupAddress);
+  await SetObjectPermissions(client, id, t);
 
   return id;
 };
 
 
-const createTenantObjectId = async ({client}) => {
+const createTenantObjectId = async ({client, t}) => {
   if (!t.mediaWallet.objects.tenantObjectId) {
 
     if (isEmptyParams(t.base.tenantName)){
@@ -548,7 +545,7 @@ const createTenantObjectId = async ({client}) => {
     t.mediaWallet.objects.tenantObjectId = await CreateFabricObject({client,
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.mediaWallet.liveTypes[TYPE_LIVE_TENANT],
-      publicMetadata});
+      publicMetadata, t });
 
     writeConfigToFile(t);
 
@@ -557,12 +554,12 @@ const createTenantObjectId = async ({client}) => {
 
     /* Add ids of services to tenant fabric metadata */
     console.log("Tenant content object - set types and sites");
-    res = await SetTenantEluvioLiveId({client});
+    res = await SetTenantEluvioLiveId({client, t});
     console.log(`\tTenantEluvioLiveId: ${t.mediaWallet.objects.tenantObjectId}`);
   }
 };
 
-const createSiteId = async ({client}) => {
+const createSiteId = async ({client, t}) => {
   if (!t.liveStreaming.siteId) {
     if (isEmptyParams(t.base.libraries.propertiesLibraryId)){
       throw Error("require t.base.libraries.propertiesLibraryId to be set");
@@ -588,13 +585,13 @@ const createSiteId = async ({client}) => {
     t.liveStreaming.siteId = await CreateFabricObject({client,
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.base.tenantTypes.titleCollectionTypeId,
-      publicMetadata});
+      publicMetadata, t });
     console.log("\nSite Live Streams Object", t.liveStreaming.siteId);
     writeConfigToFile(t);
   }
 };
 
-const createOpsKey = async ({groupAddress, opsKeyType, debug})=>{
+const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
   let opsKey = "";
   if (opsKeyType === TENANT_OPS_KEY){
     opsKey = t.base.tenantOpsKey;
@@ -648,22 +645,48 @@ const createOpsKey = async ({groupAddress, opsKeyType, debug})=>{
   }
 };
 
-
+let readJsonFile = (filepath) => {
+  let data = fs.readFileSync(filepath, "utf-8");
+  if (data.trim() === "") {
+    throw Error ("status JSON file is empty");
+  }
+  return JSON.parse(data);
+};
 
 // ===============================================================================================
 
-const InitializeTenant = async ({client, kmsId, tenantId, debug=false}) => {
-  await ProvisionBase({client, kmsId, tenantId});
-  await ProvisionLiveStreaming({client, tenantId});
-  await ProvisionMediaWallet({client, tenantId});
-  await ProvisionOps({client, tenantId, debug});
+const InitializeTenant = async ({client, kmsId, tenantId, statusFile, debug=false}) => {
+
+  let t;
+  if (!statusFile) {
+    t = {
+      base: {
+        groups: {},
+        libraries: {},
+        tenantTypes: {},
+      },
+      liveStreaming: {},
+      mediaWallet: {
+        liveTypes: {},
+        objects: {},
+      },
+    };
+  } else {
+    t = readJsonFile(statusFile);
+    OUTPUT_FILE = statusFile;
+  }
+
+  await ProvisionBase({client, kmsId, tenantId, t});
+  await ProvisionLiveStreaming({client, tenantId, t});
+  await ProvisionMediaWallet({client, tenantId, t});
+  await ProvisionOps({client, tenantId, t, debug});
 
   console.log(`JSON OUTPUT AT: ${OUTPUT_FILE}\n`);
 
   return t;
 };
 
-const ProvisionBase = async ({client, kmsId, tenantId}) => {
+const ProvisionBase = async ({client, kmsId, tenantId, t}) => {
   await checkSignerTenantAccess({client, tenantId});
 
   const tenantAddr = Utils.HashToAddress(tenantId);
@@ -681,25 +704,25 @@ const ProvisionBase = async ({client, kmsId, tenantId}) => {
   t.base.tenantSlug = t.base.tenantName.toLowerCase().replace(/ /g, "-");
   t.base.tenantId = tenantId;
 
-  await getTenantGroups({client,tenantId});
-  await createLibrariesAndSetPermissions({client, kmsId});
-  await createTenantTypes({client});
+  await getTenantGroups({client,tenantId, t});
+  await createLibrariesAndSetPermissions({client, kmsId, t});
+  await createTenantTypes({client, t});
 };
 
-const ProvisionLiveStreaming = async({client, tenantId}) => {
+const ProvisionLiveStreaming = async({client, tenantId, t}) => {
   await checkSignerTenantAccess({client, tenantId});
-  await createSiteId({client});
+  await createSiteId({client, t});
 };
 
-const ProvisionMediaWallet = async({client, tenantId}) => {
+const ProvisionMediaWallet = async({client, tenantId, t}) => {
   await checkSignerTenantAccess({client, tenantId});
-  await createLiveTypes({client});
-  await createMarketplaceId({client});
-  await createDropEventId({client});
-  await createTenantObjectId({client});
+  await createLiveTypes({client, t});
+  await createMarketplaceId({client, t});
+  await createDropEventId({client, t});
+  await createTenantObjectId({client, t});
 };
 
-const ProvisionOps = async({client, tenantId, debug= false}) => {
+const ProvisionOps = async({client, tenantId, t, debug= false}) => {
   await checkSignerTenantAccess({client, tenantId});
 
   if (!t.base.groups.tenantAdminGroupAddress) {
@@ -708,6 +731,7 @@ const ProvisionOps = async({client, tenantId, debug= false}) => {
   await createOpsKey({
     groupAddress: t.base.groups.tenantAdminGroupAddress,
     opsKeyType: TENANT_OPS_KEY,
+    t: t,
     debug
   });
 
@@ -718,6 +742,7 @@ const ProvisionOps = async({client, tenantId, debug= false}) => {
   await createOpsKey({
     groupAddress: t.base.groups.contentAdminGroupAddress,
     opsKeyType: CONTENT_OPS_KEY,
+    t: t,
     debug
   });
 };
