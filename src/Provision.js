@@ -425,7 +425,7 @@ const createMarketplaceId = async ({client, t}) => {
     writeConfigToFile(t);
   }
 
-  if (t.mediaWallet.objects.marketplaceId) {
+  if (!isEmptyParams(t.mediaWallet.objects.marketplaceId) && t.mediaWallet.objects.marketplaceId) {
     t.mediaWallet.objects.marketplaceHash = await client.LatestVersionHash({objectId: t.mediaWallet.objects.marketplaceId});
     writeConfigToFile(t);
   }
@@ -479,7 +479,7 @@ const createDropEventId = async ({client, t}) => {
     writeConfigToFile(t);
   }
 
-  if (t.mediaWallet.objects.dropEventId){
+  if (!isEmptyParams(t.mediaWallet.objects.dropEventId) && t.mediaWallet.objects.dropEventId){
     t.mediaWallet.objects.dropEventHash = await client.LatestVersionHash({objectId: t.mediaWallet.objects.dropEventId});
     writeConfigToFile(t);
   }
@@ -732,6 +732,10 @@ const InitializeTenant = async ({client, kmsId, tenantId, statusFile, initConfig
   } else {
     t = readJsonFile(statusFile);
     OUTPUT_FILE = statusFile;
+
+    timestamp = new Date().toISOString().replace(/[-:.]/g, "");
+    backupFile = `${path.parse(statusFile).name}_backup_${timestamp}.json`;
+    fs.copyFileSync(statusFile, backupFile);
   }
 
   if (initConfig) {
