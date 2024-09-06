@@ -289,14 +289,14 @@ class ElvFabric {
    *   }
    *
    * @param {string} csvFile path to CSV file
-   * @param {Array} ignore a list of prefixes to ignore eg "eluv." 
+   * @param {Array} ignore a list of prefixes to ignore eg "eluv."
    * @returns object Map of object IDs to metadata
    */
   async ReadCsvObjectsMerged({csvFile, ignore=[]}) {
     let ids = {};
 
     const csv = fs.readFileSync(csvFile);
-    const records = parse(csv, {columns: true, 
+    const records = parse(csv, {columns: true,
       skip_records_with_empty_values: true});
 
     await records.forEach(async row => {
@@ -417,18 +417,23 @@ class ElvFabric {
    */
   async AccessGroupMember({group, addr}) {
     var members = await this.AccessGroupMembers({group});
-    return members.includes(addr);
+
+    for (let i = 0; i < members.length; i++) {
+      if (this.client.utils.EqualAddress(members[i], addr)){
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
    * AccessGroupMembers
    * Returns a list of group members
    * @param {string} group  Group ID (hex or igrp format)
-   * @param {string} addr  User address
    * @returns {Array} group members
    */
   async AccessGroupMembers({group}) {
-  
+
     if (group.startsWith("igrp")){
       group = this.client.utils.HashToAddress(group);
     }
@@ -437,10 +442,44 @@ class ElvFabric {
       console.log("Group", group);
     }
 
-    var members = await this.client.AccessGroupMembers({contractAddress:group});
-
-    return members;
+    return await this.client.AccessGroupMembers({contractAddress:group});
   }
+
+  /**
+   * AccessGroupManager
+   * Check if an address is a manager of the access group
+   * @param {string} group  Group ID (hex or igrp format)
+   * @param {string} addr  User address
+   * @returns result of contract method call
+   */
+  async AccessGroupManager({group, addr}) {
+    var managers = await this.AccessGroupManagers({group});
+    for (let i = 0; i < managers.length; i++) {
+      if (this.client.utils.EqualAddress(managers[i], addr)){
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * AccessGroupManagers
+   * Returns a list of group managers
+   * @param {string} group  Group ID (hex or igrp format)
+   * @returns {Array} group members
+   */
+  async AccessGroupManagers({group}) {
+
+    if (group.startsWith("igrp")){
+      group = this.client.utils.HashToAddress(group);
+    }
+
+    if (this.debug){
+      console.log("Group", group);
+    }
+    return await this.client.AccessGroupManagers({contractAddress:group});
+  }
+
 
 }
 

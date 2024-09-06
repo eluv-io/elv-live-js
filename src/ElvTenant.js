@@ -181,7 +181,7 @@ class ElvTenant {
 
     let tenantInfo = {};
 
-    const tenantAddr = Utils.HashToAddress(tenantId); 
+    const tenantAddr = Utils.HashToAddress(tenantId);
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
@@ -209,7 +209,7 @@ class ElvTenant {
       errors.push("missing tenant admins");
     }
     tenantInfo["tenant_admin_address"] = tenantAdminAddr;
-    
+
     //Content admins group might not exist for the tenant with this tenantId due to legacy reasons.
     //Running ./elv-admin tenant-fix to update this tenant.
     let contentAdminAddr;
@@ -218,7 +218,7 @@ class ElvTenant {
         contractAddress: tenantAddr,
         abi: JSON.parse(abi),
         methodName: "groupsMapping",
-        methodArgs: ["content_admin", 0], 
+        methodArgs: ["content_admin", 0],
         formatArguments: true,
       });
     } catch (e) {
@@ -292,6 +292,13 @@ class ElvTenant {
     );
 
     const tenantAddr = Utils.HashToAddress(tenantId);
+    const tenantName = await this.client.CallContractMethod({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "name",
+      methodArgs: [],
+      formatArguments: true,
+    });
 
     let contentAdmin;
     try {
@@ -317,12 +324,8 @@ class ElvTenant {
 
     //Arguments don't contain content admin group address, creating a new content admin group for the user's account.
     if (!contentAdminAddr) {
-      let accountName = await this.client.userProfileClient.UserMetadata({
-        metadataSubtree: "public/name"
-      });
-    
       let contentAdminGroup = await elvAccount.CreateAccessGroup({
-        name: `${accountName} Content Admins`,
+        name: `${tenantName} Content Admins`,
       });
 
       contentAdminAddr = contentAdminGroup.address;
@@ -384,7 +387,7 @@ class ElvTenant {
       idHex = await this.client.CallContractMethod({
         contractAddress: groupAddress,
         methodName: "getMeta",
-        methodArgs: ["_ELV_TENANT_ID"], 
+        methodArgs: ["_ELV_TENANT_ID"],
       });
     } catch (e) {
       console.log(`Log: The group contract with group address ${groupAddress} doesn't support metadata. Some operations with this group contract may fail.`);
@@ -416,7 +419,7 @@ class ElvTenant {
         await this.client.CallContractMethod({
           contractAddress: groupAddress,
           methodName: "setTenant",
-          methodArgs: [this.client.utils.HashToAddress(tenantId)], 
+          methodArgs: [this.client.utils.HashToAddress(tenantId)],
         });
       } catch (e) {
         if (e.message.includes("Unknown method: setTenant")) {
@@ -446,18 +449,18 @@ class ElvTenant {
     // Add tenant id to fabric meta
     var e = await this.client.EditContentObject({
       libraryId: groupLibraryId,
-      objectId: groupObjectId, 
+      objectId: groupObjectId,
     });
     await this.client.ReplaceMetadata({
       libraryId: groupLibraryId,
-      objectId: groupObjectId, 
+      objectId: groupObjectId,
       writeToken: e.write_token,
       metadataSubtree: "elv/tenant_id",
       metadata: tenantId,
     });
     await this.client.FinalizeContentObject({
       libraryId: groupLibraryId,
-      objectId: groupObjectId, 
+      objectId: groupObjectId,
       writeToken: e.write_token,
       commitMessage: "Set tenant ID " + tenantId,
     });
@@ -469,7 +472,7 @@ class ElvTenant {
     let groupOwner = await this.client.CallContractMethod({
       contractAddress: groupAddr,
       methodName: "owner",
-      methodArgs: [], 
+      methodArgs: [],
     });
     if (groupOwner != tenantOwner) {
       return {success: false, message: `The owner of the group (${groupOwner}) is not the same as the owner of the tenant (${tenantOwner}).`};
@@ -486,7 +489,7 @@ class ElvTenant {
       let tenantContractIdHex = await this.client.CallContractMethod({
         contractAddress: groupAddr,
         methodName: "getMeta",
-        methodArgs: ["_ELV_TENANT_ID"], 
+        methodArgs: ["_ELV_TENANT_ID"],
       });
       if (tenantContractIdHex == "0x") {
         return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
@@ -510,7 +513,7 @@ class ElvTenant {
       let tenantContractAddress = await this.client.CallContractMethod({
         contractAddress: groupAddr,
         methodName: "tenant",
-        methodArgs: [], 
+        methodArgs: [],
       });
       let tenantContractId = "iten" + this.client.utils.AddressToHash(tenantContractAddress);
       if (tenantId != tenantContractId) {
