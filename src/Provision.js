@@ -532,6 +532,12 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, t}
     metadata: publicMetadata
   });
 
+  // set object editable
+  await client.SetPermission({
+    objectId: id,
+    writeToken: write_token,
+    permission: "editable"});
+
   await client.FinalizeContentObject({
     libraryId,
     objectId: id,
