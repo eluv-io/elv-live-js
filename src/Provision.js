@@ -144,20 +144,15 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
   if (isEmptyParams(t.base.tenantId)){
     throw Error("require t.base.tenantId to be set");
   }
-  if (isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_TENANT])){
-    throw Error(`require t.mediaWallet.liveTypes.'${TYPE_LIVE_TENANT}' to be set`);
-  }
-  if (isEmptyParams(t.base.tenantTypes.titleTypeId)){
-    throw Error("require t.base.tenantTypes.titleTypeId to be set");
-  }
-  if (isEmptyParams(t.base.tenantTypes.masterTypeId)){
-    throw Error("require t.base.tenantTypes.masterTypeId to be set");
-  }
-  if (isEmptyParams(t.base.tenantTypes.streamTypeId)){
-    throw Error("require t.base.tenantTypes.streamTypeId to be set");
-  }
-  if (isEmptyParams(t.liveStreaming.siteId)){
-    throw Error("require t.liveStreaming.siteId to be set");
+
+  // Skip updating metadata if these values are not set
+  if (isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_TENANT]) &&
+    isEmptyParams(t.base.tenantTypes.titleTypeId) &&
+    isEmptyParams(t.base.tenantTypes.masterTypeId) &&
+    isEmptyParams(t.base.tenantTypes.streamTypeId) &&
+    isEmptyParams(t.liveStreaming.siteId)
+  ){
+    return;
   }
 
   const tenantAddr = Utils.HashToAddress(t.base.tenantId);
@@ -169,35 +164,63 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
     objectId,
   });
 
-  await client.ReplaceMetadata({
-    libraryId,
-    objectId,
-    writeToken: e.write_token,
-    metadataSubtree: "public/eluvio_live_id",
-    metadata: t.mediaWallet.liveTypes[TYPE_LIVE_TENANT],
-  });
+  if (!isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_TENANT])){
+    await client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      metadataSubtree: "public/eluvio_live_id",
+      metadata: t.mediaWallet.liveTypes[TYPE_LIVE_TENANT],
+    });
+  }
 
-  await client.ReplaceMetadata({
-    libraryId,
-    objectId,
-    writeToken: e.write_token,
-    metadataSubtree: "public/content_types",
-    metadata: {
-      "title": t.base.tenantTypes.titleTypeId,
-      "title_master": t.base.tenantTypes.masterTypeId,
-      "live_stream": t.base.tenantTypes.streamTypeId
-    },
-  });
 
-  await client.ReplaceMetadata({
-    libraryId,
-    objectId,
-    writeToken: e.write_token,
-    metadataSubtree: "public/sites",
-    metadata: {
-      "live_streams": t.liveStreaming.siteId
-    },
-  });
+  if (!isEmptyParams(t.base.tenantTypes.titleTypeId)){
+    await client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      metadataSubtree: "public/content_types",
+      metadata: {
+        "title": t.base.tenantTypes.titleTypeId,
+      },
+    });
+  }
+  if (!isEmptyParams(t.base.tenantTypes.masterTypeId)){
+    await client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      metadataSubtree: "public/content_types",
+      metadata: {
+        "title_master": t.base.tenantTypes.masterTypeId,
+      },
+    });
+  }
+  if (!isEmptyParams(t.base.tenantTypes.streamTypeId)){
+    await client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      metadataSubtree: "public/content_types",
+      metadata: {
+        "live_stream": t.base.tenantTypes.streamTypeId
+      },
+    });
+  }
+
+  if (!isEmptyParams(t.liveStreaming.siteId)){
+    await client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: e.write_token,
+      metadataSubtree: "public/sites",
+      metadata: {
+        "live_streams": t.liveStreaming.siteId
+      },
+    });
+  }
+
 
   const res = await client.FinalizeContentObject({
     libraryId,
@@ -577,13 +600,8 @@ const createTenantObjectId = async ({client, t}) => {
 
     writeConfigToFile(t);
 
-    console.log("\nDrop Event Site Object: \n");
+    console.log("\nTenant Object Id: \n");
     console.log(`\t${objectName}: ${t.mediaWallet.objects.tenantObjectId}\n\n`);
-
-    /* Add ids of services to tenant fabric metadata */
-    console.log("Tenant content object - set types and sites");
-    res = await SetTenantEluvioLiveId({client, t});
-    console.log(`\tTenantEluvioLiveId: ${t.mediaWallet.objects.tenantObjectId}`);
   }
 };
 
@@ -630,7 +648,7 @@ const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
   if (opsKey === "none") {
     return;
   }
-  if (opsKey === "" || opsKey === null) {
+  if (!opsKey) {
     if (isEmptyParams(t.base.tenantName)) {
       throw Error("require t.base.tenantName to be set");
     }
@@ -676,7 +694,7 @@ const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
 let readJsonFile = (filepath) => {
   let data = fs.readFileSync(filepath, "utf-8");
   if (data.trim() === "") {
-    throw Error ("status JSON file is empty");
+    throw Error ("JSON file is empty");
   }
   return JSON.parse(data);
 };
@@ -730,6 +748,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, statusFile, initConfig
       }
     };
   } else {
+    console.log("Parsing status JSON file...");
     t = readJsonFile(statusFile);
     OUTPUT_FILE = statusFile;
 
@@ -746,6 +765,13 @@ const InitializeTenant = async ({client, kmsId, tenantId, statusFile, initConfig
   await ProvisionLiveStreaming({client, tenantId, t});
   await ProvisionMediaWallet({client, tenantId, t});
   await ProvisionOps({client, tenantId, t, debug});
+
+  /* Add ids of services to tenant fabric metadata */
+  console.log("Tenant content object - set types and sites");
+  res = await SetTenantEluvioLiveId({client, t});
+  if (res) {
+    console.log(`\tTenantEluvioLiveId: ${JSON.stringify(res, null, 2)}`);
+  }
 
   console.log(`JSON OUTPUT AT: ${OUTPUT_FILE}\n`);
 
