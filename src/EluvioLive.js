@@ -1021,7 +1021,7 @@ class EluvioLive {
     }
 
     if (hold == null || hold == 0) {
-      hold = 604800;
+      hold = 1;
     }
 
     var c = await this.client.DeployContract({

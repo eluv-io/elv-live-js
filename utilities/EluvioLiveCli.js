@@ -2132,7 +2132,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("hold", {
-          describe: "Hold period in seconds (default 7 days)",
+          describe: "Hold period in seconds (default 1 second)",
           type: "number",
         });
     },
