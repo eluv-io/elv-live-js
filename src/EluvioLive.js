@@ -3204,9 +3204,6 @@ class EluvioLive {
       queryParams: { offset, processor },
       headers,
     });
-    console.log("req", urljoin(urlPathPrefix, tenant, marketplace), { offset, processor }, headers);
-    console.log("res", res);
-
 
     return toJson ? await res.json() : await res.text();
   }
