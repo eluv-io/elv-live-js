@@ -3121,6 +3121,67 @@ class EluvioLive {
   }
 
   /**
+   * Get the list of domains from the Main Live Object info/domains_map
+   *
+   * @return {Promise<Object>} - List of domain objects
+   */
+  async Domains() {
+    let objectId = this.mainObjectId;
+
+    const libraryId = await this.client.ContentObjectLibraryId({
+      objectId,
+    });
+
+    let staticToken = await this.client.authClient.AuthorizationToken({
+      libraryId,
+      channelAuth: false,
+      noAuth: true,
+    });
+
+    let client = await ElvClient.FromConfigurationUrl({
+      configUrl: this.configUrl,
+      staticToken,
+    });
+
+    let metadataSubtree = "/public/asset_metadata/info/domain_map";
+    const meta = await client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      metadataSubtree,
+      resolveLinks: true,
+      resolveIncludeSource: true,
+      resolveIgnoreErrors: true,
+      linkDepthLimit: 5,
+    });
+
+    return meta;
+  }
+
+  /**
+   * create account for tenant
+   *
+   * @namedParams
+   * @param {string} email - The email to create
+   * @param {string} tenant - The Tenant ID
+   * @param {string} callbackUrl - The based info for the link in the email
+   * @return {Promise<Object>} - The API Response containing created account info
+   */
+  async CreateOryAccount({ email, tenant, callbackUrl}) {
+    let headers = {};
+
+    console.log("email", email, "tenant", tenant, "callbackUrl", callbackUrl);
+
+    let urlPath = "/wlt/ory/create_account";
+    let res = await this.PostServiceRequest({
+      path: urlPath,
+      body: { email, tenant, "callback_url": callbackUrl },
+      headers,
+    });
+
+    return await res.json();
+  }
+
+  /**
    * Get primary sales history for the tenant
    *
    * @namedParams
@@ -3143,6 +3204,9 @@ class EluvioLive {
       queryParams: { offset, processor },
       headers,
     });
+    console.log("req", urljoin(urlPathPrefix, tenant, marketplace), { offset, processor }, headers);
+    console.log("res", res);
+
 
     return toJson ? await res.json() : await res.text();
   }

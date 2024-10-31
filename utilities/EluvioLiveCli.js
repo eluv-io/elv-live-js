@@ -704,6 +704,47 @@ const CmdList = async ({ argv }) => {
   }
 };
 
+const CmdCreateAccount = async ({ argv }) => {
+  console.log(`calling create_account with email:${argv.email} tenant:${argv.tenant} slug:${argv.propertySlug}`);
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    if (!argv.email || !argv.tenant || !argv.propertySlug) {
+      console.error("ERROR: must set email, tenant, propertySlug");
+      return
+    }
+    const slug = argv.propertySlug;
+
+    domain = "https://wallet.contentfabric.io/"
+    let domains = await elvlv.Domains();
+    for (const domainObj of domains) {
+      if (domainObj.property_slug === argv.propertySlug && domainObj.domain !== "") {
+        domain = domainObj.domain
+      }
+    }
+
+    if (!domain.startsWith("https")) {
+      domain = "https://" + domain
+    }
+    if (!domain.endsWith("/")) {
+      domain = domain + "/"
+    }
+
+    let callbackUrl = domain + "register?next=" + slug + "&pid=" + slug;
+
+    let res = await elvlv.CreateOryAccount({
+      email: argv.email,
+      tenant: argv.tenant,
+      callbackUrl: callbackUrl,
+    });
+
+    //console.log(yaml.dump(res));
+    //console.log(JSON.stringify(res));
+    console.log(res);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 const CmdTenantPrimarySales = async ({ argv }) => {
   console.log(
     `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`
@@ -728,7 +769,8 @@ const CmdTenantPrimarySales = async ({ argv }) => {
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
     } else {
-      console.log(yaml.dump(res));
+      console.log(res);
+      //console.log(yaml.dump(res));
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -3502,6 +3544,29 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdList({ argv });
+    }
+  )
+
+  .command(
+    "create_account <email> <tenant> <propertySlug>",
+    "create ory wallet account and send tenant-branded email to set password",
+    (yargs) => {
+      yargs
+        .positional("email", {
+          describe: "the email to create the accounf for",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "the tenant in format iten...",
+          type: "string",
+        })
+        .positional("propertySlug", {
+          describe: "the property slug. e.g., epcrtv",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdCreateAccount({ argv });
     }
   )
 
