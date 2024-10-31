@@ -3549,7 +3549,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "create_account <email> <tenant> <propertySlug>",
-    "create ory wallet account and send tenant-branded email to set password",
+    "create ory wallet account and send tenant-branded email",
     (yargs) => {
       yargs
         .positional("email", {
