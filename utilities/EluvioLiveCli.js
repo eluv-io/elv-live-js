@@ -704,7 +704,7 @@ const CmdList = async ({ argv }) => {
   }
 };
 
-const CmdCreateAccount = async ({ argv }) => {
+const CmdCreateWalletAccount = async ({ argv }) => {
   console.log(`calling create_account with email:${argv.email} tenant:${argv.tenant} slug:${argv.propertySlug}`);
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
@@ -3545,8 +3545,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "create_account <email> <tenant> <propertySlug>",
-    "create ory wallet account and send tenant-branded email",
+    "create_wallet_account <email> <tenant> <propertySlug>",
+    "create a wallet account and send tenant-branded email",
     (yargs) => {
       yargs
         .positional("email", {
@@ -3563,7 +3563,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdCreateAccount({ argv });
+      CmdCreateWalletAccount({ argv });
     }
   )
 
