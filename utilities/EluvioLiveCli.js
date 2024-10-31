@@ -704,6 +704,45 @@ const CmdList = async ({ argv }) => {
   }
 };
 
+const CmdCreateWalletAccount = async ({ argv }) => {
+  console.log(`calling create_account with email:${argv.email} tenant:${argv.tenant} slug:${argv.property_slug}`);
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    if (!argv.email || !argv.tenant || !argv.property_slug) {
+      console.error("ERROR: must set email, tenant, property_slug");
+      return
+    }
+    const slug = argv.property_slug;
+
+    let domain = Config.consts[Config.net].walletUrl;
+    let domains = await elvlv.Domains();
+    for (const domainObj of domains) {
+      if (domainObj.property_slug === slug && domainObj.domain !== "") {
+        domain = domainObj.domain
+      }
+    }
+
+    if (!domain.startsWith("https")) {
+      domain = "https://" + domain
+    }
+    if (!domain.endsWith("/")) {
+      domain = domain + "/"
+    }
+
+    let callbackUrl = domain + "register?next=" + slug + "&pid=" + slug;
+
+    let res = await elvlv.CreateWalletAccount({
+      email: argv.email,
+      tenant: argv.tenant,
+      callbackUrl: callbackUrl,
+    });
+
+    console.log(res);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 const CmdTenantPrimarySales = async ({ argv }) => {
   console.log(
     `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`
@@ -3502,6 +3541,29 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdList({ argv });
+    }
+  )
+
+  .command(
+    "create_wallet_account <email> <tenant> <property_slug>",
+    "create a wallet account and send tenant-branded email",
+    (yargs) => {
+      yargs
+        .positional("email", {
+          describe: "the email to create the account for",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "the tenant in format iten...",
+          type: "string",
+        })
+        .positional("property_slug", {
+          describe: "the property slug. e.g., epcrtv",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdCreateWalletAccount({ argv });
     }
   )
 
