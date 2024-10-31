@@ -737,8 +737,6 @@ const CmdCreateAccount = async ({ argv }) => {
       callbackUrl: callbackUrl,
     });
 
-    //console.log(yaml.dump(res));
-    //console.log(JSON.stringify(res));
     console.log(res);
   } catch (e) {
     console.error(e);
@@ -769,7 +767,8 @@ const CmdTenantPrimarySales = async ({ argv }) => {
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
     } else {
-      console.log(yaml.dump(res));
+      console.log(res);
+      //console.log(yaml.dump(res));
     }
   } catch (e) {
     console.error("ERROR:", e);
