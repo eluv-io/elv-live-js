@@ -3163,7 +3163,7 @@ class EluvioLive {
    * @namedParams
    * @param {string} email - The email to create
    * @param {string} tenant - The Tenant ID
-   * @param {string} callbackUrl - The based info for the link in the email
+   * @param {string} callbackUrl - The base URL info for the link in the email
    * @return {Promise<Object>} - The API Response containing created account info
    */
   async CreateOryAccount({ email, tenant, callbackUrl}) {
