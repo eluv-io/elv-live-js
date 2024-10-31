@@ -731,7 +731,7 @@ const CmdCreateWalletAccount = async ({ argv }) => {
 
     let callbackUrl = domain + "register?next=" + slug + "&pid=" + slug;
 
-    let res = await elvlv.CreateOryAccount({
+    let res = await elvlv.CreateWalletAccount({
       email: argv.email,
       tenant: argv.tenant,
       callbackUrl: callbackUrl,

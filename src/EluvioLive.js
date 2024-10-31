@@ -3166,7 +3166,7 @@ class EluvioLive {
    * @param {string} callbackUrl - The base URL info for the link in the email
    * @return {Promise<Object>} - The API Response containing created account info
    */
-  async CreateOryAccount({ email, tenant, callbackUrl}) {
+  async CreateWalletAccount({ email, tenant, callbackUrl}) {
     let headers = {};
 
     console.log("email", email, "tenant", tenant, "callbackUrl", callbackUrl);
