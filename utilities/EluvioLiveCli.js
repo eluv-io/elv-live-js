@@ -714,10 +714,7 @@ const CmdCreateWalletAccount = async ({ argv }) => {
     }
     const slug = argv.propertySlug;
 
-    domain = "https://wallet.contentfabric.io/"
-    if (Config.net === "demov3") {
-      domain = "https://wallet.demov3.contentfabric.io/"
-    }
+    let domain = Config.consts[Config.net].walletUrl;
     let domains = await elvlv.Domains();
     for (const domainObj of domains) {
       if (domainObj.property_slug === argv.propertySlug && domainObj.domain !== "") {
