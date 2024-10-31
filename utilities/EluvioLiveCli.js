@@ -705,19 +705,19 @@ const CmdList = async ({ argv }) => {
 };
 
 const CmdCreateWalletAccount = async ({ argv }) => {
-  console.log(`calling create_account with email:${argv.email} tenant:${argv.tenant} slug:${argv.propertySlug}`);
+  console.log(`calling create_account with email:${argv.email} tenant:${argv.tenant} slug:${argv.property_slug}`);
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
-    if (!argv.email || !argv.tenant || !argv.propertySlug) {
-      console.error("ERROR: must set email, tenant, propertySlug");
+    if (!argv.email || !argv.tenant || !argv.property_slug) {
+      console.error("ERROR: must set email, tenant, property_slug");
       return
     }
-    const slug = argv.propertySlug;
+    const slug = argv.property_slug;
 
     let domain = Config.consts[Config.net].walletUrl;
     let domains = await elvlv.Domains();
     for (const domainObj of domains) {
-      if (domainObj.property_slug === argv.propertySlug && domainObj.domain !== "") {
+      if (domainObj.property_slug === slug && domainObj.domain !== "") {
         domain = domainObj.domain
       }
     }
@@ -3545,7 +3545,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "create_wallet_account <email> <tenant> <propertySlug>",
+    "create_wallet_account <email> <tenant> <property_slug>",
     "create a wallet account and send tenant-branded email",
     (yargs) => {
       yargs
@@ -3557,7 +3557,7 @@ yargs(hideBin(process.argv))
           describe: "the tenant in format iten...",
           type: "string",
         })
-        .positional("propertySlug", {
+        .positional("property_slug", {
           describe: "the property slug. e.g., epcrtv",
           type: "string",
         });
