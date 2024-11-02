@@ -643,7 +643,7 @@ const CmdTenantWallets = async ({ argv }) => {
       for (let i = 0; i < res.contents.length; i++) {
         const ident = res.contents[i].ident ? res.contents[i].ident : "";
         let json = res.contents[i].extra_json ? JSON.stringify(res.contents[i].extra_json) : "";
-        json = json.replaceAll("\"", "'")
+        json = json.replaceAll("\"", "\"\"")
         created = new Date(res.contents[i].created * 1000)
         out = out + res.contents[i].addr + "," + ident + "," + created.toISOString() + ",\"" +  json + "\"\n";
       }
