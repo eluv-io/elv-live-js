@@ -639,11 +639,13 @@ const CmdTenantWallets = async ({ argv }) => {
 
     if (argv.csv && argv.csv != "") {
       console.log(`CSV: ${argv.csv}`);
-      let out = "user_address,ident,created,extra_json\n";
+      let out = "user_address,ident,created,extras\n";
       for (let i = 0; i < res.contents.length; i++) {
         const ident = res.contents[i].ident ? res.contents[i].ident : "";
-        const json = res.contents[i].extra_json ? JSON.stringify(res.contents[i].extra_json) : "";
-        out = out + res.contents[i].addr + "," + ident + "," + res.contents[i].created + "," +  json + "\n";
+        let json = res.contents[i].extra_json ? JSON.stringify(res.contents[i].extra_json) : "";
+        json = json.replaceAll("\"", "'")
+        created = new Date(res.contents[i].created * 1000)
+        out = out + res.contents[i].addr + "," + ident + "," + created.toISOString() + ",\"" +  json + "\"\n";
       }
       fs.writeFileSync(argv.csv, out);
     } else {
