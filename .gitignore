@@ -109,7 +109,4 @@ dist
 # JetBrains
 .idea
 
-# Config file
-src/Config.js
-
 

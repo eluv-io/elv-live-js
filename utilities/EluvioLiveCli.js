@@ -2974,7 +2974,11 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_provision <tenant> [options]",
-    "Provisions a new tenant account with standard media libraries and content types. Note this account must be created using space_tenant_create.",
+    "Provision a new tenancy with standard media libraries and content types. " +
+    "Run as the tenant root key, as created by space_tenant_create. This is a multi-step operation, " +
+    "and intermediate status is saved in the local directory in the file tenant_status.json. " +
+    "The operation can be resumed by specifying a status file, which indicates the operations " +
+    "that have already been executed.",
     (yargs) => {
       yargs.positional("tenant", {
         describe: "Tenant ID",
