@@ -82,6 +82,7 @@ class ElvSpace {
       });
       account.tenantAdminsId = await elvAccount.client.userProfileClient.TenantId();
 
+
       // Create Content Admin Access Group
       let contentAdminGroup = await elvAccount.CreateAccessGroup({
         name: `${tenantName} Content Admins`,
@@ -107,7 +108,7 @@ class ElvSpace {
       });
 
       // Assign the created tenant to account
-      elvAccount.SetAccountTenantContractId({tenantId: tenant.id});
+      await elvAccount.SetAccountTenantContractId({tenantId: tenant.id});
 
       // Add _ELV_TENANT_ID to groups' metadata so we can identify the tenant these groups belong to
       await elvAccount.SetGroupTenantConfig({
