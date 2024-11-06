@@ -311,7 +311,7 @@ class ElvSpace {
 
       let nodeId = this.client.utils.AddressToNodeId(addr);
 
-      if (matchNodeId != undefined && nodeId != matchNodeId) {
+      if (matchNodeId !== undefined && nodeId !== matchNodeId) {
         continue; // Not a match
       }
 
@@ -325,15 +325,15 @@ class ElvSpace {
       let match = false;
       if (locators.length >= 5) {
         let fabArray = locators[4].fab;
-        if (fabArray != undefined) {
+        if (fabArray !== undefined) {
           for (let i = 0; i < fabArray.length; i ++) {
             let host = fabArray[i].host;
-            if (matchEndpoint != undefined && !host.includes(matchEndpoint)) {
+            if (matchEndpoint !== undefined && !host.includes(matchEndpoint)) {
               continue; // Not a match
             }
             match = true;
             let endpoint = fabArray[i].scheme + "://" + host;
-            if (fabArray[i].port != "") {
+            if (fabArray[i].port !== "") {
               endpoint = endpoint + ":" + fabArray[i].port;
             }
             endpoint = endpoint + "/" + fabArray[i].path;

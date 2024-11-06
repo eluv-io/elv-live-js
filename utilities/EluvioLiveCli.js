@@ -15,14 +15,14 @@ const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
 const prompt = require("prompt-sync")({ sigint: true });
-const exec = require('child_process').exec;
+const exec = require("child_process").exec;
 
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
 //  (Use `node --trace-warnings ...` to show where the warning was created)
 const originalEmit = process.emit;
 process.emit = function (name, data, ...args) {
-  if(name === `warning` && typeof data === `object` && data.name === `ExperimentalWarning`) {
+  if (name === "warning" && typeof data === "object" && data.name === "ExperimentalWarning") {
     return false;
   }
   return originalEmit.apply(process, arguments);
@@ -511,8 +511,8 @@ const CmdTenantBalanceOf = async ({ argv }) => {
         let contract = contracts[i];
         let nft = json[contract];
         for (let j = 0; j < nft.tokens.length; j++) {
-            let token = nft.tokens[j];
-            out += `${contract},${token.tokenId},${token.hold},${nft.name}\n`;
+          let token = nft.tokens[j];
+          out += `${contract},${token.tokenId},${token.hold},${nft.name}\n`;
         }
       }
       fs.writeFileSync(argv.csv, out);
@@ -639,11 +639,13 @@ const CmdTenantWallets = async ({ argv }) => {
 
     if (argv.csv && argv.csv != "") {
       console.log(`CSV: ${argv.csv}`);
-      let out = "user_address,ident,created,extra_json\n";
+      let out = "user_address,ident,created,extras\n";
       for (let i = 0; i < res.contents.length; i++) {
         const ident = res.contents[i].ident ? res.contents[i].ident : "";
-        const json = res.contents[i].extra_json ? JSON.stringify(res.contents[i].extra_json) : "";
-        out = out + res.contents[i].addr + "," + ident + "," + res.contents[i].created + "," +  json + "\n";
+        let json = res.contents[i].extra_json ? JSON.stringify(res.contents[i].extra_json) : "";
+        json = json.replaceAll("\"", "\"\"")
+        created = new Date(res.contents[i].created * 1000)
+        out = out + res.contents[i].addr + "," + ident + "," + created.toISOString() + ",\"" +  json + "\"\n";
       }
       fs.writeFileSync(argv.csv, out);
     } else {
@@ -704,6 +706,45 @@ const CmdList = async ({ argv }) => {
   }
 };
 
+const CmdCreateWalletAccount = async ({ argv }) => {
+  console.log(`calling create_account with email:${argv.email} tenant:${argv.tenant} slug:${argv.property_slug}`);
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+    if (!argv.email || !argv.tenant || !argv.property_slug) {
+      console.error("ERROR: must set email, tenant, property_slug");
+      return
+    }
+    const slug = argv.property_slug;
+
+    let domain = Config.consts[Config.net].walletUrl;
+    let domains = await elvlv.Domains();
+    for (const domainObj of domains) {
+      if (domainObj.property_slug === slug && domainObj.domain !== "") {
+        domain = domainObj.domain
+      }
+    }
+
+    if (!domain.startsWith("https")) {
+      domain = "https://" + domain
+    }
+    if (!domain.endsWith("/")) {
+      domain = domain + "/"
+    }
+
+    let callbackUrl = domain + "register?next=" + slug + "&pid=" + slug;
+
+    let res = await elvlv.CreateWalletAccount({
+      email: argv.email,
+      tenant: argv.tenant,
+      callbackUrl: callbackUrl,
+    });
+
+    console.log(res);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 const CmdTenantPrimarySales = async ({ argv }) => {
   console.log(
     `Tenant Primary Sales: ${argv.tenant} ${argv.marketplace}`
@@ -717,13 +758,13 @@ const CmdTenantPrimarySales = async ({ argv }) => {
     await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
 
     let res = await elvlv.TenantPrimarySales({
-        tenant: argv.tenant,
-        marketplace: argv.marketplace,
-        processor: argv.processor,
-        csv: argv.csv,
-        offset: argv.offset,
-        admin: argv.admin,
-      });
+      tenant: argv.tenant,
+      marketplace: argv.marketplace,
+      processor: argv.processor,
+      csv: argv.csv,
+      offset: argv.offset,
+      admin: argv.admin,
+    });
 
     if (argv.csv && argv.csv != "") {
       fs.writeFileSync(argv.csv, res);
@@ -1272,6 +1313,8 @@ const CmdTenantProvision = async ({ argv }) => {
   console.log("Tenant Provision");
   console.log(`Tenant ID: ${argv.tenant}`);
   console.log(`verbose: ${argv.verbose}`);
+  console.log(`status: ${argv.status}`);
+  console.log(`init-config: ${argv.init_config}`);
 
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
@@ -1286,10 +1329,19 @@ const CmdTenantProvision = async ({ argv }) => {
       client,
       kmsId,
       tenantId: argv.tenant,
-      debug: true
+      statusFile: argv.status,
+      initConfig: argv.init_config,
+      debug: argv.verbose,
     });
 
-    console.log(yaml.dump(res));
+    if (argv.init_config){
+      console.log(JSON.stringify(res,null,2));
+    } else {
+      console.log(yaml.dump(res));
+    }
+
+
+
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1684,9 +1736,9 @@ const CmdTokenTransfer = async ({ argv }) => {
     });
     var status = await res.status;
     if (status === 1){
-      console.log("status: transfer successful")
-    }else {
-      console.log("status: transfer failed")
+      console.log("status: transfer successful");
+    } else {
+      console.log("status: transfer failed");
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -2390,7 +2442,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("new_token_uri", {
-          describe: 'New token URI; ignored if CSV batch, use -',
+          describe: "New token URI; ignored if CSV batch, use -",
           type: "string",
         })
         .option("token_id", {
@@ -2424,14 +2476,14 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("hash", {
-          describe: 'New NFT template object hash',
+          describe: "New NFT template object hash",
           type: "string",
         })
         .option("dry_run", {
           describe:
             "Default 'true'",
           type: "boolean",
-        })
+        });
     },
     (argv) => {
       CmdTenantUpdateTokenURI({ argv });
@@ -2962,12 +3014,24 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_provision <tenant>",
-    "Provisions a new tenant account with standard media libraries and content types. Note this account must be created using space_tenant_create.",
+    "tenant_provision <tenant> [options]",
+    "Provision a new tenancy with standard media libraries and content types. " +
+    "Run as the tenant root key, as created by space_tenant_create. This is a multi-step operation, " +
+    "and intermediate status is saved in the local directory in the file tenant_status.json. " +
+    "The operation can be resumed by specifying a status file, which indicates the operations " +
+    "that have already been executed.",
     (yargs) => {
       yargs.positional("tenant", {
         describe: "Tenant ID",
         type: "string",
+      });
+      yargs.option("status",{
+        describe: "Path to the JSON File for existing tenant provision config",
+        type: "string",
+      });
+      yargs.option("init_config",{
+        describe: "Displays the initial provisioning config, which can be used to input existing objects",
+        type: "boolean",
       });
     },
     (argv) => {
@@ -3354,7 +3418,7 @@ yargs(hideBin(process.argv))
         .positional("user_addr", {
           describe: "user address",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdTokenBalanceOf({ argv });
@@ -3506,6 +3570,29 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "create_wallet_account <email> <tenant> <property_slug>",
+    "create a wallet account and send tenant-branded email",
+    (yargs) => {
+      yargs
+        .positional("email", {
+          describe: "the email to create the account for",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "the tenant in format iten...",
+          type: "string",
+        })
+        .positional("property_slug", {
+          describe: "the property slug. e.g., epcrtv",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdCreateWalletAccount({ argv });
+    }
+  )
+
+  .command(
     "shuffle <file> [options]",
     "Sort each line deterministically based on the seed",
     (yargs) => {
@@ -3537,7 +3624,7 @@ yargs(hideBin(process.argv))
     "admin_health [options]",
     "Checks the health of the Authority Service APIs. Note the current key must be a system admin configured in the AuthD servers.",
     (yargs) => {
-      yargs
+      yargs;
     },
     (argv) => {
       CmdAdminHealth({ argv });

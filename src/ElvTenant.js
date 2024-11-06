@@ -225,12 +225,12 @@ class ElvTenant {
         console.log(e);
         errors.push("Encountered an error when getting metadata for the eluvio_live_id service");
       }
-      if (services.length != 0) {
+      if (services.length !== 0) {
         tenantInfo["services"] = services;
       }
     }
 
-    if (errors.length != 0) {
+    if (errors.length !== 0) {
       tenantInfo["errors"] = errors;
     }
 
@@ -251,7 +251,6 @@ class ElvTenant {
     );
 
     const tenantAddr = Utils.HashToAddress(tenantContractId);
-
     if (groupType){
       if (groupType !== constants.TENANT_ADMIN &&
         groupType !== constants.CONTENT_ADMIN &&
@@ -426,7 +425,6 @@ class ElvTenant {
     }
 
     const tenantAddr = Utils.HashToAddress(tenantContractId);
-
     await this.client.ReplaceContractMetadata({
       contractAddress: tenantAddr,
       metadataKey: constants.TENANT_STATE,
