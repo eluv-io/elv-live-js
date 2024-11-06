@@ -20,7 +20,7 @@ process.emit = function (name, data, ...args) {
 const CmdInit = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -42,7 +42,7 @@ const CmdInit = async ({ argv }) => {
 const CmdStreamCreate = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -64,7 +64,7 @@ const CmdStreamCreate = async ({ argv }) => {
 const CmdStreamTerminate = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -82,7 +82,7 @@ const CmdStreamTerminate = async ({ argv }) => {
 const CmdStreamStatus = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -107,7 +107,7 @@ const CmdStreamStatus = async ({ argv }) => {
 const CmdStreamOp = async ({ argv, op }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -125,7 +125,7 @@ const CmdStreamOp = async ({ argv, op }) => {
 const CmdStreamInsertion = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -175,7 +175,7 @@ const CmdStreamInsertion = async ({ argv }) => {
 const CmdStreamDownload = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -183,7 +183,7 @@ const CmdStreamDownload = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period});
+    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset, makeFrame: argv.frames});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -193,7 +193,7 @@ const CmdStreamDownload = async ({ argv }) => {
 const CmdStreamConfig = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -219,7 +219,7 @@ const CmdStreamConfig = async ({ argv }) => {
 const CmdStreamCopyToVod = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -227,10 +227,33 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
+    // PENDING(jon): Remove default recording_period after live-to-vod supports copying multiple recording_periods
+    if (argv.recording_period === undefined) {
+      argv.recording_period = -1
+    }
+
+    if (argv.streams) { // 'video:0,audio:1,audio_spa:2'
+      let streams = {};
+      streamsList = argv.streams.split(",");
+      for (let i = 0; i < streamsList.length; i++) {
+        const s = streamsList[i].split(":");
+        console.log("s", s);
+        streams[s[0]] = {stream_index: parseInt(s[1])};
+      }
+      argv.streams = streams
+      console.log("Streams: ", streams);
+    }
+
     let status = await elvStream.StreamCopyToVod({
       name: argv.stream,
       object: argv.object,
-      eventId: argv.event_id});
+      library: argv.library,
+      eventId: argv.event_id,
+      startTime: argv.start_time,
+      endTime: argv.end_time,
+      recordingPeriod: argv.recording_period,
+      streams: argv.streams
+    });
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -240,7 +263,7 @@ const CmdStreamCopyToVod = async ({ argv }) => {
 const CmdWatermark = async ({op, argv}) => {
   try {
     let elvStream = new EluvioLiveStream({
-      configUrl: Config.networks[Config.net],
+      url: argv.url,
       debugLogging: argv.verbose
     });
 
@@ -256,14 +279,60 @@ const CmdWatermark = async ({op, argv}) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
+};
 
+const CmdStreamListUrls = async ({ argv }) => {
+  try {
+    const elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvStream.StreamListUrls({
+      siteId: argv.site
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdStreamSwitch = async ({ argv }) => {
+  try {
+    const elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvStream.StreamSwitch({
+      name: argv.stream,
+      source: argv.source,
+      backupHash: argv.backup_hash
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 }
+
 
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
     type: "boolean",
     alias: "v"
+  })
+  .option("url", {
+    describe: "Optional node endpoint (eg. https://host-x-x-x-x.contentfabric.io)",
+    type: "string",
   })
 
   .command(
@@ -476,7 +545,18 @@ yargs(hideBin(process.argv))
             "Download a specific recording period (instead of the lastone)",
           type: "int",
         })
-    },
+        .option("offset", {
+          describe:
+            "Start downloading at this offset (seconds).",
+          type: "int",
+        })
+        .option("frames", {
+          describe:
+            "Create a frame JPG for each video part",
+          type: "bool",
+        })
+
+      },
     (argv) => {
       CmdStreamDownload({ argv });
     }
@@ -497,9 +577,35 @@ yargs(hideBin(process.argv))
             "Copy to an existing object instead of creating a new one",
           type: "string",
         })
+        .option("library", {
+          describe:
+            "Copy to a new object in this library",
+          type: "string",
+        })
         .option("event_id", {
           describe:
             "Optional SCTE35 program or chapter event ID",
+          type: "string",
+        })
+        // PENDING(jon): Disabled until live-to-vod supports starting at an offset into a recording_period`
+        // .option("start_time", {
+        //   describe:
+        //     "Start at the specified time in the stream",
+        //   type: "string",
+        // })
+        .option("end_time", {
+          describe:
+            "End at the specified time in the stream",
+          type: "string",
+        })
+        .option("recording_period", {
+          describe:
+            "Use only the specified recording period",
+          type: "int",
+        })
+        .option("streams", {
+          describe:
+            "List specific streams to be copied (eg. 'video:0,audio:1,audio_spa:2')",
           type: "string",
         })
     },
@@ -545,6 +651,47 @@ yargs(hideBin(process.argv))
     }
   )
 
+  .command(
+    "list",
+    "List stream urls and their status.",
+    (yargs) => {
+      yargs
+        .option("site", {
+          describe:
+            "Site ID",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdStreamListUrls({argv});
+    }
+  )
+
+  .command(
+    "switch <stream> <source>",
+    "Switch the live stream to the primary or alternate",
+    (yargs) => {
+      yargs
+        .positional("stream", {
+          describe:
+            "Stream content ID",
+          type: "string"
+        })
+        .positional("source", {
+          describe:
+            "Stream source: primary | backup",
+          type: "string"
+        })
+        .option("backup_hash", {
+          describe:
+            "Object hash of the backup stream",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdStreamSwitch({argv});
+    }
+  )
 
   .strict()
   .help()

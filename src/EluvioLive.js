@@ -349,7 +349,7 @@ class EluvioLive {
       tenantInfo.marketplaces[key] = {};
       tenantInfo.marketplaces[key].items = {};
       tenantInfo.marketplaces[key].summary = {};
-      var totalNfts = m.marketplaces[key].info.items.length || 0;
+      var totalNfts = m.marketplaces[key]?.info?.items?.length || 0;
       tenantInfo.marketplaces[key].summary.total_nfts = totalNfts;
 
       var totalMinted = 0;
@@ -358,7 +358,7 @@ class EluvioLive {
       var topMintedValue = 0;
       var topMintedList = [];
 
-      for (var i in m.marketplaces[key].info.items) {
+      for (var i in m.marketplaces[key]?.info?.items) {
         const item = m.marketplaces[key].info.items[i];
 
         const sku = item.sku;
@@ -1489,6 +1489,11 @@ class EluvioLive {
       }
 
       for (var i = 0; i < maxShowOwners && i < nftInfo.totalSupply; i++) {
+        if (nftInfo.tokens[i] === undefined) {
+          warns.push("missing token information for index " + i + " of " + (totalSupply-1) + " (totalSupply=" + totalSupply +
+            "); likely the blockchain indexer is not up to date; try using --show_owners_via_contract instead.");
+          continue;
+        }
         try {
           // adapt to format:
           // hold -> holdSecs
@@ -1515,7 +1520,8 @@ class EluvioLive {
           delete nftInfo.tokens[i].token_owner;
           delete nftInfo.tokens[i].token_uri;
         } catch (e) {
-          warns.push("Failed to re-process token ID (index: " + i + "): " + addr);
+          warns.push("Failed to process token " + addr + " index " + i + "/" + (totalSupply-1) + ", error: " + e +
+            ", token: " + JSON.stringify(nftInfo.tokens[i]));
           continue;
         }
 
@@ -3388,9 +3394,11 @@ class EluvioLive {
     * @param {string} tenant - The Tenant ID
     * @param {string} host - Authority Service url (Optional)
     * @param {string} contentHash - Version hash of the new Tenant Object to submit
+    * @param {boolean} updateLinks - True to update links
+    * @param {string} env - Environment to update -- "production" or "staging", default production
     * @return {Promise<Object>} - The API Response for the request
     */
-  async TenantPublishData({tenant, host, contentHash, updateLinks=false}) {
+  async TenantPublishData({tenant, host, contentHash, updateLinks=false, env="production"}) {
     let latestVersionHash = contentHash;
     if (updateLinks){
       let objectId = this.client.utils.DecodeVersionHash(contentHash).objectId;
@@ -3399,15 +3407,16 @@ class EluvioLive {
 
       latestVersionHash = await this.client.LatestVersionHash({objectId});
       contentHash = latestVersionHash;
-      if (this.debug){
-        console.log("Update links latest version hash: ", contentHash, " object Id ", objectId, " library Id ", libraryId);
+      if (this.debug) {
+        console.log("Submitting latest version hash:", contentHash, "objectId:", objectId, "libraryId:", libraryId);
       }
     }
 
     let tenantConfigResult = null;
 
     var body = {
-      content_hash: contentHash
+      content_hash: contentHash,
+      env: env,
     };
 
     let res = await this.PostServiceRequest({

@@ -1,8 +1,13 @@
 {
   "name": "@eluvio/elv-live-js",
-  "version": "1.1.1",
+  "version": "1.6.0",
   "description": "Eluvio Live SDK and Tools",
   "main": "EluvioLive.js",
+  "bin": {
+    "elv-live": "elv-live",
+    "elv-stream": "elv-stream",
+    "elv-admin": "elv-admin"
+   },
   "scripts": {
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
     "test": "jest",
@@ -38,7 +43,7 @@
   ],
   "homepage": "https://github.com/eluv-io/elv-live-js#readme",
   "dependencies": {
-    "@eluvio/elv-client-js": "github:eluv-io/elv-client-js#develop",
+    "@eluvio/elv-client-js": "^4.0.86",
     "big-number": "^2.0.0",
     "cbor-x": "^1.5.4",
     "csv-parse": "^5.3.0",

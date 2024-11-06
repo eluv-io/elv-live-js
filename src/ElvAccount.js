@@ -120,7 +120,6 @@ class ElvAccount {
       // the new account can create wallet when it has funds
       await account.userProfileClient.CreateWallet();
 
-
       if (tenantContractId) {
         // set tenant info for new account
         let temp = this.client;
@@ -248,6 +247,26 @@ class ElvAccount {
       recipient: address,
       ether: funds,
     });
+  }
+
+  async ReplaceStuckTx({nonce}){
+    const newNonce = nonce? nonce : await this.signer.getTransactionCount("latest"); // provides confirmed nonce
+    console.log("nonce:", newNonce);
+
+    // get the current gas price from the Ethereum network
+    const gasPrice = await this.signer.getGasPrice();
+    // increase gas price to prioritize the transaction
+    const newGasPrice = gasPrice.mul(ethers.BigNumber.from("2"));
+
+    let receipt = await this.signer.sendTransaction({
+      to: await this.signer.getAddress(),
+      value: ethers.utils.parseEther("0"),
+      nonce: newNonce,
+      gasPrice: newGasPrice,
+      gasLimit: ethers.utils.hexlify(21000), // typical gas limit for ether transfer
+    });
+    console.log("Transaction sent:", receipt.hash);
+    await receipt.wait();
   }
 
   async AddToAccessGroup({ groupAddress, accountAddress, isManager = false }) {

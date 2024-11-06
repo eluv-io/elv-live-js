@@ -149,6 +149,28 @@ const CmdAccountSend = async ({ argv }) => {
   }
 };
 
+const CmdReplaceStuckTx = async ({ argv }) => {
+  console.log("Replace stuck transaction:\n");
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    await elvAccount.ReplaceStuckTx({
+      nonce: argv.nonce,
+    });
+    console.log("Success!");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 const CmdGroupAdd = async ({ argv }) => {
   console.log("Group Add\n");
   console.log(`Group address: ${argv.group_address}`);
@@ -255,34 +277,9 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
   }
 };
 
-const CmdTenantShow = async({ argv }) => {
-  console.log("Tenant - show", argv.tenant);
-  console.log("Network: " + Config.net);
-
-  try {
-    let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
-    });
-    await t.Init({ privateKey: process.env.PRIVATE_KEY });
-
-    let res = await t.TenantShow({
-      tenantContractId: argv.tenant,
-      show_metadata: argv.show_metadata
-    });
-    console.log(yaml.dump(res));
-    if (res.errors) {
-      console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
-    }
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
 const CmdTenantFix = async({ argv }) => {
   console.log("Tenant - fix", argv.tenant);
   console.log("Network: " + Config.net);
-
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
@@ -319,7 +316,7 @@ const CmdTenantFix = async({ argv }) => {
     for (let i = 0; i < errors.length; i++) {
       let error = errors[i];
       switch (error) {
-        case 'missing content admin':
+        case "missing content admin":
           if(argv.content_admin_address){
             let addr = await t.TenantSetGroup({
               tenantContractId: argv.tenant,
@@ -336,7 +333,7 @@ const CmdTenantFix = async({ argv }) => {
             unresolved.push(error, `${constants.CONTENT_ADMIN} is not provided`);
           }
           break;
-        case 'missing tenant user group':
+        case "missing tenant user group":
           if(argv.tenant_user_group_address){
             let addr = await t.TenantSetGroup({
               tenantContractId: argv.tenant,
@@ -353,7 +350,7 @@ const CmdTenantFix = async({ argv }) => {
             unresolved.push(`missing tenant user group: ${constants.TENANT_USER_GROUP} is not provided`);
           }
           break;
-        case `tenant admin can't be verified or is not associated with any tenant`:
+        case "tenant admin can't be verified or is not associated with any tenant":
           if(res.groups[constants.TENANT_ADMIN]){
             await t.TenantSetGroupConfig({
               tenantContractId: argv.tenant,
@@ -363,7 +360,7 @@ const CmdTenantFix = async({ argv }) => {
             unresolved.push(error);
           }
           break;
-        case `content admin can't be verified or is not associated with any tenant`:
+        case "content admin can't be verified or is not associated with any tenant":
           if(res.groups[constants.CONTENT_ADMIN]) {
             await t.TenantSetGroupConfig({
               tenantContractId: argv.tenant,
@@ -373,7 +370,7 @@ const CmdTenantFix = async({ argv }) => {
             unresolved.push(error);
           }
           break;
-        case `tenant user group can't be verified or is not associated with any tenant`:
+        case "tenant user group can't be verified or is not associated with any tenant":
           if(res.groups[constants.TENANT_USER_GROUP]) {
             await t.TenantSetGroupConfig({
               tenantContractId: argv.tenant,
@@ -394,6 +391,30 @@ const CmdTenantFix = async({ argv }) => {
     return unresolved;
   } catch (e) {
     console.log(e);
+  }
+};
+
+const CmdTenantShow = async({ argv }) => {
+  console.log("Tenant - show", argv.tenant);
+  console.log("Network: " + Config.net);
+
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantShow({
+      tenantContractId: argv.tenant,
+      show_metadata: argv.show_metadata
+    });
+    console.log(yaml.dump(res));
+    if (res.errors) {
+      console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
   }
 };
 
@@ -420,6 +441,9 @@ const CmdTenantFixSuite = async({ argv }) => {
 
   //Set content admins group ID and fix problems related to the tenant and its admin groups
   const unresolvedError = await CmdTenantFix({argv});
+  if (unresolvedError) {
+    throw Error(`Errors unresolved when fixing tenant: ${unresolvedError}`)
+  }
 
   //Set tenantContractId to libraries, if owned by the user
   if (argv.libraries) {
@@ -479,9 +503,9 @@ const CmdSetTenantContractId = async ({argv}) => {
       if (tenantContractIdFromTenantAdminGrp !== ""){
         if (tenantContractIdFromTenantAdminGrp !== tenantContractId){
           throw Error(`object tenantId have different tenantContractId set:
-          Given TenantId: ${tenantContractId}
-          From TenantId: ${tenantContractIdFromTenantAdminGrp},
-        `);
+           Given TenantId: ${tenantContractId}
+           From TenantId: ${tenantContractIdFromTenantAdminGrp},
+         `);
         }
         console.log(`object has ${tenantContractId} already set`);
         return;
@@ -1428,6 +1452,21 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAccountSend({ argv });
+    }
+  )
+
+  .command(
+    "replace_stuck_transaction",
+    "replace stuck transaction at given nonce using this key with higher gas-price",
+    (yargs) => {
+      yargs
+        .option("nonce", {
+          describe: "Nonce of the transaction to be replaced",
+          type: "integer",
+        });
+    },
+    (argv) => {
+      CmdReplaceStuckTx({ argv });
     }
   )
 

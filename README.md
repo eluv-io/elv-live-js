@@ -16,6 +16,13 @@ From the elv-live-js directory, simply run:
 npm install
 ```
 
+to install the binaries `elv-live`, `elv-stream`, `elv-admin` globally in your path
+(eg, /opt/homebrew/bin/ on mac), use:
+
+```
+npm install -g
+```
+
 ## EluvioLive CLI
 
 The EluvioLive CLI (`elv-live`) provides tenant, token, and marketplace management commands.

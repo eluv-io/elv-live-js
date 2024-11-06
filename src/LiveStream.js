@@ -5,12 +5,11 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { execSync } = require("child_process");
+const { Config } = require("./Config.js");
 
 const fs = require("fs");
 const got = require("got");
 const https = require("https");
-
-const PRINT_DEBUG = false;
 
 const MakeTxLessToken = async({client, libraryId, objectId, versionHash}) => {
   const tok = await client.authClient.AuthorizationToken({libraryId, objectId,
@@ -25,12 +24,17 @@ class EluvioLiveStream {
    * Instantiate the EluvioLiveStream
    *
    * @namedParams
-   * @param {string} configUrl - The Content Fabric configuration URL
+   * @param {string} url - Optional node endpoint URL (overwrites config URL)
+   * @param {bool} debugLogging - Optional debug logging flag
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
-  constructor({ configUrl, debugLogging = false }) {
-    this.configUrl = configUrl || ElvClient.main;
+  constructor({ url, debugLogging = false }) {
 
+    if (url) {
+      this.configUrl = url+"/config?self&qspace="+Config.net;
+    } else {
+      this.configUrl = Config.networks[Config.net];
+    }
     this.debug = debugLogging;
   }
 
@@ -49,12 +53,13 @@ class EluvioLiveStream {
 
   async StatusPrep({name}) {
 
-    let conf = await this.client.LoadConf({name});
+    const objectId = name;
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
 
     try {
 
       // Set static token - avoid individual auth for separate channels/streams
-      let token = await MakeTxLessToken({client: this.client, libraryId: conf.libraryId});
+      let token = await MakeTxLessToken({client: this.client, libraryId});
       this.client.SetStaticToken({token});
 
     } catch (error) {
@@ -168,22 +173,20 @@ class EluvioLiveStream {
     return this.client.StreamInsertion({name, insertionTime, sinceStart, duration, targetHash, remove});
   }
 
+  async StreamDownload({name, period, offset, makeFrame}) {
 
-  async StreamDownload({name, period}) {
-
-    let conf = await this.client.LoadConf({name});
-
+    let objectId = name;
     let status = {name};
 
     try {
 
-      let libraryId = await this.client.ContentObjectLibraryId({objectId: conf.objectId});
+      const libraryId = await this.client.ContentObjectLibraryId({objectId: objectId});
       status.library_id = libraryId;
-      status.object_id = conf.objectId;
+      status.object_id = objectId;
 
       let mainMeta = await this.client.ContentObjectMetadata({
         libraryId: libraryId,
-        objectId: conf.objectId
+        objectId: objectId
       });
 
       let fabURI = mainMeta.live_recording.fabric_config.ingress_node_api;
@@ -201,7 +204,7 @@ class EluvioLiveStream {
       let edgeWriteToken = mainMeta.live_recording.fabric_config.edge_write_token;
       let edgeMeta = await this.client.ContentObjectMetadata({
         libraryId: libraryId,
-        objectId: conf.objectId,
+        objectId: objectId,
         writeToken: edgeWriteToken
       });
 
@@ -224,27 +227,54 @@ class EluvioLiveStream {
       console.log("Downloading stream", name, " period", period, " latest", sequence - 1);
 
       let recording = recordings.live_offering[period];
-      if (recording == undefined) {
+      if (recording == undefined || recording.sources == undefined) {
         console.log("ERROR - recording period not found: ", period);
       }
+
+      let streams = Object.keys(recording.sources);
+      console.log("Streams", streams);
 
       let dpath = "DOWNLOAD/" + edgeWriteToken + "." + period;
       !fs.existsSync(dpath) && fs.mkdirSync(dpath, {recursive: true});
 
-      let mts = ["audio", "video"];
+      // Reorder streams list so it starts with video
+      let mts = ["video"];
+      for (let mi = 0; mi < streams.length; mi ++) {
+        if (streams[mi].includes("video"))
+          continue;
+        mts.push(streams[mi]);
+      }
+
+      let inputs = "";
+      let inputs_map = "";
+      let makeFrameCmds = [];
+
       for (let mi = 0; mi < mts.length; mi ++) {
         let mt = mts[mi];
+        inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
+        if (mt.includes("video")) {
+          inputs_map = inputs_map + ` -map ${mi}:v:0`;
+        } else {
+          inputs_map = inputs_map + ` -map ${mi}:a:0`;
+        }
         console.log("Downloading ", mt);
         let mtpath = dpath + "/" + mt;
         let partsfile = dpath + "/parts_" + mt + ".txt";
         !fs.existsSync(mtpath) && fs.mkdirSync(mtpath);
-        var sources = recording.sources[mt];
+        var sources = recording.sources[mt].parts;
         for (let i = 0; i < sources.length - 1; i++) {
+
+          if (i * 30 <= offset) {
+            console.log(sources[i].hash, "skipped");
+            continue;
+          }
+
           console.log(sources[i].hash);
+
           let partHash = sources[i].hash;
           let buf = await this.client.DownloadPart({
             libraryId,
-            objectId: conf.objectId,
+            objectId: objectId,
             partHash,
             format: "buffer",
             chunked: false,
@@ -262,6 +292,19 @@ class EluvioLiveStream {
             if (err)
               console.log(err);
           });
+
+          if (makeFrame && mt.includes("video")) {
+            const makeFrameCmd = "ffmpeg -i " + partfile+ " -vframes 1 -update 1 -q:v 1 " + mtpath + "/" + partHash + ".jpg";
+            makeFrameCmds.push(makeFrameCmd);
+          }
+        }
+
+        // Make frames from parts
+        if (makeFrame && mt.includes("video")) {
+          for (let i = 0; i < makeFrameCmds.length; i++) {
+            console.log("Frame cmd", makeFrameCmds[i]);
+            execSync(makeFrameCmds[i]);
+          }
         }
 
         // Concatenate parts into one mp4
@@ -272,7 +315,7 @@ class EluvioLiveStream {
 
       // Create final mp4 file
       let f = dpath + "/download.mp4";
-      let cmd = "ffmpeg -i " + dpath + "/video.mp4"  + "  -i " +  dpath + "/audio.mp4" + "  -map 0:v:0  -map 1:a:0  -c copy  -shortest " + f;
+      let cmd = "ffmpeg  " + inputs + " " + inputs_map + "  -c copy  -shortest " + f;
       console.log("Running", cmd);
       execSync(cmd);
 
@@ -330,14 +373,43 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({name, object, eventId}) {
+  async StreamCopyToVod({name, object, library, eventId, startTime, endTime, recordingPeriod, streams}) {
 
-    let conf = await this.client.LoadConf({name});
-
+    const objectId = name;
     const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
 
     let status = await this.Status({name});
     let libraryId = status.libraryId;
+
+    let targetLibraryId;
+    let targetWriteToken;
+
+    // If a target object is not specified, create it here
+    if (object == undefined) {
+      if (library == undefined) {
+        throw "one of object or library must be specified";
+      }
+      const typeId = await this.FindContentType({label: "title"});
+      if (typeId == undefined) {
+        throw "content type not found: title";
+      }
+      console.log("Creating new object in library " + library);
+      const newObject = await this.client.CreateContentObject({libraryId: library, options: {
+        type: typeId,
+        meta: {
+          public: {
+            name: "VOD - Live Stream " + name + " - " + new Date().toISOString()
+          }
+        }
+      }});
+      await this.client.SetPermission({objectId: newObject.objectId, writeToken: newObject.writeToken, permission: "editable"});
+
+      object = newObject.objectId;
+      targetWriteToken = newObject.writeToken;
+      targetLibraryId = library;
+    } else {
+      targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
+    }
 
     console.log("Copying stream", name, "object", object);
 
@@ -346,28 +418,24 @@ class EluvioLiveStream {
       throw "Must specify a target object ID";
     }
 
-    let targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
-
     // Validation - ensure target object has content encryption keys
     const kmsAddress = await this.client.authClient.KMSAddress({objectId: object});
     const kmsCapId = `eluv.caps.ikms${Utils.AddressToHash(kmsAddress)}`;
     const kmsCap = await this.client.ContentObjectMetadata({
       libraryId: targetLibraryId,
       objectId: object,
+      writeToken: targetWriteToken,
       metadataSubtree: kmsCapId
     });
     if (!kmsCap) {
       throw Error("No content encryption key set for this object");
     }
 
-    let startTime = "";
-    let endTime = "";
-
     try {
 
-      status.live_object_id = conf.objectId;
+      status.live_object_id = objectId;
 
-      let liveHash = await this.client.LatestVersionHash({objectId: conf.objectId, libraryId});
+      let liveHash = await this.client.LatestVersionHash({objectId: objectId, libraryId});
       status.live_hash = liveHash;
 
       if (eventId) {
@@ -380,27 +448,30 @@ class EluvioLiveStream {
         }
       }
 
-      let edt = await this.client.EditContentObject({
-        objectId: object,
-        libraryId: targetLibraryId
-      });
-      console.log("Target write token", edt.write_token);
+      if (targetWriteToken == undefined) {
+        let edt = await this.client.EditContentObject({
+          objectId: object,
+          libraryId: targetLibraryId
+        });
+        targetWriteToken = edt.writeToken;
+      }
+      console.log("Target write token", targetWriteToken);
       status.target_object_id = object;
       status.target_library_id = targetLibraryId;
-      status.target_write_token = edt.write_token;
+      status.target_write_token = targetWriteToken;
 
       console.log("Process live source (takes around 20 sec per hour of content)");
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
-        writeToken: edt.write_token,
+        writeToken: targetWriteToken,
         method: "/media/live_to_vod/init",
         body: {
           "live_qhash": liveHash,
           "start_time": startTime, // eg. "2023-10-03T02:09:02.00Z",
           "end_time": endTime, // eg. "2023-10-03T02:15:00.00Z",
-          "streams": ["video", "audio"],
-          "recording_period": -1,
+          "streams": streams,
+          "recording_period": recordingPeriod,
           "variant_key": "default"
         },
         constant: false,
@@ -411,14 +482,14 @@ class EluvioLiveStream {
       let abrMezInitBody = {
         abr_profile: abrProfileLiveToVod,
         "offering_key": "default",
-        "prod_master_hash": edt.write_token,
+        "prod_master_hash": targetWriteToken,
         "variant_key": "default",
         "keep_other_streams": false
       };
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
-        writeToken: edt.write_token,
+        writeToken: targetWriteToken,
         method: "/media/abr_mezzanine/init",
         body: abrMezInitBody,
         constant: false,
@@ -429,9 +500,12 @@ class EluvioLiveStream {
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
-        writeToken: edt.write_token,
+        writeToken: targetWriteToken,
         method: "/media/live_to_vod/copy",
-        body: {},
+        body: {
+          "variant_key": "default",
+          "offering_key": "default",
+        },
         constant: false,
         format: "text"
       });
@@ -440,7 +514,7 @@ class EluvioLiveStream {
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
-        writeToken: edt.write_token,
+        writeToken: targetWriteToken,
         method: "/media/abr_mezzanine/offerings/default/finalize",
         body: abrMezInitBody,
         constant: false,
@@ -453,7 +527,7 @@ class EluvioLiveStream {
         let fin = await this.client.FinalizeContentObject({
           libraryId: targetLibraryId,
           objectId: object,
-          writeToken: edt.write_token,
+          writeToken: targetWriteToken,
           commitMessage: "Live Stream to VoD"
         });
         status.target_hash = fin.hash;
@@ -535,7 +609,21 @@ class EluvioLiveStream {
   }
 
   async StreamConfig({name}) {
-    return this.client.StreamConfig({name});
+
+    const objectId = name;
+    // Read user config (meta /live_recording_config)
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    let userConfig = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      metadataSubtree: "live_recording_config",
+      resolveLinks: false
+    });
+    return this.client.StreamConfig({name, customSettings: userConfig});
+  }
+
+  async StreamListUrls({siteId}) {
+    return this.client.StreamListUrls({siteId});
   }
 
   async ReadEdgeMeta() {
@@ -748,173 +836,70 @@ class EluvioLiveStream {
     return {eventStart, eventEnd, eventId};
   }
 
+  async StreamSwitch({name, source, backupHash}) {
+
+    console.log("Switch", name, source, backupHash);
+    const objectId = name;
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+
+    const edt = await this.client.EditContentObject({
+      libraryId,
+      objectId
+    });
+
+    const writeToken = edt.write_token;
+
+    let sources = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "public/asset_metadata/sources",
+      resolveLinks: false
+    });
+
+    var rep = "/rep/playout/default/options.json";
+    var lk = "." + rep;
+    if (source == "backup") {
+      if (!backupHash) {
+        throw "Bad backup hash";
+      }
+      lk = "/qfab/" + backupHash + rep;
+    }
+    sources.default["/"] = lk;
+
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "public/asset_metadata/sources",
+      metadata: sources
+    });
+
+    const fin = await this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken
+    });
+    return {
+      ...fin,
+      source,
+      link: lk
+    };
+  }
+
+  // Find a content type by label (e.g. 'live-stream', 'title') based on the
+  // content types stored in the tenant object
+  async FindContentType({label}) {
+    const tenantId = await this.client.userProfileClient.TenantContractId();
+    const objectId = "iq__" + tenantId.substring(4);
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    const m = await this.client.ContentObjectMetadata({objectId, libraryId, metadataSubtree: "/public/content_types"});
+    return m[label];
+  }
 } // End class
 
-
-const ChannelStatus = async ({client, name}) => {
-
-  let status = {name: name};
-
-  const conf = channels[name];
-  if (conf == null) {
-    console.log("Bad name: ", name);
-    return;
-  }
-
-  try {
-
-    let meta = await client.ContentObjectMetadata({
-      libraryId: conf.libraryId,
-      objectId: conf.objectId
-    });
-
-    status.channel_title = meta.public.asset_metadata.title;
-    let source = meta.channel.offerings.default.items[0].source["/"];
-    let hash = source.split("/")[2];
-    status.stream_hash = hash;
-    latestHash = await client.LatestVersionHash({
-	  versionHash: hash
-    });
-    status.stream_latest_hash = latestHash;
-
-    if (hash != latestHash) {
-	  status.warnings = ["Stream version is not the latest"];
-    }
-
-    let channelFormatsUrl = await client.FabricUrl({
-      libraryId: conf.libraryId,
-      objectId: conf.objectId,
-	  rep: "channel/options.json"
-    });
-
-    try {
-	  let offerings = await got(channelFormatsUrl);
-	  status.offerings = JSON.parse(offerings.body);
-    } catch (error) {
-	  console.log(error);
-	  status.offerings_error = "Failed to retrieve channel offerings";
-    }
-
-    status.playout = await ChannelPlayout({client, libraryId: conf.libraryId, objectId: conf.objectId});
-
-  } catch (error) {
-    console.error(error);
-  }
-
-  return status;
-};
-
+// TODO fix and add as CLI command
 /*
- * Performs client-side playout operations - open the channel, read offerings,
- * retrieve playlist and one video init segment.
- */
-const ChannelPlayout = async({client, libraryId, objectId}) => {
-
-  let playout = {};
-
-  const offerings = await client.AvailableOfferings({
-    libraryId,
-    objectId,
-    handler: "channel",
-    linkPath: "/public/asset_metadata/offerings"
-  });
-
-  // Choosing offering 'default'
-  let offering = offerings.default;
-
-  const playoutOptions = await client.PlayoutOptions({
-    libraryId,
-    objectId,
-    offeringURI: offering.uri
-  });
-
-  // Retrieve master playlist
-  let masterPlaylistUrl = playoutOptions["hls"]["playoutMethods"]["fairplay"]["playoutUrl"];
-  playout.master_playlist_url = masterPlaylistUrl;
-  try {
-    //let masterPlaylist =  await got(masterPlaylistUrl);
-    playout.master_playlist = "success";
-  } catch (error) {
-    playout.master_playlist = "fail";
-  }
-
-  let url = new URL(masterPlaylistUrl);
-  let p = url.pathname.split("/");
-
-  // Retrieve media playlist
-  p[p.length - 1] = "video/720@14000000/live.m3u8";
-  let pathMediaPlaylist = p.join("/");
-  url.pathname = pathMediaPlaylist;
-  let mediaPlaylistUrl = url.toString();
-  playout.media_playlist_url = mediaPlaylistUrl;
-  let mediaPlaylist;
-  try {
-    mediaPlaylist = await got(mediaPlaylistUrl);
-    playout.media_playlist = "success";
-  } catch (error) {
-    playout.media_playlist = "fail";
-  }
-
-  // Retrieve init segment
-  var regex = new RegExp("^#EXT-X-MAP:URI=\"init.m4s.(.*)\"$", "m");
-  var match = regex.exec(mediaPlaylist.body);
-  let initQueryParams;
-  if (match) {
-    initQueryParams = match[1];
-  }
-
-  p[p.length - 1] = "video/720@14000000/init.m4s";
-  let pathInit = p.join("/");
-  url.pathname = pathInit;
-  url.search=initQueryParams;
-  let initUrl = url.toString();
-  playout.init_segment_url = initUrl;
-  /*
-  try {
-	let initSegment = await got(initUrl);
-	playout.init_segment = "success"
-  } catch (error) {
-	playout.init_segment = "fail";
-  }
-*/
-  return playout;
-};
-
-
-const Summary = async ({client}) => {
-
-  let summary = {};
-
-  try {
-    for (const [key] of Object.entries(streams)) {
-	  conf = streams[key];
-	  summary[key] = await Status({client, name: key, stopLro: false});
-    }
-
-  } catch (error) {
-    console.error(error);
-  }
-  return summary;
-};
-
-const ChannelSummary = async ({client}) => {
-
-  let summary = {};
-
-  try {
-    for (const [key] of Object.entries(channels)) {
-	  conf = channels[key];
-	  summary[key] = await ChannelStatus({client, name: key});
-    }
-
-  } catch (error) {
-    console.error(error);
-  }
-  return summary;
-};
-
-
-
 const ConfigStreamRebroadcast = async () => {
 
   const t = 1619850660;
@@ -961,7 +946,6 @@ const ConfigStreamRebroadcast = async () => {
     // Set rebroadcast start
     edgeMeta.live_recording_parameters.live_playout_config.rebroadcast_start_time_sec_epoch = t;
 
-    if (PRINT_DEBUG) console.log("MergeMetadata", conf.libraryId, conf.objectId, writeToken);
     await client.MergeMetadata({
       libraryId: conf.libraryId,
       objectId: conf.objectId,
@@ -977,105 +961,6 @@ const ConfigStreamRebroadcast = async () => {
     console.error(error);
   }
 };
-
-async function EnsureAll() {
-  client = await StatusPrep({name: null});
-  let summary = await Summary({client});
-
-  var res = {
-    running: 0,
-    stalled: 0,
-    terminated: 0
-  };
-
-  try {
-    for (const [key, value] of Object.entries(summary)) {
-	  if (value.state == "stalled") {
-        console.log("Stream stalled: ", key, " - restarting");
-        console.log("todo ...");
-	  }
-	  res[value.state] = res[value.state] + 1;
-    }
-  } catch (error) {
-    console.error(error);
-  }
-
-  return res;
-}
-
-
-/*
- * Original Run() function - kept for reference
- */
-async function Run() {
-
-  var client;
-
-  switch (command) {
-
-    case "start":
-      StartStream({name});
-      break;
-
-    case "status":
-      client = await StatusPrep({name});
-      let status = await Status({client, name, stopLro: false});
-      console.log(JSON.stringify(status, null, 4));
-      break;
-
-    case "stop":
-      client = await UpdatePrep({name});
-      Status({client, name, stopLro: true});
-      break;
-
-    case "summary":
-      client = await StatusPrep({name: null});
-      let summary = await Summary({client});
-      console.log(JSON.stringify(summary, null, 4));
-      break;
-
-    case "init": // Set up DRM
-      SetOfferingAndDRM();
-      break;
-
-    case "reset": // Stop and start LRO recording (same edge write token)
-      client = await StatusPrep({name});
-      let reset = await Reset({client, name, stopLro: false});
-      console.log(JSON.stringify(reset, null, 4));
-      break;
-
-    case "channel":
-      client = await StatusPrep({name});
-      let channelStatus = await ChannelStatus({client, name});
-      console.log(JSON.stringify(channelStatus, null, 4));
-      break;
-
-    case "channel_summary":
-      client = await StatusPrep({name});
-      let channelSummary = await ChannelSummary({client, name});
-      console.log(JSON.stringify(channelSummary, null, 4));
-      break;
-
-    case "ensure_all": // Check all and restart stalled
-      let ensureSummary = await EnsureAll();
-      console.log(JSON.stringify(ensureSummary, null, 4));
-      break;
-
-    case "future_use_config":
-      ConfigStreamRebroadcast();
-      break;
-
-    default:
-      console.log("Bad command: ", command);
-      break;
-
-  }
-}
-
-const useOldRunFunction = false;
-if (useOldRunFunction) {
-  Run();
-}
-
+*/
 
 exports.EluvioLiveStream = EluvioLiveStream;
