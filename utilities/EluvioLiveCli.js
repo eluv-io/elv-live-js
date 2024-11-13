@@ -707,7 +707,6 @@ const CmdList = async ({ argv }) => {
 };
 
 const CmdCreateWalletAccount = async ({ argv }) => {
-  console.log(`calling create_account with email:${argv.email} tenant:${argv.tenant} slug:${argv.property_slug}`);
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     if (!argv.email || !argv.tenant || !argv.property_slug) {
