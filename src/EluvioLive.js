@@ -3173,7 +3173,7 @@ class EluvioLive {
     let headers = {};
 
     console.log("email", email, "tenant", tenant, "callbackUrl", callbackUrl,
-        "onlyCreateAccount", onlyCreateAccount, "onlySentEmail", onlySendEmail, "scheduleAt", scheduleAt);
+      "onlyCreateAccount", onlyCreateAccount, "onlySentEmail", onlySendEmail, "scheduleAt", scheduleAt);
 
     let urlPath = "/wlt/ory/create_account";
     let res = await this.PostServiceRequest({
