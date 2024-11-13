@@ -737,6 +737,9 @@ const CmdCreateWalletAccount = async ({ argv }) => {
       email: argv.email,
       tenant: argv.tenant,
       callbackUrl: callbackUrl,
+      onlyCreateAccount: argv.only_create_account,
+      onlySendEmail: argv.only_send_email,
+      scheduleAt: argv.schedule_at,
     });
 
     console.log(res);
@@ -3584,6 +3587,18 @@ yargs(hideBin(process.argv))
         })
         .positional("property_slug", {
           describe: "the property slug. e.g., epcrtv",
+          type: "string",
+        })
+        .option("only_create_account", {
+          describe: "only create the account, don't send email",
+          type: "boolean",
+        })
+        .option("only_send_email", {
+          describe: "only send account-creation email, do not create the account",
+          type: "boolean",
+        })
+        .option("schedule_at", {
+          describe: "set future time for account-creation email (format is 2024-11-13T01:07:05Z)",
           type: "string",
         });
     },

@@ -3164,17 +3164,26 @@ class EluvioLive {
    * @param {string} email - The email to create
    * @param {string} tenant - The Tenant ID
    * @param {string} callbackUrl - The base URL info for the link in the email
+   * @param {boolean} onlyCreateAccount - only create the account
+   * @param {boolean} onlySendEmail - only send email, do not create the account
+   * @param {string} scheduleAt - when to schedule the email
    * @return {Promise<Object>} - The API Response containing created account info
    */
-  async CreateWalletAccount({ email, tenant, callbackUrl}) {
+  async CreateWalletAccount({ email, tenant, callbackUrl, onlyCreateAccount, onlySendEmail, scheduleAt}) {
     let headers = {};
 
-    console.log("email", email, "tenant", tenant, "callbackUrl", callbackUrl);
+    console.log("email", email, "tenant", tenant, "callbackUrl", callbackUrl,
+        "onlyCreateAccount", onlyCreateAccount, "onlySentEmail", onlySendEmail, "scheduleAt", scheduleAt);
 
     let urlPath = "/wlt/ory/create_account";
     let res = await this.PostServiceRequest({
       path: urlPath,
-      body: { email, tenant, "callback_url": callbackUrl },
+      body: {
+        email, tenant, "callback_url": callbackUrl,
+        "only_create_account": onlyCreateAccount,
+        "only_send_email": onlySendEmail,
+        "schedule_at": scheduleAt
+      },
       headers,
     });
 
@@ -3492,7 +3501,7 @@ class EluvioLive {
       console.log("Create response: ", tenantConfigResult);
     }
 
-    return {response:tenantConfigResult, content_hash_updated:contentHash };
+    return {response:tenantConfigResult};
   }
 
   /**
