@@ -3577,7 +3577,7 @@ yargs(hideBin(process.argv))
     (yargs) => {
       yargs
         .positional("email", {
-          describe: "the email to create the account for",
+          describe: "the email to create the account for, or @filename for list of emails",
           type: "string",
         })
         .positional("tenant", {
