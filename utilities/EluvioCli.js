@@ -10,6 +10,7 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 
 const postgres = require('postgres');
+const { ElvFabric } = require("../src/ElvFabric");
 const sql = postgres({
   host : 'rep1.elv',
   port: 5432,
