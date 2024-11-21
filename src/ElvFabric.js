@@ -382,6 +382,7 @@ class ElvFabric {
    * SetContractMeta
    * @param {string} address  contract address
    * @param {string} key  metadata key
+   * @param {string} value metadata value
    * @returns result of contract method call
    */
   async SetContractMeta({address, key, value}) {
