@@ -126,6 +126,7 @@ const CmdStreamInsertion = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
       url: argv.url,
+      token: argv.token,
       debugLogging: argv.verbose
     });
 
@@ -140,6 +141,7 @@ const CmdStreamInsertion = async ({ argv }) => {
       // Time specified as an ISO string
       t = new Date(argv.time).getTime();
       if (t == undefined || isNaN(t)) {
+
         console.log("Bad time specification", argv.time);
         return;
       }
@@ -209,7 +211,7 @@ const CmdStreamConfig = async ({ argv }) => {
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
 
-    let status = await elvStream.StreamConfig({name: argv.stream, space});
+    let status = await elvStream.StreamConfig({name: argv.stream, profileName: argv.playout_profile, space});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -334,6 +336,10 @@ yargs(hideBin(process.argv))
     describe: "Optional node endpoint (eg. https://host-x-x-x-x.contentfabric.io)",
     type: "string",
   })
+  .option("token", {
+    describe: "Externally provided access token",
+    type: "string",
+  })
 
   .command(
     "config <stream>",
@@ -344,6 +350,10 @@ yargs(hideBin(process.argv))
           describe:
             "Stream name or QID (content ID). Stream must be stopped.",
           type: "string",
+        })
+        .option("playout_profile", {
+          describe:
+            "Custom playout profile name"
         })
     },
     (argv) => {
