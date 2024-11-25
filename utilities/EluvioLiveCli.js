@@ -2440,7 +2440,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_path_auth_curl <url_path> [post_body]",
-    "Generate a tenant token and use it to call an tenantPathAuth authd endpoint.",
+    "Generate a tenant token and use it to call a tenantPathAuth authd endpoint.",
     (yargs) => {
       yargs
         .positional("url_path", {
