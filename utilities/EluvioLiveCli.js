@@ -14,6 +14,7 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
+const urljoin = require("url-join");
 const prompt = require("prompt-sync")({ sigint: true });
 const exec = require("child_process").exec;
 
@@ -61,7 +62,7 @@ const CmdTenantAuthToken = async ({ argv }) => {
   console.log(`Token: Authorization: Bearer ${multiSig}`);
 };
 
-const CmdTenantAuthCurl = async ({ argv }) => {
+const CmdTenantPathAuthCurl = async ({ argv }) => {
   await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
   let ts = Date.now();
@@ -98,7 +99,18 @@ const CmdTenantAuthCurl = async ({ argv }) => {
     }
     console.log(stdout);
   });
+};
 
+const CmdTenantAuthCurl = async ({ argv }) => {
+  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+  let res = await elvlv.PostServiceRequest({
+    path: argv.url_path,
+    host: argv.as_url,
+    body: {},
+  });
+
+  console.log(await res.json());
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
@@ -707,7 +719,6 @@ const CmdList = async ({ argv }) => {
 };
 
 const CmdCreateWalletAccount = async ({ argv }) => {
-  console.log(`calling create_account with email:${argv.email} tenant:${argv.tenant} slug:${argv.property_slug}`);
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     if (!argv.email || !argv.tenant || !argv.property_slug) {
@@ -737,6 +748,9 @@ const CmdCreateWalletAccount = async ({ argv }) => {
       email: argv.email,
       tenant: argv.tenant,
       callbackUrl: callbackUrl,
+      onlyCreateAccount: argv.only_create_account,
+      onlySendEmail: argv.only_send_email,
+      scheduleAt: argv.schedule_at,
     });
 
     console.log(res);
@@ -2407,7 +2421,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_auth_curl <url_path> [post_body]",
-    "Generate a tenant token and use it to call an authd endpoint.",
+    "Generate a tenant token and use it to call a baseTenantAuth authd endpoint.",
     (yargs) => {
       yargs
         .positional("url_path", {
@@ -2421,6 +2435,25 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantAuthCurl({argv}).then();
+    }
+  )
+
+  .command(
+    "tenant_path_auth_curl <url_path> [post_body]",
+    "Generate a tenant token and use it to call a tenantPathAuth authd endpoint.",
+    (yargs) => {
+      yargs
+        .positional("url_path", {
+          describe: "URL path",
+          type: "string",
+        })
+        .positional("post_body", {
+          describe: "optional body; if set will POST, if not, will GET",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantPathAuthCurl({argv}).then();
     }
   )
 
@@ -3575,7 +3608,7 @@ yargs(hideBin(process.argv))
     (yargs) => {
       yargs
         .positional("email", {
-          describe: "the email to create the account for",
+          describe: "the email to create the account for, or @filename for list of emails",
           type: "string",
         })
         .positional("tenant", {
@@ -3584,6 +3617,18 @@ yargs(hideBin(process.argv))
         })
         .positional("property_slug", {
           describe: "the property slug. e.g., epcrtv",
+          type: "string",
+        })
+        .option("only_create_account", {
+          describe: "only create the account, don't send email",
+          type: "boolean",
+        })
+        .option("only_send_email", {
+          describe: "only send account-creation email, do not create the account",
+          type: "boolean",
+        })
+        .option("schedule_at", {
+          describe: "set future time for account-creation email (format is 2024-11-13T01:07:05Z)",
           type: "string",
         });
     },
