@@ -14,6 +14,7 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
+const urljoin = require("url-join");
 const prompt = require("prompt-sync")({ sigint: true });
 const exec = require("child_process").exec;
 
@@ -61,7 +62,7 @@ const CmdTenantAuthToken = async ({ argv }) => {
   console.log(`Token: Authorization: Bearer ${multiSig}`);
 };
 
-const CmdTenantAuthCurl = async ({ argv }) => {
+const CmdTenantPathAuthCurl = async ({ argv }) => {
   await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
   let ts = Date.now();
@@ -98,7 +99,18 @@ const CmdTenantAuthCurl = async ({ argv }) => {
     }
     console.log(stdout);
   });
+};
 
+const CmdTenantAuthCurl = async ({ argv }) => {
+  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+  let res = await elvlv.PostServiceRequest({
+    path: argv.url_path,
+    host: argv.as_url,
+    body: {},
+  });
+
+  console.log(await res.json());
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
@@ -2409,7 +2421,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_auth_curl <url_path> [post_body]",
-    "Generate a tenant token and use it to call an authd endpoint.",
+    "Generate a tenant token and use it to call a baseTenantAuth authd endpoint.",
     (yargs) => {
       yargs
         .positional("url_path", {
@@ -2423,6 +2435,25 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantAuthCurl({argv}).then();
+    }
+  )
+
+  .command(
+    "tenant_path_auth_curl <url_path> [post_body]",
+    "Generate a tenant token and use it to call an tenantPathAuth authd endpoint.",
+    (yargs) => {
+      yargs
+        .positional("url_path", {
+          describe: "URL path",
+          type: "string",
+        })
+        .positional("post_body", {
+          describe: "optional body; if set will POST, if not, will GET",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantPathAuthCurl({argv}).then();
     }
   )
 
