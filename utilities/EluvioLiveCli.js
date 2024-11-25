@@ -102,15 +102,18 @@ const CmdTenantPathAuthCurl = async ({ argv }) => {
 };
 
 const CmdTenantAuthCurl = async ({ argv }) => {
-  await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
-  let res = await elvlv.PostServiceRequest({
-    path: argv.url_path,
-    host: argv.as_url,
-    body: {},
-  });
-
-  console.log(await res.json());
+    let res = await elvlv.PostServiceRequest({
+      path: argv.url_path,
+      host: argv.as_url,
+      body: {},
+    });
+    console.log(await res.json());
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 };
 
 const CmfNftTemplateAddNftContract = async ({ argv }) => {
