@@ -7,6 +7,8 @@ const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
+const { Config } = require("./Config");
+const { EluvioLive } = require("./EluvioLive");
 
 class ElvTenant {
   /**
@@ -592,6 +594,81 @@ class ElvTenant {
     return res;
   }
 
+  async TenantFaucetFund({ asUrl, tenantId, amount }) {
+    // Initialize configuration
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    // Initialize EluvioLive and ElvAccount
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: this.debug,
+    });
+    await elvAccount.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    // Create BaseTenantAuth token
+    const requestBody = { ts: Date.now() };
+    const { multiSig } = await eluvioLive.TenantSign({
+      message: JSON.stringify(requestBody),
+    });
+
+    // Create/Get faucet funding address
+    const faucetPath = `/tnt/config/${tenantId}/faucet_funding`;
+    const faucetResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+      method: "POST",
+      path: faucetPath,
+      body: requestBody,
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+    });
+    const { funding_address: fundingAddress } = await faucetResponse.json();
+    console.log(`Faucet funding Address: ${fundingAddress}`);
+
+    // Check balances
+    const senderAddress = elvAccount.signer.address.toString();
+    let senderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
+    let receiverBalance = await elvAccount.client.GetBalance({ address: fundingAddress });
+
+    console.log();
+    console.log(`Funds before transfer: Sender=${senderAddress}, Balance=${senderBalance}`);
+    console.log(`Funds before transfer: Receiver=${fundingAddress}, Balance=${receiverBalance}`);
+    console.log();
+
+    // Validate sender's balance
+    if (senderBalance <= amount) {
+      throw new Error(
+        `Insufficient balance: Sender account (${senderAddress}) has a balance less than the required amount (${amount} Elv's). Please ensure sufficient funds before retrying.`
+      );
+    }
+
+    // Transfer funds
+    const transferResult = await elvAccount.client.SendFunds({
+      recipient: fundingAddress,
+      ether: amount,
+    });
+    console.log("Funds transferred successfully.");
+    if (this.debug) {
+      console.log("Transfer Details:", transferResult);
+    }
+
+    // Check balances after transfer
+    senderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
+    receiverBalance = await elvAccount.client.GetBalance({ address: fundingAddress });
+
+    console.log();
+    console.log(`Funds after transfer: Sender=${senderAddress}, Balance=${senderBalance}`);
+    console.log(`Funds after transfer: Receiver=${fundingAddress}, Balance=${receiverBalance}`);
+    console.log();
+  }
 }
 
 exports.ElvTenant = ElvTenant;

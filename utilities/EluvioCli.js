@@ -2,6 +2,7 @@ const { ElvSpace } = require("../src/ElvSpace.js");
 const { ElvTenant } = require("../src/ElvTenant.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
 const { ElvContracts } = require("../src/ElvContracts.js");
+const { EluvioLive } = require("../src/EluvioLive.js");
 const { Config } = require("../src/Config.js");
 const Ethers = require("ethers");
 
@@ -198,6 +199,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
   console.log(`Tenant name: ${argv.tenant_name}`);
   console.log(`Funds: ${argv.funds}`);
   console.log(`verbose: ${argv.verbose}`);
+  console.log(`as_url: ${argv.as_url}`);
 
   try {
     let space = new ElvSpace({
@@ -214,11 +216,31 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
     });
 
     console.log(yaml.dump(res));
-
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
+
+const CmdTenantFaucetFund = async ({ argv }) => {
+  try {
+    const { as_url: asUrl, tenant_id: tenantId, amount } = argv;
+
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    await t.TenantFaucetFund({
+      asUrl,
+      tenantId,
+      amount,
+    });
+  } catch (error) {
+    console.error("ERROR:", error.message);
+  }
+};
+
 
 const CmdSpaceTenantDeploy = async ({ argv }) => {
   console.log("Tenant Deploy");
@@ -1446,6 +1468,30 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdSpaceTenantDeploy({ argv });
+    }
+  )
+
+  .command(
+    "tenant_faucet_create_and_fund <tenant_id>",
+    "Generate/get tenant funding address for given tenant and provide funds",
+    (yargs) => {
+      yargs
+        .positional("tenant_id", {
+          describe: "tenant id",
+          type: "string",
+        })
+        .option("amount", {
+          describe: "The amount to fund the faucet funding address, specified in Elv's",
+          type: "number",
+          default: 2,
+        })
+        .option("as_url", {
+          describe: "Alternate authority service URL (include '/as/' route if necessary)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantFaucetFund({argv});
     }
   )
 

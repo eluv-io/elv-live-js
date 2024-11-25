@@ -14,7 +14,6 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
-const urljoin = require("url-join");
 const prompt = require("prompt-sync")({ sigint: true });
 const exec = require("child_process").exec;
 
