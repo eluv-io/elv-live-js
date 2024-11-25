@@ -1,10 +1,11 @@
 const { ElvUtils } = require("./Utils");
 const { ElvAccount } = require("./ElvAccount");
-
+const constants = require("./Constants");
 const { ElvClient } = require("@eluvio/elv-client-js");
 
 const Ethers = require("ethers");
 const CBOR = require("cbor-x");
+const {ElvTenant} = require("./ElvTenant");
 
 class ElvSpace {
   /**
@@ -77,12 +78,6 @@ class ElvSpace {
         isManager: true,
       });
 
-      await elvAccount.SetAccountTenantAdminsAddress({
-        tenantAdminsAddress: tenantAdminGroup.address,
-      });
-      account.tenantAdminsId = await elvAccount.client.userProfileClient.TenantId();
-
-
       // Create Content Admin Access Group
       let contentAdminGroup = await elvAccount.CreateAccessGroup({
         name: `${tenantName} Content Admins`,
@@ -94,31 +89,48 @@ class ElvSpace {
         isManager: true,
       });
 
+      // Create tenant user Group
+      let tenantUserGroup = await elvAccount.CreateAccessGroup({
+        name: `${tenantName} Tenant User Group`,
+      });
+
+      await elvAccount.AddToAccessGroup({
+        groupAddress: tenantUserGroup.address,
+        accountAddress: account.address,
+        isManager: true,
+      });
+
+
       if (this.debug){
         console.log("tenant admins:", tenantAdminGroup);
         console.log("content admins:", contentAdminGroup);
+        console.log("tenant user group:", tenantUserGroup);
       }
-      let adminGroups = {tenantAdminGroup, contentAdminGroup};
+      let adminGroups = {tenantAdminGroup, contentAdminGroup, tenantUserGroup};
 
       let tenant = await this.TenantDeploy({
         tenantName,
         ownerAddress: account.address,
         tenantAdminGroupAddress: tenantAdminGroup.address,
         contentAdminGroupAddress: contentAdminGroup.address,
+        tenantUserGroupAddress: tenantUserGroup.address,
       });
 
-      // Assign the created tenant to account
-      await elvAccount.SetAccountTenantContractId({tenantId: tenant.id});
+      // Assign the created tenant and tenant_admin group to account
+      await elvAccount.SetAccountTenantContractId({tenantContractId: tenant.id});
 
-      // Add _ELV_TENANT_ID to groups' metadata so we can identify the tenant these groups belong to
+      // Add tenant details to group
       await elvAccount.SetGroupTenantConfig({
-        tenantId: tenant.id,
+        tenantContractId: tenant.id,
         groupAddress: tenantAdminGroup.address
       });
-
       await elvAccount.SetGroupTenantConfig({
-        tenantId: tenant.id,
+        tenantContractId: tenant.id,
         groupAddress: contentAdminGroup.address
+      });
+      await elvAccount.SetGroupTenantConfig({
+        tenantContractId: tenant.id,
+        groupAddress: tenantUserGroup.address
       });
 
       return {
@@ -131,7 +143,7 @@ class ElvSpace {
     }
   }
 
-  async TenantDeploy({ tenantName, ownerAddress, tenantAdminGroupAddress, contentAdminGroupAddress }) {
+  async TenantDeploy({ tenantName, ownerAddress, tenantAdminGroupAddress, contentAdminGroupAddress, tenantUserGroupAddress }) {
     let tenantContract;
     try {
       tenantContract = await ElvUtils.DeployContractFile({
@@ -143,6 +155,14 @@ class ElvSpace {
       console.log("[Error]: TenantDeploy can only be called by the space owner.");
       throw (e);
     }
+
+    // Create ElvTenant
+    const elvTenant = new ElvTenant({
+      configUrl: this.configUrl,
+    });
+    await elvTenant.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
 
     let res = {};
 
@@ -171,39 +191,48 @@ class ElvSpace {
       console.log("Result addFuncs", res);
     }
 
+    const tenantContractId = ElvUtils.AddressToId({
+      prefix:"iten",
+      address: tenantContract.address});
+
     if (tenantAdminGroupAddress) {
-      let contractAdminGroup = await this.client.CallContractMethod({
-        contractAddress: tenantContract.address,
-        abi: JSON.parse(tenantContract.abi),
-        methodName: "GROUP_ID_ADMIN",
+      res = await elvTenant.TenantSetGroup({
+        tenantContractId,
+        groupType: constants.TENANT_ADMIN,
+        groupAddress: tenantAdminGroupAddress,
       });
-
-      contractAdminGroup = Ethers.utils.parseBytes32String(contractAdminGroup);
-
-      res = await this.client.CallContractMethodAndWait({
-        contractAddress: tenantContract.address,
-        abi: JSON.parse(tenantContract.abi),
-        methodName: "addGroup",
-        methodArgs: [contractAdminGroup, tenantAdminGroupAddress],
-        formatArguments: true,
-      });
-
       if (this.debug){
         console.log("Result set tenant admin group", res);
       }
     }
 
-    res = await this.client.CallContractMethodAndWait({
-      contractAddress: tenantContract.address,
-      abi: JSON.parse(tenantContract.abi),
-      methodName: "addGroup",
-      methodArgs: ["content_admin", contentAdminGroupAddress],
-      formatArguments: true,
-    });
-
-    if (this.debug){
-      console.log("Result set content admin group", res);
+    if (contentAdminGroupAddress){
+      res = await elvTenant.TenantSetGroup({
+        tenantContractId,
+        groupType: constants.CONTENT_ADMIN,
+        groupAddress: tenantAdminGroupAddress,
+      });
+      if (this.debug){
+        console.log("Result set content admin group", res);
+      }
     }
+
+    if (tenantUserGroupAddress){
+      res = await elvTenant.TenantSetGroup({
+        tenantContractId,
+        groupType: constants.TENANT_USER_GROUP,
+        groupAddress: tenantUserGroupAddress,
+      });
+      if (this.debug){
+        console.log("Result set tenant user group", res);
+      }
+    }
+
+    await elvTenant.TenantSetStatus({
+      tenantContractId,
+      tenantStatus: constants.TENANT_STATE_ACTIVE,
+    });
+    const tenantStatus = await elvTenant.TenantStatus({tenantContractId});
 
     if (ownerAddress) {
       res = await this.client.CallContractMethodAndWait({
@@ -240,8 +269,10 @@ class ElvSpace {
       name: tenantName,
       id: ElvUtils.AddressToId({prefix:"iten", address:tenantContract.address}),
       address: tenantContract.address,
+      tenantStatus,
       tenantAdminGroupAddress,
-      contentAdminGroupAddress
+      contentAdminGroupAddress,
+      tenantUserGroupAddress,
     };
   }
 
@@ -280,7 +311,7 @@ class ElvSpace {
 
       let nodeId = this.client.utils.AddressToNodeId(addr);
 
-      if (matchNodeId != undefined && nodeId != matchNodeId) {
+      if (matchNodeId !== undefined && nodeId !== matchNodeId) {
         continue; // Not a match
       }
 
@@ -294,15 +325,15 @@ class ElvSpace {
       let match = false;
       if (locators.length >= 5) {
         let fabArray = locators[4].fab;
-        if (fabArray != undefined) {
+        if (fabArray !== undefined) {
           for (let i = 0; i < fabArray.length; i ++) {
             let host = fabArray[i].host;
-            if (matchEndpoint != undefined && !host.includes(matchEndpoint)) {
+            if (matchEndpoint !== undefined && !host.includes(matchEndpoint)) {
               continue; // Not a match
             }
             match = true;
             let endpoint = fabArray[i].scheme + "://" + host;
-            if (fabArray[i].port != "") {
+            if (fabArray[i].port !== "") {
               endpoint = endpoint + ":" + fabArray[i].port;
             }
             endpoint = endpoint + "/" + fabArray[i].path;

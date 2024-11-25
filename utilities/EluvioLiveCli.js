@@ -386,7 +386,7 @@ const CmdTenantShow = async ({ argv }) => {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.TenantShow({
-      tenantId: argv.tenant,
+      tenantContractId: argv.tenant,
       checkNft: argv.check_nfts,
     });
 

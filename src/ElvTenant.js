@@ -1,12 +1,13 @@
 const { ElvUtils } = require("./Utils");
 const { ElvAccount } = require("./ElvAccount");
+const constants = require("./Constants");
 
 const { ElvClient } = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 
-const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
+
 
 class ElvTenant {
   /**
@@ -35,9 +36,9 @@ class ElvTenant {
 
   /**
    * Get tenant-level information
-   * @param {string} tenantId Tenant ID (iten)
+   * @param {string} tenantContractId Tenant contract ID (iten)
    */
-  async TenantInfo({ tenantId }) {
+  async TenantInfo({ tenantContractId }) {
 
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
@@ -45,11 +46,8 @@ class ElvTenant {
     const abiSpace = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
-    const abiLib = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/BaseLibrary.abi")
-    );
 
-    const tenantAddr = Utils.HashToAddress(tenantId);
+    const tenantContractAddr = Utils.HashToAddress(tenantContractId);
 
     // Space owner
     const spaceOwner = await this.client.CallContractMethod({
@@ -61,13 +59,13 @@ class ElvTenant {
     });
 
     let tenant = {
-      id: tenantId,
+      id: tenantContractId,
       warns: [],
       groups: []
     };
 
     tenant.name = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
+      contractAddress: tenantContractAddr,
       abi: JSON.parse(abi),
       methodName: "name",
       methodArgs: [],
@@ -75,7 +73,7 @@ class ElvTenant {
     });
 
     tenant.description = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
+      contractAddress: tenantContractAddr,
       abi: JSON.parse(abi),
       methodName: "description",
       methodArgs: [],
@@ -83,7 +81,7 @@ class ElvTenant {
     });
 
     const kmsAddress = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
+      contractAddress: tenantContractAddr,
       abi: JSON.parse(abi),
       methodName: "addressKMS",
       methodArgs: [],
@@ -92,41 +90,35 @@ class ElvTenant {
     tenant.kmsId = ElvUtils.AddressToId({prefix:"ikms", address: kmsAddress});
 
     tenant.owner = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
+      contractAddress: tenantContractAddr,
       abi: JSON.parse(abi),
       methodName: "owner",
       methodArgs: [],
       formatArguments: true,
     });
 
-    if (this.client.CurrentAccountAddress() != tenant.owner.toLowerCase()) {
+    if (this.client.CurrentAccountAddress() !== tenant.owner.toLowerCase()) {
       tenant.warns.push("Not run as tenant admin");
       return tenant;
     }
 
     tenant.creator = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
+      contractAddress: tenantContractAddr,
       abi: JSON.parse(abi),
       methodName: "creator",
       methodArgs: [],
       formatArguments: true,
     });
     tenant.creatorId = ElvUtils.AddressToId({prefix:"ispc", address: tenant.creator});
-    if (tenant.creator != spaceOwner) {
+    if (tenant.creator !== spaceOwner) {
       tenant.warns.push(`Bad space ID creator id=${tenant.creatorId}`);
     }
 
-    tenant.adminsGroup = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
-      abi: JSON.parse(abi),
-      methodName: "groupsMapping",
-      methodArgs: ["tenant_admin", 0],
-      formatArguments: true,
-    });
+    tenant.tenantGroups = await this.TenantGroup({tenantContractId});
 
     // Fabric object information
     tenant.fabric_object_visibility = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
+      contractAddress: tenantContractAddr,
       abi: JSON.parse(abi),
       methodName: "visibility",
       methodArgs: [],
@@ -134,8 +126,8 @@ class ElvTenant {
     });
 
     const m = await this.client.ContentObjectMetadata({
-      libraryId: ElvUtils.AddressToId({prefix: "ilib", address: tenantAddr}),
-      objectId: ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr}),
+      libraryId: ElvUtils.AddressToId({prefix: "ilib", address: tenantContractAddr}),
+      objectId: ElvUtils.AddressToId({prefix: "iq__", address: tenantContractAddr}),
       noAuth: true
     });
 
@@ -152,17 +144,12 @@ class ElvTenant {
 
     tenant.libs = await this.client.ContentLibraries();
     for (var i = 0; i < tenant.libs.length; i ++) {
-      const libTenantAdminsIdHex = await this.client.CallContractMethod({
-        contractAddress: Utils.HashToAddress(tenant.libs[i]),
-        abi: JSON.parse(abiLib),
-        methodName: "getMeta",
-        methodArgs: ["_tenantId"],
-        formatArguments: true,
+      const libTenantContractId = await this.client.TenantContractId({
+        contractAddress: Utils.HashToAddress(tenant.libs[i])
       });
-      const libTenantAdminsId = new Buffer.from(libTenantAdminsIdHex.substring(2), "hex").toString("utf8");
-      const libTenantAdmins = Utils.HashToAddress(libTenantAdminsId);
-      if (libTenantAdmins.toLowerCase() != tenant.adminsGroup.toLowerCase()) {
-        tenant.warns.push(`Wrong tenant ID library ${tenant.libs[i]} ${libTenantAdmins}`);
+
+      if (libTenantContractId.toLowerCase() !== tenant.adminsGroup.toLowerCase()) {
+        tenant.warns.push(`Wrong tenant ID library ${tenant.libs[i]} ${libTenantContractId}`);
       }
     }
 
@@ -170,18 +157,20 @@ class ElvTenant {
   }
 
   /**
-   * Return tenant admins group and content admins group corresponding to this tenant.
-   * @param {string} tenantId - The ID of the tenant (iten***)
+   * Show tenant information like root key, tenant_admin, cotent_admin, tenant_user_group and metadata.
+   *
+   * @param {string} tenantContractId - The ID of the tenant contract (iten***)
+   * @param {boolean} show_metadata - show metadata of tenant
    */
-  async TenantShow({ tenantId, show_metadata = false }) {
-    let contractType = await this.client.authClient.AccessType(tenantId);
-    if (contractType != this.client.authClient.ACCESS_TYPES.TENANT) {
-      throw Error("the contract corresponding to this tenantId is not a tenant contract");
+  async TenantShow({ tenantContractId, show_metadata = false }) {
+    let contractType = await this.client.authClient.AccessType(tenantContractId);
+    if (contractType !== this.client.authClient.ACCESS_TYPES.TENANT) {
+      throw Error("the contract corresponding to this tenantContractId is not a tenant contract");
     }
 
     let tenantInfo = {};
 
-    const tenantAddr = Utils.HashToAddress(tenantId);
+    const tenantContractAddr = Utils.HashToAddress(tenantContractId);
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
@@ -189,61 +178,36 @@ class ElvTenant {
     let errors = [];
 
     let owner = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
+      contractAddress: tenantContractAddr,
       abi: JSON.parse(abi),
       methodName: "owner",
       methodArgs: [],
     });
 
-    let tenantAdminAddr;
-    try {
-      tenantAdminAddr = await this.client.CallContractMethod({
-        contractAddress: tenantAddr,
-        abi: JSON.parse(abi),
-        methodName: "groupsMapping",
-        methodArgs: ["tenant_admin", 0],
-        formatArguments: true,
-      });
-    } catch (e) {
-      tenantAdminAddr = null;
-      errors.push("missing tenant admins");
-    }
-    tenantInfo["tenant_admin_address"] = tenantAdminAddr;
-
-    //Content admins group might not exist for the tenant with this tenantId due to legacy reasons.
-    //Running ./elv-admin tenant-fix to update this tenant.
-    let contentAdminAddr;
-    try {
-      contentAdminAddr = await this.client.CallContractMethod({
-        contractAddress: tenantAddr,
-        abi: JSON.parse(abi),
-        methodName: "groupsMapping",
-        methodArgs: ["content_admin", 0],
-        formatArguments: true,
-      });
-    } catch (e) {
-      contentAdminAddr = null;
-      errors.push("missing content admins");
-    }
-    tenantInfo["content_admin_address"] = contentAdminAddr;
-
-    //Check if the groups have _ELV_TENANT_ID set correctly
-    for (const group in tenantInfo) {
-      let groupAddr = tenantInfo[group];
-      let args = group.split("_");
-      if (groupAddr) {
-        let res = await this.TenantCheckGroupConfig({tenantId, groupAddr, tenantOwner: owner});
+    const groupList = await this.TenantGroup({tenantContractId});
+    for (let group in groupList) {
+      let groupName = group.replace(/_/g, " ");
+      if (!groupList[group]){
+        errors.push(`missing ${groupName}`);
+      } else {
+        // check _ELV_TENANT_ID set on these groups
+        let res = await this.TenantCheckGroupConfig({
+          tenantContractId,
+          groupAddr: groupList[group],
+          tenantOwner: owner});
         if (!res.success) {
-          errors.push(`${args[0]} ${args[1]} ${res.message}`);
+          errors.push(`${groupName} ${res.message}`);
         }
       }
     }
-
+    tenantInfo["groups"] = groupList;
     tenantInfo["tenant_root_key"] = owner;
+
+    tenantInfo["tenant_status"] = await this.TenantStatus({tenantContractId});
 
     if (show_metadata) {
       let services = [];
-      let tenantObjectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr});
+      let tenantObjectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantContractAddr});
       let tenantLibraryId = await this.client.ContentObjectLibraryId({objectId: tenantObjectId});
 
       try {
@@ -261,12 +225,12 @@ class ElvTenant {
         console.log(e);
         errors.push("Encountered an error when getting metadata for the eluvio_live_id service");
       }
-      if (services.length != 0) {
+      if (services.length !== 0) {
         tenantInfo["services"] = services;
       }
     }
 
-    if (errors.length != 0) {
+    if (errors.length !== 0) {
       tenantInfo["errors"] = errors;
     }
 
@@ -274,289 +238,286 @@ class ElvTenant {
   }
 
   /**
-   * Create a new content admin group corresponding to this tenant.
-   * @param {string} tenantId - The ID of the tenant (iten***)
-   * @param {string} contentAdminAddr - Content Admin Group's address, new group will be created if not specified (optional)
-   * @returns {string} Content Admin Group's address
+   * Retrieve tenant groups
+   *
+   * @param {string} tenantContractId - The ID of the tenant (iten***)
+   * @param {string} groupType - tenant_admin | content_admin | tenant_user_group
+   * @returns {Promise<*[]>} - list of groups
    */
-  async TenantSetContentAdmins({ tenantId, contentAdminAddr }) {
-    //Check that the user is the owner of the tenant
-    const tenantOwner = await this.client.authClient.Owner({id: tenantId});
-    if (tenantOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
-      throw Error("Content Admin must be set by the owner of tenant " + tenantId);
-    }
+  async TenantGroup({ tenantContractId, groupType }) {
 
-    //The tenant must not already have a content admin group - can only have 1 content admin group for each tenant.
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
 
-    const tenantAddr = Utils.HashToAddress(tenantId);
-    const tenantName = await this.client.CallContractMethod({
-      contractAddress: tenantAddr,
-      abi: JSON.parse(abi),
-      methodName: "name",
-      methodArgs: [],
-      formatArguments: true,
-    });
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
+    if (groupType){
+      if (groupType !== constants.TENANT_ADMIN &&
+        groupType !== constants.CONTENT_ADMIN &&
+        groupType !== constants.TENANT_USER_GROUP){
+        throw Error(`Invalid groupType, require tenant_admin | content_admin | tenant_user_group: ${groupType}`);
+      }
+    }
 
-    let contentAdmin;
+    const groupTypes = [constants.TENANT_ADMIN, constants.CONTENT_ADMIN, constants.TENANT_USER_GROUP];
+
+    let groupList = {};
+    let groupAddress;
+    for (let i = 0; i < groupTypes.length; i++) {
+      if (typeof groupType === "undefined" || groupType === groupTypes[i]){
+        try {
+          groupAddress = await this.client.CallContractMethod({
+            contractAddress: tenantAddr,
+            abi: JSON.parse(abi),
+            methodName: "groupsMapping",
+            methodArgs: [groupTypes[i], 0],
+            formatArguments: true,
+          });
+        } catch (e) {
+          //call cannot override gasLimit error will be thrown if content admin group doesn't exist for this tenant.
+          groupAddress = null;
+        }
+        groupList[groupTypes[i]]=groupAddress;
+      }
+    }
+    return groupList;
+  }
+
+  /**
+   * Set new tenant admin | content admin | user group corresponding to this tenant.
+   *
+   * @param {string} tenantContractId - The ID of the tenant (iten***)
+   * @param {string} groupType - tenant_admin | content_admin | tenant_user_group
+   * @param {string} groupAddress - Group's address, new group will be created if not specified (optional)
+   * @returns {Promise<string|*>} Group's address
+   */
+  async TenantSetGroup({ tenantContractId, groupType, groupAddress }) {
+    //Check that the user is the owner of the tenant
+    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("tenant group must be set by the owner of tenant " + tenantContractId);
+    }
+
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
+
+    if (groupType !== constants.TENANT_ADMIN &&
+      groupType !== constants.CONTENT_ADMIN &&
+      groupType !== constants.TENANT_USER_GROUP){
+      throw Error(`Invalid groupType, require tenant_admin | content_admin | tenant_user_group: ${groupType}`);
+    }
+
+    let tenantGroupAddr;
     try {
-      contentAdmin = await this.client.CallContractMethod({
+      tenantGroupAddr = await this.client.CallContractMethod({
         contractAddress: tenantAddr,
         abi: JSON.parse(abi),
         methodName: "groupsMapping",
-        methodArgs: ["content_admin", 0],
+        methodArgs: [groupType, 0],
         formatArguments: true,
       });
     } catch (e) {
       //call cannot override gasLimit error will be thrown if content admin group doesn't exist for this tenant.
-      contentAdmin = null;
+      tenantGroupAddr = null;
     }
 
-    if (contentAdmin) {
-      let logMsg = `Tenant ${tenantId} already has a content admin group: ${contentAdmin}, aborting...`;
+    if (tenantGroupAddr) {
+      let logMsg = `Tenant ${tenantContractId} already has a group: ${tenantGroupAddr} for ${groupType} aborting...`;
       return logMsg;
     }
 
     let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
     elvAccount.InitWithClient({elvClient:this.client});
 
-    //Arguments don't contain content admin group address, creating a new content admin group for the user's account.
-    if (!contentAdminAddr) {
-      let contentAdminGroup = await elvAccount.CreateAccessGroup({
-        name: `${tenantName} Content Admins`,
+    // create new group if not provided
+    if (!groupAddress) {
+      let accountName = await this.client.userProfileClient.UserMetadata({
+        metadataSubtree: "public/name"
       });
 
-      contentAdminAddr = contentAdminGroup.address;
+      let newGroup = await elvAccount.CreateAccessGroup({
+        name: `${accountName} ${groupType.replace(/_/g, " ").toUpperCase()}`,
+      });
+
+      groupAddress = newGroup.address;
 
       await elvAccount.AddToAccessGroup({
-        groupAddress: contentAdminAddr,
+        groupAddress,
         accountAddress: this.client.signer.address.toLowerCase(),
         isManager: true,
       });
     }
 
-    //Associate the group with this tenant - set the content admin group's _ELV_TENANT_ID to this tenant's tenant id.
-    await this.TenantSetGroupConfig({tenantId: tenantId, groupAddress: contentAdminAddr});
+    //Associate the group with this tenant -- needs group owner to run
+    //await this.TenantSetGroupConfig({tenantContractId, groupAddress});
 
-    //Associate the tenant with this group - set tenant's content admin group on the tenant's contract.
+    //Associate the tenant with this group - set tenant's group on the tenant's contract.
     await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),
       methodName: "addGroup",
-      methodArgs: ["content_admin", contentAdminAddr],
+      methodArgs: [groupType, groupAddress],
       formatArguments: true,
     });
 
-    return contentAdminAddr;
+    return groupAddress;
   }
 
   /**
-   * Remove a content admin from this tenant.
-   * @param {string} tenantId - The ID of the tenant (iten***)
-   * @param {string} contentAdminsAddress - Address of content admin we want to remove.
+   * Remove a tenant_amdin | content_admin | tenant_user_group from this tenant.
+   * @param {string} tenantContractId - The ID of the tenant Id (iten***)
+   * @param {string} groupType - tenant_admin | content_admin | tenant_user_group
+   * @param {string} groupAddress - Address of group we want to remove.
    */
-  async TenantRemoveContentAdmin({ tenantId, contentAdminsAddress }) {
+  async TenantRemoveGroup({ tenantContractId, groupType, groupAddress }) {
+
+    if (groupType !== constants.TENANT_ADMIN &&
+      groupType !== constants.CONTENT_ADMIN &&
+      groupType !== constants.TENANT_USER_GROUP){
+      throw Error(`Invalid groupType, require tenant_admin or content_admin or tenant_user_group: ${groupType}`);
+    }
+
+    //Check that the user is the owner of the tenant
+    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("tenant group must be removed by the owner of tenant " + tenantContractId);
+    }
+
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
 
-    const tenantAddr = Utils.HashToAddress(tenantId);
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
 
-    let res = await this.client.CallContractMethodAndWait({
+    //Remove tenant from group
+    await this.TenantRemoveGroupConfig({groupAddress});
+
+    return await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),
       methodName: "removeGroup",
-      methodArgs: ["content_admin", contentAdminsAddress],
+      methodArgs: [groupType, groupAddress],
       formatArguments: true,
     });
-
-    return res;
   }
 
   /**
-   * Associate group with the tenant with tenantId.
-   * @param {string} tenantId - The ID of the tenant (iten***)
-   * @param {string} groupAddress - Address of the group we want to remove.
+   * Add tenant status
+   *
+   * @param {string} tenantContractId - The ID of the tenant Id (iten***)
+   * @param {string} tenantStatus - tenant status: acive | inactive | frozen
+   * @returns {Promise<{tenantStatus: string, tenantContractId: string}>}
    */
-  async TenantSetGroupConfig({ tenantId, groupAddress }) {
-    let idHex;
-    let contractHasMeta = true;
-    try {
-      idHex = await this.client.CallContractMethod({
-        contractAddress: groupAddress,
-        methodName: "getMeta",
-        methodArgs: ["_ELV_TENANT_ID"],
-      });
-    } catch (e) {
-      console.log(`Log: The group contract with group address ${groupAddress} doesn't support metadata. Some operations with this group contract may fail.`);
-      contractHasMeta = false;
+  async TenantSetStatus({tenantContractId, tenantStatus}) {
+    if (tenantStatus !== constants.TENANT_STATE_ACTIVE &&
+      tenantStatus !== constants.TENANT_STATE_INACTIVE &&
+      tenantStatus !== constants.TENANT_STATE_FROZEN){
+      throw Error(`Invalid tenant status, require active | inactive | frozen: ${tenantStatus}`);
     }
 
-    // Set _ELV_TENANT_ID in the group contract's metadata if possible
-    let res;
-    if (contractHasMeta) {
-      if (idHex != "0x") {
-        let id = Ethers.utils.toUtf8String(idHex);
-        if (!Utils.EqualHash(tenantId, id)) {
-          throw Error(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set to ${id}, aborting...`);
-        } else {
-          console.log(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set correctly to ${id}`);
-        }
-      } else {
-        res = await this.client.CallContractMethod({
-          contractAddress: groupAddress,
-          methodName: "putMeta",
-          methodArgs: [
-            "_ELV_TENANT_ID",
-            tenantId
-          ],
-        });
-      }
-      // Set the tenant field on the contract to tenantId so that it is consistent with the metadata
-      try {
-        await this.client.CallContractMethod({
-          contractAddress: groupAddress,
-          methodName: "setTenant",
-          methodArgs: [this.client.utils.HashToAddress(tenantId)],
-        });
-      } catch (e) {
-        if (e.message.includes("Unknown method: setTenant")) {
-          console.log(`Log: The group contract with address ${groupAddress} doesn't support setTenant method`);
-        } else {
-          throw e;
-        }
-      }
+    //Check that the user is the owner of the tenant
+    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("tenant group must be set by the owner of tenant " + tenantContractId);
     }
 
-    // If the contract doesn't have metadata, the group's fabric metadata is the main identification point and can't be replaced if set
-    let groupObjectId = ElvUtils.AddressToId({prefix: "iq__", address: groupAddress});
-    let groupLibraryId = await this.client.ContentObjectLibraryId({objectId: groupObjectId});
-
-    let groupMeta = await this.client.ContentObjectMetadata({
-      libraryId: groupLibraryId,
-      objectId: groupObjectId,
-      select:"elv/tenant_id",
-    });
-    if (groupMeta && !contractHasMeta) {
-      let tenantContractId = groupMeta.elv.tenant_id;
-      if (tenantContractId != tenantId) {
-        throw Error(`Group ${groupAddress} already has elv/tenant_id content fabric metadata set to ${tenantContractId}, aborting...`);
-      }
-    }
-
-    // Add tenant id to fabric meta
-    var e = await this.client.EditContentObject({
-      libraryId: groupLibraryId,
-      objectId: groupObjectId,
-    });
-    await this.client.ReplaceMetadata({
-      libraryId: groupLibraryId,
-      objectId: groupObjectId,
-      writeToken: e.write_token,
-      metadataSubtree: "elv/tenant_id",
-      metadata: tenantId,
-    });
-    await this.client.FinalizeContentObject({
-      libraryId: groupLibraryId,
-      objectId: groupObjectId,
-      writeToken: e.write_token,
-      commitMessage: "Set tenant ID " + tenantId,
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
+    await this.client.ReplaceContractMetadata({
+      contractAddress: tenantAddr,
+      metadataKey: constants.TENANT_STATE,
+      metadata: tenantStatus,
     });
 
-    return res;
+    tenantStatus = await this.TenantStatus({tenantContractId});
+    return {tenantContractId, tenantStatus};
   }
 
-  async TenantCheckGroupConfig ({ tenantId, groupAddr, tenantOwner }) {
+  /**
+   * Retrieve tenant status
+   *
+   * @param {string} tenantContractId - The ID of the tenant Id (iten***)
+   * @returns {Promise<string>}
+   */
+  async TenantStatus({tenantContractId}) {
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
+    let tenantStatus;
+    try {
+      tenantStatus = await this.client.ContractMetadata({
+        contractAddress: tenantAddr,
+        metadataKey: constants.TENANT_STATE
+      });
+    } catch (e) {
+      tenantStatus = "";
+    }
+    return tenantStatus;
+  }
+
+  /**
+   * Associate group with the tenant contract Id.
+   * @param {string} tenantContractId - The ID of the tenant contract (iten***)
+   * @param {string} groupAddress - Address of the group we want to remove.
+   */
+  async TenantSetGroupConfig({ tenantContractId, groupAddress }) {
+
+    let tid = await this.client.TenantContractId({
+      contractAddress: groupAddress
+    });
+    if (tid !== ""){
+      if (tid !== tenantContractId){
+        throw Error(`Group ${groupAddress} has different tenant contract ID set to ${tid}, aborting...`);
+      }
+    }
+
+    return await this.client.SetTenantContractId({
+      contractAddress: groupAddress,
+      tenantContractId
+    });
+  }
+
+  /**
+   * Remove tenant from group
+   * @param {string} groupAddress - Address of the group we want to remove.
+   */
+  async TenantRemoveGroupConfig({ groupAddress }) {
+    return await this.client.RemoveTenant({
+      contractAddress: groupAddress,
+    });
+  }
+
+  async TenantCheckGroupConfig ({ tenantContractId, groupAddr, tenantOwner }) {
     let groupOwner = await this.client.CallContractMethod({
       contractAddress: groupAddr,
       methodName: "owner",
       methodArgs: [],
     });
-    if (groupOwner != tenantOwner) {
+    if (groupOwner !== tenantOwner) {
       return {success: false, message: `The owner of the group (${groupOwner}) is not the same as the owner of the tenant (${tenantOwner}).`};
     }
 
     //Ensure groupAddr actually belongs to a group contract.
-    if (await this.client.authClient.AccessType("igrp"+ Utils.AddressToHash(groupAddr)) != this.client.authClient.ACCESS_TYPES.GROUP) {
+    if (await this.client.authClient.AccessType("igrp"+ Utils.AddressToHash(groupAddr)) !== this.client.authClient.ACCESS_TYPES.GROUP) {
       return {success: false, message: "on the tenant contract is not a group", need_format: true};
     }
 
-    let verified = false;
-    //Retreive tenant contract id assoicated with this group from the contract's metadata
+    //Retrieve tenant contract id assoicated with this group
     try {
-      let tenantContractIdHex = await this.client.CallContractMethod({
+      let groupTenantContractId = await this.client.TenantContractId({
         contractAddress: groupAddr,
-        methodName: "getMeta",
-        methodArgs: ["_ELV_TENANT_ID"],
       });
-      if (tenantContractIdHex == "0x") {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
-      }
-      let tenantContractId = Ethers.utils.toUtf8String(tenantContractIdHex);
 
-      if (tenantId != tenantContractId) {
+      if (groupTenantContractId === "") {
+        return {success: false, message: "can't be verified or is not associated with any tenant", need_format: true};
+      }
+
+      if (tenantContractId !== groupTenantContractId) {
         return {success: false, message: "group doesn't belong to this tenant", need_format: true};
       }
-      verified = true;
-    } catch (e) {
-      if (e.message.includes("Unknown method: getMeta")) {
-        console.log(`Log: The group contract with group address ${groupAddr} doesn't support metadata.`);
-      } else {
-        throw e;
-      }
-    }
-
-    //Retreive tenant contract id associated with this group from the contract's tenant field
-    try {
-      let tenantContractAddress = await this.client.CallContractMethod({
-        contractAddress: groupAddr,
-        methodName: "tenant",
-        methodArgs: [],
-      });
-      let tenantContractId = "iten" + this.client.utils.AddressToHash(tenantContractAddress);
-      if (tenantId != tenantContractId) {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
-      }
-      verified = true;
-    } catch (e) {
-      if (e.message.includes("Unknown method: tenant")) {
-        console.log(`Log: the group contract with group address ${groupAddr} doesn't contain tenant information on contract.`);
-      } else {
-        throw e;
-      }
-    }
-
-    //Retrieve tenant contract id associated with this group from its content fabric metadata
-    try {
-      let groupObjectId = ElvUtils.AddressToId({prefix: "iq__", address: groupAddr});
-      let groupLibraryId = await this.client.ContentObjectLibraryId({objectId: groupObjectId});
-
-      let groupMeta = await this.client.ContentObjectMetadata({
-        libraryId: groupLibraryId,
-        objectId: groupObjectId,
-        select:"elv/tenant_id",
-      });
-      if (!groupMeta) {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
-      }
-
-      let tenantContractId = groupMeta.elv.tenant_id;
-      if (tenantContractId != tenantId) {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
-      }
-      verified = true;
-    } catch (e) {
-      if (e.message.includes("Forbidden")) {
-        console.log("Log: can't verify the group's content fabric metadata - must be a tenant admin user to do so.");
-      }
-    }
-
-    if (verified) {
       return {success: true};
-    } else {
-      throw Error(`Unable to verify group ${groupAddr} - must be logged in with an account in the tenant admins group.`);
+    } catch (e) {
+      return {success: false, message: e.message};
     }
   }
 

@@ -2,7 +2,9 @@ const { ElvSpace } = require("../src/ElvSpace.js");
 const { ElvTenant } = require("../src/ElvTenant.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
 const { ElvContracts } = require("../src/ElvContracts.js");
+const { ElvFabric } = require("../src/ElvFabric.js");
 const { Config } = require("../src/Config.js");
+const constants = require("../src/Constants");
 const Ethers = require("ethers");
 
 const yargs = require("yargs/yargs");
@@ -49,8 +51,9 @@ const CmdAccountCreate = async ({ argv }) => {
     let res = await elvAccount.Create({
       funds: argv.funds,
       accountName: argv.account_name,
-      tenantId: argv.tenant,
+      tenantContractId: argv.tenant,
     });
+
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -59,7 +62,9 @@ const CmdAccountCreate = async ({ argv }) => {
 
 const CmdAccountSetTenantContractId = async ({ argv }) => {
   console.log("Account Set Tenant Contract ID\n");
-  console.log(`tenant_contract_id: ${argv.tenant}`);
+  console.log(`Given tenant_contract_id: ${argv.tenantContractId}`);
+  console.log(`Given tenant_admin: ${argv.tenantId}`)
+
 
   try {
     let elvAccount = new ElvAccount({
@@ -68,8 +73,9 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
     });
     await elvAccount.InitWithId({
       privateKey: process.env.PRIVATE_KEY,
-      id: argv.tenant,
-    })
+      tenantContractId: argv.tenantContractId,
+      tenantId: argv.tenantId,
+    });
     console.log("Success!");
   } catch (e) {
     console.error("ERROR:", e);
@@ -197,7 +203,10 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
   console.log("Tenant Deploy");
   console.log(`Tenant name: ${argv.tenant_name}`);
   console.log(`Funds: ${argv.funds}`);
-  console.log(`verbose: ${argv.verbose}`);
+  if(argv.verbose !== undefined) {
+    console.log(`verbose: ${argv.verbose}`);
+  }
+
 
   try {
     let space = new ElvSpace({
@@ -212,9 +221,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
       tenantName: argv.tenant_name,
       funds: argv.funds,
     });
-
     console.log(yaml.dump(res));
-
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -226,6 +233,7 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
   console.log(`Owner address: ${argv.owner_addr}`);
   console.log(`Tenant admin group address: ${argv.tenant_admin_addr}`);
   console.log(`Content admin group address: ${argv.content_admin_addr}`);
+  console.log(`Tenant user group address: ${argv.tenant_user_group_addr}`)
 
   try {
     let space = new ElvSpace({
@@ -241,8 +249,8 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
       ownerAddress: argv.owner_addr,
       tenantAdminGroupAddress: argv.tenant_admin_addr,
       contentAdminGroupAddress: argv.content_admin_addr,
+      tenantUserGroupAddress: argv.tenant_user_group_addr,
     });
-
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -261,12 +269,129 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     res = await t.TenantInfo({
-      tenantId: argv.tenant
+      tenantContractId: argv.tenant
     });
 
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantFix = async({ argv }) => {
+  console.log("Tenant - fix", argv.tenant);
+  console.log("Network: " + Config.net);
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    if (argv.tenant_status) {
+      await t.TenantSetStatus({
+        tenantContractId: argv.tenant,
+        tenantStatus: argv.tenant_status,
+      });
+    }
+
+    let res = await t.TenantShow({
+      tenantContractId: argv.tenant
+    });
+    let errors = res.errors;
+    let unresolved = [];
+
+    if (argv.content_admin_address && res.groups[constants.CONTENT_ADMIN] && !t.client.utils.EqualAddress(res.groups[constants.CONTENT_ADMIN], argv.content_admin_address)) {
+      throw Error(`Tenant ${argv.tenant} already has a content admin group: ${res.groups[constants.CONTENT_ADMIN]}, aborting...`);
+    }
+
+    if (argv.tenant_user_group_address && res.groups[constants.TENANT_USER_GROUP] && !t.client.utils.EqualAddress(res.groups[constants.TENANT_USER_GROUP], argv.tenant_user_group_address)) {
+      throw Error(`Tenant ${argv.tenant} already has a tenant user group: ${res.groups[constants.TENANT_USER_GROUP]}, aborting...`);
+    }
+
+    if (!errors) {
+      console.log(`No error found for tenant with tenant id: ${argv.tenant}!`);
+      return;
+    }
+
+    for (let i = 0; i < errors.length; i++) {
+      let error = errors[i];
+      switch (error) {
+        case "missing content admin":
+          if(argv.content_admin_address){
+            let addr = await t.TenantSetGroup({
+              tenantContractId: argv.tenant,
+              groupType: constants.CONTENT_ADMIN,
+              groupAddress: argv.content_admin_address
+            });
+            console.log(`Set content admin group for tenant with tenantContractId ${argv.tenant} to ${addr}`);
+
+            await t.TenantSetGroupConfig({
+              tenantContractId: argv.tenant,
+              groupAddress: argv.content_admin_address
+            })
+          } else {
+            unresolved.push(error, `${constants.CONTENT_ADMIN} is not provided`);
+          }
+          break;
+        case "missing tenant user group":
+          if(argv.tenant_user_group_address){
+            let addr = await t.TenantSetGroup({
+              tenantContractId: argv.tenant,
+              groupType: constants.TENANT_USER_GROUP,
+              groupAddress: argv.tenant_user_group_address
+            });
+            console.log(`Set tenant user group for tenant with tenantContractId ${argv.tenant} to ${addr}`)
+
+            await t.TenantSetGroupConfig({
+              tenantContractId: argv.tenant,
+              groupAddress: argv.tenant_user_group_address
+            })
+          } else {
+            unresolved.push(`missing tenant user group: ${constants.TENANT_USER_GROUP} is not provided`);
+          }
+          break;
+        case "tenant admin can't be verified or is not associated with any tenant":
+          if(res.groups[constants.TENANT_ADMIN]){
+            await t.TenantSetGroupConfig({
+              tenantContractId: argv.tenant,
+              groupAddress: res.groups[constants.TENANT_ADMIN]
+            });
+          } else {
+            unresolved.push(error);
+          }
+          break;
+        case "content admin can't be verified or is not associated with any tenant":
+          if(res.groups[constants.CONTENT_ADMIN]) {
+            await t.TenantSetGroupConfig({
+              tenantContractId: argv.tenant,
+              groupAddress: res.groups[constants.CONTENT_ADMIN]
+            });
+          } else {
+            unresolved.push(error);
+          }
+          break;
+        case "tenant user group can't be verified or is not associated with any tenant":
+          if(res.groups[constants.TENANT_USER_GROUP]) {
+            await t.TenantSetGroupConfig({
+              tenantContractId: argv.tenant,
+              groupAddress: res.groups[constants.TENANT_USER_GROUP]
+            });
+          } else {
+            unresolved.push(error);
+          }
+          break;
+        default:
+          console.log(`No fix actions available for error: ${error}.`);
+          unresolved.push(error);
+      }
+    }
+
+    console.log(`${errors.length - unresolved.length} errors fixed, ${unresolved.length} errors remaining.`);
+    console.log(unresolved);
+    return unresolved;
+  } catch (e) {
+    console.log(e);
   }
 };
 
@@ -282,10 +407,9 @@ const CmdTenantShow = async({ argv }) => {
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     let res = await t.TenantShow({
-      tenantId: argv.tenant,
+      tenantContractId: argv.tenant,
       show_metadata: argv.show_metadata
     });
-
     console.log(yaml.dump(res));
     if (res.errors) {
       console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
@@ -295,65 +419,71 @@ const CmdTenantShow = async({ argv }) => {
   }
 };
 
-const CmdTenantFix = async({ argv }) => {
-  console.log("Tenant - fix", argv.tenant);
-  console.log("Network: " + Config.net);
+const CmdTenantFixSuite = async({ argv }) => {
+  let elvAccount = new ElvAccount({
+    configUrl: Config.networks[Config.net],
+    debugLogging: argv.verbose
+  });
+  await elvAccount.Init({
+    privateKey: process.env.PRIVATE_KEY,
+  });
 
+  let tenantContractId;
   try {
-    let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
-    });
-    await t.Init({ privateKey: process.env.PRIVATE_KEY });
-
-    let res = await t.TenantShow({
-      tenantId: argv.tenant
-    });
-    let errors = res.errors;
-    let unresolved = [];
-
-    if (argv.content_admin_address && res.content_admin_address && !t.client.utils.EqualAddress(res.content_admin_address, argv.content_admin_address)) {
-      throw Error(`Tenant ${argv.tenant} already has a content admin group: ${res.content_admin_address}, aborting...`);
+    tenantContractId  = await elvAccount.client.userProfileClient.TenantContractId();
+  } catch (e) {
+    throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${Config.net} network, aborting...`);
+  }
+  if (tenantContractId) {
+    if (!elvAccount.client.utils.EqualHash(tenantContractId, argv.tenant)) {
+      throw Error(`The account with private key ${process.env.PRIVATE_KEY} is already associated with different tenant ${tenantContractId}`);
     }
+  }
 
-    if (!errors) {
-      console.log(`No error found for tenant with tenant id: ${argv.tenant}!`);
-      return;
-    }
+  //Set content admins group ID and fix problems related to the tenant and its admin groups
+  const unresolvedError = await CmdTenantFix({argv});
+  if (unresolvedError) {
+    throw Error(`Errors unresolved when fixing tenant: ${unresolvedError}`)
+  }
 
-    for (let i = 0; i < errors.length; i++) {
-      let error = errors[i];
-      switch(error) {
-        case 'missing content admins':
-          let addr = await t.TenantSetContentAdmins({tenantId: argv.tenant, contentAdminAddr: argv.content_admin_address});
-          console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`);
-          break;
+  //Set tenantContractId to libraries, if owned by the user
+  if (argv.libraries) {
+    let failedLibraries = [];
+    for (let i = 0; i < argv.libraries.length; i++) {
+      let lib = argv.libraries[i];
+      let libAddr = elvAccount.client.utils.HashToAddress(lib);
 
-        case `tenant admin group can't be verified or is not associated with any tenant`:
-          await t.TenantSetGroupConfig({tenantId: argv.tenant, groupAddress: res.tenant_admin_address});
-          break;
-
-        case `content admin group can't be verified or is not associated with any tenant`:
-          await t.TenantSetGroupConfig({tenantId: argv.tenant, groupAddress: res.content_admin_address});
-          break;
-
-        default:
-          console.log(`No fix actions available for error: ${error}.`);
-          unresolved.push(error);
+      try {
+        await elvAccount.client.SetTenantContractId({
+          contractAddress: libAddr,
+          tenantContractId: argv.tenant,
+        });
+      } catch (e) {
+        let libOwner = await elvAccount.client.CallContractMethod({
+          contractAddress: libAddr,
+          methodName: "owner",
+          methodArgs: [],
+          formatArguments: true
+        });
+        console.log(`Failed to set tenantContractId for ${lib} - doesn't belong to this account and can only be set by the account with address ${libOwner}`);
+        failedLibraries.push(lib);
       }
     }
-
-    console.log(`${errors.length - unresolved.length} errors fixed, ${unresolved.length} errors remaining.`);
-    return unresolved;
-  } catch (e) {
-    console.log(e);
-    return;
+    if (failedLibraries.length === 0) {
+      console.log("Tenant successfully fixed!");
+    } else {
+      console.log("tenantContractId couldn't be added to the following libraries:");
+      console.log(failedLibraries);
+    }
   }
-}
+};
 
-const CmdTenantFixSuite = async({ argv }) => {
+const CmdSetTenantContractId = async ({argv}) => {
+
   try {
-    //Add tenantContractId to the account's metadata if not already exists
+    const objectId = argv.objectId
+    const tenantContractId = argv.tenantContractId
+
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
@@ -362,62 +492,151 @@ const CmdTenantFixSuite = async({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let tenantContractId;
-    try {
-      tenantContractId  = await elvAccount.client.userProfileClient.TenantContractId();
-    } catch (e) {
-      throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${Config.net} network, aborting...`);
-    }
-    if (tenantContractId) {
-      if (!elvAccount.client.utils.EqualHash(tenantContractId, argv.tenant)) {
-        throw Error(`The account with private key ${process.env.PRIVATE_KEY} is already associated with tenant ${tenantContractId}`);
-      }
-    } else {
-      elvAccount.SetAccountTenantContractId({ tenantId: argv.tenant });
-    }
+    const objTenantId = await elvAccount.client.TenantId({
+      objectId,
+    });
 
-    //Set content admins group ID and fix problems related to the tenant and its admin groups
-    await CmdTenantFix({argv})
-
-    //Set _ELV_TENANT_ID metadata for the libraries if they are owned by the account
-    if (argv.libraries) {
-      let failedLibraries = [];
-      for (let i = 0; i < argv.libraries.length; i++) {
-        let lib = argv.libraries[i];
-        let libAddr = elvAccount.client.utils.HashToAddress(lib);
-
-        try {
-          await elvAccount.client.CallContractMethod({
-            contractAddress: libAddr,
-            methodName: "putMeta",
-            methodArgs: [
-              "_ELV_TENANT_ID",
-              argv.tenant,
-            ],
-            formatArguments: true
-          });
-        } catch (e) {
-          let libOwner = await elvAccount.client.CallContractMethod({
-            contractAddress: libAddr,
-            methodName: "owner",
-            methodArgs: [],
-            formatArguments: true
-          });
-          console.log(`Failed to set _ELV_TENANT_ID of ${lib} - doesn't belong to this account and can only be set by the account with address ${libOwner}`);
-          failedLibraries.push(lib);
+    if (objTenantId !== "") {
+      // get tenantContractId from tenantId
+      const tenantContractIdFromTenantAdminGrp = await elvAccount.client.TenantContractId({
+        objectId: objTenantId,
+      });
+      if (tenantContractIdFromTenantAdminGrp !== ""){
+        if (tenantContractIdFromTenantAdminGrp !== tenantContractId){
+          throw Error(`object tenantId have different tenantContractId set:
+           Given TenantId: ${tenantContractId}
+           From TenantId: ${tenantContractIdFromTenantAdminGrp},
+         `);
         }
-      }
-      if (failedLibraries.length == 0) {
-        console.log('Tenant successfully fixed!');
-      } else {
-        console.log(`_ELV_ACCOUNT_ID couldn't be added to the following libraries:`);
-        console.log(failedLibraries);
+        console.log(`object has ${tenantContractId} already set`);
+        return;
       }
     }
+
+    const res = await elvAccount.client.SetTenantContractId({
+      objectId,
+      tenantContractId
+    });
+    console.log(`object is set with tenantContractId ${res.tenantContractId} and tenantId ${res.tenantId}`);
   } catch (e) {
-    throw(e);
+    console.error("ERROR:", e);
   }
-}
+};
+
+const CmdTenantContractId = async ({argv}) => {
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const objTenantContractId = await elvAccount.client.TenantContractId({
+      objectId: argv.objectId,
+    });
+    console.log(`object TenantContractId: ${objTenantContractId}`);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdSetTenantId = async({argv}) => {
+  const objectId = argv.objectId;
+  const tenantId = argv.tenantId;
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    // check if the tenant admin has tenant contract id set
+    const tenantContractId = await elvAccount.client.TenantContractId({
+      objectId: tenantId,
+    });
+    if (tenantContractId === ""){
+      throw Error("tenantId provided requires tenantContractId to be set, run ./elv-admin tenant-fix command");
+    }
+
+    const objTenantId = await elvAccount.client.TenantId({
+      objectId,
+    });
+    if (objTenantId !== "" && objTenantId !== tenantId) {
+      throw Error(` object provided have different tenantId set:
+       Object TenantId: ${objTenantId};
+       Given TenantId: ${tenantId};
+    `);
+    }
+
+    const res = await elvAccount.client.SetTenantId({
+      objectId,
+      tenantId,
+    });
+    console.log(`object ${objectId} is set with tenantId: ${res.tenantId} and tenantContractId: ${res.tenantContractId}`);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+};
+
+const CmdTenantId = async ({argv}) => {
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const objTenantId = await elvAccount.client.TenantId({
+      objectId: argv.objectId,
+    });
+    console.log(`${argv.objectId} TenantId: ${objTenantId}`);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantRemove = async ({argv}) => {
+  try {
+    const objectId = argv.objectId;
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    await elvAccount.client.RemoveTenant({
+      objectId,
+    });
+
+    const tenantId = await elvAccount.client.TenantId({
+      objectId,
+    });
+    const tenantContractId = await elvAccount.client.TenantContractId({
+      objectId,
+    });
+
+    if (tenantId !== "" || tenantContractId !== "") {
+      throw Error(`Tenant details present in object: 
+      TenantId: ${tenantId},
+      TenantContractId: ${tenantContractId}
+    `);
+    }
+    console.log(`Removed tenant details from object ${objectId}`);
+  } catch (e) {
+    console.error("ERROR", e);
+  }
+};
+
+
 
 const CmdQuery = async ({ argv }) => {
   REP1V_TENANT_ADDRESSES = [
@@ -501,7 +720,7 @@ const CmdQuery = async ({ argv }) => {
               formatArguments: true
             });
 
-            res = await t.TenantShow({tenantId: tenant_contract_id});
+            res = await t.TenantShow({tenantContractId: tenant_contract_id});
             if (!res.errors) {
               success_count += 1
               continue;
@@ -561,10 +780,28 @@ const CmdQuery = async ({ argv }) => {
   }
 
   return;
+};
+
+const CmdTenantGroup = async({argv}) => {
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    const res = await t.TenantGroup({
+      tenantContractId: argv.tenant,
+      groupType: argv.group_type
+    })
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
 }
 
-const CmdTenantSetContentAdmins = async ({ argv }) => {
-  console.log(`Setting a new content admin group for Tenant ${argv.tenant}`);
+const CmdTenantSetGroup = async ({ argv }) => {
+  console.log(`Setting a new ${argv.groupType} group for Tenant ${argv.tenant}`);
   console.log("Network: " + Config.net);
 
   try {
@@ -574,20 +811,25 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    let res = await t.TenantSetContentAdmins({
-      tenantId: argv.tenant,
-      contentAdminAddr: argv.content_admin_address,
+    let res = await t.TenantSetGroup({
+      tenantContractId: argv.tenant,
+      groupType: argv.group_type,
+      groupAddress: argv.group_address,
     });
+    console.log(yaml.dump(res));
 
+    res = await t.TenantSetGroupConfig({
+      tenantContractId: argv.tenant,
+      groupAddress: argv.group_address,
+    });
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
 };
 
-const CmdTenantRemoveContentAdmin = async ({ argv }) => {
-  console.log(`Removing a Content Admin from Tenant ${argv.tenant}`);
-  console.log(`Removed Content Admin's Address: ${argv.content_admin_address}`);
+const CmdTenantRemoveGroup = async ({ argv }) => {
+  console.log(`Removing a ${argv.group_type} from Tenant ${argv.tenant}`);
   console.log("Network: " + Config.net);
 
   try {
@@ -597,16 +839,57 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    let res = await t.TenantRemoveContentAdmin({
-      tenantId: argv.tenant,
-      contentAdminsAddress: argv.content_admin_address
+    let res = await t.TenantRemoveGroup({
+      tenantContractId: argv.tenant,
+      groupType: argv.group_type,
+      groupAddress: argv.group_address
+    });
+
+    console.log(`Removed ${argv.group_type} address: ${argv.group_address}`);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantSetStatus = async ({argv}) => {
+  try {
+    const tenantContractId =  argv.tenant;
+    const tenantStatus =  argv.tenant_status;
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantSetStatus({
+      tenantContractId: tenantContractId,
+      tenantStatus: tenantStatus,
     });
 
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
-};
+}
+
+const CmdTenantStatus = async ({argv}) => {
+  try {
+    const tenantContractId = argv.tenant;
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantStatus({
+      tenantContractId: tenantContractId,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+}
+
 
 const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
   console.log("Tenant set Eluvio Live ID");
@@ -1130,13 +1413,19 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "account_set_tenant <tenant>",
-    "Associate this account to the tenant - if an admins group ID is used, it will be converted to the tenant ID.",
+    "account_set_tenant <tenantContractId> [tenantId]",
+    "Associate this account to the tenant contract id and its tenant_admin group. " +
+    "We can provide tenantContractId or tenantId",
     (yargs) => {
-      yargs.option("tenant", {
-        describe: "Tenant contract ID (iten...)",
-        type: "string",
-      })
+      yargs
+        .positional("tenantContractId", {
+          describe: "Tenant contract ID (iten...)",
+          type: "string"
+        })
+        .positional("tenantId", {
+          describe: "Tenant admin group ID (iten...)",
+          type: "string"
+        });
     },
     (argv) => {
       CmdAccountSetTenantContractId({ argv });
@@ -1352,9 +1641,22 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .options("content_admin_address", {
-          describe: "Address of the content admins groups",
+          describe: "Address of the content admins group",
           type: "string",
-        });
+        })
+        .options("tenant_user_group_address", {
+          describe: "Address of the tenant user group",
+          type: "string"
+        })
+        .options("tenant_status", {
+          describe: "Status of tenant",
+          type: "string",
+          choices: [
+            constants.TENANT_STATE_ACTIVE,
+            constants.TENANT_STATE_INACTIVE,
+            constants.TENANT_STATE_FROZEN
+          ],
+        })
     },
     (argv) => {
       CmdTenantFix({ argv });
@@ -1362,63 +1664,226 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_fix_suite <tenant> <content_admin_address> [options]",
+    "tenant_fix_suite <tenant> <content_admin_address> <tenant_user_group_address> [options]",
     "Fix old-gen tenant",
     (yargs) => {
       yargs
         .positional("tenant", {
-          describe: "Tenant ID",
+          describe: "Tenant contract ID",
           type: "string",
         })
         .positional("content_admin_address", {
-          describe: "Address of the content admins groups",
+          describe: "Address of the content admins group",
           type: "string",
+        })
+        .positional("tenant_user_group_address", {
+          describe: "Address of the tenant user group",
+          type: "string"
         })
         .options("libraries", {
           describe: "List of libraries that belong to this tenant",
           type: "array",
+        })
+        .options("tenant_status", {
+          describe: "Status of tenant",
+          type: "string",
+          choices: [
+            constants.TENANT_STATE_ACTIVE,
+            constants.TENANT_STATE_INACTIVE,
+            constants.TENANT_STATE_FROZEN
+          ],
         });
-      },
-      (argv) => {
-        CmdTenantFixSuite({ argv });
-      }
+    },
+    (argv) => {
+      CmdTenantFixSuite({ argv });
+    }
   )
 
+
   .command(
-    "tenant_set_content_admins <tenant> [options]",
-    "Set new content admin",
+    "set_tenant_contract_id <objectId> <tenantContractId> [options]",
+    "Set tenant_contract_id and tenant_id to given object when tenantContractId is provided",
     (yargs) => {
       yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
+        .positional("objectId", {
+          describe: "Object ID",
           type: "string",
         })
-        .options("content_admin_address", {
-          describe: "Address of the content admins groups",
+        .positional("tenantContractId", {
+          describe: "tenant contract Id",
           type: "string",
         });
     },
     (argv) => {
-      CmdTenantSetContentAdmins({ argv });
+      CmdSetTenantContractId({ argv });
     }
   )
 
   .command(
-    "tenant_remove_content_admin <tenant> <content_admin_address>",
-    "Remove a content admin",
+    "set_tenant_id <objectId> <tenantId> [options]",
+    "Set tenant_contract_id and tenant_id to given object when tenantId is provided",
+    (yargs) => {
+      yargs
+        .positional("objectId", {
+          describe: "Object ID",
+          type: "string",
+        })
+        .positional("tenantId", {
+          describe: "tenant admin group Id",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdSetTenantId({argv});
+    }
+  )
+
+  .command(
+    "tenant_contract_id <objectId> [options]",
+    "Retrieve tenant_contract_id for given object",
+    (yargs) => {
+      yargs
+        .positional("objectId", {
+          describe: "Object ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantContractId({ argv });
+    }
+  )
+
+  .command(
+    "tenant_id <objectId> [options]",
+    "Retrieve tenant_id for given object",
+    (yargs) => {
+      yargs
+        .positional("objectId", {
+          describe: "Object ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantId({argv});
+    }
+  )
+
+
+  .command(
+    "tenant_remove <objectId> [options]",
+    "Remove tenant_id and tenant_contract_id for given object",
+    (yargs) => {
+      yargs
+        .positional("objectId", {
+          describe: "Object ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantRemove({argv});
+    }
+  )
+
+  .command(
+    "tenant_group <tenant> [group_type]",
+    "Retrieve all of specific group from tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant",{
+          describe: "Tenant contract ID",
+          type: "string",
+        })
+        .options("group_type", {
+          describe: "retrieve address for group type provided",
+          choices: [constants.TENANT_ADMIN, constants.CONTENT_ADMIN, constants.TENANT_USER_GROUP],
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdTenantGroup({argv})
+    }
+  )
+
+  .command(
+    "tenant_set_group <tenant> <group_type> [group_address]",
+    "Set new content admin or user group",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant contract ID",
+          type: "string",
+        })
+        .positional("group_type", {
+          describe: "group type",
+          type: "string",
+          choices: [constants.TENANT_ADMIN, constants.CONTENT_ADMIN, constants.TENANT_USER_GROUP],
+        })
+        .options("group_address", {
+          describe: "Address of the group",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantSetGroup({argv});
+    }
+  )
+
+  .command(
+    "tenant_remove_group <tenant> <group_type> <group_address>",
+    "Remove tenant_admin, content_admin or tenant_user_group address for give tenant",
     (yargs) => {
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
           type: "string",
         })
-        .positional("content_admin_address", {
-          describe: "Content Admin's address",
+        .positional("group_type", {
+          describe: "Group type",
+          choices: [constants.TENANT_ADMIN, constants.CONTENT_ADMIN, constants.TENANT_USER_GROUP],
+          type: "string",
+        })
+        .positional("group_address", {
+          describe: "Group Address",
           type: "string",
         });
     },
     (argv) => {
-      CmdTenantRemoveContentAdmin({ argv });
+      CmdTenantRemoveGroup({ argv });
+    }
+  )
+
+  .command(
+    "tenant_set_status <tenant> <tenant_status>",
+    "Set tenant status for give tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("tenant_status", {
+          describe: "Tenant Status",
+          choices: [constants.TENANT_STATE_ACTIVE, constants.TENANT_STATE_INACTIVE, constants.TENANT_STATE_FROZEN],
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdTenantSetStatus({argv});
+    }
+  )
+
+  .command(
+    "tenant_status <tenant>",
+    "Get tenant status for give tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdTenantStatus({argv});
     }
   )
 
@@ -1440,6 +1905,10 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("content_admin_addr", {
+          describe: "Address of the content admins groups",
+          type: "string",
+        })
+      .positional("tenant_user_group_addr", {
           describe: "Address of the content admins groups",
           type: "string",
         });
@@ -1755,6 +2224,6 @@ yargs(hideBin(process.argv))
 
   .strict()
   .help()
-  .usage("EluvioLive Admin CLI\n\nUsage: elv-admin <command>")
+  .usage("Eluvio Live Admin CLI\n\nUsage: elv-admin <command>")
   .scriptName("")
   .demandCommand(1).argv;

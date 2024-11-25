@@ -231,7 +231,6 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
   return res;
 };
 
-
 const getTenantGroups = async ({client,tenantId, t}) => {
   const tenantAddr = Utils.HashToAddress(tenantId);
   const abi = fs.readFileSync(
