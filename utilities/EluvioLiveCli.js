@@ -112,7 +112,7 @@ const CmdTenantAuthCurl = async ({ argv }) => {
         host: argv.as_url,
       });
     } else {
-        res = await elvlv.PostServiceRequest({
+      res = await elvlv.PostServiceRequest({
         path: argv.url_path,
         host: argv.as_url,
         body: JSON.parse(argv.post_body),
