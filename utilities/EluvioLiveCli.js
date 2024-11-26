@@ -105,14 +105,22 @@ const CmdTenantAuthCurl = async ({ argv }) => {
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
-    let res = await elvlv.PostServiceRequest({
-      path: argv.url_path,
-      host: argv.as_url,
-      body: JSON.parse(argv.post_body === "" ? "{}" : argv.post_body),
-    });
+    let res = "";
+    if (argv.post_body === "") {
+      res = await elvlv.GetServiceRequest({
+        path: argv.url_path,
+        host: argv.as_url,
+      });
+    } else {
+      res = await elvlv.PostServiceRequest({
+        path: argv.url_path,
+        host: argv.as_url,
+        body: JSON.parse(argv.post_body),
+      });
+    }
     console.log(await res.json());
   } catch (e) {
-    console.error("ERROR:", e);
+    console.error("ERROR:", JSON.stringify(e, null, 2));
   }
 };
 
@@ -2432,7 +2440,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("post_body", {
-          describe: "body",
+          describe: "either json body for POST, or '' for GET",
           type: "string",
         });
     },
@@ -2451,7 +2459,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("post_body", {
-          describe: "optional body; if set will POST, if not, will GET",
+          describe: "either json body for POST, or '' for GET",
           type: "string",
         });
     },
