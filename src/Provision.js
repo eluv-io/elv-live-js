@@ -7,6 +7,7 @@ const { ElvAccount } = require("../src/ElvAccount.js");
 const {Config} = require("./Config");
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { ElvFabric } = require("./ElvFabric");
+const { ElvTenant } = require("./ElvTenant");
 
 const TYPE_LIVE_DROP_EVENT_SITE = "Media Wallet Drop Event Site";
 const TYPE_LIVE_TENANT = "Media Wallet Tenant";
@@ -264,6 +265,39 @@ const getTenantGroups = async ({client,tenantId, t}) => {
     throw Error(`t.base.groups.contentAdminGroupAddress not set for ${tenantId}`);
   }
 };
+
+const handleTenantFaucet = async ({tenantId, t, debug}) => {
+
+  let elvTenant = new ElvTenant({
+    configUrl: Config.networks[Config.net],
+    debugLogging: debug,
+  });
+  await elvTenant.Init({ privateKey: process.env.PRIVATE_KEY });
+
+  let asUrl;
+  // can be set to "none"
+  if (isEmptyParams(t.base.faucet.asUrl)) {
+    asUrl = null;
+  } else {
+    asUrl = t.base.faucet.asUrl;
+  }
+
+  let amount;
+  if (isEmptyParams(t.base.faucet.amount)) {
+    amount = null;
+  }
+
+  let res = await elvTenant.TenantFaucetFund({
+    asUrl,
+    tenantId,
+    amount,
+  });
+
+  t.base.faucet.funding_address = res.funding_address;
+  t.base.faucet.amount_transferred = res.amount_transferred;
+  writeConfigToFile(t);
+};
+
 
 /* Create libraries - Properties, Title Masters, Title Mezzanines and add each to the groups */
 const createLibrariesAndSetPermissions = async({client, kmsId, t}) => {
@@ -732,6 +766,12 @@ const InitializeTenant = async ({client, kmsId, tenantId, statusFile, initConfig
           "channelTypeId": null,
           "streamTypeId": null
         },
+        faucet: {
+          "enable": false,
+          "funding_address": null,
+          "amount": null,
+          "asUrl": null
+        }
       },
       liveStreaming: {
         siteId: null,
@@ -784,7 +824,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, statusFile, initConfig
   return t;
 };
 
-const ProvisionBase = async ({client, kmsId, tenantId, t}) => {
+const ProvisionBase = async ({client, kmsId, tenantId, t, debug}) => {
   await checkSignerTenantAccess({client, tenantId});
 
   const tenantAddr = Utils.HashToAddress(tenantId);
@@ -805,6 +845,9 @@ const ProvisionBase = async ({client, kmsId, tenantId, t}) => {
   await getTenantGroups({client,tenantId, t});
   await createLibrariesAndSetPermissions({client, kmsId, t});
   await createTenantTypes({client, t});
+  if (t.base.faucet.enable) {
+    await handleTenantFaucet({tenantId, t, debug});
+  }
 };
 
 const ProvisionLiveStreaming = async({client, tenantId, t}) => {

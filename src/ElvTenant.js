@@ -635,13 +635,13 @@ class ElvTenant {
 
     // Check balances
     const senderAddress = elvAccount.signer.address.toString();
-    let senderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
-    let receiverBalance = await elvAccount.client.GetBalance({ address: fundingAddress });
+    let initialSenderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
+    let initialReceiverBalance = await elvAccount.client.GetBalance({ address: fundingAddress });
 
-    console.log();
-    console.log(`Funds before transfer: Sender=${senderAddress}, Balance=${senderBalance}`);
-    console.log(`Funds before transfer: Receiver=${fundingAddress}, Balance=${receiverBalance}`);
-    console.log();
+    if (this.debug){
+      console.log(`Funds before transfer: Sender=${senderAddress}, Balance=${initialSenderBalance}`);
+      console.log(`Funds before transfer: Receiver=${fundingAddress}, Balance=${initialReceiverBalance}`);
+    }
 
     // Validate sender's balance
     if (senderBalance <= amount) {
@@ -661,13 +661,18 @@ class ElvTenant {
     }
 
     // Check balances after transfer
-    senderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
-    receiverBalance = await elvAccount.client.GetBalance({ address: fundingAddress });
+    let finalSenderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
+    let finalReceiverBalance = await elvAccount.client.GetBalance({ address: fundingAddress });
 
-    console.log();
-    console.log(`Funds after transfer: Sender=${senderAddress}, Balance=${senderBalance}`);
-    console.log(`Funds after transfer: Receiver=${fundingAddress}, Balance=${receiverBalance}`);
-    console.log();
+    if (this.debug){
+      console.log(`Funds after transfer: Sender=${senderAddress}, Balance=${finalSenderBalance}`);
+      console.log(`Funds after transfer: Receiver=${fundingAddress}, Balance=${finalReceiverBalance}`);
+    }
+
+    return {
+      "funding_address": fundingAddress,
+      "amount_transferred": finalReceiverBalance-initialReceiverBalance,
+    };
   }
 }
 
