@@ -108,7 +108,7 @@ const CmdTenantAuthCurl = async ({ argv }) => {
     let res = await elvlv.PostServiceRequest({
       path: argv.url_path,
       host: argv.as_url,
-      body: {},
+      body: JSON.parse(argv.post_body === "" ? "{}" : argv.post_body),
     });
     console.log(await res.json());
   } catch (e) {
@@ -2432,7 +2432,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("post_body", {
-          describe: "optional body; if set will POST, if not, will GET",
+          describe: "body",
           type: "string",
         });
     },
