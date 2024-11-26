@@ -1342,7 +1342,7 @@ const CmdTenantProvision = async ({ argv }) => {
     });
     console.log(`kmsId: ${kmsId}`);
 
-    res = await InitializeTenant({
+    let res = await InitializeTenant({
       client,
       kmsId,
       tenantId: argv.tenant,

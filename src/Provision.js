@@ -52,6 +52,8 @@ const EXPECTED_SENDER_BALANCE=1;
 // (checked by elv-client-js when adding as an access group member)
 const OPS_AMOUNT=0.2;
 
+let elvFabric = {};
+
 // ===================================================================
 
 const isEmptyParams = (value) => {
@@ -72,7 +74,7 @@ const checkSignerTenantAccess = async ({client, tenantId}) => {
     debugLogging: client.debug,
   });
 
-  let elvFabric = new ElvFabric({
+  elvFabric = new ElvFabric({
     configUrl: Config.networks[Config.net],
     debugLogging: client.debug
   });
@@ -801,6 +803,25 @@ const ProvisionBase = async ({client, kmsId, tenantId, t}) => {
   });
   t.base.tenantSlug = t.base.tenantName.toLowerCase().replace(/ /g, "-");
   t.base.tenantId = tenantId;
+
+  // set tenantContractId and tenantId metadata for tenant
+  await client.SetTenantContractId({
+    objectId: tenantId,
+    tenantContractId: tenantId,
+  });
+  let tenantContractId = await client.TenantContractId({
+    objectId: tenantId,
+  });
+  console.log(`tenant_contract_id: ${tenantContractId}`);
+
+  // TODO: update this code after merging elv-client-js
+  //  'Update tenantId methods #265' PR
+  // (to retrieve this data directly)
+  let tenantAdminGroup = await elvFabric.GetContractMeta({
+    address: tenantAddr,
+    key: "_tenantId",
+  });
+  console.log(`tenant_id: ${tenantAdminGroup}`);
 
   await getTenantGroups({client,tenantId, t});
   await createLibrariesAndSetPermissions({client, kmsId, t});
