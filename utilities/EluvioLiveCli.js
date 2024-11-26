@@ -120,7 +120,7 @@ const CmdTenantAuthCurl = async ({ argv }) => {
     }
     console.log(await res.json());
   } catch (e) {
-    console.error("ERROR:", e);
+    console.error("ERROR:", JSON.stringify(e, null, 2));
   }
 };
 
