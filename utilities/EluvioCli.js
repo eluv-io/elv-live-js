@@ -199,7 +199,6 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
   console.log(`Tenant name: ${argv.tenant_name}`);
   console.log(`Funds: ${argv.funds}`);
   console.log(`verbose: ${argv.verbose}`);
-  console.log(`as_url: ${argv.as_url}`);
 
   try {
     let space = new ElvSpace({
