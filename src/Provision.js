@@ -67,7 +67,6 @@ const checkSignerTenantAccess = async ({client, tenantId}) => {
 
   let elvLv = await new EluvioLive({
     configUrl: Config.networks[Config.net],
-
   });
   await elvLv.Init({
     debugLogging: client.debug,
@@ -266,21 +265,13 @@ const getTenantGroups = async ({client,tenantId, t}) => {
   }
 };
 
-const handleTenantFaucet = async ({tenantId, t, debug}) => {
+const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
 
   let elvTenant = new ElvTenant({
     configUrl: Config.networks[Config.net],
     debugLogging: debug,
   });
   await elvTenant.Init({ privateKey: process.env.PRIVATE_KEY });
-
-  let asUrl;
-  // can be set to "none"
-  if (isEmptyParams(t.base.faucet.asUrl)) {
-    asUrl = null;
-  } else {
-    asUrl = t.base.faucet.asUrl;
-  }
 
   let amount;
   if (isEmptyParams(t.base.faucet.amount)) {
@@ -741,7 +732,7 @@ let readJsonFile = (filepath) => {
 
 // ===============================================================================================
 
-const InitializeTenant = async ({client, kmsId, tenantId, statusFile, initConfig, debug=false}) => {
+const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, initConfig, debug=false}) => {
 
   let t;
   if (!statusFile) {
@@ -770,7 +761,6 @@ const InitializeTenant = async ({client, kmsId, tenantId, statusFile, initConfig
           "enable": false,
           "funding_address": null,
           "amount": null,
-          "asUrl": null
         }
       },
       liveStreaming: {
@@ -807,7 +797,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, statusFile, initConfig
     return t;
   }
 
-  await ProvisionBase({client, kmsId, tenantId, t});
+  await ProvisionBase({client, kmsId, tenantId, asUrl, t, debug});
   await ProvisionLiveStreaming({client, tenantId, t});
   await ProvisionMediaWallet({client, tenantId, t});
   await ProvisionOps({client, tenantId, t, debug});
@@ -824,7 +814,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, statusFile, initConfig
   return t;
 };
 
-const ProvisionBase = async ({client, kmsId, tenantId, t, debug}) => {
+const ProvisionBase = async ({client, kmsId, tenantId, asUrl, t, debug}) => {
   await checkSignerTenantAccess({client, tenantId});
 
   const tenantAddr = Utils.HashToAddress(tenantId);
@@ -846,7 +836,7 @@ const ProvisionBase = async ({client, kmsId, tenantId, t, debug}) => {
   await createLibrariesAndSetPermissions({client, kmsId, t});
   await createTenantTypes({client, t});
   if (t.base.faucet.enable) {
-    await handleTenantFaucet({tenantId, t, debug});
+    await handleTenantFaucet({tenantId, asUrl, t, debug});
   }
 };
 

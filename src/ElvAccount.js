@@ -219,44 +219,14 @@ class ElvAccount {
       throw Error("ElvAccount not intialized");
     }
 
-    console.log("tenantId", tenantId);
-    const idType = await this.client.AccessType({ id: tenantId });
-    if (idType === this.client.authClient.ACCESS_TYPES.GROUP) {
-      throw Error("Bad tenant ID", tenantId);
-    }
-
-    const userWalletAddress = await this.client.userProfileClient.WalletAddress();
-    const abi = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/BaseAccessWallet.abi")
-    );
-    console.log("wallet addr", userWalletAddress);
-
     await this.client.userProfileClient.SetTenantContractId({
       tenantContractId: tenantId,
     });
 
-    // Attempt to store contract meta if the user wallet contract supports it
-    let userTenantIdHex = await this.client.CallContractMethod({
-      contractAddress: userWalletAddress,
-      abi: JSON.parse(abi),
-      methodName: "getMeta",
-      methodArgs: ["_ELV_TENANT_ID"],
-    });
+    let tenantContractId = await this.client.userProfileClient.TenantContractId();
 
-    const userTenantId = ethers.utils.toUtf8String(userTenantIdHex);
-    console.log("User wallet tenant ID", userTenantId);
-
-    if (userTenantId != "" && userTenantId != tenantId) {
-      console.log("User wallet has a different tenant ID", userTenantId);
-    }
-
-    if (userTenantId != tenantId) {
-      await this.client.CallContractMethodAndWait({
-        contractAddress: userWalletAddress,
-        abi: JSON.parse(abi),
-        methodName: "putMeta",
-        methodArgs: ["_ELV_TENANT_ID", tenantId],
-      });
+    if (tenantContractId !== tenantId) {
+      throw new Error(`User wallet has a different tenant ID: ${tenantContractId}`);
     }
   }
 

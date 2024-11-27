@@ -37,6 +37,7 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
     configUrl: Config.networks[Config.net],
     mainObjectId: Config.mainObjects[Config.net],
   };
+  console.log("XXX asUrl", asUrl);
   elvlv = new EluvioLive(config);
   await elvlv.Init({ debugLogging, asUrl });
 
@@ -1343,6 +1344,7 @@ const CmdTenantProvision = async ({ argv }) => {
       client,
       kmsId,
       tenantId: argv.tenant,
+      asUrl: argv.as_url,
       statusFile: argv.status,
       initConfig: argv.init_config,
       debug: argv.verbose,
@@ -1353,9 +1355,6 @@ const CmdTenantProvision = async ({ argv }) => {
     } else {
       console.log(yaml.dump(res));
     }
-
-
-
   } catch (e) {
     console.error("ERROR:", e);
   }
