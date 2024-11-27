@@ -3161,22 +3161,51 @@ class EluvioLive {
    * create account for tenant
    *
    * @namedParams
-   * @param {string} email - The email to create
+   * @param {string} email - The email to create, or @filename to read a list of emails from file
    * @param {string} tenant - The Tenant ID
    * @param {string} callbackUrl - The base URL info for the link in the email
+   * @param {boolean} onlyCreateAccount - only create the account
+   * @param {boolean} onlySendEmail - only send email, do not create the account
+   * @param {string} scheduleAt - when to schedule the email
    * @return {Promise<Object>} - The API Response containing created account info
    */
-  async CreateWalletAccount({ email, tenant, callbackUrl}) {
+  async CreateWalletAccount({ email, tenant, callbackUrl, onlyCreateAccount, onlySendEmail, scheduleAt}) {
     let headers = {};
+    let res = "";
+    console.log("email", email, "tenant", tenant, "callbackUrl", callbackUrl,
+      "onlyCreateAccount", onlyCreateAccount, "onlySentEmail", onlySendEmail, "scheduleAt", scheduleAt);
 
-    console.log("email", email, "tenant", tenant, "callbackUrl", callbackUrl);
-
-    let urlPath = "/wlt/ory/create_account";
-    let res = await this.PostServiceRequest({
-      path: urlPath,
-      body: { email, tenant, "callback_url": callbackUrl },
-      headers,
-    });
+    // if email is a file, read the file
+    if (email.startsWith("@")) {
+      let emails = fs.readFileSync(email.slice(1), "utf-8").split(/\r?\n/);
+      let urlPath = "/wlt/ory/create_bulk_accounts";
+      res = await this.PostServiceRequest({
+        path: urlPath,
+        body: {
+          emails,
+          tenant,
+          "callback_url": callbackUrl,
+          "only_create_account": onlyCreateAccount,
+          "only_send_email": onlySendEmail,
+          "schedule_at": scheduleAt
+        },
+        headers,
+      });
+    } else {
+      let urlPath = "/wlt/ory/create_account";
+      res = await this.PostServiceRequest({
+        path: urlPath,
+        body: {
+          email,
+          tenant,
+          "callback_url": callbackUrl,
+          "only_create_account": onlyCreateAccount,
+          "only_send_email": onlySendEmail,
+          "schedule_at": scheduleAt
+        },
+        headers,
+      });
+    }
 
     return await res.json();
   }
@@ -3492,7 +3521,7 @@ class EluvioLive {
       console.log("Create response: ", tenantConfigResult);
     }
 
-    return {response:tenantConfigResult, content_hash_updated:contentHash };
+    return {response:tenantConfigResult};
   }
 
   /**
