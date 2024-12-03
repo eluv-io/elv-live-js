@@ -120,6 +120,88 @@ const CmdGroupCreate = async ({ argv }) => {
   }
 };
 
+const CmdSetTenantContractId = async ({ argv }) => {
+  try {
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+    await elvAccount.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    const { object, tenantContractId } = argv;
+    let contractAddress, objectId, versionHash;
+
+    if (object.startsWith("iq")) {
+      objectId = object;
+    } else if (object.startsWith("hq")) {
+      versionHash = object;
+    } else if (object.startsWith("0x")) {
+      contractAddress = object;
+    } else {
+      throw new Error(`Invalid object provided: ${object}`);
+    }
+
+    console.log("parameters:", {
+      contractAddress,
+      objectId,
+      versionHash,
+      tenantContractId,
+    });
+
+    const response = await elvAccount.SetTenantContractId({
+      contractAddress,
+      objectId,
+      versionHash,
+      tenantContractId,
+    });
+
+    console.log(yaml.dump(response));
+  } catch (error) {
+    console.error("error occurred setting the tenant contract ID:", error.message);
+    console.error(error);
+  }
+};
+
+const CmdGetTenantInfo = async ({ argv }) => {
+  try {
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+    await elvAccount.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    const { object } = argv;
+    let contractAddress, objectId, versionHash;
+
+    if (object.startsWith("iq")) {
+      objectId = object;
+    } else if (object.startsWith("hq")) {
+      versionHash = object;
+    } else if (object.startsWith("0x")) {
+      contractAddress = object;
+    } else {
+      throw new Error(`Invalid object provided: ${object}`);
+    }
+
+    console.log("parameters:", {
+      contractAddress,
+      objectId,
+      versionHash,
+    });
+
+    const response = await elvAccount.GetTenantInfo({
+      contractAddress,
+      objectId,
+      versionHash
+    });
+
+    console.log(yaml.dump(response));
+  } catch (error) {
+    console.error("error occurred setting the tenant contract ID:", error.message);
+    console.error(error);
+  }
+};
+
 const CmdAccountSend = async ({ argv }) => {
   console.log("Account Send\n");
   console.log(`address: ${argv.address}`);
@@ -1442,6 +1524,43 @@ yargs(hideBin(process.argv))
       CmdTenantRemoveContentAdmin({ argv });
     }
   )
+
+  .command(
+    "set_tenant_contract_id <object> <tenantContractId>",
+    "set tenant contract id for the given object: wallet|content-type|tenant|group|library",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "object Id | version hash | contract address",
+          type: "string",
+        })
+        .positional("tenantContractId", {
+          describe: "tenant contract id",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdSetTenantContractId({ argv });
+    }
+  )
+
+  .command(
+    "get_tenant_info <object>",
+    "get tenant contract id and tenant id for the given object: wallet|content-type|tenant|group|library",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "object Id | version hash | contract address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdGetTenantInfo({ argv });
+    }
+  )
+
+
+
 
   .command(
     "space_tenant_deploy <tenant_name> <owner_addr> <tenant_admin_addr> <content_admin_addr>",

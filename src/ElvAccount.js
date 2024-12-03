@@ -68,18 +68,17 @@ class ElvAccount {
     }
 
     // We don't require the key is part of a tenant (for example when creating a tenant root key)
-    let tenantAdminsAddr;
     if (tenantId) {
       // Validate tenant ID (make sure it is not the tenant admins ID)
       const idType = await this.client.AccessType({ id: tenantId });
-      if (idType != this.client.authClient.ACCESS_TYPES.TENANT) {
+      if (idType !== this.client.authClient.ACCESS_TYPES.TENANT) {
         throw Error("Bad tenant ID");
       }
 
       // Find tenant admins address
       let tenantAddr = this.client.utils.HashToAddress(tenantId);
       try {
-        tenantAdminsAddr = await this.client.CallContractMethod({
+        await this.client.CallContractMethod({
           contractAddress: tenantAddr,
           methodName: "groupsMapping",
           methodArgs: ["tenant_admin", 0],
@@ -119,10 +118,8 @@ class ElvAccount {
       await client.userProfileClient.CreateWallet();
 
       if (tenantId) {
+        // TODO setTenantId fails
         await client.userProfileClient.SetTenantContractId({tenantContractId: tenantId});
-        await client.userProfileClient.SetTenantId({
-          address: tenantAdminsAddr,
-        });
       }
 
       if (accountName) {
@@ -198,7 +195,7 @@ class ElvAccount {
     });
     const userTenantId = ethers.utils.toUtf8String(userTenantIdHex);
 
-    if (tenantId != userTenantId) {
+    if (tenantId !== userTenantId) {
       console.log("Bad user - inconsistent tenant ID", tenantId, userTenantId);
     }
     return { address, userId, tenantId, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
@@ -241,6 +238,29 @@ class ElvAccount {
     });
 
     return { name, address };
+  }
+
+  async SetTenantContractId({contractAddress, objectId, versionHash, tenantContractId}){
+    if (!this.client) {
+      throw Error("ElvAccount not intialized");
+    }
+
+    await this.client.SetTenantContractId({contractAddress, objectId, versionHash, tenantContractId});
+    return await this.client.TenantContractId({contractAddress, objectId, versionHash});
+  }
+
+  async GetTenantInfo({contractAddress, objectId, versionHash}){
+    if (!this.client) {
+      throw Error("ElvAccount not intialized");
+    }
+
+    const tenantContractId = await this.client.TenantContractId({contractAddress, objectId, versionHash});
+    const tenantId = await this.client.TenantId({contractAddress, objectId, versionHash});
+
+    return {
+      tenant_contract_id: tenantContractId,
+      tenant_id: tenantId,
+    };
   }
 
   async Send({ address, funds }) {

@@ -37,7 +37,7 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
     configUrl: Config.networks[Config.net],
     mainObjectId: Config.mainObjects[Config.net],
   };
-  console.log("XXX asUrl", asUrl);
+
   elvlv = new EluvioLive(config);
   await elvlv.Init({ debugLogging, asUrl });
 
