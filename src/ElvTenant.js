@@ -177,7 +177,7 @@ class ElvTenant {
    */
   async TenantShow({ tenantId, show_metadata = false }) {
     let contractType = await this.client.authClient.AccessType(tenantId);
-    if (contractType != this.client.authClient.ACCESS_TYPES.TENANT) {
+    if (contractType !== this.client.authClient.ACCESS_TYPES.TENANT) {
       throw Error("the contract corresponding to this tenantId is not a tenant contract");
     }
 
@@ -643,6 +643,7 @@ class ElvTenant {
       console.log(`Funds before transfer: Receiver=${fundingAddress}, Balance=${initialReceiverBalance}`);
     }
 
+    amount = amount || 2;
     // Validate sender's balance
     if (senderBalance <= amount) {
       throw new Error(
