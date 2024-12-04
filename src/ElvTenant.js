@@ -462,7 +462,7 @@ class ElvTenant {
     //Associate the group with this tenant - set the tenant users group's _ELV_TENANT_ID to this tenant's tenant id.
     await this.TenantSetGroupConfig({tenantId: tenantId, groupAddress: tenantUsersAddr});
 
-    //Associate the tenant with this group - set tenant's content admin group on the tenant's contract.
+    //Associate the tenant with this group - set tenant's users group on the tenant's contract.
     await this.client.CallContractMethodAndWait({
       contractAddress: tenantAddr,
       abi: JSON.parse(abi),

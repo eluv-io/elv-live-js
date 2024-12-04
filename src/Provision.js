@@ -760,7 +760,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
           "streamTypeId": null
         },
         faucet: {
-          "enable": true,
+          "enable": false,
           "funding_address": null,
           "amount": null,
         }
