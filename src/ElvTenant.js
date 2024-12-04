@@ -444,7 +444,7 @@ class ElvTenant {
     let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
     elvAccount.InitWithClient({elvClient:this.client});
 
-    //Arguments don't contain content admin group address, creating a new content admin group for the user's account.
+    //Arguments don't contain tenant users group address, creating a new tenant users group for the user's account.
     if (!tenantUsersAddr) {
       let tenantUsersGroup = await elvAccount.CreateAccessGroup({
         name: `${tenantName} Tenant Users`,
