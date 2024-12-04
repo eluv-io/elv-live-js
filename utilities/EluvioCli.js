@@ -302,9 +302,9 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
   }
 };
 
-const CmdTenantFaucetFund = async ({ argv }) => {
+const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
   try {
-    const { as_url: asUrl, tenant_id: tenantId, amount } = argv;
+    const { as_url: asUrl, tenant_id: tenantId, funds } = argv;
 
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
@@ -312,11 +312,12 @@ const CmdTenantFaucetFund = async ({ argv }) => {
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    await t.TenantFaucetFund({
+    const res = await t.TenantCreateFaucetAndFund({
       asUrl,
       tenantId,
-      amount,
+      amount : funds,
     });
+    console.log(yaml.dump(res));
   } catch (error) {
     console.error("ERROR:", error.message);
   }
@@ -703,6 +704,52 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
     let res = await t.TenantRemoveContentAdmin({
       tenantId: argv.tenant,
       contentAdminsAddress: argv.content_admin_address
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantSetTenantUsers = async ({ argv }) => {
+  console.log(`Setting a new tenant users group for Tenant ${argv.tenant}`);
+  console.log("Network: " + Config.net);
+
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let tenantUsersAddr = argv.tenant_users_address;
+    let res = await t.TenantSetTenantUsers({
+      tenantId: argv.tenant,
+      tenantUsersAddr,
+    });
+
+    console.log(res);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantRemoveTenantUsers = async ({ argv }) => {
+  console.log(`Removing a tenant users group from Tenant ${argv.tenant}`);
+  console.log(`Removed tenant users group Address: ${argv.tenant_users_addr}`);
+  console.log("Network: " + Config.net);
+
+  try {
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantRemoveTenantUsers({
+      tenantId: argv.tenant,
+      tenantUsersAddr: argv.tenant_users_address
     });
 
     console.log(yaml.dump(res));
@@ -1526,6 +1573,44 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "tenant_set_tenant_users <tenant> [options]",
+    "Set new tenant users",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .options("tenant_users_address", {
+          describe: "Address of the tenant users groups",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantSetTenantUsers({ argv });
+    }
+  )
+
+  .command(
+    "tenant_remove_tenant_users <tenant> <tenant_users_address>",
+    "Remove a tenant users group",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("tenant_users_address", {
+          describe: "Tenant users address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantRemoveTenantUsers({ argv });
+    }
+  )
+
+  .command(
     "set_tenant_contract_id <object> <tenantContractId>",
     "set tenant contract id for the given object: wallet|content-type|tenant|group|library",
     (yargs) => {
@@ -1590,7 +1675,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_faucet_create_and_fund <tenant_id>",
+    "tenant_create_faucet <tenant_id>",
     "Generate/get tenant funding address for given tenant and provide funds",
     (yargs) => {
       yargs
@@ -1598,10 +1683,9 @@ yargs(hideBin(process.argv))
           describe: "tenant id",
           type: "string",
         })
-        .option("amount", {
+        .option("funds", {
           describe: "The amount to fund the faucet funding address, specified in Elv's",
           type: "number",
-          default: 2,
         })
         .option("as_url", {
           describe: "Alternate authority service URL (include '/as/' route if necessary)",
@@ -1609,7 +1693,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdTenantFaucetFund({argv});
+      CmdTenantCreateFaucetAndFund({argv});
     }
   )
 

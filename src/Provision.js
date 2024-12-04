@@ -278,14 +278,16 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
     amount = null;
   }
 
-  let res = await elvTenant.TenantFaucetFund({
+  let res = await elvTenant.TenantCreateFaucetAndFund({
     asUrl,
     tenantId,
     amount,
   });
 
-  t.base.faucet.funding_address = res.funding_address;
-  t.base.faucet.amount_transferred = res.amount_transferred;
+  t.base.faucet.funding_address = res.faucet.funding_address;
+  if ( "amount_transferred" in res ) {
+    t.base.faucet.amount_transferred = res.amount_transferred;
+  }
   writeConfigToFile(t);
 };
 
@@ -758,7 +760,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
           "streamTypeId": null
         },
         faucet: {
-          "enable": false,
+          "enable": true,
           "funding_address": null,
           "amount": null,
         }
@@ -801,6 +803,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
   await ProvisionLiveStreaming({client, tenantId, t});
   await ProvisionMediaWallet({client, tenantId, t});
   await ProvisionOps({client, tenantId, t, debug});
+  await ProvisionFaucet({tenantId, asUrl, t, debug});
 
   /* Add ids of services to tenant fabric metadata */
   console.log("Tenant content object - set types and sites");
@@ -814,7 +817,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
   return t;
 };
 
-const ProvisionBase = async ({client, kmsId, tenantId, asUrl, t, debug}) => {
+const ProvisionBase = async ({client, kmsId, tenantId, t }) => {
   await checkSignerTenantAccess({client, tenantId});
 
   const tenantAddr = Utils.HashToAddress(tenantId);
@@ -835,9 +838,6 @@ const ProvisionBase = async ({client, kmsId, tenantId, asUrl, t, debug}) => {
   await getTenantGroups({client,tenantId, t});
   await createLibrariesAndSetPermissions({client, kmsId, t});
   await createTenantTypes({client, t});
-  if (t.base.faucet.enable) {
-    await handleTenantFaucet({tenantId, asUrl, t, debug});
-  }
 };
 
 const ProvisionLiveStreaming = async({client, tenantId, t}) => {
@@ -876,6 +876,12 @@ const ProvisionOps = async({client, tenantId, t, debug= false}) => {
     t: t,
     debug
   });
+};
+
+const ProvisionFaucet = async({tenantId, asUrl, t, debug = false}) => {
+  if (t.base.faucet.enable) {
+    await handleTenantFaucet({tenantId, asUrl, t, debug});
+  }
 };
 
 // ===============================================================
