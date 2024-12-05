@@ -3117,11 +3117,11 @@ yargs(hideBin(process.argv))
         describe: "object ID or address",
         type: "string",
       });
-      yargs.option("group",{
+      yargs.positional("group",{
         describe: "group ID or address",
         type: "string",
       });
-      yargs.option("permission",{
+      yargs.positional("permission",{
         describe: "type of permission to add (see, access, manage)",
         type: "string",
       });
