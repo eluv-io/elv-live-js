@@ -14,7 +14,6 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
-const urljoin = require("url-join");
 const prompt = require("prompt-sync")({ sigint: true });
 const exec = require("child_process").exec;
 
@@ -656,8 +655,8 @@ const CmdTenantWallets = async ({ argv }) => {
       for (let i = 0; i < res.contents.length; i++) {
         const ident = res.contents[i].ident ? res.contents[i].ident : "";
         let json = res.contents[i].extra_json ? JSON.stringify(res.contents[i].extra_json) : "";
-        json = json.replaceAll("\"", "\"\"")
-        created = new Date(res.contents[i].created * 1000)
+        json = json.replaceAll("\"", "\"\"");
+        created = new Date(res.contents[i].created * 1000);
         out = out + res.contents[i].addr + "," + ident + "," + created.toISOString() + ",\"" +  json + "\"\n";
       }
       fs.writeFileSync(argv.csv, out);
@@ -724,7 +723,7 @@ const CmdCreateWalletAccount = async ({ argv }) => {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
     if (!argv.email || !argv.tenant || !argv.property_slug) {
       console.error("ERROR: must set email, tenant, property_slug");
-      return
+      return;
     }
     const slug = argv.property_slug;
 
@@ -732,15 +731,15 @@ const CmdCreateWalletAccount = async ({ argv }) => {
     let domains = await elvlv.Domains();
     for (const domainObj of domains) {
       if (domainObj.property_slug === slug && domainObj.domain !== "") {
-        domain = domainObj.domain
+        domain = domainObj.domain;
       }
     }
 
     if (!domain.startsWith("https")) {
-      domain = "https://" + domain
+      domain = "https://" + domain;
     }
     if (!domain.endsWith("/")) {
-      domain = domain + "/"
+      domain = domain + "/";
     }
 
     let callbackUrl = domain + "register?next=" + slug + "&pid=" + slug;
@@ -1355,6 +1354,45 @@ const CmdTenantProvision = async ({ argv }) => {
     } else {
       console.log(yaml.dump(res));
     }
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdSetObjectGroupPermission = async ({ argv }) => {
+  console.log("Set Group Permission");
+  console.log(`Object ID: ${argv.object}`);
+  console.log(`verbose: ${argv.verbose}`);
+  console.log(`group: ${argv.group}`);
+  console.log(`permission: ${argv.permission}`);
+
+  let object = argv.object;
+  let group = argv.group;
+  let permission = argv.permission;
+  try {
+
+    if (group.startsWith("igrp")){
+      group = Utils.HashToAddress(group);
+    }
+    if (object.startsWith("0x")){
+      object = ElvUtils.AddressToId({prefix:"iq__", address:object});
+    }
+
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    await elvContract.SetObjectGroupPermission({
+      objectId: object,
+      groupAddress: group,
+      permission,
+    });
+    console.log(`The group ${group} has been granted '${permission}' permission for the object ${object}`)
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -3068,6 +3106,28 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantProvision({ argv });
+    }
+  )
+
+  .command(
+    "set_object_group_permission <object> <group> <permission> [options]",
+    "Add a permission on the specified group for the specified object",
+    (yargs) => {
+      yargs.positional("object", {
+        describe: "object ID or address",
+        type: "string",
+      });
+      yargs.option("group",{
+        describe: "group ID or address",
+        type: "string",
+      });
+      yargs.option("permission",{
+        describe: "type of permission to add (see, access, manage)",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdSetObjectGroupPermission({ argv });
     }
   )
 
