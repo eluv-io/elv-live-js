@@ -340,7 +340,7 @@ class ElvAccount {
         throw Error(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set to ${id}, aborting...`);
       } else {
         console.log(`Group ${groupAddress} already has _ELV_TENANT_ID metadata set correctly to ${id}`);
-        return
+        return;
       }
     }
 

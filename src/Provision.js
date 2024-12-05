@@ -736,7 +736,7 @@ const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
   let wallet = client.GenerateWallet();
   const signer = wallet.AddAccount({
     privateKey: opsKey
-  })
+  });
   const opsKeyAddress = signer.address;
   console.log("opsKeyAddress", opsKeyAddress);
   console.log("opsKeyPK", signer.privateKey);
