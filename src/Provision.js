@@ -81,6 +81,21 @@ const checkSignerTenantAccess = async ({client, tenantId}) => {
     privateKey: process.env.PRIVATE_KEY
   });
 
+  const tenantAddr = Utils.HashToAddress(tenantId);
+  const abi = fs.readFileSync(
+    path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+  );
+  let owner = await elvFabric.client.CallContractMethod({
+    contractAddress: tenantAddr,
+    abi: JSON.parse(abi),
+    methodName: "owner",
+    methodArgs: [],
+  });
+
+  if (elvFabric.client.signer.address !== owner) {
+    throw Error(`signer is not the root key for tenant: ${tenantId}`);
+  }
+
   let tenantContractId = await client.userProfileClient.TenantContractId();
   if (tenantId !== tenantContractId) {
     throw Error(`Signer associated with different tenant.\n expected_tenant:${tenantId}\n actual_tenant:${tenantContractId}`);
@@ -890,7 +905,6 @@ const ProvisionOps = async({client, tenantId, t, debug= false}) => {
     t: t,
     debug
   });
-
 
   if (!t.base.groups.contentAdminGroupAddress) {
     throw Error("require t.base.groups.contentAdminGroupAddress to be set");
