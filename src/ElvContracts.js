@@ -433,6 +433,14 @@ class ElvContracts {
     return res;
   }
 
+  async SetObjectGroupPermission({ objectId, groupAddress, permission }){
+    return await this.client.AddContentObjectGroupPermission({
+      objectId,
+      groupAddress,
+      permission,
+    });
+  }
+
 }
 
 exports.ElvContracts = ElvContracts;

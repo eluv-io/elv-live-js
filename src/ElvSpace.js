@@ -77,12 +77,6 @@ class ElvSpace {
         isManager: true,
       });
 
-      await elvAccount.SetAccountTenantAdminsAddress({
-        tenantAdminsAddress: tenantAdminGroup.address,
-      });
-      account.tenantAdminsId = await elvAccount.client.userProfileClient.TenantId();
-
-
       // Create Content Admin Access Group
       let contentAdminGroup = await elvAccount.CreateAccessGroup({
         name: `${tenantName} Content Admins`,
@@ -94,21 +88,40 @@ class ElvSpace {
         isManager: true,
       });
 
+      // Create Tenant Users Access Group
+      let tenantUsersGroup = await elvAccount.CreateAccessGroup({
+        name: `${tenantName} Tenant Users`,
+      });
+
+      await elvAccount.AddToAccessGroup({
+        groupAddress: tenantUsersGroup.address,
+        accountAddress: account.address,
+        isManager: true,
+      });
+
       if (this.debug){
         console.log("tenant admins:", tenantAdminGroup);
         console.log("content admins:", contentAdminGroup);
+        console.log("tenant users:", tenantUsersGroup);
       }
-      let adminGroups = {tenantAdminGroup, contentAdminGroup};
+      let adminGroups = {
+        tenantAdminGroup,
+        contentAdminGroup,
+        tenantUsersGroup
+      };
 
       let tenant = await this.TenantDeploy({
         tenantName,
         ownerAddress: account.address,
         tenantAdminGroupAddress: tenantAdminGroup.address,
         contentAdminGroupAddress: contentAdminGroup.address,
+        tenantUsersGroupAddress: tenantUsersGroup.address,
       });
 
       // Assign the created tenant to account
       await elvAccount.SetAccountTenantContractId({tenantId: tenant.id});
+      account.tenantAdminsId = await elvAccount.client.userProfileClient.TenantId();
+      account.tenantContractId = await elvAccount.client.userProfileClient.TenantContractId();
 
       // Add _ELV_TENANT_ID to groups' metadata so we can identify the tenant these groups belong to
       await elvAccount.SetGroupTenantConfig({
@@ -121,6 +134,11 @@ class ElvSpace {
         groupAddress: contentAdminGroup.address
       });
 
+      await elvAccount.SetGroupTenantConfig({
+        tenantId: tenant.id,
+        groupAddress: tenantUsersGroup.address
+      });
+
       return {
         account,
         adminGroups,
@@ -131,7 +149,7 @@ class ElvSpace {
     }
   }
 
-  async TenantDeploy({ tenantName, ownerAddress, tenantAdminGroupAddress, contentAdminGroupAddress }) {
+  async TenantDeploy({ tenantName, ownerAddress, tenantAdminGroupAddress, contentAdminGroupAddress, tenantUsersGroupAddress }) {
     let tenantContract;
     try {
       tenantContract = await ElvUtils.DeployContractFile({
@@ -193,16 +211,32 @@ class ElvSpace {
       }
     }
 
-    res = await this.client.CallContractMethodAndWait({
-      contractAddress: tenantContract.address,
-      abi: JSON.parse(tenantContract.abi),
-      methodName: "addGroup",
-      methodArgs: ["content_admin", contentAdminGroupAddress],
-      formatArguments: true,
-    });
+    if (contentAdminGroupAddress) {
+      res = await this.client.CallContractMethodAndWait({
+        contractAddress: tenantContract.address,
+        abi: JSON.parse(tenantContract.abi),
+        methodName: "addGroup",
+        methodArgs: ["content_admin", contentAdminGroupAddress],
+        formatArguments: true,
+      });
 
-    if (this.debug){
-      console.log("Result set content admin group", res);
+      if (this.debug) {
+        console.log("Result set content admin group", res);
+      }
+    }
+
+    if (tenantUsersGroupAddress) {
+      res = await this.client.CallContractMethodAndWait({
+        contractAddress: tenantContract.address,
+        abi: JSON.parse(tenantContract.abi),
+        methodName: "addGroup",
+        methodArgs: ["tenant_users", tenantUsersGroupAddress],
+        formatArguments: true,
+      });
+
+      if (this.debug) {
+        console.log("Result set tenant users group", res);
+      }
     }
 
     if (ownerAddress) {
