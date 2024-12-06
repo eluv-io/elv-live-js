@@ -8,6 +8,7 @@ const {Config} = require("./Config");
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { ElvFabric } = require("./ElvFabric");
 const { ElvTenant } = require("./ElvTenant");
+const { ElvClient } = require("@eluvio/elv-client-js");
 
 const TYPE_LIVE_DROP_EVENT_SITE = "Media Wallet Drop Event Site";
 const TYPE_LIVE_TENANT = "Media Wallet Tenant";
@@ -79,6 +80,21 @@ const checkSignerTenantAccess = async ({client, tenantId}) => {
   await elvFabric.Init({
     privateKey: process.env.PRIVATE_KEY
   });
+
+  const tenantAddr = Utils.HashToAddress(tenantId);
+  const abi = fs.readFileSync(
+    path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+  );
+  let owner = await elvFabric.client.CallContractMethod({
+    contractAddress: tenantAddr,
+    abi: JSON.parse(abi),
+    methodName: "owner",
+    methodArgs: [],
+  });
+
+  if (elvFabric.client.signer.address !== owner) {
+    throw Error(`signer is not the root key for tenant: ${tenantId}`);
+  }
 
   let tenantContractId = await client.userProfileClient.TenantContractId();
   if (tenantId !== tenantContractId) {
@@ -252,6 +268,13 @@ const getTenantGroups = async ({client,tenantId, t}) => {
     methodArgs: ["content_admin", 0],
     formatArguments: true,
   });
+  t.base.groups.tenantUsersGroupAddress = await client.CallContractMethod({
+    contractAddress: tenantAddr,
+    abi: JSON.parse(abi),
+    methodName: "groupsMapping",
+    methodArgs: ["tenant_users", 0],
+    formatArguments: true,
+  });
   writeConfigToFile(t);
 
   console.log("\nAccess Groups:\n");
@@ -262,6 +285,37 @@ const getTenantGroups = async ({client,tenantId, t}) => {
   }
   if (!t.base.groups.contentAdminGroupAddress) {
     throw Error(`t.base.groups.contentAdminGroupAddress not set for ${tenantId}`);
+  }
+  if (!t.base.groups.tenantUsersGroupAddress) {
+    console.log(`WARN: t.base.groups.tenantUsersGroupAddress not set for ${tenantId}`);
+  }
+};
+
+const setGroupPermission = async ({client,t}) => {
+  if (!t.base.groups.tenantAdminGroupAddress) {
+    throw Error(`t.base.groups.tenantAdminGroupAddress not set for ${tenantId}`);
+  }
+
+  if (!isEmptyParams(t.base.groups.contentAdminGroupAddress)) {
+    const objectId = ElvUtils.AddressToId({prefix: "iq__", address: t.base.groups.contentAdminGroupAddress});
+    await client.AddContentObjectGroupPermission({
+      objectId,
+      groupAddress: t.base.groups.tenantAdminGroupAddress,
+      permission: "manage"
+    });
+    console.log(`tenant_admin_group ${t.base.groups.tenantAdminGroupAddress} has been granted 
+    manage permissions for the content_admin_group ${t.base.groups.contentAdminGroupAddress}`);
+  }
+
+  if (!isEmptyParams(t.base.groups.tenantUsersGroupAddress)) {
+    const objectId = ElvUtils.AddressToId({prefix: "iq__", address: t.base.groups.tenantUsersGroupAddress});
+    await client.AddContentObjectGroupPermission({
+      objectId,
+      groupAddress: t.base.groups.tenantAdminGroupAddress,
+      permission: "manage"
+    });
+    console.log(`tenant_admin_group ${t.base.groups.tenantAdminGroupAddress} has been granted 
+    manage permissions for the tenant_users_group ${t.base.groups.tenantUsersGroupAddress}`);
   }
 };
 
@@ -670,7 +724,7 @@ const createSiteId = async ({client, t}) => {
   }
 };
 
-const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
+const createOpsKeyAndAddToGroup = async ({groupAddress, opsKeyType, t, debug})=>{
   let opsKey = "";
   if (opsKeyType === TENANT_OPS_KEY){
     opsKey = t.base.tenantOpsKey;
@@ -681,19 +735,20 @@ const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
   if (opsKey === "none") {
     return;
   }
+
+  let elvAccount = new ElvAccount({
+    configUrl: Config.networks[Config.net],
+    debugLogging: debug
+  });
+  await elvAccount.Init({
+    privateKey: process.env.PRIVATE_KEY,
+  });
+
   if (!opsKey) {
     if (isEmptyParams(t.base.tenantName)) {
       throw Error("require t.base.tenantName to be set");
     }
 
-    let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
-      debugLogging: debug
-    });
-
-    await elvAccount.Init({
-      privateKey: process.env.PRIVATE_KEY,
-    });
     const signerBalance = await elvAccount.GetBalance();
     if (signerBalance < EXPECTED_SENDER_BALANCE) {
       throw Error(`${await elvAccount.signer.getAddress()} have balance < ${EXPECTED_SENDER_BALANCE}\nCurrent balance: ${signerBalance}`);
@@ -708,20 +763,32 @@ const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
     console.log(`address:${res.address}`);
     console.log(`privateKey:${res.privateKey}`);
 
+    opsKey = res.privateKey;
     if (opsKeyType === TENANT_OPS_KEY){
       t.base.tenantOpsKey = res.privateKey;
     } else {
       t.base.contentOpsKey = res.privateKey;
     }
     writeConfigToFile(t);
-
-    // add the user as manager to provided group address
-    await elvAccount.AddToAccessGroup({
-      groupAddress: groupAddress,
-      accountAddress: res.address,
-      isManager: true,
-    });
   }
+
+  // In order to address from private key
+  let client = await ElvClient.FromConfigurationUrl({
+    configUrl: Config.networks[Config.net],
+  });
+  let wallet = client.GenerateWallet();
+  const signer = wallet.AddAccount({
+    privateKey: opsKey
+  });
+  const opsKeyAddress = signer.address;
+
+  // add the user as manager to provided group address
+  await elvAccount.AddToAccessGroup({
+    groupAddress: groupAddress,
+    accountAddress: opsKeyAddress,
+    isManager: true,
+  });
+  console.log(`${t.base.tenantName}-${opsKeyType} added as manager to ${groupAddress}`);
 };
 
 let readJsonFile = (filepath) => {
@@ -744,7 +811,8 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
         contentOpsKey: "",
         groups : {
           "tenantAdminGroupAddress": "",
-          "contentAdminGroupAddress": ""
+          "contentAdminGroupAddress": "",
+          "tenantUsersGroupAddress": ""
         },
         libraries: {
           "mastersLibraryId": null,
@@ -838,6 +906,7 @@ const ProvisionBase = async ({client, kmsId, tenantId, t }) => {
   await getTenantGroups({client,tenantId, t});
   await createLibrariesAndSetPermissions({client, kmsId, t});
   await createTenantTypes({client, t});
+  await setGroupPermission({client, t});
 };
 
 const ProvisionLiveStreaming = async({client, tenantId, t}) => {
@@ -859,23 +928,31 @@ const ProvisionOps = async({client, tenantId, t, debug= false}) => {
   if (!t.base.groups.tenantAdminGroupAddress) {
     throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
   }
-  await createOpsKey({
+  await createOpsKeyAndAddToGroup({
     groupAddress: t.base.groups.tenantAdminGroupAddress,
     opsKeyType: TENANT_OPS_KEY,
     t: t,
     debug
   });
 
-
   if (!t.base.groups.contentAdminGroupAddress) {
     throw Error("require t.base.groups.contentAdminGroupAddress to be set");
   }
-  await createOpsKey({
+  await createOpsKeyAndAddToGroup({
     groupAddress: t.base.groups.contentAdminGroupAddress,
     opsKeyType: CONTENT_OPS_KEY,
     t: t,
     debug
   });
+
+  if (t.base.groups.tenantUsersGroupAddress) {
+    await createOpsKeyAndAddToGroup({
+      groupAddress: t.base.groups.tenantUsersGroupAddress,
+      opsKeyType: TENANT_OPS_KEY,
+      t: t,
+      debug
+    });
+  }
 };
 
 const ProvisionFaucet = async({tenantId, asUrl, t, debug = false}) => {

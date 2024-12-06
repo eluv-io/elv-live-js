@@ -276,6 +276,34 @@ const CmdGroupAdd = async ({ argv }) => {
   }
 };
 
+const CmdGroupRemove = async ({ argv }) => {
+  console.log("Group Remove\n");
+  console.log(`Group address: ${argv.group_address}`);
+  console.log(`Account address: ${argv.account_address}`);
+  console.log(`Is Manager?: ${argv.is_manager}`);
+
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let res = await elvAccount.RemoveFromAccessGroup({
+      groupAddress: argv.group_address,
+      accountAddress: argv.account_address,
+      isManager: argv.is_manager,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+};
+
 const CmdSpaceTenantCreate = async ({ argv }) => {
   console.log("Tenant Deploy");
   console.log(`Tenant name: ${argv.tenant_name}`);
@@ -315,7 +343,7 @@ const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
     const res = await t.TenantCreateFaucetAndFund({
       asUrl,
       tenantId,
-      amount : funds,
+      amount: funds,
     });
     console.log(yaml.dump(res));
   } catch (error) {
@@ -376,7 +404,7 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
   }
 };
 
-const CmdTenantShow = async({ argv }) => {
+const CmdTenantShow = async ({ argv }) => {
   console.log("Tenant - show", argv.tenant);
   console.log("Network: " + Config.net);
 
@@ -401,7 +429,7 @@ const CmdTenantShow = async({ argv }) => {
   }
 };
 
-const CmdTenantFix = async({ argv }) => {
+const CmdTenantFix = async ({ argv }) => {
   console.log("Tenant - fix", argv.tenant);
   console.log("Network: " + Config.net);
 
@@ -429,18 +457,21 @@ const CmdTenantFix = async({ argv }) => {
 
     for (let i = 0; i < errors.length; i++) {
       let error = errors[i];
-      switch(error) {
+      switch (error) {
         case 'missing content admins':
-          let addr = await t.TenantSetContentAdmins({tenantId: argv.tenant, contentAdminAddr: argv.content_admin_address});
+          let addr = await t.TenantSetContentAdmins({
+            tenantId: argv.tenant,
+            contentAdminAddr: argv.content_admin_address
+          });
           console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`);
           break;
 
         case `tenant admin group can't be verified or is not associated with any tenant`:
-          await t.TenantSetGroupConfig({tenantId: argv.tenant, groupAddress: res.tenant_admin_address});
+          await t.TenantSetGroupConfig({ tenantId: argv.tenant, groupAddress: res.tenant_admin_address });
           break;
 
         case `content admin group can't be verified or is not associated with any tenant`:
-          await t.TenantSetGroupConfig({tenantId: argv.tenant, groupAddress: res.content_admin_address});
+          await t.TenantSetGroupConfig({ tenantId: argv.tenant, groupAddress: res.content_admin_address });
           break;
 
         default:
@@ -457,7 +488,7 @@ const CmdTenantFix = async({ argv }) => {
   }
 }
 
-const CmdTenantFixSuite = async({ argv }) => {
+const CmdTenantFixSuite = async ({ argv }) => {
   try {
     //Add tenantContractId to the account's metadata if not already exists
     let elvAccount = new ElvAccount({
@@ -470,7 +501,7 @@ const CmdTenantFixSuite = async({ argv }) => {
 
     let tenantContractId;
     try {
-      tenantContractId  = await elvAccount.client.userProfileClient.TenantContractId();
+      tenantContractId = await elvAccount.client.userProfileClient.TenantContractId();
     } catch (e) {
       throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${Config.net} network, aborting...`);
     }
@@ -483,7 +514,7 @@ const CmdTenantFixSuite = async({ argv }) => {
     }
 
     //Set content admins group ID and fix problems related to the tenant and its admin groups
-    await CmdTenantFix({argv})
+    await CmdTenantFix({ argv })
 
     //Set _ELV_TENANT_ID metadata for the libraries if they are owned by the account
     if (argv.libraries) {
@@ -521,7 +552,7 @@ const CmdTenantFixSuite = async({ argv }) => {
       }
     }
   } catch (e) {
-    throw(e);
+    throw (e);
   }
 }
 
@@ -538,7 +569,7 @@ const CmdQuery = async ({ argv }) => {
   without_admins = []
   dict = {}
 
-  for (let i = 0; i < REP1V_TENANT_ADMINS_GROUP_ADDRESSES.length; i ++) {
+  for (let i = 0; i < REP1V_TENANT_ADMINS_GROUP_ADDRESSES.length; i++) {
     // Tenants without a tenant admin group are inserted to the without_admins list
     if (REP1V_TENANT_ADMINS_GROUP_ADDRESSES[i] == "") {
       without_admins.push(REP1V_TENANT_ADDRESSES[i]);
@@ -565,15 +596,15 @@ const CmdQuery = async ({ argv }) => {
     let failure_log = []
 
     let bcindexer_tenant_count = await sql`
-      SELECT COUNT(*) as count_tenant
-      FROM tenants as t
-      WHERE t.id != 'iten11111111111111111111' AND t.id != 'iten11111111111111111112'
+        SELECT COUNT(*) as count_tenant
+        FROM tenants as t
+        WHERE t.id != 'iten11111111111111111111' AND t.id != 'iten11111111111111111112'
     `
 
     let bcindexer_library_count = await sql`
-      SELECT COUNT(*) as count_library
-      FROM libraries as l
-      WHERE l.tenant_id != 'iten11111111111111111111' AND l.tenant_id != 'iten11111111111111111112'
+        SELECT COUNT(*) as count_library
+        FROM libraries as l
+        WHERE l.tenant_id != 'iten11111111111111111111' AND l.tenant_id != 'iten11111111111111111112'
     `
     console.log("number of entries in rep1.elv indexer tenants: ", bcindexer_tenant_count[0].count_tenant);
     console.log("number of entries in rep1.elv indexer libraries: ", bcindexer_library_count[0].count_library);
@@ -581,11 +612,15 @@ const CmdQuery = async ({ argv }) => {
     console.log("number of tenants on chain without tenant admins group: ", without_admins.length);
 
     let tenants = await sql`
-      SELECT
-        t.id, count(t.id), t.space_id, array_agg(l.id) as libraries
-      FROM tenants as t, libraries as l
-      WHERE t.id = l.tenant_id AND t.id != 'iten11111111111111111111' AND t.id != 'iten11111111111111111112'
-      GROUP BY t.id, t.space_id
+        SELECT t.id,
+               count(t.id),
+               t.space_id,
+               array_agg(l.id) as libraries
+        FROM tenants as t,
+             libraries as l
+        WHERE t.id = l.tenant_id
+          AND t.id != 'iten11111111111111111111' AND t.id != 'iten11111111111111111112'
+        GROUP BY t.id, t.space_id
     `
 
     for (const tenant of tenants) {
@@ -607,7 +642,7 @@ const CmdQuery = async ({ argv }) => {
               formatArguments: true
             });
 
-            res = await t.TenantShow({tenantId: tenant_contract_id});
+            res = await t.TenantShow({ tenantId: tenant_contract_id });
             if (!res.errors) {
               success_count += 1
               continue;
@@ -617,7 +652,8 @@ const CmdQuery = async ({ argv }) => {
               tenant_contract_id: tenant_contract_id,
               tenant_admins_id: tenant_admins_id,
               libraries: tenant.libraries,
-              fix_required: res.errors.length});
+              fix_required: res.errors.length
+            });
             failure_count += 1;
 
           } catch (e) {
@@ -626,7 +662,8 @@ const CmdQuery = async ({ argv }) => {
               tenant_contract_id: tenant_contract_id,
               tenant_admins_id: tenant_admins_id,
               libraries: tenant.libraries,
-              errors: e.message});
+              errors: e.message
+            });
             if (e.message.includes('must be logged in with an account in the tenant admins group')) {
               need_further_check += 1;
             } else {
@@ -654,7 +691,7 @@ const CmdQuery = async ({ argv }) => {
 
       JSON.stringify(failure_log, null, 1),
 
-      function (err) {
+      function(err) {
         if (err) {
           console.log("Failed to create a fix info file.");
         }
@@ -851,12 +888,12 @@ const CmdAccountSignedToken = async ({ argv }) => {
 
     let context;
 
-    if (argv.context){
+    if (argv.context) {
       context = JSON.parse(argv.context);
     }
 
     let res = await elvAccount.CreateSignedToken({
-      libraryId:argv.library_id,
+      libraryId: argv.library_id,
       objectid: argv.object_id,
       versionHash: argv.version_hash,
       policyId: argv.policy_id,
@@ -1296,7 +1333,7 @@ yargs(hideBin(process.argv))
   )
 
   .command("account_show", "Shows current account information.", (argv) => {
-    CmdAccountShow({argv});
+    CmdAccountShow({ argv });
   })
 
   .command(
@@ -1461,6 +1498,29 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "group_remove <group_address> <account_address>",
+    "Remove account from access group",
+    (yargs) => {
+      yargs
+        .positional("group_address", {
+          describe: "The address of the access group (hex)",
+          type: "string",
+        })
+        .positional("account_address", {
+          describe: "The address to remove as member (hex)",
+          type: "string",
+        })
+        .option("is_manager", {
+          describe: "remove address as group manager",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdGroupRemove({ argv });
+    }
+  )
+
+  .command(
     "space_tenant_info <tenant>",
     "Shot tenant information.",
     (yargs) => {
@@ -1530,10 +1590,10 @@ yargs(hideBin(process.argv))
           describe: "List of libraries that belong to this tenant",
           type: "array",
         });
-      },
-      (argv) => {
-        CmdTenantFixSuite({ argv });
-      }
+    },
+    (argv) => {
+      CmdTenantFixSuite({ argv });
+    }
   )
 
   .command(
@@ -1647,8 +1707,6 @@ yargs(hideBin(process.argv))
   )
 
 
-
-
   .command(
     "space_tenant_deploy <tenant_name> <owner_addr> <tenant_admin_addr> <content_admin_addr>",
     "Deploys a tenant contract",
@@ -1700,7 +1758,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdTenantCreateFaucetAndFund({argv});
+      CmdTenantCreateFaucetAndFund({ argv });
     }
   )
 

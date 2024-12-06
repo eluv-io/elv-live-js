@@ -293,12 +293,29 @@ class ElvAccount {
   async AddToAccessGroup({ groupAddress, accountAddress, isManager = false }) {
     let res = {};
     if (isManager) {
+
       res = await this.client.AddAccessGroupManager({
         contractAddress: groupAddress,
         memberAddress: accountAddress,
       });
     } else {
       res = await this.client.AddAccessGroupMember({
+        contractAddress: groupAddress,
+        memberAddress: accountAddress,
+      });
+    }
+    return { res };
+  }
+
+  async RemoveFromAccessGroup({ groupAddress, accountAddress, isManager = false }) {
+    let res = {};
+    if (isManager) {
+      res = await this.client.RemoveAccessGroupManager({
+        contractAddress: groupAddress,
+        memberAddress: accountAddress,
+      });
+    } else {
+      res = await this.client.RemoveAccessGroupMember({
         contractAddress: groupAddress,
         memberAddress: accountAddress,
       });
