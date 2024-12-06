@@ -291,6 +291,34 @@ const getTenantGroups = async ({client,tenantId, t}) => {
   }
 };
 
+const setGroupPermission = async ({client,t}) => {
+  if (!t.base.groups.tenantAdminGroupAddress) {
+    throw Error(`t.base.groups.tenantAdminGroupAddress not set for ${tenantId}`);
+  }
+
+  if (!isEmptyParams(t.base.groups.contentAdminGroupAddress)) {
+    const objectId = ElvUtils.AddressToId({prefix: "iq__", address: t.base.groups.contentAdminGroupAddress});
+    await client.AddContentObjectGroupPermission({
+      objectId,
+      groupAddress: t.base.groups.tenantAdminGroupAddress,
+      permission: "manage"
+    });
+    console.log(`tenant_admin_group ${t.base.groups.tenantAdminGroupAddress} has been granted 
+    manage permissions for the content_admin_group ${t.base.groups.contentAdminGroupAddress}`);
+  }
+
+  if (!isEmptyParams(t.base.groups.tenantUsersGroupAddress)) {
+    const objectId = ElvUtils.AddressToId({prefix: "iq__", address: t.base.groups.tenantUsersGroupAddress});
+    await client.AddContentObjectGroupPermission({
+      objectId,
+      groupAddress: t.base.groups.tenantAdminGroupAddress,
+      permission: "manage"
+    });
+    console.log(`tenant_admin_group ${t.base.groups.tenantAdminGroupAddress} has been granted 
+    manage permissions for the tenant_users_group ${t.base.groups.tenantUsersGroupAddress}`);
+  }
+};
+
 const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
 
   let elvTenant = new ElvTenant({
@@ -878,6 +906,7 @@ const ProvisionBase = async ({client, kmsId, tenantId, t }) => {
   await getTenantGroups({client,tenantId, t});
   await createLibrariesAndSetPermissions({client, kmsId, t});
   await createTenantTypes({client, t});
+  await setGroupPermission({client, t});
 };
 
 const ProvisionLiveStreaming = async({client, tenantId, t}) => {
