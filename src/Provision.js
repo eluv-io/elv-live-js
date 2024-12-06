@@ -681,7 +681,7 @@ const createSiteId = async ({client, t}) => {
   }
 };
 
-const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
+const createOpsKeyAndAddToGroup = async ({groupAddress, opsKeyType, t, debug})=>{
   let opsKey = "";
   if (opsKeyType === TENANT_OPS_KEY){
     opsKey = t.base.tenantOpsKey;
@@ -692,19 +692,19 @@ const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
   if (opsKey === "none") {
     return;
   }
+
+  let elvAccount = new ElvAccount({
+    configUrl: Config.networks[Config.net],
+    debugLogging: debug
+  });
+  await elvAccount.Init({
+    privateKey: process.env.PRIVATE_KEY,
+  });
+
   if (!opsKey) {
     if (isEmptyParams(t.base.tenantName)) {
       throw Error("require t.base.tenantName to be set");
     }
-
-    let elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
-      debugLogging: debug
-    });
-
-    await elvAccount.Init({
-      privateKey: process.env.PRIVATE_KEY,
-    });
 
     const signerBalance = await elvAccount.GetBalance();
     if (signerBalance < EXPECTED_SENDER_BALANCE) {
@@ -731,15 +731,13 @@ const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
 
   // In order to address from private key
   let client = await ElvClient.FromConfigurationUrl({
-    configUrl: this.configUrl,
+    configUrl: Config.networks[Config.net],
   });
   let wallet = client.GenerateWallet();
   const signer = wallet.AddAccount({
     privateKey: opsKey
   });
   const opsKeyAddress = signer.address;
-  console.log("opsKeyAddress", opsKeyAddress);
-  console.log("opsKeyPK", signer.privateKey);
 
   // add the user as manager to provided group address
   await elvAccount.AddToAccessGroup({
@@ -747,6 +745,7 @@ const createOpsKey = async ({groupAddress, opsKeyType, t, debug})=>{
     accountAddress: opsKeyAddress,
     isManager: true,
   });
+  console.log(`${t.base.tenantName}-${opsKeyType} added as manager to ${groupAddress}`);
 };
 
 let readJsonFile = (filepath) => {
@@ -885,7 +884,7 @@ const ProvisionOps = async({client, tenantId, t, debug= false}) => {
   if (!t.base.groups.tenantAdminGroupAddress) {
     throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
   }
-  await createOpsKey({
+  await createOpsKeyAndAddToGroup({
     groupAddress: t.base.groups.tenantAdminGroupAddress,
     opsKeyType: TENANT_OPS_KEY,
     t: t,
@@ -896,7 +895,7 @@ const ProvisionOps = async({client, tenantId, t, debug= false}) => {
   if (!t.base.groups.contentAdminGroupAddress) {
     throw Error("require t.base.groups.contentAdminGroupAddress to be set");
   }
-  await createOpsKey({
+  await createOpsKeyAndAddToGroup({
     groupAddress: t.base.groups.contentAdminGroupAddress,
     opsKeyType: CONTENT_OPS_KEY,
     t: t,
@@ -904,7 +903,7 @@ const ProvisionOps = async({client, tenantId, t, debug= false}) => {
   });
 
   if (t.base.groups.tenantUsersGroupAddress) {
-    await createOpsKey({
+    await createOpsKeyAndAddToGroup({
       groupAddress: t.base.groups.tenantUsersGroupAddress,
       opsKeyType: TENANT_OPS_KEY,
       t: t,
