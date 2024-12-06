@@ -303,8 +303,7 @@ const setGroupPermission = async ({client,t}) => {
       groupAddress: t.base.groups.tenantAdminGroupAddress,
       permission: "manage"
     });
-    console.log(`tenant_admin_group ${t.base.groups.tenantAdminGroupAddress} has been granted 
-    manage permissions for the content_admin_group ${t.base.groups.contentAdminGroupAddress}`);
+    console.log(`tenant_admin_group ${t.base.groups.tenantAdminGroupAddress} has been granted manage permissions for the content_admin_group ${t.base.groups.contentAdminGroupAddress}`);
   }
 
   if (!isEmptyParams(t.base.groups.tenantUsersGroupAddress)) {
@@ -314,8 +313,7 @@ const setGroupPermission = async ({client,t}) => {
       groupAddress: t.base.groups.tenantAdminGroupAddress,
       permission: "manage"
     });
-    console.log(`tenant_admin_group ${t.base.groups.tenantAdminGroupAddress} has been granted 
-    manage permissions for the tenant_users_group ${t.base.groups.tenantUsersGroupAddress}`);
+    console.log(`tenant_admin_group ${t.base.groups.tenantAdminGroupAddress} has been granted manage permissions for the tenant_users_group ${t.base.groups.tenantUsersGroupAddress}`);
   }
 };
 
@@ -902,6 +900,21 @@ const ProvisionBase = async ({client, kmsId, tenantId, t }) => {
   });
   t.base.tenantSlug = t.base.tenantName.toLowerCase().replace(/ /g, "-");
   t.base.tenantId = tenantId;
+
+  // set tenantContractId and tenantId metadata for tenant
+  await client.SetTenantContractId({
+    objectId: tenantId,
+    tenantContractId: tenantId,
+  });
+  let tenantContractId = await client.TenantContractId({
+    objectId: tenantId,
+  });
+  console.log(`tenant_contract_id: ${tenantContractId} set on tenant metadata`);
+
+  let tenantAdminGroup = await client.TenantId({
+    objectId: tenantId,
+  });
+  console.log(`tenant_id: ${tenantAdminGroup} set on tenant metadata`);
 
   await getTenantGroups({client,tenantId, t});
   await createLibrariesAndSetPermissions({client, kmsId, t});
