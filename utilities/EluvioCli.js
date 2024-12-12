@@ -197,7 +197,7 @@ const CmdGetTenantInfo = async ({ argv }) => {
 
     console.log(yaml.dump(response));
   } catch (error) {
-    console.error("error occurred setting the tenant contract ID:", error.message);
+    console.error("error:", error.message);
     console.error(error);
   }
 };
