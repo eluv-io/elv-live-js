@@ -118,7 +118,6 @@ class ElvAccount {
       await client.userProfileClient.CreateWallet();
 
       if (tenantId) {
-        // TODO setTenantId fails
         await client.userProfileClient.SetTenantContractId({tenantContractId: tenantId});
       }
 
