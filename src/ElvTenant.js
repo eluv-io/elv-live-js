@@ -9,6 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const { Config } = require("./Config");
 const { EluvioLive } = require("./EluvioLive");
+const urljoin = require("url-join");
 
 class ElvTenant {
   /**
@@ -747,7 +748,7 @@ class ElvTenant {
     });
 
     // Create/Get faucet funding address
-    const faucetPath = `/tnt/config/${tenantId}/faucet_funding`;
+    const faucetPath =  urljoin(eluvioLive.asUrlPath,`/tnt/config/${tenantId}/faucet_funding`);
     const faucetResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
       method: "POST",
       path: faucetPath,

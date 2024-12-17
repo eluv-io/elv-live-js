@@ -75,7 +75,7 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
 
 
 const CmdAccountShow = async ({ argv }) => {
