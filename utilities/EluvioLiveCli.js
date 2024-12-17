@@ -1912,6 +1912,44 @@ const CmdContentClearPolicy = async ({ argv }) => {
   }
 };
 
+const CmdCleanupObject = async ({ argv }) => {
+  console.log("Parameters:");
+  console.log("object", argv.object);
+  console.log("object_type", argv.object_type);
+
+  try {
+
+    const object = argv.object;
+    const objectType = argv.object_type;
+
+    let objectAddr;
+    if (object.startsWith("iq")) {
+      objectAddr =  Utils.HashToAddress(object);
+    } else if (object.startsWith("0x")) {
+      objectAddr = object;
+    } else {
+      throw new Error(`Invalid object provided: ${object}, require address or id`);
+    }
+
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvContract.CleanupObjects({
+      objectAddr,
+      objectType
+    });
+    console.log("objects cleaned:", res);
+  } catch (e) {
+    console.error("ERROR:", argv.verbose ? e : e.message);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -3732,6 +3770,27 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAdminHealth({ argv });
+    }
+
+
+  )
+
+  .command(
+    "object_cleanup <object> <object_type>",
+    "cleanup given object access to dead objects like libraries, groups",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "object to be cleaned",
+          type: "string",
+        })
+        .positional("object_type", {
+          describe: "object type: library | content_object | group | content_type",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdCleanupObject({ argv });
     }
   )
 
