@@ -7,6 +7,9 @@ const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
+const { Config } = require("./Config");
+const { EluvioLive } = require("./EluvioLive");
+const urljoin = require("url-join");
 
 class ElvTenant {
   /**
@@ -175,7 +178,7 @@ class ElvTenant {
    */
   async TenantShow({ tenantId, show_metadata = false }) {
     let contractType = await this.client.authClient.AccessType(tenantId);
-    if (contractType != this.client.authClient.ACCESS_TYPES.TENANT) {
+    if (contractType !== this.client.authClient.ACCESS_TYPES.TENANT) {
       throw Error("the contract corresponding to this tenantId is not a tenant contract");
     }
 
@@ -226,6 +229,24 @@ class ElvTenant {
       errors.push("missing content admins");
     }
     tenantInfo["content_admin_address"] = contentAdminAddr;
+
+    let tenantUsersAddr;
+    try {
+      tenantUsersAddr = await this.client.CallContractMethod({
+        contractAddress: tenantAddr,
+        abi: JSON.parse(abi),
+        methodName: "groupsMapping",
+        methodArgs: ["tenant_users", 0],
+        formatArguments: true,
+      });
+    } catch (e) {
+      tenantUsersAddr = null;
+      errors.push("missing tenant users group");
+    }
+    if (tenantUsersAddr){
+      tenantInfo["tenant_users_address"] = tenantUsersAddr;
+    }
+
 
     //Check if the groups have _ELV_TENANT_ID set correctly
     for (const group in tenantInfo) {
@@ -376,11 +397,118 @@ class ElvTenant {
   }
 
   /**
+   * Create a new tenant users group corresponding to this tenant.
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} tenantUsersAddr - Tenant users Group's address, new group will be created if not specified (optional)
+   * @returns {string} Tenant users Group's address
+   */
+  async TenantSetTenantUsers({ tenantId, tenantUsersAddr }) {
+    //Check that the user is the owner of the tenant
+    const tenantOwner = await this.client.authClient.Owner({id: tenantId});
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("Tenant users must be set by the owner of tenant " + tenantId);
+    }
+
+    // The tenant must not already have a tenant users group - can only have 1 tenant users group for each tenant.
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    const tenantName = await this.client.CallContractMethod({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "name",
+      methodArgs: [],
+      formatArguments: true,
+    });
+
+    let existingTenantUsers;
+    try {
+      existingTenantUsers = await this.client.CallContractMethod({
+        contractAddress: tenantAddr,
+        abi: JSON.parse(abi),
+        methodName: "groupsMapping",
+        methodArgs: ["tenant_users", 0],
+        formatArguments: true,
+      });
+    } catch (e) {
+      //call cannot override gasLimit error will be thrown if content admin group doesn't exist for this tenant.
+      existingTenantUsers = null;
+    }
+
+    if (existingTenantUsers) {
+      let logMsg = `Tenant ${tenantId} already has a tenant users group: ${existingTenantUsers}, aborting...`;
+      return logMsg;
+    }
+
+    let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+    elvAccount.InitWithClient({elvClient:this.client});
+
+    //Arguments don't contain tenant users group address, creating a new tenant users group for the user's account.
+    if (!tenantUsersAddr) {
+      let tenantUsersGroup = await elvAccount.CreateAccessGroup({
+        name: `${tenantName} Tenant Users`,
+      });
+
+      tenantUsersAddr = tenantUsersGroup.address;
+
+      await elvAccount.AddToAccessGroup({
+        groupAddress: tenantUsersAddr,
+        accountAddress: this.client.signer.address.toLowerCase(),
+        isManager: true,
+      });
+    }
+
+    //Associate the group with this tenant - set the tenant users group's _ELV_TENANT_ID to this tenant's tenant id.
+    await this.TenantSetGroupConfig({tenantId: tenantId, groupAddress: tenantUsersAddr});
+
+    //Associate the tenant with this group - set tenant's users group on the tenant's contract.
+    await this.client.CallContractMethodAndWait({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "addGroup",
+      methodArgs: ["tenant_users", tenantUsersAddr],
+      formatArguments: true,
+    });
+
+    return tenantUsersAddr;
+  }
+
+  /**
+   * Remove a tenant user group from this tenant.
+   * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} tenantUsersAddress - Address of tenant users address we want to remove.
+   */
+  async TenantRemoveTenantUsers({ tenantId, tenantUsersAddr }) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+
+    let res = await this.client.CallContractMethodAndWait({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "removeGroup",
+      methodArgs: ["tenant_users", tenantUsersAddr],
+      formatArguments: true,
+    });
+
+    // TODO remove tenant details from the tenant_users_group
+
+    return res;
+  }
+
+
+
+  /**
    * Associate group with the tenant with tenantId.
    * @param {string} tenantId - The ID of the tenant (iten***)
    * @param {string} groupAddress - Address of the group we want to remove.
    */
   async TenantSetGroupConfig({ tenantId, groupAddress }) {
+    // TODO: use elv-client-js methods
     let idHex;
     let contractHasMeta = true;
     try {
@@ -592,6 +720,88 @@ class ElvTenant {
     return res;
   }
 
+  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount }) {
+    // Initialize configuration
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    // Initialize EluvioLive and ElvAccount
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: this.debug,
+    });
+    await elvAccount.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    var res = {};
+    // Create BaseTenantAuth token
+    const requestBody = { ts: Date.now() };
+    const { multiSig } = await eluvioLive.TenantSign({
+      message: JSON.stringify(requestBody),
+    });
+
+    // Create/Get faucet funding address
+    const faucetPath =  urljoin(eluvioLive.asUrlPath,`/tnt/config/${tenantId}/faucet_funding`);
+    const faucetResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+      method: "POST",
+      path: faucetPath,
+      body: requestBody,
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+    });
+    const faucetRes = await faucetResponse.json();
+    res.faucet = faucetRes;
+    let fundingAddress = faucetRes.funding_address;
+
+    if (amount){
+      // Check balances
+      const senderAddress = elvAccount.signer.address.toString();
+      let initialSenderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
+      let initialReceiverBalance = await elvAccount.client.GetBalance({ address: fundingAddress });
+
+      if (this.debug){
+        console.log(`Funds before transfer: Sender=${senderAddress}, Balance=${initialSenderBalance}`);
+        console.log(`Funds before transfer: Receiver=${fundingAddress}, Balance=${initialReceiverBalance}`);
+      }
+
+      // Validate sender's balance
+      if (initialSenderBalance <= amount) {
+        throw new Error(
+          `Insufficient balance: Sender account (${senderAddress}) has a balance less than the required amount (${amount} Elv's). Please ensure sufficient funds before retrying.`
+        );
+      }
+
+      // Transfer funds
+      const transferResult = await elvAccount.client.SendFunds({
+        recipient: fundingAddress,
+        ether: amount,
+      });
+      console.log("Funds transferred successfully.");
+      if (this.debug) {
+        console.log("Transfer Details:", transferResult);
+      }
+
+      // Check balances after transfer
+      let finalSenderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
+      let finalReceiverBalance = await elvAccount.client.GetBalance({ address: fundingAddress });
+
+      if (this.debug){
+        console.log(`Funds after transfer: Sender=${senderAddress}, Balance=${finalSenderBalance}`);
+        console.log(`Funds after transfer: Receiver=${fundingAddress}, Balance=${finalReceiverBalance}`);
+      }
+      res.amount_transferred = finalReceiverBalance-initialReceiverBalance;
+    }
+
+    return res;
+  }
 }
 
 exports.ElvTenant = ElvTenant;

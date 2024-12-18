@@ -433,6 +433,149 @@ class ElvContracts {
     return res;
   }
 
+  async SetObjectGroupPermission({ objectId, groupAddress, permission }){
+    return await this.client.AddContentObjectGroupPermission({
+      objectId,
+      groupAddress,
+      permission,
+    });
+  }
+
+  /**
+   * cleanUp objects to remove references to dead objects
+   * @param {string} objectAddr: address of the object
+   * @param {string} objectType: object type (library | content_object | group | content_type)
+   */
+  async CleanupObjects({objectAddr, objectType}) {
+    const abiStr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/AccessIndexor.abi")
+    );
+
+    if (!objectAddr) {
+      throw Error("objectAddr not provided");
+    }
+
+    const allowedTypes = ["library", "content_object", "group", "content_type"];
+    if (!allowedTypes.includes(objectType)) {
+      throw Error(`Invalid objectType '${objectType}'. Allowed types: ${allowedTypes.join(", ")}`);
+    }
+
+    let res = {
+      beforeCleanup: {},
+      afterCleanup: {}
+    };
+
+    try {
+      switch (objectType) {
+        case "library": {
+          let libLen = await this.client.CallContractMethod({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "getLibrariesLength",
+            formatArguments: false,
+          });
+          res.beforeCleanup.librariesLength = libLen.toNumber();
+
+          await this.client.CallContractMethodAndWait({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "cleanUpLibraries",
+            formatArguments: true,
+          });
+
+          libLen = await this.client.CallContractMethod({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "getLibrariesLength",
+            formatArguments: false,
+          });
+          res.afterCleanup.librariesLength = libLen.toNumber();
+          break;
+        }
+        case "content_object": {
+          let contentObjLen = await this.client.CallContractMethod({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "getContentObjectsLength",
+            formatArguments: false,
+          });
+          res.beforeCleanup.contentObjectsLength = contentObjLen.toNumber();
+
+          await this.client.CallContractMethodAndWait({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "cleanUpContentObjects",
+            formatArguments: true,
+          });
+
+          contentObjLen = await this.client.CallContractMethod({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "getContentObjectsLength",
+            formatArguments: false,
+          });
+          res.afterCleanup.contentObjectsLength = contentObjLen.toNumber();
+          break;
+        }
+        case "group": {
+          let groupsLen = await this.client.CallContractMethod({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "getAccessGroupsLength",
+            formatArguments: false,
+          });
+          res.beforeCleanup.accessGroupsLength = groupsLen.toNumber();
+
+          await this.client.CallContractMethodAndWait({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "cleanUpAccessGroups",
+            formatArguments: true,
+          });
+
+          groupsLen = await this.client.CallContractMethod({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "getAccessGroupsLength",
+            formatArguments: false,
+          });
+          res.afterCleanup.accessGroupsLength = groupsLen.toNumber();
+          break;
+        }
+        case "content_type": {
+          let contentTypeLen = await this.client.CallContractMethod({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "getContentTypesLength",
+            formatArguments: false,
+          });
+          res.beforeCleanup.contentTypesLength = contentTypeLen.toNumber();
+
+          await this.client.CallContractMethodAndWait({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "cleanUpContentTypes",
+            formatArguments: true,
+          });
+
+          contentTypeLen = await this.client.CallContractMethod({
+            contractAddress: objectAddr,
+            abiStr,
+            methodName: "getContentTypesLength",
+            formatArguments: false,
+          });
+          res.afterCleanup.contentTypesLength = contentTypeLen.toNumber();
+          break;
+        }
+        default:
+          throw Error(`Unsupported objectType: ${objectType}`);
+      }
+    } catch (error) {
+      throw Error(`Error during cleanup: ${error.message}`);
+    }
+
+    return res;
+  }
 }
 
 exports.ElvContracts = ElvContracts;
