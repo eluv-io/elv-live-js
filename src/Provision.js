@@ -175,76 +175,60 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
   const libraryId = ElvUtils.AddressToId({prefix: "ilib", address: tenantAddr});
   const objectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr});
 
-  var e = await client.EditContentObject({
-    libraryId,
-    objectId,
-  });
+  try {
+    const editResponse = await client.EditContentObject({ libraryId, objectId });
 
-  if (!isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_TENANT])){
-    await client.ReplaceMetadata({
+    if (!isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_TENANT])) {
+      await client.ReplaceMetadata({
+        libraryId,
+        objectId,
+        writeToken: editResponse.write_token,
+        metadataSubtree: "public/eluvio_live_id",
+        metadata: t.mediaWallet.liveTypes[TYPE_LIVE_TENANT],
+      });
+    }
+
+    const contentTypesMetadata = {};
+    if (!isEmptyParams(t.base.tenantTypes.titleTypeId)) {
+      contentTypesMetadata["title"] = t.base.tenantTypes.titleTypeId;
+    }
+    if (!isEmptyParams(t.base.tenantTypes.masterTypeId)) {
+      contentTypesMetadata["title_master"] = t.base.tenantTypes.masterTypeId;
+    }
+    if (!isEmptyParams(t.base.tenantTypes.streamTypeId)) {
+      contentTypesMetadata["live_stream"] = t.base.tenantTypes.streamTypeId;
+    }
+    if (Object.keys(contentTypesMetadata).length > 0) {
+      await client.ReplaceMetadata({
+        libraryId,
+        objectId,
+        writeToken: editResponse.write_token,
+        metadataSubtree: "public/content_types",
+        metadata: contentTypesMetadata,
+      });
+    }
+
+    if (!isEmptyParams(t.liveStreaming.siteId)) {
+      await client.ReplaceMetadata({
+        libraryId,
+        objectId,
+        writeToken: editResponse.write_token,
+        metadataSubtree: "public/sites",
+        metadata: { live_streams: t.liveStreaming.siteId },
+      });
+    }
+
+    const res = await client.FinalizeContentObject({
       libraryId,
       objectId,
-      writeToken: e.write_token,
-      metadataSubtree: "public/eluvio_live_id",
-      metadata: t.mediaWallet.liveTypes[TYPE_LIVE_TENANT],
+      writeToken: editResponse.write_token,
+      commitMessage: "Set content types and sites",
     });
+    return res;
+  } catch (error) {
+    console.error("Error setting tenant Eluvio live ID:", error);
+    throw error;
   }
-
-
-  if (!isEmptyParams(t.base.tenantTypes.titleTypeId)){
-    await client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken: e.write_token,
-      metadataSubtree: "public/content_types",
-      metadata: {
-        "title": t.base.tenantTypes.titleTypeId,
-      },
-    });
-  }
-  if (!isEmptyParams(t.base.tenantTypes.masterTypeId)){
-    await client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken: e.write_token,
-      metadataSubtree: "public/content_types",
-      metadata: {
-        "title_master": t.base.tenantTypes.masterTypeId,
-      },
-    });
-  }
-  if (!isEmptyParams(t.base.tenantTypes.streamTypeId)){
-    await client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken: e.write_token,
-      metadataSubtree: "public/content_types",
-      metadata: {
-        "live_stream": t.base.tenantTypes.streamTypeId
-      },
-    });
-  }
-
-  if (!isEmptyParams(t.liveStreaming.siteId)){
-    await client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken: e.write_token,
-      metadataSubtree: "public/sites",
-      metadata: {
-        "live_streams": t.liveStreaming.siteId
-      },
-    });
-  }
-
-
-  const res = await client.FinalizeContentObject({
-    libraryId,
-    objectId,
-    writeToken: e.write_token,
-    commitMessage: "Set content types and sites",
-  });
-  return res;
 };
 
 
@@ -398,12 +382,14 @@ const createTenantTypes = async ({client, t}) => {
   }
 
   if (!t.base.tenantTypes.titleTypeId) {
-    t.base.tenantTypes.titleTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title`, metadata:typeMetadata, t});
+    const mdata = JSON.parse(JSON.stringify(typeMetadata));
+    t.base.tenantTypes.titleTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title`, metadata: mdata, t});
     writeConfigToFile(t);
   }
 
   if (!t.base.tenantTypes.titleCollectionTypeId) {
-    t.base.tenantTypes.titleCollectionTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title Collection`, metadata: typeMetadata, t});
+    const mdata = JSON.parse(JSON.stringify(typeMetadata));
+    t.base.tenantTypes.titleCollectionTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title Collection`, metadata: mdata, t});
     writeConfigToFile(t);
   }
 
@@ -413,15 +399,17 @@ const createTenantTypes = async ({client, t}) => {
   }
 
   if (!t.base.tenantTypes.permissionsTypeId) {
-    t.base.tenantTypes.permissionsTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Permissions`, metadata: { ...typeMetadata, public: { "eluv.manageApp": "avails-manager" } }, t });
+    const mdata = JSON.parse(JSON.stringify(typeMetadata));
+    t.base.tenantTypes.permissionsTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Permissions`, metadata: { ...mdata, public: { "eluv.manageApp": "avails-manager" } }, t });
     writeConfigToFile(t);
   }
 
   if (!t.base.tenantTypes.channelTypeId) {
+    const mdata = JSON.parse(JSON.stringify(typeMetadata));
     t.base.tenantTypes.channelTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Channel`, metadata:{
-      ...typeMetadata,
+      ...mdata,
       public: {
-        ...typeMetadata.public,
+        ...mdata.public,
         title_configuration: {
           "controls": ["credits", "playlists", "gallery", "channel"],
         },
@@ -431,11 +419,12 @@ const createTenantTypes = async ({client, t}) => {
   }
 
   if (!t.base.tenantTypes.streamTypeId) {
+    const mdata = JSON.parse(JSON.stringify(typeMetadata));
     t.base.tenantTypes.streamTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Live Stream`, metadata:{
       bitcode_flags: "playout_live",
       bitcode_format: "builtin",
       public: {
-        ...typeMetadata.public,
+        ...mdata.public,
         title_configuration: {
           "controls": ["credits", "gallery", "live_stream"],
         },
@@ -459,10 +448,11 @@ const createLiveTypes = async ({client, t}) => {
   for (let i = 0; i < liveTypes.length; i++) {
     if (t.mediaWallet.liveTypes[liveTypes[i].name]) continue;
 
+    const mdata = JSON.parse(JSON.stringify(typeMetadata));
     const typeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - ${liveTypes[i].name}`, metadata:{
-      ...typeMetadata,
+      ...mdata,
       public: {
-        ...typeMetadata.public,
+        ...mdata.public,
         title_configuration: liveTypes[i].spec
       }
     }, t });
