@@ -254,7 +254,8 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       startTime: argv.start_time,
       endTime: argv.end_time,
       recordingPeriod: argv.recording_period,
-      streams: argv.streams
+      streams: argv.streams,
+      drm: argv.drm
     });
     console.log(yaml.dump(status));
   } catch (e) {
@@ -591,6 +592,12 @@ yargs(hideBin(process.argv))
           describe:
             "Copy to a new object in this library",
           type: "string",
+        })
+        .option("drm", {
+          describe:
+            "Use DRM or clear (default 'true')",
+          type: "bool",
+          default: true,
         })
         .option("event_id", {
           describe:

@@ -379,10 +379,15 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({name, object, library, eventId, startTime, endTime, recordingPeriod, streams}) {
+  async StreamCopyToVod({name, object, library, drm = true, eventId, startTime, endTime, recordingPeriod, streams}) {
 
     const objectId = name;
-    const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
+    let abrProfileLiveToVod;
+    if (drm) {
+      abrProfileLiveToVod = require("./abr_profile_live_to_vod_drm.json");
+    } else {
+      abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
+    }
 
     let status = await this.Status({name});
     let libraryId = status.libraryId;
@@ -417,7 +422,7 @@ class EluvioLiveStream {
       targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
     }
 
-    console.log("Copying stream", name, "object", object);
+    console.log("Copying stream", name, "object", object, "drm", drm);
 
     // Validation - require target object
     if (!object) {
@@ -478,7 +483,27 @@ class EluvioLiveStream {
           "end_time": endTime, // eg. "2023-10-03T02:15:00.00Z",
           "streams": streams,
           "recording_period": recordingPeriod,
-          "variant_key": "default"
+          "variant_key": "default",
+
+          /* For casting to google chromecast - not yet working server-side
+          "additional_offering_specs": {
+            "default_dash": [
+              {
+                "op": "replace",
+                "path": "/playout_formats",
+                "value": {
+                  "dash-clear": {
+                    "drm": null,
+                    "protocol": {
+                      "min_buffer_length": 2,
+                      "type": "ProtoDash"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+          */
         },
         constant: false,
         format: "text"
