@@ -28,7 +28,7 @@ class EluvioLiveStream {
    * @param {bool} debugLogging - Optional debug logging flag
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
-  constructor({ url, debugLogging = false }) {
+  constructor({ url, debugLogging = false, token }) {
 
     if (url) {
       this.configUrl = url+"/config?self&qspace="+Config.net;
@@ -36,6 +36,7 @@ class EluvioLiveStream {
       this.configUrl = Config.networks[Config.net];
     }
     this.debug = debugLogging;
+    this.staticToken = token;
   }
 
   async Init() {
@@ -49,6 +50,11 @@ class EluvioLiveStream {
     });
     this.client.SetSigner({ signer });
     this.client.ToggleLogging(this.debug);
+
+    if (this.staticToken) {
+      console.log("Use static token");
+      this.client.SetStaticToken({token: this.staticToken});
+    }
   }
 
   async StatusPrep({name}) {
@@ -373,10 +379,15 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({name, object, library, eventId, startTime, endTime, recordingPeriod, streams}) {
+  async StreamCopyToVod({name, object, library, drm = true, eventId, startTime, endTime, recordingPeriod, streams}) {
 
     const objectId = name;
-    const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
+    let abrProfileLiveToVod;
+    if (drm) {
+      abrProfileLiveToVod = require("./abr_profile_live_to_vod_drm.json");
+    } else {
+      abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
+    }
 
     let status = await this.Status({name});
     let libraryId = status.libraryId;
@@ -411,7 +422,7 @@ class EluvioLiveStream {
       targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
     }
 
-    console.log("Copying stream", name, "object", object);
+    console.log("Copying stream", name, "object", object, "drm", drm);
 
     // Validation - require target object
     if (!object) {
@@ -472,7 +483,27 @@ class EluvioLiveStream {
           "end_time": endTime, // eg. "2023-10-03T02:15:00.00Z",
           "streams": streams,
           "recording_period": recordingPeriod,
-          "variant_key": "default"
+          "variant_key": "default",
+
+          /* For casting to google chromecast - not yet working server-side
+          "additional_offering_specs": {
+            "default_dash": [
+              {
+                "op": "replace",
+                "path": "/playout_formats",
+                "value": {
+                  "dash-clear": {
+                    "drm": null,
+                    "protocol": {
+                      "min_buffer_length": 2,
+                      "type": "ProtoDash"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+          */
         },
         constant: false,
         format: "text"
@@ -608,9 +639,21 @@ class EluvioLiveStream {
     return res;
   }
 
-  async StreamConfig({name}) {
+  async StreamConfig({name, profileName}) {
 
     const objectId = name;
+
+    let profile;
+    if (profileName) {
+      const list = await this.client.StreamListUrls();
+      const customProfiles = list.profiles.custom;
+      for (const p of customProfiles) {
+        if (p.name == profileName) {
+          profile = p;
+        }
+      }
+    }
+
     // Read user config (meta /live_recording_config)
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
     let userConfig = await this.client.ContentObjectMetadata({
@@ -619,7 +662,32 @@ class EluvioLiveStream {
       metadataSubtree: "live_recording_config",
       resolveLinks: false
     });
-    return this.client.StreamConfig({name, customSettings: userConfig});
+
+    if (profile) {
+      userConfig.ladder_profile = profile.ladder_specs;
+    }
+
+    // Store profile name in app config
+    userConfig.playout_ladder_profile = profileName || "";
+
+    let edt = await this.client.EditContentObject({libraryId, objectId});
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: edt.writeToken,
+      metadataSubtree: "live_recording_config",
+      metadata: userConfig
+    });
+
+    await this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken: edt.writeToken,
+      commitMessage: "Update live recording config - profile name"
+    });
+
+    const config = this.client.StreamConfig({name, customSettings: userConfig});
+    return config;
   }
 
   async StreamListUrls({siteId}) {
