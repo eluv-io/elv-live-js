@@ -36,6 +36,7 @@ const CmdAccountCreate = async ({ argv }) => {
   console.log(`funds: ${argv.funds}`);
   console.log(`account_name: ${argv.account_name}`);
   console.log(`tenant: ${argv.tenant}`);
+  console.log(`group-roles: ${argv.group_roles}`);
 
   try {
     let elvAccount = new ElvAccount({
@@ -47,10 +48,13 @@ const CmdAccountCreate = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
+    const groupToRoles = argv.group_roles ? JSON.parse(argv.group_roles) : {};
+
     let res = await elvAccount.Create({
       funds: argv.funds,
       accountName: argv.account_name,
       tenantId: argv.tenant,
+      groupToRoles,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -1302,6 +1306,11 @@ yargs(hideBin(process.argv))
         })
         .positional("tenant", {
           describe: "Tenant ID (iten)",
+          type: "string",
+        })
+
+        .options("group_roles", {
+          describe: "group and role pairs in JSON format, Eg: {\"grp1\":\"member\"}",
           type: "string",
         });
     },
