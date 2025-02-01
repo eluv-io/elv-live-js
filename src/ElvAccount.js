@@ -61,9 +61,10 @@ class ElvAccount {
    * @param {string} accountName - The name of the account to set in it's wallet metadata (Optional)
    * @param {string} tenantId - The tenant ID (iten) (Optional)
    * @param {object} groupToRoles - Map of group to roles [member|manager] (Optional)
+   * @param {boolean} skipAddingToTenantUserGroup - skip adding to tenant user group (Optional)
    * @return {Promise<Object>} - An object containing the new account mnemonic, privateKey, address, accountName, balance
    */
-  async Create({ funds = 0.25, accountName, tenantId, groupToRoles }) {
+  async Create({ funds = 0.25, accountName, tenantId, groupToRoles, skipAddingToTenantUserGroup = false }) {
 
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
@@ -165,7 +166,7 @@ class ElvAccount {
       let balance = await wallet.GetAccountBalance({ signer });
 
       // add new user to tenant_users group
-      if (tenantUsersGroup) {
+      if (tenantUsersGroup && !skipAddingToTenantUserGroup) {
         await this.AddToAccessGroup({
           groupAddress: tenantUsersGroup,
           accountAddress: address,
