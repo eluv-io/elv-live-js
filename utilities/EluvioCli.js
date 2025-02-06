@@ -5,6 +5,7 @@ const { ElvContracts } = require("../src/ElvContracts.js");
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { Config } = require("../src/Config.js");
 const Ethers = require("ethers");
+const constants = require("../src/Constants")
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -791,6 +792,45 @@ const CmdTenantRemoveTenantUsers = async ({ argv }) => {
       tenantUsersAddr: argv.tenant_users_address
     });
 
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantSetStatus = async ({argv}) => {
+  try {
+    const tenantContractId =  argv.tenant;
+    const tenantStatus =  argv.tenant_status;
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantSetStatus({
+      tenantContractId: tenantContractId,
+      tenantStatus: tenantStatus,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdTenantStatus = async ({argv}) => {
+  try {
+    const tenantContractId = argv.tenant;
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantStatus({
+      tenantContractId: tenantContractId,
+    });
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -1759,6 +1799,41 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantCreateFaucetAndFund({ argv });
+    }
+  )
+
+  .command(
+    "tenant_set_status <tenant> <tenant_status>",
+    "Set tenant status for given tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("tenant_status", {
+          describe: "Tenant Status",
+          choices: [constants.TENANT_STATE_ACTIVE, constants.TENANT_STATE_INACTIVE],
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantSetStatus({argv});
+    }
+  )
+
+  .command(
+    "tenant_status <tenant>",
+    "Get tenant status for given tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantStatus({argv});
     }
   )
 

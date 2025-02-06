@@ -10,6 +10,7 @@ const path = require("path");
 const { Config } = require("./Config");
 const { EluvioLive } = require("./EluvioLive");
 const urljoin = require("url-join");
+const constants = require("./Constants");
 
 class ElvTenant {
   /**
@@ -801,6 +802,56 @@ class ElvTenant {
     }
 
     return res;
+  }
+
+  /**
+   * Add tenant status
+   *
+   * @param {string} tenantContractId - The ID of the tenant Id (iten***)
+   * @param {string} tenantStatus - tenant status: acive | inactive
+   * @returns {Promise<{tenantStatus: string, tenantContractId: string}>}
+   */
+  async TenantSetStatus({tenantContractId, tenantStatus}) {
+    if (tenantStatus !== constants.TENANT_STATE_ACTIVE &&
+      tenantStatus !== constants.TENANT_STATE_INACTIVE){
+      throw Error(`Invalid tenant status, require active | inactive | frozen: ${tenantStatus}`);
+    }
+
+    //Check that the user is the owner of the tenant
+    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("tenant status must be set by the owner of tenant " + tenantContractId);
+    }
+
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
+    await this.client.ReplaceContractMetadata({
+      contractAddress: tenantAddr,
+      metadataKey: constants.TENANT_STATE,
+      metadata: tenantStatus,
+    });
+
+    tenantStatus = await this.TenantStatus({tenantContractId});
+    return {tenantContractId, tenantStatus};
+  }
+
+  /**
+   * Retrieve tenant status
+   *
+   * @param {string} tenantContractId - The ID of the tenant Id (iten***)
+   * @returns {Promise<string>}
+   */
+  async TenantStatus({tenantContractId}) {
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
+    let tenantStatus;
+    try {
+      tenantStatus = await this.client.ContractMetadata({
+        contractAddress: tenantAddr,
+        metadataKey: constants.TENANT_STATE
+      });
+    } catch (e) {
+      tenantStatus = "";
+    }
+    return tenantStatus;
   }
 }
 
