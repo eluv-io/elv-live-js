@@ -351,6 +351,28 @@ const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
   }
 };
 
+const CmdTenantFundUser = async ({ argv }) => {
+  try {
+    const { as_url: asUrl, tenant_id: tenantId, user_address: userAddress, amount: amount } = argv;
+
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    const res = await t.TenantFundUser({
+      asUrl,
+      tenantId,
+      userAddress,
+      amount,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e.message);
+  }
+};
+
 
 const CmdSpaceTenantDeploy = async ({ argv }) => {
   console.log("Tenant Deploy");
@@ -1759,6 +1781,33 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantCreateFaucetAndFund({ argv });
+    }
+  )
+
+  .command(
+    "tenant_fund_user <tenant_id> <user_address>",
+    "fund the user for given tenant_id",
+    (yargs) => {
+      yargs
+        .positional("tenant_id", {
+          describe: "tenant id",
+          type: "string",
+        })
+        .positional("user_address", {
+          describe: "user address",
+          type: "string",
+        })
+        .option("amount", {
+          describe: "The amount to fund the user address, specified in Elv's",
+          type: "number",
+        })
+        .option("as_url", {
+          describe: "Alternate authority service URL (include '/as/' route if necessary)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantFundUser({ argv });
     }
   )
 

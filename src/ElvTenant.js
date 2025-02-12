@@ -802,6 +802,81 @@ class ElvTenant {
 
     return res;
   }
+
+  async TenantFundUser({ asUrl, tenantId, userAddress, amount = 0.2}) {
+
+    console.log("TenantFundUser");
+    console.log(`as_url: ${asUrl}`);
+    console.log(`tenant_id: ${tenantId}`);
+    console.log(`user_address: ${userAddress}`);
+    console.log(`amount: ${amount}`);
+
+    // Initialize configuration
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    // Initialize EluvioLive and ElvAccount
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: this.debug,
+    });
+    await elvAccount.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    // check valid user address
+    if (!Utils.ValidAddress(userAddress)) {
+      throw Error(`Invalid user address provided: ${userAddress}`);
+    }
+    const usrAddr = Utils.FormatAddress(userAddress);
+
+    // check tenant root key
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    if (!Utils.ValidAddress(tenantAddr)) {
+      throw Error(`Invalid tenantId provided: ${tenantId}`);
+    }
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+    const signerAddr = elvAccount.client.signer.address;
+    let isAdmin = await elvAccount.client.CallContractMethod({
+      contractAddress: tenantAddr,
+      abi: JSON.parse(abi),
+      methodName: "isAdmin",
+      methodArgs: [signerAddr],
+    });
+    if (!isAdmin) {
+      throw Error(`Invalid signer - no admin rights for tenant ${tenantId}`);
+    }
+
+    // Create BaseTenantAuth token
+    const requestBody = {
+      eth_amount: amount,
+      ts: Date.now(),
+    };
+    const { multiSig } = await eluvioLive.TenantSign({
+      message: JSON.stringify(requestBody),
+    });
+
+    // fund the user
+    const faucetFundPath =  urljoin(eluvioLive.asUrlPath,`/faucet/fund/${tenantId}/${usrAddr}`);
+    const faucetFundResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+      method: "POST",
+      path: faucetFundPath,
+      body: requestBody,
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+    });
+
+    return await faucetFundResponse.json();
+  }
 }
 
 exports.ElvTenant = ElvTenant;
