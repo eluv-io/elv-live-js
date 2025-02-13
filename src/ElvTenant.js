@@ -855,6 +855,31 @@ class ElvTenant {
       throw Error(`Invalid signer - no admin rights for tenant ${tenantId}`);
     }
 
+    // check user balance < tenant faucet per_top_up_limit
+    let userBalance = await elvAccount.client.GetBalance({ address: usrAddr });
+    let perTopUpLimit;
+    try {
+      const faucetGetTenantInfo = urljoin(eluvioLive.asUrlPath, `/faucet/get_tenant/${tenantId}`);
+      const faucetGetTenantInfoResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+        method: "GET",
+        path: faucetGetTenantInfo,
+      });
+      const res = await faucetGetTenantInfoResponse.json();
+
+      if (this.debug) {
+        console.log(res);
+      }
+      if (res.status === "success") {
+        perTopUpLimit = res.tenant_record.per_top_up_limit;
+      }
+    } catch (e) {
+      throw Error(`Error getting tenant faucet info: ${JSON.stringify(e)}`);
+    }
+
+    if (userBalance > perTopUpLimit) {
+      throw Error(`user ${usrAddr} has balance > faucet per_top_up_limit = ${perTopUpLimit}`);
+    }
+
     // Create BaseTenantAuth token
     const requestBody = {
       eth_amount: amount,
