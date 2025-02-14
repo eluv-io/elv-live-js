@@ -720,7 +720,7 @@ class ElvTenant {
     return res;
   }
 
-  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 2 }) {
+  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 2, noFunds = false }) {
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
@@ -759,7 +759,7 @@ class ElvTenant {
     res.faucet = faucetRes;
     let fundingAddress = faucetRes.funding_address;
 
-    if (amount){
+    if (!noFunds){
       // Check balances
       const senderAddress = elvAccount.signer.address.toString();
       let initialSenderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
@@ -813,7 +813,7 @@ class ElvTenant {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
     };
-    
+
     const eluvioLive = new EluvioLive(config);
     await eluvioLive.Init({
       debugLogging: this.debug,

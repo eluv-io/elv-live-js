@@ -332,7 +332,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
 
 const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
   try {
-    const { as_url: asUrl, tenant_id: tenantId, funds } = argv;
+    const { as_url: asUrl, tenant_id: tenantId, funds, no_funds: noFunds } = argv;
 
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
@@ -344,6 +344,7 @@ const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
       asUrl,
       tenantId,
       amount: funds,
+      noFunds,
     });
     console.log(yaml.dump(res));
   } catch (error) {
@@ -1777,6 +1778,10 @@ yargs(hideBin(process.argv))
         .option("as_url", {
           describe: "Alternate authority service URL (include '/as/' route if necessary)",
           type: "string",
+        })
+        .option("no_funds", {
+          describe: "funds are not transferred to tenant funding address",
+          type: "boolean",
         });
     },
     (argv) => {
