@@ -354,7 +354,7 @@ const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
 
 const CmdTenantFundUser = async ({ argv }) => {
   try {
-    const { as_url: asUrl, tenant_id: tenantId, user_address: userAddress, amount: amount } = argv;
+    const { as_url: asUrl, tenant_id: tenantId, user_address: userAddress } = argv;
 
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
@@ -366,7 +366,6 @@ const CmdTenantFundUser = async ({ argv }) => {
       asUrl,
       tenantId,
       userAddress,
-      amount,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -1801,10 +1800,6 @@ yargs(hideBin(process.argv))
         .positional("user_address", {
           describe: "user address",
           type: "string",
-        })
-        .option("amount", {
-          describe: "The amount to fund the user address, specified in Elv's",
-          type: "number",
         })
         .option("as_url", {
           describe: "Alternate authority service URL (include '/as/' route if necessary)",

@@ -801,13 +801,12 @@ class ElvTenant {
     return res;
   }
 
-  async TenantFundUser({ asUrl, tenantId, userAddress, amount = 0.2}) {
+  async TenantFundUser({ asUrl, tenantId, userAddress}) {
 
     console.log("TenantFundUser");
     console.log(`as_url: ${asUrl}`);
     console.log(`tenant_id: ${tenantId}`);
     console.log(`user_address: ${userAddress}`);
-    console.log(`amount: ${amount}`);
 
     const config = {
       configUrl: Config.networks[Config.net],
@@ -859,7 +858,6 @@ class ElvTenant {
 
     // Create BaseTenantAuth token
     const requestBody = {
-      eth_amount: amount,
       ts: Date.now(),
     };
     const { multiSig } = await eluvioLive.TenantSign({
