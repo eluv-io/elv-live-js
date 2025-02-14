@@ -339,7 +339,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
 
 const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
   try {
-    const { as_url: asUrl, tenant_id: tenantId, funds } = argv;
+    const { as_url: asUrl, tenant_id: tenantId, funds, no_funds: noFunds } = argv;
 
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
@@ -351,10 +351,32 @@ const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
       asUrl,
       tenantId,
       amount: funds,
+      noFunds,
     });
     console.log(yaml.dump(res));
   } catch (error) {
     console.error("ERROR:", error.message);
+  }
+};
+
+const CmdTenantFundUser = async ({ argv }) => {
+  try {
+    const { as_url: asUrl, tenant_id: tenantId, user_address: userAddress } = argv;
+
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    const res = await t.TenantFundUser({
+      asUrl,
+      tenantId,
+      userAddress,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e.message);
   }
 };
 
@@ -1865,10 +1887,37 @@ yargs(hideBin(process.argv))
         .option("as_url", {
           describe: "Alternate authority service URL (include '/as/' route if necessary)",
           type: "string",
+        })
+        .option("no_funds", {
+          describe: "funds are not transferred to tenant funding address",
+          type: "boolean",
         });
     },
     (argv) => {
       CmdTenantCreateFaucetAndFund({ argv });
+    }
+  )
+
+  .command(
+    "tenant_fund_user <tenant_id> <user_address>",
+    "fund the user for given tenant_id",
+    (yargs) => {
+      yargs
+        .positional("tenant_id", {
+          describe: "tenant id",
+          type: "string",
+        })
+        .positional("user_address", {
+          describe: "user address",
+          type: "string",
+        })
+        .option("as_url", {
+          describe: "Alternate authority service URL (include '/as/' route if necessary)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantFundUser({ argv });
     }
   )
 

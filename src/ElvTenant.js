@@ -721,14 +721,12 @@ class ElvTenant {
     return res;
   }
 
-  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount }) {
-    // Initialize configuration
+  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 2, noFunds = false }) {
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
     };
 
-    // Initialize EluvioLive and ElvAccount
     const eluvioLive = new EluvioLive(config);
     await eluvioLive.Init({
       debugLogging: this.debug,
@@ -762,7 +760,7 @@ class ElvTenant {
     res.faucet = faucetRes;
     let fundingAddress = faucetRes.funding_address;
 
-    if (amount){
+    if (!noFunds){
       // Check balances
       const senderAddress = elvAccount.signer.address.toString();
       let initialSenderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
@@ -852,6 +850,84 @@ class ElvTenant {
       tenantStatus = "";
     }
     return tenantStatus;
+  }
+
+  async TenantFundUser({ asUrl, tenantId, userAddress})
+  {
+
+    console.log("TenantFundUser");
+    console.log(`as_url: ${asUrl}`);
+    console.log(`tenant_id: ${tenantId}`);
+    console.log(`user_address: ${userAddress}`);
+
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: this.debug,
+    });
+    await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
+
+    // check valid user address
+    if (!Utils.ValidAddress(userAddress)) {
+      throw Error(`Invalid user address provided: ${userAddress}`);
+    }
+    const usrAddr = Utils.FormatAddress(userAddress);
+
+    // check user balance < tenant faucet per_top_up_limit
+    let userBalance = await elvAccount.client.GetBalance({address: usrAddr});
+    let perTopUpLimit;
+    try {
+      const faucetGetTenantInfo = urljoin(eluvioLive.asUrlPath, `/faucet/get_tenant/${tenantId}`);
+      const faucetGetTenantInfoResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+        method: "GET",
+        path: faucetGetTenantInfo,
+      });
+      const res = await faucetGetTenantInfoResponse.json();
+
+      if (this.debug) {
+        console.log(res);
+      }
+      if (res.status === "success") {
+        perTopUpLimit = res.tenant_record.per_top_up_limit;
+      }
+    } catch (e) {
+      throw Error(`Error getting tenant faucet info: ${JSON.stringify(e)}`);
+    }
+
+    if (userBalance > perTopUpLimit) {
+      throw Error(`user ${usrAddr} has balance > faucet per_top_up_limit = ${perTopUpLimit}`);
+    }
+
+    // Create BaseTenantAuth token
+    const requestBody = {
+      ts: Date.now(),
+    };
+    const {multiSig} = await eluvioLive.TenantSign({
+      message: JSON.stringify(requestBody),
+    });
+
+    // fund the user
+    const faucetFundPath = urljoin(eluvioLive.asUrlPath, `/faucet/fund/${tenantId}/${usrAddr}`);
+    const faucetFundResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+      method: "POST",
+      path: faucetFundPath,
+      body: requestBody,
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+    });
+
+    return await faucetFundResponse.json();
   }
 }
 
