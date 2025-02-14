@@ -13,6 +13,8 @@ const yaml = require("js-yaml");
 
 const postgres = require('postgres');
 const { ElvFabric } = require("../src/ElvFabric");
+const Utils = require("@eluvio/elv-client-js/src/Utils");
+const { ElvUtils } = require("../src/Utils");
 const sql = postgres({
   host : 'rep1.elv',
   port: 5432,
@@ -1302,6 +1304,83 @@ const CmdNodes = async ({ argv }) => {
   }
 };
 
+const CmdSetObjectGroupPermission = async ({ argv }) => {
+  console.log("Set Group Permission");
+  console.log(`Object ID: ${argv.object}`);
+  console.log(`verbose: ${argv.verbose}`);
+  console.log(`group: ${argv.group}`);
+  console.log(`permission: ${argv.permission}`);
+
+  let object = argv.object;
+  let group = argv.group;
+  let permission = argv.permission;
+  try {
+
+    if (group.startsWith("igrp")){
+      group = Utils.HashToAddress(group);
+    }
+    if (object.startsWith("0x")){
+      object = ElvUtils.AddressToId({prefix:"iq__", address:object});
+    }
+
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    await elvContract.SetObjectGroupPermission({
+      objectId: object,
+      groupAddress: group,
+      permission,
+    });
+    console.log(`The group ${group} has been granted '${permission}' permission for the object ${object}`)
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdCleanupObject = async ({ argv }) => {
+  console.log("Parameters:");
+  console.log("object", argv.object);
+  console.log("object_type", argv.object_type);
+
+  try {
+
+    const object = argv.object;
+    const objectType = argv.object_type;
+
+    let objectAddr;
+    if (object.startsWith("iq")) {
+      objectAddr =  Utils.HashToAddress(object);
+    } else if (object.startsWith("0x")) {
+      objectAddr = object;
+    } else {
+      throw new Error(`Invalid object provided: ${object}, require address or id`);
+    }
+
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvContract.CleanupObjects({
+      objectAddr,
+      objectType
+    });
+    console.log("objects cleaned:", res);
+  } catch (e) {
+    console.error("ERROR:", argv.verbose ? e : e.message);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -2105,6 +2184,47 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNodes({ argv });
+    }
+  )
+
+  .command(
+    "set_object_group_permission <object> <group> <permission> [options]",
+    "Add a permission on the specified group for the specified object",
+    (yargs) => {
+      yargs.positional("object", {
+        describe: "object ID or address",
+        type: "string",
+      });
+      yargs.positional("group",{
+        describe: "group ID or address",
+        type: "string",
+      });
+      yargs.positional("permission",{
+        describe: "type of permission to add (see, access, manage)",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdSetObjectGroupPermission({ argv });
+    }
+  )
+
+  .command(
+    "object_cleanup <object> <object_type>",
+    "cleanup given object access to dead objects like libraries, groups",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "object to be cleaned",
+          type: "string",
+        })
+        .positional("object_type", {
+          describe: "object type: library | content_object | group | content_type",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdCleanupObject({ argv });
     }
   )
 
