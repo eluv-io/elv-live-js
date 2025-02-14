@@ -5,6 +5,7 @@ const { ElvContracts } = require("../src/ElvContracts.js");
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { Config } = require("../src/Config.js");
 const Ethers = require("ethers");
+const constants = require("../src/Constants")
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -12,6 +13,8 @@ const yaml = require("js-yaml");
 
 const postgres = require('postgres');
 const { ElvFabric } = require("../src/ElvFabric");
+const Utils = require("@eluvio/elv-client-js/src/Utils");
+const { ElvUtils } = require("../src/Utils");
 const sql = postgres({
   host : 'rep1.elv',
   port: 5432,
@@ -36,6 +39,7 @@ const CmdAccountCreate = async ({ argv }) => {
   console.log(`funds: ${argv.funds}`);
   console.log(`account_name: ${argv.account_name}`);
   console.log(`tenant: ${argv.tenant}`);
+  console.log(`group-roles: ${argv.group_roles}`);
 
   try {
     let elvAccount = new ElvAccount({
@@ -47,10 +51,13 @@ const CmdAccountCreate = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
+    const groupToRoles = argv.group_roles ? JSON.parse(argv.group_roles) : {};
+
     let res = await elvAccount.Create({
       funds: argv.funds,
       accountName: argv.account_name,
       tenantId: argv.tenant,
+      groupToRoles,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -819,6 +826,27 @@ const CmdTenantRemoveTenantUsers = async ({ argv }) => {
   }
 };
 
+const CmdTenantSetStatus = async ({argv}) => {
+  try {
+    const tenantContractId =  argv.tenant;
+    const tenantStatus =  argv.tenant_status;
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    let res = await t.TenantSetStatus({
+      tenantContractId: tenantContractId,
+      tenantStatus: tenantStatus,
+    });
+
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
   console.log("Tenant set Eluvio Live ID");
   console.log(`Tenant: ${argv.tenant}`);
@@ -1302,6 +1330,83 @@ const CmdNodes = async ({ argv }) => {
   }
 };
 
+const CmdSetObjectGroupPermission = async ({ argv }) => {
+  console.log("Set Group Permission");
+  console.log(`Object ID: ${argv.object}`);
+  console.log(`verbose: ${argv.verbose}`);
+  console.log(`group: ${argv.group}`);
+  console.log(`permission: ${argv.permission}`);
+
+  let object = argv.object;
+  let group = argv.group;
+  let permission = argv.permission;
+  try {
+
+    if (group.startsWith("igrp")){
+      group = Utils.HashToAddress(group);
+    }
+    if (object.startsWith("0x")){
+      object = ElvUtils.AddressToId({prefix:"iq__", address:object});
+    }
+
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    await elvContract.SetObjectGroupPermission({
+      objectId: object,
+      groupAddress: group,
+      permission,
+    });
+    console.log(`The group ${group} has been granted '${permission}' permission for the object ${object}`)
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdCleanupObject = async ({ argv }) => {
+  console.log("Parameters:");
+  console.log("object", argv.object);
+  console.log("object_type", argv.object_type);
+
+  try {
+
+    const object = argv.object;
+    const objectType = argv.object_type;
+
+    let objectAddr;
+    if (object.startsWith("iq")) {
+      objectAddr =  Utils.HashToAddress(object);
+    } else if (object.startsWith("0x")) {
+      objectAddr = object;
+    } else {
+      throw new Error(`Invalid object provided: ${object}, require address or id`);
+    }
+
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvContract.CleanupObjects({
+      objectAddr,
+      objectType
+    });
+    console.log("objects cleaned:", res);
+  } catch (e) {
+    console.error("ERROR:", argv.verbose ? e : e.message);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -1324,6 +1429,11 @@ yargs(hideBin(process.argv))
         })
         .positional("tenant", {
           describe: "Tenant ID (iten)",
+          type: "string",
+        })
+
+        .options("group_roles", {
+          describe: "group and role pairs in JSON format, Eg: {\"grp1\":\"member\"}",
           type: "string",
         });
     },
@@ -1812,6 +1922,26 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "tenant_set_status <tenant> <tenant_status>",
+    "Set tenant status for given tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("tenant_status", {
+          describe: "Tenant Status",
+          choices: [constants.TENANT_STATE_ACTIVE, constants.TENANT_STATE_INACTIVE],
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantSetStatus({argv});
+    }
+  )
+
+  .command(
     "space_tenant_create <tenant_name> <funds>",
     "Creates a new tenant account including all supporting access groups and deployment of contracts. PRIVATE_KEY must be set for the space owner.",
     (yargs) => {
@@ -2112,6 +2242,47 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNodes({ argv });
+    }
+  )
+
+  .command(
+    "set_object_group_permission <object> <group> <permission> [options]",
+    "Add a permission on the specified group for the specified object",
+    (yargs) => {
+      yargs.positional("object", {
+        describe: "object ID or address",
+        type: "string",
+      });
+      yargs.positional("group",{
+        describe: "group ID or address",
+        type: "string",
+      });
+      yargs.positional("permission",{
+        describe: "type of permission to add (see, access, manage)",
+        type: "string",
+      });
+    },
+    (argv) => {
+      CmdSetObjectGroupPermission({ argv });
+    }
+  )
+
+  .command(
+    "object_cleanup <object> <object_type>",
+    "cleanup given object access to dead objects like libraries, groups",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "object to be cleaned",
+          type: "string",
+        })
+        .positional("object_type", {
+          describe: "object type: library | content_object | group | content_type",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdCleanupObject({ argv });
     }
   )
 

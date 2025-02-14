@@ -8,7 +8,6 @@ const {Config} = require("./Config");
 const { EluvioLive } = require("../src/EluvioLive.js");
 const { ElvFabric } = require("./ElvFabric");
 const { ElvTenant } = require("./ElvTenant");
-const { ElvClient } = require("@eluvio/elv-client-js");
 
 const TYPE_LIVE_DROP_EVENT_SITE = "Media Wallet Drop Event Site";
 const TYPE_LIVE_TENANT = "Media Wallet Tenant";
@@ -746,6 +745,10 @@ const createOpsKeyAndAddToGroup = async ({groupAddress, opsKeyType, t, debug})=>
       funds: OPS_AMOUNT,
       accountName: `${t.base.tenantName}-${opsKeyType}`,
       tenantId: t.base.tenantId,
+      skipAddingToTenantUserGroup: true,
+      groupToRoles: {
+        [groupAddress]: "manager",
+      },
     });
     console.log(`\n${t.base.tenantName}-${opsKeyType}:\n`);
     console.log(`address:${res.address}`);
@@ -759,23 +762,6 @@ const createOpsKeyAndAddToGroup = async ({groupAddress, opsKeyType, t, debug})=>
     }
     writeConfigToFile(t);
   }
-
-  // In order to address from private key
-  let client = await ElvClient.FromConfigurationUrl({
-    configUrl: Config.networks[Config.net],
-  });
-  let wallet = client.GenerateWallet();
-  const signer = wallet.AddAccount({
-    privateKey: opsKey
-  });
-  const opsKeyAddress = signer.address;
-
-  // add the user as manager to provided group address
-  await elvAccount.AddToAccessGroup({
-    groupAddress: groupAddress,
-    accountAddress: opsKeyAddress,
-    isManager: true,
-  });
   console.log(`${t.base.tenantName}-${opsKeyType} added as manager to ${groupAddress}`);
 };
 
