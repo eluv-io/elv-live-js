@@ -262,6 +262,7 @@ class ElvTenant {
     }
 
     tenantInfo["tenant_root_key"] = owner;
+    tenantInfo["tenant_status"] = await this.TenantStatus({tenantContractId: tenantId});
 
     if (show_metadata) {
       let services = [];
@@ -283,12 +284,12 @@ class ElvTenant {
         console.log(e);
         errors.push("Encountered an error when getting metadata for the eluvio_live_id service");
       }
-      if (services.length != 0) {
+      if (services.length !== 0) {
         tenantInfo["services"] = services;
       }
     }
 
-    if (errors.length != 0) {
+    if (errors.length !== 0) {
       tenantInfo["errors"] = errors;
     }
 
@@ -603,29 +604,24 @@ class ElvTenant {
       methodName: "owner",
       methodArgs: [],
     });
-    if (groupOwner != tenantOwner) {
+    if (groupOwner !== tenantOwner) {
       return {success: false, message: `The owner of the group (${groupOwner}) is not the same as the owner of the tenant (${tenantOwner}).`};
     }
 
     //Ensure groupAddr actually belongs to a group contract.
-    if (await this.client.authClient.AccessType("igrp"+ Utils.AddressToHash(groupAddr)) != this.client.authClient.ACCESS_TYPES.GROUP) {
+    if (await this.client.authClient.AccessType("igrp"+ Utils.AddressToHash(groupAddr)) !== this.client.authClient.ACCESS_TYPES.GROUP) {
       return {success: false, message: "on the tenant contract is not a group", need_format: true};
     }
 
     let verified = false;
-    //Retreive tenant contract id assoicated with this group from the contract's metadata
+    //Retrieve tenant contract id associated with this group from the contract's or fabric metadata
     try {
-      let tenantContractIdHex = await this.client.CallContractMethod({
-        contractAddress: groupAddr,
-        methodName: "getMeta",
-        methodArgs: ["_ELV_TENANT_ID"],
-      });
-      if (tenantContractIdHex == "0x") {
+      let tenantContractId = await this.client.TenantContractId({contractAddress: groupAddr});
+      if (tenantContractId === "") {
         return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
       }
-      let tenantContractId = Ethers.utils.toUtf8String(tenantContractIdHex);
-
-      if (tenantId != tenantContractId) {
+      
+      if (tenantId !== tenantContractId) {
         return {success: false, message: "group doesn't belong to this tenant", need_format: true};
       }
       verified = true;
@@ -637,48 +633,52 @@ class ElvTenant {
       }
     }
 
-    //Retreive tenant contract id associated with this group from the contract's tenant field
-    try {
-      let tenantContractAddress = await this.client.CallContractMethod({
-        contractAddress: groupAddr,
-        methodName: "tenant",
-        methodArgs: [],
-      });
-      let tenantContractId = "iten" + this.client.utils.AddressToHash(tenantContractAddress);
-      if (tenantId != tenantContractId) {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
-      }
-      verified = true;
-    } catch (e) {
-      if (e.message.includes("Unknown method: tenant")) {
-        console.log(`Log: the group contract with group address ${groupAddr} doesn't contain tenant information on contract.`);
-      } else {
-        throw e;
+    if (!verified){
+      //Retrieve tenant contract id associated with this group from the contract's tenant field
+      try {
+        let tenantContractAddress = await this.client.CallContractMethod({
+          contractAddress: groupAddr,
+          methodName: "tenant",
+          methodArgs: [],
+        });
+        let tenantContractId = "iten" + this.client.utils.AddressToHash(tenantContractAddress);
+        if (tenantId !== tenantContractId) {
+          return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+        }
+        verified = true;
+      } catch (e) {
+        if (e.message.includes("Unknown method: tenant")) {
+          console.log(`Log: the group contract with group address ${groupAddr} doesn't contain tenant information on contract.`);
+        } else {
+          throw e;
+        }
       }
     }
 
-    //Retrieve tenant contract id associated with this group from its content fabric metadata
-    try {
-      let groupObjectId = ElvUtils.AddressToId({prefix: "iq__", address: groupAddr});
-      let groupLibraryId = await this.client.ContentObjectLibraryId({objectId: groupObjectId});
+    if (!verified){
+      //Retrieve tenant contract id associated with this group from its content fabric metadata
+      try {
+        let groupObjectId = ElvUtils.AddressToId({prefix: "iq__", address: groupAddr});
+        let groupLibraryId = await this.client.ContentObjectLibraryId({objectId: groupObjectId});
 
-      let groupMeta = await this.client.ContentObjectMetadata({
-        libraryId: groupLibraryId,
-        objectId: groupObjectId,
-        select:"elv/tenant_id",
-      });
-      if (!groupMeta) {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
-      }
+        let groupMeta = await this.client.ContentObjectMetadata({
+          libraryId: groupLibraryId,
+          objectId: groupObjectId,
+          select:"elv/tenant_id",
+        });
+        if (!groupMeta) {
+          return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+        }
 
-      let tenantContractId = groupMeta.elv.tenant_id;
-      if (tenantContractId != tenantId) {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
-      }
-      verified = true;
-    } catch (e) {
-      if (e.message.includes("Forbidden")) {
-        console.log("Log: can't verify the group's content fabric metadata - must be a tenant admin user to do so.");
+        let tenantContractId = groupMeta.elv.tenant_id;
+        if (tenantContractId !== tenantId) {
+          return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+        }
+        verified = true;
+      } catch (e) {
+        if (e.message.includes("Forbidden")) {
+          console.log("Log: can't verify the group's content fabric metadata - must be a tenant admin user to do so.");
+        }
       }
     }
 

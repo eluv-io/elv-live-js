@@ -819,24 +819,6 @@ const CmdTenantSetStatus = async ({argv}) => {
   }
 };
 
-const CmdTenantStatus = async ({argv}) => {
-  try {
-    const tenantContractId = argv.tenant;
-    let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
-    });
-    await t.Init({ privateKey: process.env.PRIVATE_KEY });
-
-    let res = await t.TenantStatus({
-      tenantContractId: tenantContractId,
-    });
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
 const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
   console.log("Tenant set Eluvio Live ID");
   console.log(`Tenant: ${argv.tenant}`);
@@ -1819,21 +1801,6 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantSetStatus({argv});
-    }
-  )
-
-  .command(
-    "tenant_status <tenant>",
-    "Get tenant status for given tenant",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantStatus({argv});
     }
   )
 
