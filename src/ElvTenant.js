@@ -721,13 +721,11 @@ class ElvTenant {
   }
 
   async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 2 }) {
-    // Initialize configuration
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
     };
 
-    // Initialize EluvioLive and ElvAccount
     const eluvioLive = new EluvioLive(config);
     await eluvioLive.Init({
       debugLogging: this.debug,
@@ -811,13 +809,11 @@ class ElvTenant {
     console.log(`user_address: ${userAddress}`);
     console.log(`amount: ${amount}`);
 
-    // Initialize configuration
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
     };
-
-    // Initialize EluvioLive and ElvAccount
+    
     const eluvioLive = new EluvioLive(config);
     await eluvioLive.Init({
       debugLogging: this.debug,
@@ -835,25 +831,6 @@ class ElvTenant {
       throw Error(`Invalid user address provided: ${userAddress}`);
     }
     const usrAddr = Utils.FormatAddress(userAddress);
-
-    // check tenant root key
-    const tenantAddr = Utils.HashToAddress(tenantId);
-    if (!Utils.ValidAddress(tenantAddr)) {
-      throw Error(`Invalid tenantId provided: ${tenantId}`);
-    }
-    const abi = fs.readFileSync(
-      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
-    );
-    const signerAddr = elvAccount.client.signer.address;
-    let isAdmin = await elvAccount.client.CallContractMethod({
-      contractAddress: tenantAddr,
-      abi: JSON.parse(abi),
-      methodName: "isAdmin",
-      methodArgs: [signerAddr],
-    });
-    if (!isAdmin) {
-      throw Error(`Invalid signer - no admin rights for tenant ${tenantId}`);
-    }
 
     // check user balance < tenant faucet per_top_up_limit
     let userBalance = await elvAccount.client.GetBalance({ address: usrAddr });
