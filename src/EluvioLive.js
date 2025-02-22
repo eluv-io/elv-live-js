@@ -3530,9 +3530,10 @@ class EluvioLive {
    * @namedParams
    * @param {string} tenant - The Tenant ID
    * @param {string} host - Authority Service url (Optional)
+   * @param {string} env - Environment to update -- "production" or "staging", default production
    * @return {Promise<Object>} - The API Response for the request
    */
-  async TenantPublishPrivate({tenant, host}) {
+  async TenantPublishPrivate({tenant, host, env="production"}) {
     var body = {
       env: env,
     };
