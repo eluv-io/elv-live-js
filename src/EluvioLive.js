@@ -3533,7 +3533,10 @@ class EluvioLive {
    * @return {Promise<Object>} - The API Response for the request
    */
   async TenantPublishPrivate({tenant, host}) {
-    let body = {};
+    var body = {
+      env: env,
+    };
+
     let res = await this.PostServiceRequest({
       path: urljoin("/tnt/config", tenant, "metadata"),
       queryParams: {media_wallet:false},

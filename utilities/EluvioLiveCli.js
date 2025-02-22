@@ -1592,6 +1592,7 @@ const CmdTenantPublishData  = async ({ argv }) => {
     if (argv.media_wallet === false) {
       let res = await elvlv.TenantPublishPrivate({
         tenant: argv.tenant,
+        env: argv.env,
       });
       console.log("\n" + yaml.dump(res));
       return;
