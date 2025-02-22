@@ -3243,11 +3243,11 @@ yargs(hideBin(process.argv))
         .option("media_wallet", {
           describe: "indicates if the is a media-wallet/elv-live enabled tenant; defaults to TRUE",
           type: "boolean",
+          default: true,
         })
         .option("update_links", {
           describe: "Update links on your tenant Fabric object",
           type: "boolean",
-          default: true,
         })
         .option("env", {
           describe: "Environment to use, 'staging' or 'production' (default: production)",
