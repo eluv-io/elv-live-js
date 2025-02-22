@@ -3479,15 +3479,15 @@ class EluvioLive {
   }
 
   /**
-    * Submits a new content version hash of this account's Tenant Object for updating to the Eluvio Live Tree.
-    * @namedParams
-    * @param {string} tenant - The Tenant ID
-    * @param {string} host - Authority Service url (Optional)
-    * @param {string} contentHash - Version hash of the new Tenant Object to submit
-    * @param {boolean} updateLinks - True to update links
-    * @param {string} env - Environment to update -- "production" or "staging", default production
-    * @return {Promise<Object>} - The API Response for the request
-    */
+   * Submits a new content version hash of this account's Tenant Object for updating to the Eluvio Live Tree.
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {string} host - Authority Service url (Optional)
+   * @param {string} contentHash - Version hash of the new Tenant Object to submit
+   * @param {boolean} updateLinks - True to update links
+   * @param {string} env - Environment to update -- "production" or "staging", default production
+   * @return {Promise<Object>} - The API Response for the request
+   */
   async TenantPublishData({tenant, host, contentHash, updateLinks=false, env="production"}) {
     let latestVersionHash = contentHash;
     if (updateLinks){
@@ -3517,6 +3517,31 @@ class EluvioLive {
 
     tenantConfigResult = await res.json();
 
+    if (this.debug){
+      console.log("Create response: ", tenantConfigResult);
+    }
+
+    return {response:tenantConfigResult};
+  }
+
+  /**
+   * Submits info to authd about the existence of a private (non-media-wallet-enabled) tenant.
+   * The key reason for this is to allow the tenant to get its DB tables initialized.
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {string} host - Authority Service url (Optional)
+   * @return {Promise<Object>} - The API Response for the request
+   */
+  async TenantPublishPrivate({tenant, host}) {
+    let body = {};
+    let res = await this.PostServiceRequest({
+      path: urljoin("/tnt/config", tenant, "metadata"),
+      queryParams: {media_wallet:false},
+      host,
+      body
+    });
+
+    let tenantConfigResult = await res.json();
     if (this.debug){
       console.log("Create response: ", tenantConfigResult);
     }
