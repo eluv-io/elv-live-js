@@ -450,9 +450,25 @@ class ElvContracts {
     const abiStr = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/AccessIndexor.abi")
     );
+    const abi = JSON.parse(abiStr);
 
     if (!objectAddr) {
       throw Error("objectAddr not provided");
+    }
+
+    try {
+      await this.client.CallContractMethod({
+        contractAddress: objectAddr,
+        abi,
+        methodName: "getLibrariesLength",
+        formatArguments: false,
+      });
+    } catch (e) {
+      try {
+        objectAddr = await this.client.userProfileClient.UserWalletAddress({ address: objectAddr });
+      } catch (walletError) {
+        throw new Error(`Invalid object: ${walletError}`);
+      }
     }
 
     const allowedTypes = ["library", "content_object", "group", "content_type"];
@@ -470,7 +486,7 @@ class ElvContracts {
         case "library": {
           let libLen = await this.client.CallContractMethod({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "getLibrariesLength",
             formatArguments: false,
           });
@@ -478,14 +494,14 @@ class ElvContracts {
 
           await this.client.CallContractMethodAndWait({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "cleanUpLibraries",
             formatArguments: true,
           });
 
           libLen = await this.client.CallContractMethod({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "getLibrariesLength",
             formatArguments: false,
           });
@@ -495,7 +511,7 @@ class ElvContracts {
         case "content_object": {
           let contentObjLen = await this.client.CallContractMethod({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "getContentObjectsLength",
             formatArguments: false,
           });
@@ -503,14 +519,14 @@ class ElvContracts {
 
           await this.client.CallContractMethodAndWait({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "cleanUpContentObjects",
             formatArguments: true,
           });
 
           contentObjLen = await this.client.CallContractMethod({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "getContentObjectsLength",
             formatArguments: false,
           });
@@ -520,7 +536,7 @@ class ElvContracts {
         case "group": {
           let groupsLen = await this.client.CallContractMethod({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "getAccessGroupsLength",
             formatArguments: false,
           });
@@ -528,14 +544,14 @@ class ElvContracts {
 
           await this.client.CallContractMethodAndWait({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "cleanUpAccessGroups",
             formatArguments: true,
           });
 
           groupsLen = await this.client.CallContractMethod({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "getAccessGroupsLength",
             formatArguments: false,
           });
@@ -545,7 +561,7 @@ class ElvContracts {
         case "content_type": {
           let contentTypeLen = await this.client.CallContractMethod({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "getContentTypesLength",
             formatArguments: false,
           });
@@ -553,14 +569,14 @@ class ElvContracts {
 
           await this.client.CallContractMethodAndWait({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "cleanUpContentTypes",
             formatArguments: true,
           });
 
           contentTypeLen = await this.client.CallContractMethod({
             contractAddress: objectAddr,
-            abiStr,
+            abi: abi,
             methodName: "getContentTypesLength",
             formatArguments: false,
           });
@@ -577,31 +593,94 @@ class ElvContracts {
     return res;
   }
 
+  /**
+   * delete library and to remove references to dead objects for the signer
+   * @param {string} libraryAddr: address of the library
+   */
+  async DeleteLibrary({libraryAddr}){
+
+    const abiStr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseLibrary.abi")
+    );
+    const abi = JSON.parse(abiStr);
+
+    if (!libraryAddr){
+      throw Error("libraryAddr is not provided");
+    }
+
+    // check the signer is the owner of the library
+    let owner = await this.client.CallContractMethod({
+      contractAddress: libraryAddr,
+      abi: abi,
+      methodName: "owner",
+      methodArgs: [],
+    });
+    if (this.client.signer.address !== owner) {
+      throw Error(`signer is not the owner of the library: ${libraryAddr}`);
+    }
+
+    // to check if the object is contract or user address
+    try {
+      await this.client.CallContractMethodAndWait({
+        contractAddress: libraryAddr,
+        abi: abi,
+        methodName: "kill",
+        formatArguments: false,
+      });
+    } catch (e) {
+      throw Error(`error executing 'kill' method on library ${libraryAddr}`);
+    }
+    let res = {
+      [libraryAddr]: "deleted",
+    };
+
+    res.cleanup = await this.CleanupObjects({
+      objectAddr: this.client.signer.address,
+      objectType: "library"
+    });
+    return res;
+  }
+
+  /**
+   * list content objects for user or group address provided
+   * @param {string} objectAddr: address of the user or group
+   */
   async ListContentObjects({objectAddr}) {
     const abiStr = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/AccessIndexor.abi")
     );
+    const abi = JSON.parse(abiStr);
 
     if (!objectAddr) {
-      throw Error("objectAddr not provided");
+      throw Error("objectAddr is not provided");
     }
 
     let contentObjLen;
     try {
       contentObjLen = await this.client.CallContractMethod({
         contractAddress: objectAddr,
-        abiStr,
+        abi: abi,
         methodName: "getContentObjectsLength",
         formatArguments: false,
       });
     } catch (e) {
-      throw new Error(`not a contract ${e}`);
+      // the object address can be user address
+      let walletContractAddress = await this.client.userProfileClient.UserWalletAddress({
+        address: objectAddr
+      });
+      if (!walletContractAddress) {
+        throw new Error("Invalid object provided, not a user or group object");
+      }
 
-      // TODO address user and contract address
-      // address provided can be user address
-      // const walletContractAddress = await this.client.userProfileClient.UserWalletAddress({
-      //   address: this.client.signer.address
-      // });
+      console.log(`user wallet address: ${walletContractAddress}`);
+      objectAddr = walletContractAddress;
+
+      contentObjLen = await this.client.CallContractMethod({
+        contractAddress: objectAddr,
+        abi: abi,
+        methodName: "getContentObjectsLength",
+        formatArguments: false,
+      });
     }
 
     contentObjLen = Number(contentObjLen);
@@ -611,7 +690,7 @@ class ElvContracts {
     for (let i=0;i<contentObjLen;i++){
       let res = await this.client.CallContractMethod({
         contractAddress: objectAddr,
-        abiStr,
+        abi: abi,
         methodName: "getContentObject",
         methodArgs: [i],
         formatArguments: true,
