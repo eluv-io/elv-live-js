@@ -1584,9 +1584,19 @@ const CmdTenantPublishData  = async ({ argv }) => {
   console.log(`Update Links: ${argv.update_links}`);
   console.log(`Env: ${argv.env}`);
   console.log(`Host: ${argv.as_url}`);
+  console.log(`media_wallet: ${argv.media_wallet}`);
 
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    if (argv.media_wallet === false) {
+      let res = await elvlv.TenantPublishPrivate({
+        tenant: argv.tenant,
+        env: argv.env,
+      });
+      console.log("\n" + yaml.dump(res));
+      return;
+    }
 
     let res = await elvlv.TenantPublishData({
       tenant: argv.tenant,
@@ -3227,8 +3237,13 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("content_hash", {
-          describe: "Version hash of the new tenant Fabric object",
+          describe: "Version hash of the new tenant media-wallet settings object; ignored if --media-wallet=false",
           type: "string",
+        })
+        .option("media_wallet", {
+          describe: "indicates if this is a media-wallet-enabled tenant; default: true",
+          type: "boolean",
+          default: true,
         })
         .option("update_links", {
           describe: "Update links on your tenant Fabric object",
