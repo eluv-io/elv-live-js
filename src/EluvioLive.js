@@ -3533,7 +3533,7 @@ class EluvioLive {
    * @param {string} env - Environment to update -- "production" or "staging", default production
    * @return {Promise<Object>} - The API Response for the request
    */
-  async TenantPublishPrivate({tenant, host, env="production"}) {
+  async TenantPublishPrivate({tenant, env="production"}) {
     var body = {
       env: env,
     };
@@ -3541,7 +3541,6 @@ class EluvioLive {
     let res = await this.PostServiceRequest({
       path: urljoin("/tnt/config", tenant, "metadata"),
       queryParams: {media_wallet:false},
-      host,
       body
     });
 
@@ -3550,6 +3549,9 @@ class EluvioLive {
       console.log("Create response: ", tenantConfigResult);
     }
 
+    if (tenantConfigResult.errors && tenantConfigResult.errors.length !== 0){
+      throw Error(`error: ${tenantConfigResult}`);
+    }
     return {response:tenantConfigResult};
   }
 
