@@ -870,7 +870,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
           "NFT Template": null,
           "Media Wallet Drop Event Site": null,
           "Media Wallet Marketplace": null,
-          "Media Wallet Tenant": null,
+          "Media Wallet Settings": null,
         },
         objects: {
           marketplaceId: "",
