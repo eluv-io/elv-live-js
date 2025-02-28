@@ -10,7 +10,7 @@ const { ElvFabric } = require("./ElvFabric");
 const { ElvTenant } = require("./ElvTenant");
 
 const TYPE_LIVE_DROP_EVENT_SITE = "Media Wallet Drop Event Site";
-const TYPE_LIVE_TENANT = "Media Wallet Tenant";
+const TYPE_LIVE_TENANT = "Media Wallet Settings";
 const TYPE_LIVE_MARKETPLACE = "Media Wallet Marketplace";
 const TYPE_LIVE_NFT_COLLECTION = "NFT Collection";
 const TYPE_LIVE_NFT_TEMPLATE = "NFT Template";
