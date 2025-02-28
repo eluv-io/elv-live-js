@@ -576,6 +576,50 @@ class ElvContracts {
 
     return res;
   }
+
+  async ListContentObjects({objectAddr}) {
+    const abiStr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/AccessIndexor.abi")
+    );
+
+    if (!objectAddr) {
+      throw Error("objectAddr not provided");
+    }
+
+    let contentObjLen;
+    try {
+      contentObjLen = await this.client.CallContractMethod({
+        contractAddress: objectAddr,
+        abiStr,
+        methodName: "getContentObjectsLength",
+        formatArguments: false,
+      });
+    } catch (e) {
+      throw new Error(`not a contract ${e}`);
+
+      // TODO address user and contract address
+      // address provided can be user address
+      // const walletContractAddress = await this.client.userProfileClient.UserWalletAddress({
+      //   address: this.client.signer.address
+      // });
+    }
+
+    contentObjLen = Number(contentObjLen);
+    console.log("content_objects length", contentObjLen);
+
+    let contentObjects = [];
+    for (let i=0;i<contentObjLen;i++){
+      let res = await this.client.CallContractMethod({
+        contractAddress: objectAddr,
+        abiStr,
+        methodName: "getContentObject",
+        methodArgs: [i],
+        formatArguments: true,
+      });
+      contentObjects.push(res);
+    }
+    return {content_objects: contentObjects};
+  }
 }
 
 exports.ElvContracts = ElvContracts;

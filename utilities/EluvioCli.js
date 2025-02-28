@@ -1380,7 +1380,7 @@ const CmdCleanupObject = async ({ argv }) => {
     const objectType = argv.object_type;
 
     let objectAddr;
-    if (object.startsWith("iq")) {
+    if (object.startsWith("iq") || object.startsWith("iusr") || object.startsWith("igrp")) {
       objectAddr =  Utils.HashToAddress(object);
     } else if (object.startsWith("0x")) {
       objectAddr = object;
@@ -1402,6 +1402,39 @@ const CmdCleanupObject = async ({ argv }) => {
       objectType
     });
     console.log("objects cleaned:", res);
+  } catch (e) {
+    console.error("ERROR:", argv.verbose ? e : e.message);
+  }
+};
+
+const CmdListObjects = async ({ argv }) => {
+  console.log("Parameters:");
+  console.log("object", argv.object);
+
+  try {
+    const object = argv.object;
+    let objectAddr;
+    if (object.startsWith("iusr") || object.startsWith("igrp")) {
+      objectAddr =  Utils.HashToAddress(object);
+    } else if (object.startsWith("0x")) {
+      // can be user address or contract address
+      objectAddr = object;
+    } else {
+      throw new Error(`Invalid object provided: ${object}, require address or id (user/group id)`);
+    }
+
+    let elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await elvContract.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvContract.ListContentObjects({
+      objectAddr
+    });
+    console.log(res);
   } catch (e) {
     console.error("ERROR:", argv.verbose ? e : e.message);
   }
@@ -2285,6 +2318,22 @@ yargs(hideBin(process.argv))
       CmdCleanupObject({ argv });
     }
   )
+
+  .command(
+    "object_list <object>",
+    "list the content objects the given user or group has access to",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "user or group id/address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdListObjects({ argv });
+    }
+  )
+
 
   .strict()
   .help()
