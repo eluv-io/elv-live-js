@@ -3237,11 +3237,11 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("content_hash", {
-          describe: "Version hash of the new tenant Fabric object",
+          describe: "Version hash of the new tenant media-wallet settings object; ignored if --media-wallet=false",
           type: "string",
         })
         .option("media_wallet", {
-          describe: "indicates if the is a media-wallet/elv-live enabled tenant; defaults to TRUE",
+          describe: "indicates if this is a media-wallet-enabled tenant; default: true",
           type: "boolean",
           default: true,
         })
