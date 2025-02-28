@@ -321,10 +321,15 @@ const setTenantPublishPrivate = async ({tenantId, asUrl, t, debug}) => {
     tenant: tenantId,
     env: t.base.publish.env
   });
-  console.log(`tenant-publish-private, response: ${JSON.stringify(res, null, 2)}`);
+  console.log(`tenant_publish_private, response: ${JSON.stringify(res, null, 2)}`);
 
   t.base.publish.elvLiveWriteResult = res.response.elv_live_write_result;
-  t.base.updatedTenantHash = res.response.updated_tenant_hash;
+  if (res.response.updated_tenant_hash) {
+    t.base.publish.updatedTenantHash = res.response.updated_tenant_hash;
+  }
+  if (res.response.warnings && res.response.warnings.length > 0){
+    t.base.publish.warnings = res.response.warnings;
+  }
   writeConfigToFile(t);
 };
 
@@ -761,7 +766,7 @@ const createSiteId = async ({client, t}) => {
   }
 };
 
-const createOpsKeyAndAddToGroup = async ({groupAddresses = [], opsKeyType, t, debug})=>{
+const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug})=>{
   let opsKey = "";
   if (opsKeyType === TENANT_OPS_KEY){
     opsKey = t.base.tenantOpsKey;
@@ -790,12 +795,6 @@ const createOpsKeyAndAddToGroup = async ({groupAddresses = [], opsKeyType, t, de
     if (signerBalance < EXPECTED_SENDER_BALANCE) {
       throw Error(`${await elvAccount.signer.getAddress()} have balance < ${EXPECTED_SENDER_BALANCE}\nCurrent balance: ${signerBalance}`);
     }
-
-    let groupToRoles = {};
-    groupAddresses.forEach((groupAddress) => {
-      groupToRoles[groupAddress] = "manager";
-      console.log(`${t.base.tenantName}-${opsKeyType} to be added as manager to ${groupAddress}`);
-    });
 
     let res = await elvAccount.Create({
       funds: OPS_AMOUNT,
@@ -980,17 +979,25 @@ const ProvisionOps = async({client, tenantId, t, debug= false}) => {
     throw Error("require t.base.groups.tenantUsersGroupAddress to be set");
   }
 
+  let tenantOpsGroupToRoles = {
+    [t.base.groups.tenantAdminGroupAddress]: "manager",
+    [t.base.groups.tenantUsersGroupAddress]: "manager"
+  };
   // tenant ops added as manager to tenant_admin and tenant_users group
   await createOpsKeyAndAddToGroup({
-    groupAddresses: [t.base.groups.tenantAdminGroupAddress, t.base.groups.tenantUsersGroupAddress],
+    groupToRoles: tenantOpsGroupToRoles,
     opsKeyType: TENANT_OPS_KEY,
     t: t,
     debug
   });
 
+  let contentOpsGroupToRoles = {
+    [t.base.groups.contentAdminGroupAddress]: "manager",
+    [t.base.groups.tenantUsersGroupAddress]: "member"
+  };
   // content ops added as manager to content_admin and tenant_users group
   await createOpsKeyAndAddToGroup({
-    groupAddresses: [t.base.groups.contentAdminGroupAddress, t.base.groups.tenantUsersGroupAddress],
+    groupToRoles: contentOpsGroupToRoles,
     opsKeyType: CONTENT_OPS_KEY,
     t: t,
     debug
