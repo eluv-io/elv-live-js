@@ -10,6 +10,7 @@ const path = require("path");
 const { Config } = require("./Config");
 const { EluvioLive } = require("./EluvioLive");
 const urljoin = require("url-join");
+const constants = require("./Constants");
 
 class ElvTenant {
   /**
@@ -261,6 +262,7 @@ class ElvTenant {
     }
 
     tenantInfo["tenant_root_key"] = owner;
+    tenantInfo["tenant_status"] = await this.TenantStatus({tenantContractId: tenantId});
 
     if (show_metadata) {
       let services = [];
@@ -282,12 +284,12 @@ class ElvTenant {
         console.log(e);
         errors.push("Encountered an error when getting metadata for the eluvio_live_id service");
       }
-      if (services.length != 0) {
+      if (services.length !== 0) {
         tenantInfo["services"] = services;
       }
     }
 
-    if (errors.length != 0) {
+    if (errors.length !== 0) {
       tenantInfo["errors"] = errors;
     }
 
@@ -602,29 +604,24 @@ class ElvTenant {
       methodName: "owner",
       methodArgs: [],
     });
-    if (groupOwner != tenantOwner) {
+    if (groupOwner !== tenantOwner) {
       return {success: false, message: `The owner of the group (${groupOwner}) is not the same as the owner of the tenant (${tenantOwner}).`};
     }
 
     //Ensure groupAddr actually belongs to a group contract.
-    if (await this.client.authClient.AccessType("igrp"+ Utils.AddressToHash(groupAddr)) != this.client.authClient.ACCESS_TYPES.GROUP) {
+    if (await this.client.authClient.AccessType("igrp"+ Utils.AddressToHash(groupAddr)) !== this.client.authClient.ACCESS_TYPES.GROUP) {
       return {success: false, message: "on the tenant contract is not a group", need_format: true};
     }
 
     let verified = false;
-    //Retreive tenant contract id assoicated with this group from the contract's metadata
+    //Retrieve tenant contract id associated with this group from the contract's or fabric metadata
     try {
-      let tenantContractIdHex = await this.client.CallContractMethod({
-        contractAddress: groupAddr,
-        methodName: "getMeta",
-        methodArgs: ["_ELV_TENANT_ID"],
-      });
-      if (tenantContractIdHex == "0x") {
+      let tenantContractId = await this.client.TenantContractId({contractAddress: groupAddr});
+      if (tenantContractId === "") {
         return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
       }
-      let tenantContractId = Ethers.utils.toUtf8String(tenantContractIdHex);
-
-      if (tenantId != tenantContractId) {
+      
+      if (tenantId !== tenantContractId) {
         return {success: false, message: "group doesn't belong to this tenant", need_format: true};
       }
       verified = true;
@@ -636,48 +633,52 @@ class ElvTenant {
       }
     }
 
-    //Retreive tenant contract id associated with this group from the contract's tenant field
-    try {
-      let tenantContractAddress = await this.client.CallContractMethod({
-        contractAddress: groupAddr,
-        methodName: "tenant",
-        methodArgs: [],
-      });
-      let tenantContractId = "iten" + this.client.utils.AddressToHash(tenantContractAddress);
-      if (tenantId != tenantContractId) {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
-      }
-      verified = true;
-    } catch (e) {
-      if (e.message.includes("Unknown method: tenant")) {
-        console.log(`Log: the group contract with group address ${groupAddr} doesn't contain tenant information on contract.`);
-      } else {
-        throw e;
+    if (!verified){
+      //Retrieve tenant contract id associated with this group from the contract's tenant field
+      try {
+        let tenantContractAddress = await this.client.CallContractMethod({
+          contractAddress: groupAddr,
+          methodName: "tenant",
+          methodArgs: [],
+        });
+        let tenantContractId = "iten" + this.client.utils.AddressToHash(tenantContractAddress);
+        if (tenantId !== tenantContractId) {
+          return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+        }
+        verified = true;
+      } catch (e) {
+        if (e.message.includes("Unknown method: tenant")) {
+          console.log(`Log: the group contract with group address ${groupAddr} doesn't contain tenant information on contract.`);
+        } else {
+          throw e;
+        }
       }
     }
 
-    //Retrieve tenant contract id associated with this group from its content fabric metadata
-    try {
-      let groupObjectId = ElvUtils.AddressToId({prefix: "iq__", address: groupAddr});
-      let groupLibraryId = await this.client.ContentObjectLibraryId({objectId: groupObjectId});
+    if (!verified){
+      //Retrieve tenant contract id associated with this group from its content fabric metadata
+      try {
+        let groupObjectId = ElvUtils.AddressToId({prefix: "iq__", address: groupAddr});
+        let groupLibraryId = await this.client.ContentObjectLibraryId({objectId: groupObjectId});
 
-      let groupMeta = await this.client.ContentObjectMetadata({
-        libraryId: groupLibraryId,
-        objectId: groupObjectId,
-        select:"elv/tenant_id",
-      });
-      if (!groupMeta) {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
-      }
+        let groupMeta = await this.client.ContentObjectMetadata({
+          libraryId: groupLibraryId,
+          objectId: groupObjectId,
+          select:"elv/tenant_id",
+        });
+        if (!groupMeta) {
+          return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+        }
 
-      let tenantContractId = groupMeta.elv.tenant_id;
-      if (tenantContractId != tenantId) {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
-      }
-      verified = true;
-    } catch (e) {
-      if (e.message.includes("Forbidden")) {
-        console.log("Log: can't verify the group's content fabric metadata - must be a tenant admin user to do so.");
+        let tenantContractId = groupMeta.elv.tenant_id;
+        if (tenantContractId !== tenantId) {
+          return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+        }
+        verified = true;
+      } catch (e) {
+        if (e.message.includes("Forbidden")) {
+          console.log("Log: can't verify the group's content fabric metadata - must be a tenant admin user to do so.");
+        }
       }
     }
 
@@ -720,14 +721,12 @@ class ElvTenant {
     return res;
   }
 
-  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount }) {
-    // Initialize configuration
+  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 2, noFunds = false }) {
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
     };
 
-    // Initialize EluvioLive and ElvAccount
     const eluvioLive = new EluvioLive(config);
     await eluvioLive.Init({
       debugLogging: this.debug,
@@ -761,7 +760,7 @@ class ElvTenant {
     res.faucet = faucetRes;
     let fundingAddress = faucetRes.funding_address;
 
-    if (amount){
+    if (!noFunds){
       // Check balances
       const senderAddress = elvAccount.signer.address.toString();
       let initialSenderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
@@ -801,6 +800,134 @@ class ElvTenant {
     }
 
     return res;
+  }
+
+  /**
+   * Add tenant status
+   *
+   * @param {string} tenantContractId - The ID of the tenant Id (iten***)
+   * @param {string} tenantStatus - tenant status: acive | inactive
+   * @returns {Promise<{tenantStatus: string, tenantContractId: string}>}
+   */
+  async TenantSetStatus({tenantContractId, tenantStatus}) {
+    if (tenantStatus !== constants.TENANT_STATE_ACTIVE &&
+      tenantStatus !== constants.TENANT_STATE_INACTIVE){
+      throw Error(`Invalid tenant status, require active | inactive | frozen: ${tenantStatus}`);
+    }
+
+    //Check that the user is the owner of the tenant
+    const tenantOwner = await this.client.authClient.Owner({id: tenantContractId});
+    if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
+      throw Error("tenant status must be set by the owner of tenant " + tenantContractId);
+    }
+
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
+    await this.client.ReplaceContractMetadata({
+      contractAddress: tenantAddr,
+      metadataKey: constants.TENANT_STATE,
+      metadata: tenantStatus,
+    });
+
+    tenantStatus = await this.TenantStatus({tenantContractId});
+    return {tenantContractId, tenantStatus};
+  }
+
+  /**
+   * Retrieve tenant status
+   *
+   * @param {string} tenantContractId - The ID of the tenant Id (iten***)
+   * @returns {Promise<string>}
+   */
+  async TenantStatus({tenantContractId}) {
+    const tenantAddr = Utils.HashToAddress(tenantContractId);
+    let tenantStatus;
+    try {
+      tenantStatus = await this.client.ContractMetadata({
+        contractAddress: tenantAddr,
+        metadataKey: constants.TENANT_STATE
+      });
+    } catch (e) {
+      tenantStatus = "";
+    }
+    return tenantStatus;
+  }
+
+  async TenantFundUser({ asUrl, tenantId, userAddress})
+  {
+
+    console.log("TenantFundUser");
+    console.log(`as_url: ${asUrl}`);
+    console.log(`tenant_id: ${tenantId}`);
+    console.log(`user_address: ${userAddress}`);
+
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: this.debug,
+    });
+    await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
+
+    // check valid user address
+    if (!Utils.ValidAddress(userAddress)) {
+      throw Error(`Invalid user address provided: ${userAddress}`);
+    }
+    const usrAddr = Utils.FormatAddress(userAddress);
+
+    // check user balance < tenant faucet per_top_up_limit
+    let userBalance = await elvAccount.client.GetBalance({address: usrAddr});
+    let perTopUpLimit;
+    try {
+      const faucetGetTenantInfo = urljoin(eluvioLive.asUrlPath, `/faucet/get_tenant/${tenantId}`);
+      const faucetGetTenantInfoResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+        method: "GET",
+        path: faucetGetTenantInfo,
+      });
+      const res = await faucetGetTenantInfoResponse.json();
+
+      if (this.debug) {
+        console.log(res);
+      }
+      if (res.status === "success") {
+        perTopUpLimit = res.tenant_record.per_top_up_limit;
+      }
+    } catch (e) {
+      throw Error(`Error getting tenant faucet info: ${JSON.stringify(e)}`);
+    }
+
+    if (userBalance > perTopUpLimit) {
+      throw Error(`user ${usrAddr} has balance > faucet per_top_up_limit = ${perTopUpLimit}`);
+    }
+
+    // Create BaseTenantAuth token
+    const requestBody = {
+      ts: Date.now(),
+    };
+    const {multiSig} = await eluvioLive.TenantSign({
+      message: JSON.stringify(requestBody),
+    });
+
+    // fund the user
+    const faucetFundPath = urljoin(eluvioLive.asUrlPath, `/faucet/fund/${tenantId}/${usrAddr}`);
+    const faucetFundResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+      method: "POST",
+      path: faucetFundPath,
+      body: requestBody,
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+    });
+
+    return await faucetFundResponse.json();
   }
 }
 

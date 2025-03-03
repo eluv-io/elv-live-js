@@ -1,10 +1,12 @@
 const { ElvUtils } = require("./Utils");
 const { ElvAccount } = require("./ElvAccount");
+const constants = require("./Constants");
 
 const { ElvClient } = require("@eluvio/elv-client-js");
 
 const Ethers = require("ethers");
 const CBOR = require("cbor-x");
+const { ElvTenant } = require("./ElvTenant");
 
 class ElvSpace {
   /**
@@ -162,6 +164,14 @@ class ElvSpace {
       throw (e);
     }
 
+    // Create ElvTenant
+    const elvTenant = new ElvTenant({
+      configUrl: this.configUrl,
+    });
+    await elvTenant.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
     let res = {};
 
     let tenantFuncsContract = await ElvUtils.DeployContractFile({
@@ -239,6 +249,14 @@ class ElvSpace {
       }
     }
 
+    let tenantContractId = ElvUtils.AddressToId({prefix:"iten", address:tenantContract.address});
+    // set tenant status to active
+    await elvTenant.TenantSetStatus({
+      tenantContractId,
+      tenantStatus: constants.TENANT_STATE_ACTIVE,
+    });
+    const tenantStatus = await elvTenant.TenantStatus({tenantContractId});
+
     if (ownerAddress) {
       res = await this.client.CallContractMethodAndWait({
         contractAddress: tenantContract.address,
@@ -267,15 +285,16 @@ class ElvSpace {
       if (this.debug){
         console.log("New owner", owner, "creator", creator);
       }
-
     }
 
     return {
       name: tenantName,
       id: ElvUtils.AddressToId({prefix:"iten", address:tenantContract.address}),
       address: tenantContract.address,
+      tenantStatus,
       tenantAdminGroupAddress,
-      contentAdminGroupAddress
+      contentAdminGroupAddress,
+      tenantUsersGroupAddress,
     };
   }
 

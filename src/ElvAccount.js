@@ -60,17 +60,26 @@ class ElvAccount {
    * @param {number} funds - The amount in ETH to fund the new account.
    * @param {string} accountName - The name of the account to set in it's wallet metadata (Optional)
    * @param {string} tenantId - The tenant ID (iten) (Optional)
+   * @param {object} groupToRoles - Map of group to roles [member|manager] (Optional)
+   * @param {boolean} skipAddingToTenantUserGroup - skip adding to tenant user group (Optional)
    * @return {Promise<Object>} - An object containing the new account mnemonic, privateKey, address, accountName, balance
    */
-  async Create({ funds = 0.25, accountName, tenantId }) {
+  async Create({ funds = 0.25, accountName, tenantId, groupToRoles, skipAddingToTenantUserGroup = false }) {
+
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
     if (!this.client) {
       throw Error("ElvAccount not intialized");
     }
 
+    let tenantUsersGroup;
     // We don't require the key is part of a tenant (for example when creating a tenant root key)
-    if (tenantId) {
+    if (tenantId){
       // Validate tenant ID (make sure it is not the tenant admins ID)
       const idType = await this.client.AccessType({ id: tenantId });
+
       if (idType !== this.client.authClient.ACCESS_TYPES.TENANT) {
         throw Error("Bad tenant ID");
       }
@@ -80,12 +89,38 @@ class ElvAccount {
       try {
         await this.client.CallContractMethod({
           contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
           methodName: "groupsMapping",
           methodArgs: ["tenant_admin", 0],
           formatArguments: true,
         });
       } catch (e) {
         throw Error("Bad tenant - missing tenant admins group");
+      }
+
+      // require tenant admin key to create new users
+      let owner = await this.client.CallContractMethod({
+        contractAddress: tenantAddr,
+        abi: JSON.parse(abi),
+        methodName: "owner",
+        methodArgs: [],
+        formatArguments: true,
+      });
+      if (this.client.CurrentAccountAddress() !== owner.toLowerCase()) {
+        throw Error(`Not run by Tenant Admin - ${owner.toLowerCase()}`);
+      }
+
+      try {
+        tenantUsersGroup = await this.client.CallContractMethod({
+          contractAddress: tenantAddr,
+          abi: JSON.parse(abi),
+          methodName: "groupsMapping",
+          methodArgs: ["tenant_users", 0],
+          formatArguments: true,
+        });
+      } catch (e) {
+        tenantUsersGroup = null;
+        console.log("WARN: missing tenant users group");
       }
     }
 
@@ -129,6 +164,47 @@ class ElvAccount {
       }
 
       let balance = await wallet.GetAccountBalance({ signer });
+
+      // add new user to tenant_users group
+      if (tenantUsersGroup && !skipAddingToTenantUserGroup) {
+        await this.AddToAccessGroup({
+          groupAddress: tenantUsersGroup,
+          accountAddress: address,
+          isManager: false,
+        });
+        console.log("Added user to tenant users group:", tenantUsersGroup);
+      }
+
+      if (groupToRoles) {
+        for (const [group, role] of Object.entries(groupToRoles)) {
+
+          let isManager;
+          switch (role) {
+            case "manager": isManager = true; break;
+            default: isManager = false;
+          }
+
+          let groupAddress;
+          // convert to address format
+          if (group.startsWith("igrp") || group.startsWith("iten")) {
+            groupAddress = Utils.HashToAddress(group);
+          } else if (group.startsWith("0x")) {
+            groupAddress = group;
+          } else {
+            console.log(`WARN: User was NOT added to the group "${group}" because the provided format is invalid. 
+Accepted formats: igrp, iten, or address.`);
+            continue;
+          }
+
+          // add user to group provided
+          await this.AddToAccessGroup({
+            groupAddress: groupAddress,
+            accountAddress: address,
+            isManager,
+          });
+          console.log(`Added user to group: ${groupAddress} as ${role}`);
+        }
+      }
 
       return {
         accountName,
