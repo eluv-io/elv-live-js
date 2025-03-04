@@ -13,12 +13,13 @@ class ElvContracts {
     * @namedParams
     * @param {string} configUrl - The Content Fabric configuration URL
     * @param {string} mainObjectId - The top-level Eluvio Live object ID
+    * @param
     */
-  constructor({ configUrl, mainObjectId }) {
+  constructor({ configUrl, mainObjectId, debugLogging = false }) {
     this.configUrl = configUrl || ElvClient.main;
     this.mainObjectId = mainObjectId;
 
-    this.debug = false;
+    this.debug = debugLogging;
   }
 
   async Init() {
@@ -594,7 +595,7 @@ class ElvContracts {
   }
 
   /**
-   * delete library and to remove references to dead objects for the signer
+   * delete library and to remove references to dead objects for the signer and groups
    * @param {string} libraryAddr: address of the library
    */
   async DeleteLibrary({libraryAddr}){
@@ -606,6 +607,10 @@ class ElvContracts {
 
     if (!libraryAddr){
       throw Error("libraryAddr is not provided");
+    }
+    const libraryId = Utils.AddressToLibraryId(libraryAddr);
+    if (this.debug) {
+      console.log("library_id:", libraryId);
     }
 
     // check the signer is the owner of the library
@@ -619,7 +624,35 @@ class ElvContracts {
       throw Error(`signer is not the owner of the library: ${libraryAddr}`);
     }
 
-    // to check if the object is contract or user address
+    // list of content objects
+    const contentObjectsRes = await this.client.ContentObjects({
+      libraryId: libraryId,
+      filterOptions: {
+        limit: 100000
+      }
+    });
+    const objectIds = contentObjectsRes.contents.map(x => x.id);
+
+    // the library id is stored as content object in the content object lists
+    // ignoring the library object
+    const libraryObjId = Utils.AddressToObjectId(libraryAddr);
+    let objectIdsCount = objectIds.length;
+    if (objectIds.includes(libraryObjId)){
+      objectIdsCount--;
+    }
+
+    if (this.debug){
+      console.log(`\nList of contents in the given library ${libraryId}:`);
+      console.log(JSON.stringify(objectIds, null, 2));
+    }
+
+    if (objectIdsCount > 0){
+      throw new Error(`The library ${libraryId} has ${objectIds.length} content objects,
+      Please delete them before deleting the library`);
+    }
+
+    // delete the library contract
+    console.log(`deleting the library ${libraryAddr}...`);
     try {
       await this.client.CallContractMethodAndWait({
         contractAddress: libraryAddr,
@@ -630,14 +663,32 @@ class ElvContracts {
     } catch (e) {
       throw Error(`error executing 'kill' method on library ${libraryAddr}`);
     }
+
     let res = {
       [libraryAddr]: "deleted",
+      cleanup: {
+        user: null,
+        groups: {}
+      }
     };
 
-    res.cleanup = await this.CleanupObjects({
+    // cleanup the user indexer
+    console.log("cleaning up the user indexers...");
+    res.cleanup.user = await this.CleanupObjects({
       objectAddr: this.client.signer.address,
       objectType: "library"
     });
+
+    // cleanup the groups indexer
+    console.log("cleaning up the group indexers...");
+    const groupsList =  await this.client.ListAccessGroups();
+    let groupAddress = groupsList.map(x => x.address);
+    for (let i=0;i<groupAddress.length;i++){
+      res.cleanup.groups[groupAddress[i]] = await this.CleanupObjects({
+        objectAddr: groupAddress[i],
+        objectType: "library"
+      });
+    }
     return res;
   }
 
