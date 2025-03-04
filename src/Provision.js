@@ -302,6 +302,11 @@ const setGroupPermission = async ({client,t}) => {
 
 const setTenantPublishPrivate = async ({tenantId, asUrl, t, debug}) => {
 
+  if (!t.base.publish) {
+    t.base.publish = {};
+    return;
+  }
+
   const config = {
     configUrl: Config.networks[Config.net],
     mainObjectId: Config.mainObjects[Config.net],
