@@ -652,7 +652,7 @@ class ElvContracts {
     }
 
     // delete the library contract
-    console.log(`deleting the library ${libraryAddr}...`);
+    console.log(`deleting library ${libraryAddr}...`);
     try {
       await this.client.CallContractMethodAndWait({
         contractAddress: libraryAddr,
