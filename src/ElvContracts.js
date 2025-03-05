@@ -746,7 +746,7 @@ class ElvContracts {
         methodArgs: [i],
         formatArguments: true,
       });
-      contentObjects.push(res);
+      contentObjects.push(Utils.AddressToObjectId(res));
     }
     return {content_objects: contentObjects};
   }
