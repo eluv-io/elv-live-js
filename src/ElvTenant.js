@@ -757,6 +757,11 @@ class ElvTenant {
       },
     });
     const faucetRes = await faucetResponse.json();
+
+    if (this.debug){
+      console.log("Faucet response:", JSON.stringify(faucetRes, null, 2));
+    }
+
     res.faucet = faucetRes;
     let fundingAddress = faucetRes.funding_address;
 
@@ -783,10 +788,12 @@ class ElvTenant {
         recipient: fundingAddress,
         ether: amount,
       });
-      console.log("Funds transferred successfully.");
+
       if (this.debug) {
         console.log("Transfer Details:", transferResult);
       }
+      console.log("Funds transferred successfully.");
+
 
       // Check balances after transfer
       let finalSenderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
