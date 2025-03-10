@@ -9,18 +9,14 @@ const { EluvioLive } = require("../src/EluvioLive.js");
 const { ElvFabric } = require("./ElvFabric");
 const { ElvTenant } = require("./ElvTenant");
 
-const TYPE_LIVE_DROP_EVENT_SITE = "Media Wallet Drop Event Site";
 const TYPE_LIVE_TENANT = "Media Wallet Settings";
 const TYPE_LIVE_MARKETPLACE = "Media Wallet Marketplace";
-const TYPE_LIVE_NFT_COLLECTION = "NFT Collection";
-const TYPE_LIVE_NFT_TEMPLATE = "NFT Template";
+const TYPE_LIVE_ITEM_TEMPLATE = "Item Template";
 
 const liveTypes = [
-  { name: TYPE_LIVE_DROP_EVENT_SITE, spec: require("@eluvio/elv-client-js/typeSpecs/DropEventSite") },
   { name: TYPE_LIVE_MARKETPLACE, spec: require("@eluvio/elv-client-js/typeSpecs/Marketplace") },
   { name: TYPE_LIVE_TENANT, spec: require("@eluvio/elv-client-js/typeSpecs/EventTenant") },
-  { name: TYPE_LIVE_NFT_COLLECTION, spec: require("@eluvio/elv-client-js/typeSpecs/NFTCollection") },
-  { name: TYPE_LIVE_NFT_TEMPLATE, spec: require("@eluvio/elv-client-js/typeSpecs/NFTTemplate") }
+  { name: TYPE_LIVE_ITEM_TEMPLATE, spec: require("@eluvio/elv-client-js/typeSpecs/NFTTemplate") }
 ];
 
 const STANDARD_DRM_CERT={
@@ -563,60 +559,6 @@ const createMarketplaceId = async ({client, t}) => {
   console.log(`\t${objectName}: ${t.mediaWallet.objects.marketplaceId}\n\n`);
 };
 
-const createDropEventId = async ({client, t}) => {
-
-  if (!t.mediaWallet.objects.dropEventId) {
-
-    if (isEmptyParams(t.base.tenantName)){
-      throw Error("require t.base.tenantName to be set");
-    }
-    if (isEmptyParams(t.base.tenantId)){
-      throw Error("require t.base.tenantId to be set");
-    }
-    if (isEmptyParams(t.base.tenantSlug)){
-      throw Error("require t.base.tenantSlug to be set");
-    }
-    if (isEmptyParams(t.base.libraries.propertiesLibraryId)){
-      throw Error("require t.base.libraries.propertiesLibraryId to be set");
-    }
-
-    if (isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_DROP_EVENT_SITE])){
-      throw Error(`require t.mediaWallet.liveTypes.'${TYPE_LIVE_DROP_EVENT_SITE}' to be set`);
-    }
-
-    objectName = `${TYPE_LIVE_DROP_EVENT_SITE} - ${t.base.tenantName}`;
-
-    publicMetadata = {
-      name: objectName,
-      asset_metadata: {
-        info: {
-          tenant_id: t.base.tenantId,
-          tenant_slug: t.base.tenantSlug,
-          marketplace_info: {
-            tenant_slug: t.base.tenantSlug,
-            marketplace_slug: `${t.base.tenantSlug}-marketplace`
-          }
-        }
-      }
-    };
-
-    t.mediaWallet.objects.dropEventId = await CreateFabricObject({client,
-      libraryId: t.base.libraries.propertiesLibraryId,
-      typeId: t.mediaWallet.liveTypes[TYPE_LIVE_DROP_EVENT_SITE],
-      publicMetadata, t });
-
-    writeConfigToFile(t);
-  }
-
-  if (!isEmptyParams(t.mediaWallet.objects.dropEventId) && t.mediaWallet.objects.dropEventId){
-    t.mediaWallet.objects.dropEventHash = await client.LatestVersionHash({objectId: t.mediaWallet.objects.dropEventId});
-    writeConfigToFile(t);
-  }
-
-  console.log("\nDrop Event Site Object: \n");
-  console.log(`\t${objectName}: ${t.mediaWallet.objects.dropEventId}\n\n`);
-};
-
 const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, t}) => {
   if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)){
     throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
@@ -671,9 +613,6 @@ const createTenantObjectId = async ({client, t}) => {
     if (isEmptyParams(t.mediaWallet.objects.marketplaceHash)){
       throw Error("require t.mediaWallet.objects.marketplaceHash to be set");
     }
-    if (isEmptyParams(t.mediaWallet.objects.dropEventHash)){
-      throw Error("require t.mediaWallet.objects.dropEventHash to be set");
-    }
     if (isEmptyParams(t.base.libraries.propertiesLibraryId)){
       throw Error("require t.base.libraries.propertiesLibraryId to be set");
     }
@@ -718,12 +657,7 @@ const createTenantObjectId = async ({client, t}) => {
             "order": 0
           }
         },
-        sites: {
-          [`${t.base.tenantSlug}-drop-event`]: {
-            "/":`/qfab/${t.mediaWallet.objects.dropEventHash}/meta/public/asset_metadata`,
-            "order": 0
-          }
-        }
+        sites: {}
       }
     };
 
@@ -871,17 +805,13 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
       },
       mediaWallet: {
         liveTypes: {
-          "NFT Collection": null,
-          "NFT Template": null,
-          "Media Wallet Drop Event Site": null,
+          "Item Template": null,
           "Media Wallet Marketplace": null,
           "Media Wallet Settings": null,
         },
         objects: {
           marketplaceId: "",
           marketplaceHash: null,
-          dropEventId: null,
-          dropEventHash: null,
           tenantObjectId: null,
         }
       }
@@ -967,7 +897,6 @@ const ProvisionMediaWallet = async({client, tenantId, t}) => {
   await checkSignerTenantAccess({client, tenantId});
   await createLiveTypes({client, t});
   await createMarketplaceId({client, t});
-  await createDropEventId({client, t});
   await createTenantObjectId({client, t});
 };
 
