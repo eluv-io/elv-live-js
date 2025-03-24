@@ -126,6 +126,7 @@ const CmdStreamInsertion = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
       url: argv.url,
+      token: argv.token,
       debugLogging: argv.verbose
     });
 
@@ -140,6 +141,7 @@ const CmdStreamInsertion = async ({ argv }) => {
       // Time specified as an ISO string
       t = new Date(argv.time).getTime();
       if (t == undefined || isNaN(t)) {
+
         console.log("Bad time specification", argv.time);
         return;
       }
@@ -183,7 +185,7 @@ const CmdStreamDownload = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset, makeFrame: argv.frames});
+    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset, makeFrame: argv.frames, mpegtsCopy: argv.mpegts});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -209,7 +211,7 @@ const CmdStreamConfig = async ({ argv }) => {
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
 
-    let status = await elvStream.StreamConfig({name: argv.stream, space});
+    let status = await elvStream.StreamConfig({name: argv.stream, profileName: argv.playout_profile, space});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -245,14 +247,17 @@ const CmdStreamCopyToVod = async ({ argv }) => {
     }
 
     let status = await elvStream.StreamCopyToVod({
-      name: argv.stream,
+      stream: argv.stream,
       object: argv.object,
       library: argv.library,
+      name: argv.name,
+      title: argv.title,
       eventId: argv.event_id,
       startTime: argv.start_time,
       endTime: argv.end_time,
       recordingPeriod: argv.recording_period,
-      streams: argv.streams
+      streams: argv.streams,
+      drm: argv.drm
     });
     console.log(yaml.dump(status));
   } catch (e) {
@@ -334,6 +339,10 @@ yargs(hideBin(process.argv))
     describe: "Optional node endpoint (eg. https://host-x-x-x-x.contentfabric.io)",
     type: "string",
   })
+  .option("token", {
+    describe: "Externally provided access token",
+    type: "string",
+  })
 
   .command(
     "config <stream>",
@@ -344,6 +353,10 @@ yargs(hideBin(process.argv))
           describe:
             "Stream name or QID (content ID). Stream must be stopped.",
           type: "string",
+        })
+        .option("playout_profile", {
+          describe:
+            "Custom playout profile name"
         })
     },
     (argv) => {
@@ -555,6 +568,11 @@ yargs(hideBin(process.argv))
             "Create a frame JPG for each video part",
           type: "bool",
         })
+        .option("mpegts", {
+          describe:
+            "Download the MPEGTS copy instead of the MP4 mezzanine",
+          type: "bool",
+        })
 
       },
     (argv) => {
@@ -581,6 +599,22 @@ yargs(hideBin(process.argv))
           describe:
             "Copy to a new object in this library",
           type: "string",
+        })
+        .option("name", {
+          describe:
+            "Object name (used for management)",
+          type: "string",
+        })
+        .option("title", {
+          describe:
+            "Object title (used for playout)",
+          type: "string",
+        })
+        .option("drm", {
+          describe:
+            "Use DRM or clear (default 'true')",
+          type: "bool",
+          default: true,
         })
         .option("event_id", {
           describe:
