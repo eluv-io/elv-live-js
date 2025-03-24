@@ -185,7 +185,7 @@ const CmdStreamDownload = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset, makeFrame: argv.frames});
+    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset, makeFrame: argv.frames, mpegtsCopy: argv.mpegts});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -247,9 +247,11 @@ const CmdStreamCopyToVod = async ({ argv }) => {
     }
 
     let status = await elvStream.StreamCopyToVod({
-      name: argv.stream,
+      stream: argv.stream,
       object: argv.object,
       library: argv.library,
+      name: argv.name,
+      title: argv.title,
       eventId: argv.event_id,
       startTime: argv.start_time,
       endTime: argv.end_time,
@@ -566,6 +568,11 @@ yargs(hideBin(process.argv))
             "Create a frame JPG for each video part",
           type: "bool",
         })
+        .option("mpegts", {
+          describe:
+            "Download the MPEGTS copy instead of the MP4 mezzanine",
+          type: "bool",
+        })
 
       },
     (argv) => {
@@ -591,6 +598,16 @@ yargs(hideBin(process.argv))
         .option("library", {
           describe:
             "Copy to a new object in this library",
+          type: "string",
+        })
+        .option("name", {
+          describe:
+            "Object name (used for management)",
+          type: "string",
+        })
+        .option("title", {
+          describe:
+            "Object title (used for playout)",
           type: "string",
         })
         .option("drm", {
