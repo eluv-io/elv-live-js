@@ -472,7 +472,8 @@ class EluvioLiveStream {
           "end_time": endTime, // eg. "2023-10-03T02:15:00.00Z",
           "streams": streams,
           "recording_period": recordingPeriod,
-          "variant_key": "default"
+          "variant_key": "default",
+          "include_tags": true
         },
         constant: false,
         format: "text"
