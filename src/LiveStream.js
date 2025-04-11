@@ -322,7 +322,7 @@ class EluvioLiveStream {
         }
 
         if (mpegtsCopy) {
-          // Concatenate parts into one mp4
+          // Concatenate parts into one ts file
           status.file = dpath + "/" + mt + ".ts";
           let cmd = "ffmpeg -f concat -safe 0 -i " + partsfile + " -map 0 -c copy " + status.file;
           console.log("Running", cmd);
@@ -397,7 +397,10 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({stream, object, library, name, title, drm = true, eventId, startTime, endTime, recordingPeriod, streams}) {
+  async StreamCopyToVod({stream, object, library, name, title,
+     drm = true, eventId, startTime, endTime, recordingPeriod, streams,
+     includeTags, dashClear
+    }) {
 
     const objectId = stream;
     let abrProfileLiveToVod;
@@ -412,6 +415,7 @@ class EluvioLiveStream {
 
     let targetLibraryId;
     let targetWriteToken;
+    let existingOfferings = false;
 
     // If a target object is not specified, create it here
     if (object == undefined) {
@@ -448,6 +452,14 @@ class EluvioLiveStream {
       targetLibraryId = library;
     } else {
       targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
+      const offerings = await this.client.ContentObjectMetadata({
+        libraryId: targetLibraryId,
+        objectId: object,
+        metadataSubtree: "/offerings"
+      });
+      if (offerings?.default != undefined) {
+        existingOfferings = true;
+      }
     }
 
     console.log("Copying stream", stream, "object", object, "drm", drm);
@@ -512,18 +524,44 @@ class EluvioLiveStream {
           "streams": streams,
           "recording_period": recordingPeriod,
           "variant_key": "default",
+          "include_tags": includeTags
         },
         constant: false,
         format: "text"
       });
 
       console.log("Initialize VoD mezzanine");
+
+      const defaultDashOffering = {
+        "default_dash": [
+          {
+            "op": "replace",
+            "path": "/playout/playout_formats",
+            "value": {
+              "dash-clear": {
+                "drm": null,
+                "protocol": {
+                  "min_buffer_length": 2,
+                  "type": "ProtoDash"
+                }
+              }
+            }
+          }
+        ]
+      };
+
+      let additionalOfferingSpecs = null;
+      if (dashClear) {
+        additionalOfferingSpecs = defaultDashOffering;
+      }
+
       let abrMezInitBody = {
         abr_profile: abrProfileLiveToVod,
         "offering_key": "default",
         "prod_master_hash": targetWriteToken,
         "variant_key": "default",
-        "keep_other_streams": false
+        "keep_other_streams": existingOfferings, // Always preserve existing streams
+        "additional_offering_specs": additionalOfferingSpecs
       };
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,

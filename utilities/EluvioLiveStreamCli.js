@@ -257,7 +257,9 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       endTime: argv.end_time,
       recordingPeriod: argv.recording_period,
       streams: argv.streams,
-      drm: argv.drm
+      drm: argv.drm,
+      inlcudeTags: argv.include_tags,
+      dashClear: argv.include_dash_clear
     });
     console.log(yaml.dump(status));
   } catch (e) {
@@ -637,6 +639,16 @@ yargs(hideBin(process.argv))
           describe:
             "List specific streams to be copied (eg. 'video:0,audio:1,audio_spa:2')",
           type: "string",
+        })
+        .option("include_tags", {
+          describe:
+            "Include live stream video tags in the VoD oject",
+          type: "bool",
+        })
+        .option("include_dash_clear", {
+          describe:
+            "Include a separate offering for DASH clear - needed for chromecast",
+          type: "bool",
         })
     },
     (argv) => {
