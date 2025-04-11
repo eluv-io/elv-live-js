@@ -354,10 +354,6 @@ yargs(hideBin(process.argv))
             "Stream name or QID (content ID). Stream must be stopped.",
           type: "string",
         })
-        .option("playout_profile", {
-          describe:
-            "Custom playout profile name"
-        })
     },
     (argv) => {
       CmdStreamConfig({ argv });

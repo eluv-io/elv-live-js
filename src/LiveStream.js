@@ -512,26 +512,6 @@ class EluvioLiveStream {
           "streams": streams,
           "recording_period": recordingPeriod,
           "variant_key": "default",
-
-          /* For casting to google chromecast - not yet working server-side
-          "additional_offering_specs": {
-            "default_dash": [
-              {
-                "op": "replace",
-                "path": "/playout_formats",
-                "value": {
-                  "dash-clear": {
-                    "drm": null,
-                    "protocol": {
-                      "min_buffer_length": 2,
-                      "type": "ProtoDash"
-                    }
-                  }
-                }
-              }
-            ]
-          }
-          */
         },
         constant: false,
         format: "text"
@@ -667,21 +647,9 @@ class EluvioLiveStream {
     return res;
   }
 
-  async StreamConfig({name, profileName}) {
+  async StreamConfig({name}) {
 
     const objectId = name;
-
-    if (false) {
-    let profile;
-    if (profileName) {
-      const list = await this.client.StreamListUrls();
-      const customProfiles = list.profiles.custom;
-      for (const p of customProfiles) {
-        if (p.name == profileName) {
-          profile = p;
-        }
-      }
-    }
 
     // Read user config (meta /live_recording_config)
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
@@ -692,32 +660,7 @@ class EluvioLiveStream {
       resolveLinks: false
     });
 
-    if (profile) {
-      userConfig.ladder_profile = profile.ladder_specs;
-    }
-
-    // Store profile name in app config
-    userConfig.playout_ladder_profile = profileName || "";
-
-    let edt = await this.client.EditContentObject({libraryId, objectId});
-    await this.client.ReplaceMetadata({
-      libraryId,
-      objectId,
-      writeToken: edt.writeToken,
-      metadataSubtree: "live_recording_config",
-      metadata: userConfig
-    });
-
-    await this.client.FinalizeContentObject({
-      libraryId,
-      objectId,
-      writeToken: edt.writeToken,
-      commitMessage: "Update live recording config - profile name"
-    });
-  }
-
-  const config = this.client.StreamConfig({name, /*customSettings: userConfig*/});
-    return config;
+    return this.client.StreamConfig({name, customSettings: userConfig});
   }
 
   async StreamListUrls({siteId}) {
