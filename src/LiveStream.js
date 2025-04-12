@@ -398,13 +398,13 @@ class EluvioLiveStream {
 
   */
   async StreamCopyToVod({stream, object, library, name, title,
-     drm = true, eventId, startTime, endTime, recordingPeriod, streams,
-     includeTags, dashClear
-    }) {
+    drm = true, eventId, startTime, endTime, recordingPeriod, streams,
+    includeTags, dashClear
+  }) {
 
     const objectId = stream;
     let abrProfileLiveToVod;
-    if (drm) {
+    if (drm == true) {
       abrProfileLiveToVod = require("./abr_profile_live_to_vod_drm.json");
     } else {
       abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
