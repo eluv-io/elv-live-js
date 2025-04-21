@@ -721,6 +721,50 @@ class ElvTenant {
     return res;
   }
 
+  async TenantGetFaucet({ asUrl, tenantId }) {
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: this.debug,
+    });
+    await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
+
+    // Create TenantPathAuth token
+    let ts = Date.now();
+    const requestBody = { ts: ts };
+    let path = `/tnt/config/${tenantId}/faucet_funding?ts=${ts}`;
+    const {multiSig} = await eluvioLive.TenantSign({
+      message: JSON.stringify(path),
+    });
+
+    // Get faucet funding address
+    const faucetPath = urljoin(eluvioLive.asUrlPath, path);
+    const faucetResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+      method: "GET",
+      path: faucetPath,
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+      body: requestBody,
+    });
+    const res = await faucetResponse.json();
+
+    if (this.debug) {
+      console.log("Faucet Get response:", JSON.stringify(faucetRes, null, 2));
+    }
+    return res;
+  }
+
   async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 2, noFunds = false }) {
     const config = {
       configUrl: Config.networks[Config.net],

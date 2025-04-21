@@ -44,10 +44,10 @@ const typeMetadata = {
 const TENANT_OPS_KEY="tenant-ops";
 const CONTENT_OPS_KEY="content-ops";
 
-const EXPECTED_SENDER_BALANCE=1;
+const EXPECTED_SENDER_BALANCE=2.5;
 // This value must be greater than 0.1 Elv
 // (checked by elv-client-js when adding as an access group member)
-const OPS_AMOUNT=0.2;
+const OPS_AMOUNT=2;
 
 // ===================================================================
 
@@ -347,11 +347,29 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
     amount = undefined;
   }
 
-  let res = await elvTenant.TenantCreateFaucetAndFund({
-    asUrl,
-    tenantId,
-    amount,
-  });
+  let maxAttempts = 3;
+  let backoffTime = 2 * 60 * 1000; // 2 minute
+
+  let res = {};
+  for (let attempt = 0; attempt < maxAttempts; attempt++){
+    try {
+      res = await elvTenant.TenantCreateFaucetAndFund({
+        asUrl,
+        tenantId,
+        amount,
+      });
+      console.log(`Success creating faucet for ${tenantId} on attempt ${attempt}`);
+      return res;
+    } catch (err) {
+      if (attempt < maxAttempts-1) {
+        console.log(`Waiting ${backoffTime / (60 * 1000)} minutes before retrying creation of faucet funding address...`);
+        await new Promise(resolve => setTimeout(resolve, backoffTime));
+      } else {
+        console.log("All retry attempts failed for faucet funding.");
+        throw err;
+      }
+    }
+  }
 
   t.base.faucet.funding_address = res.faucet.funding_address;
   if ( "amount_transferred" in res ) {
