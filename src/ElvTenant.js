@@ -176,8 +176,10 @@ class ElvTenant {
   /**
    * Return tenant admins group and content admins group corresponding to this tenant.
    * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} asUrl - authority service URL
+   * @param {boolean} show_metadata - Enable retrieving metadata from tenant object
    */
-  async TenantShow({ tenantId, show_metadata = false }) {
+  async TenantShow({ tenantId, asUrl,  show_metadata = false }) {
     let contractType = await this.client.authClient.AccessType(tenantId);
     if (contractType !== this.client.authClient.ACCESS_TYPES.TENANT) {
       throw Error("the contract corresponding to this tenantId is not a tenant contract");
@@ -263,6 +265,17 @@ class ElvTenant {
 
     tenantInfo["tenant_root_key"] = owner;
     tenantInfo["tenant_status"] = await this.TenantStatus({tenantContractId: tenantId});
+
+    try {
+      let faucetRes = await this.TenantGetFaucet({
+        asUrl,
+        tenantId,
+      });
+      tenantInfo["faucet"] = faucetRes;
+    } catch (e) {
+      tenantInfo["faucet"] = null;
+      errors.push("faucet error: " + JSON.stringify(e));
+    }
 
     if (show_metadata) {
       let services = [];
@@ -718,6 +731,37 @@ class ElvTenant {
       commitMessage: "Set Eluvio Live object ID " + eluvioLiveId,
     });
 
+    return res;
+  }
+
+  async TenantGetFaucet({ asUrl, tenantId }) {
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: this.debug,
+    });
+    await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
+
+
+    const faucetGetTenantInfo = urljoin(eluvioLive.asUrlPath, `/faucet/get_tenant/${tenantId}`);
+    const faucetGetTenantInfoResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+      method: "GET",
+      path: faucetGetTenantInfo,
+    });
+    const res = await faucetGetTenantInfoResponse.json();
+    if (this.debug) {
+      console.log("Faucet Get response:", JSON.stringify(faucetRes, null, 2));
+    }
     return res;
   }
 

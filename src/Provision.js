@@ -44,10 +44,10 @@ const typeMetadata = {
 const TENANT_OPS_KEY="tenant-ops";
 const CONTENT_OPS_KEY="content-ops";
 
-const EXPECTED_SENDER_BALANCE=1;
+const EXPECTED_SENDER_BALANCE=2.5;
 // This value must be greater than 0.1 Elv
 // (checked by elv-client-js when adding as an access group member)
-const OPS_AMOUNT=0.2;
+const OPS_AMOUNT=2;
 
 // ===================================================================
 
@@ -347,11 +347,30 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
     amount = undefined;
   }
 
-  let res = await elvTenant.TenantCreateFaucetAndFund({
-    asUrl,
-    tenantId,
-    amount,
-  });
+  let maxAttempts = 5;
+  let baseBackoff = 15 * 1000; // start at 15s
+
+  let res = {};
+  for (let attempt = 0; attempt < maxAttempts; attempt++){
+    try {
+      res = await elvTenant.TenantCreateFaucetAndFund({
+        asUrl,
+        tenantId,
+        amount,
+      });
+      console.log(`Success creating faucet for ${tenantId} on attempt ${attempt+1}`);
+      break;
+    } catch (err) {
+      if (attempt < maxAttempts-1) {
+        let currentBackoff = baseBackoff * Math.pow(2, attempt); // exp backoff
+        console.log(`Waiting ${currentBackoff / 1000} seconds before retrying creation of faucet funding address...`);
+        await new Promise(resolve => setTimeout(resolve, currentBackoff));
+      } else {
+        console.log("All retry attempts failed for faucet funding.");
+        throw err;
+      }
+    }
+  }
 
   t.base.faucet.funding_address = res.faucet.funding_address;
   if ( "amount_transferred" in res ) {
@@ -828,6 +847,29 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
 
   if (initConfig) {
     return t;
+  }
+
+  let expectedSignerBalance = 1;
+  if (t.base.contentOpsKey === "") {
+    expectedSignerBalance+=2;
+  }
+  if (t.base.tenantOpsKey === "") {
+    expectedSignerBalance+=2;
+  }
+  if (t.base.faucet.enable) {
+    expectedSignerBalance+=2;
+  }
+
+  let elvAccount = new ElvAccount({
+    configUrl: Config.networks[Config.net],
+    debugLogging: debug
+  });
+  await elvAccount.Init({
+    privateKey: process.env.PRIVATE_KEY,
+  });
+  const signerBalance = await elvAccount.GetBalance();
+  if (signerBalance < expectedSignerBalance) {
+    throw Error(`Admin key ${await elvAccount.signer.getAddress()} have balance < ${expectedSignerBalance}Elv\nCurrent balance: ${signerBalance}`);
   }
 
   await ProvisionBase({client, kmsId, tenantId, asUrl, t, debug});
