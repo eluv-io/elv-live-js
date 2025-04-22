@@ -347,8 +347,8 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
     amount = undefined;
   }
 
-  let maxAttempts = 3;
-  let backoffTime = 2 * 60 * 1000; // 2 minute
+  let maxAttempts = 5;
+  let baseBackoff = 15 * 1000; // start at 15s
 
   let res = {};
   for (let attempt = 0; attempt < maxAttempts; attempt++){
@@ -358,12 +358,13 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
         tenantId,
         amount,
       });
-      console.log(`Success creating faucet for ${tenantId} on attempt ${attempt}`);
+      console.log(`Success creating faucet for ${tenantId} on attempt ${attempt+1}`);
       return res;
     } catch (err) {
       if (attempt < maxAttempts-1) {
-        console.log(`Waiting ${backoffTime / (60 * 1000)} minutes before retrying creation of faucet funding address...`);
-        await new Promise(resolve => setTimeout(resolve, backoffTime));
+        let currentBackoff = baseBackoff * Math.pow(2, attempt); // exp backoff
+        console.log(`Waiting ${currentBackoff / 1000} seconds before retrying creation of faucet funding address...`);
+        await new Promise(resolve => setTimeout(resolve, currentBackoff));
       } else {
         console.log("All retry attempts failed for faucet funding.");
         throw err;
@@ -846,6 +847,29 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
 
   if (initConfig) {
     return t;
+  }
+
+  let expectedSignerBalance = 1;
+  if (t.base.contentOpsKey === "") {
+    expectedSignerBalance+=2;
+  }
+  if (t.base.tenantOpsKey === "") {
+    expectedSignerBalance+=2;
+  }
+  if (t.base.faucet.enable) {
+    expectedSignerBalance+=2;
+  }
+
+  let elvAccount = new ElvAccount({
+    configUrl: Config.networks[Config.net],
+    debugLogging: debug
+  });
+  await elvAccount.Init({
+    privateKey: process.env.PRIVATE_KEY,
+  });
+  const signerBalance = await elvAccount.GetBalance();
+  if (signerBalance < expectedSignerBalance) {
+    throw Error(`Admin key ${await elvAccount.signer.getAddress()} have balance < ${expectedSignerBalance}Elv\nCurrent balance: ${signerBalance}`);
   }
 
   await ProvisionBase({client, kmsId, tenantId, asUrl, t, debug});
