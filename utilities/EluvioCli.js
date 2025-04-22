@@ -446,9 +446,9 @@ const CmdTenantShow = async ({ argv }) => {
 
     let res = await t.TenantShow({
       tenantId: argv.tenant,
+      asUrl: argv.as_url,
       show_metadata: argv.show_metadata
     });
-
     console.log(yaml.dump(res));
     if (res.errors) {
       console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
@@ -1739,6 +1739,10 @@ yargs(hideBin(process.argv))
       yargs
         .positional("tenant", {
           describe: "Tenant ID",
+          type: "string",
+        })
+        .option("as_url", {
+          describe: "Alternate authority service URL (include '/as/' route if necessary)",
           type: "string",
         })
         .option("show_metadata", {

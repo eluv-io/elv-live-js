@@ -176,8 +176,10 @@ class ElvTenant {
   /**
    * Return tenant admins group and content admins group corresponding to this tenant.
    * @param {string} tenantId - The ID of the tenant (iten***)
+   * @param {string} asUrl - authority service URL
+   * @param {boolean} show_metadata - Enable retrieving metadata from tenant object
    */
-  async TenantShow({ tenantId, show_metadata = false }) {
+  async TenantShow({ tenantId, asUrl,  show_metadata = false }) {
     let contractType = await this.client.authClient.AccessType(tenantId);
     if (contractType !== this.client.authClient.ACCESS_TYPES.TENANT) {
       throw Error("the contract corresponding to this tenantId is not a tenant contract");
@@ -263,6 +265,17 @@ class ElvTenant {
 
     tenantInfo["tenant_root_key"] = owner;
     tenantInfo["tenant_status"] = await this.TenantStatus({tenantContractId: tenantId});
+
+    try {
+      let faucetRes = await this.TenantGetFaucet({
+        asUrl,
+        tenantId,
+      });
+      tenantInfo["faucet"] = faucetRes;
+    } catch (e) {
+      tenantInfo["faucet"] = null;
+      errors.push("faucet error: " + JSON.stringify(e));
+    }
 
     if (show_metadata) {
       let services = [];
@@ -739,26 +752,13 @@ class ElvTenant {
     });
     await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
 
-    // Create TenantPathAuth token
-    let ts = Date.now();
-    const requestBody = { ts: ts };
-    let path = `/tnt/config/${tenantId}/faucet_funding?ts=${ts}`;
-    const {multiSig} = await eluvioLive.TenantSign({
-      message: JSON.stringify(path),
-    });
 
-    // Get faucet funding address
-    const faucetPath = urljoin(eluvioLive.asUrlPath, path);
-    const faucetResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+    const faucetGetTenantInfo = urljoin(eluvioLive.asUrlPath, `/faucet/get_tenant/${tenantId}`);
+    const faucetGetTenantInfoResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
       method: "GET",
-      path: faucetPath,
-      headers: {
-        Authorization: `Bearer ${multiSig}`,
-      },
-      body: requestBody,
+      path: faucetGetTenantInfo,
     });
-    const res = await faucetResponse.json();
-
+    const res = await faucetGetTenantInfoResponse.json();
     if (this.debug) {
       console.log("Faucet Get response:", JSON.stringify(faucetRes, null, 2));
     }

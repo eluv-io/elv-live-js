@@ -359,7 +359,7 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
         amount,
       });
       console.log(`Success creating faucet for ${tenantId} on attempt ${attempt+1}`);
-      return res;
+      break;
     } catch (err) {
       if (attempt < maxAttempts-1) {
         let currentBackoff = baseBackoff * Math.pow(2, attempt); // exp backoff
