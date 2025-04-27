@@ -383,6 +383,7 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
   t.base.faucet.funding_address = res.faucet.funding_address;
   if ( "amount_transferred" in res ) {
     t.base.faucet.amount_transferred = res.amount_transferred;
+    t.base.faucet.current_balance = res.current_balance;
   }
   writeConfigToFile(t);
 };

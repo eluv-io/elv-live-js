@@ -848,6 +848,7 @@ class ElvTenant {
         console.log(`Funds after transfer: Receiver=${fundingAddress}, Balance=${finalReceiverBalance}`);
       }
       res.amount_transferred = finalReceiverBalance-initialReceiverBalance;
+      res.current_balance = finalReceiverBalance;
     }
 
     return res;

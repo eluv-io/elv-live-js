@@ -52,6 +52,11 @@ class ElvSpace {
         elvClient: this.client,
       });
 
+      let initialBalance = await elvAccount.GetBalance();
+      if (initialBalance < funds){
+        throw Error(`Signer ${elvAccount.client.signer.address.toString()} has insufficient balance: ${initialBalance} Elv, require ${funds} Elv`) ;
+      }
+
       const tenantSlug = tenantName.toLowerCase().replace(/ /g, "-");
       account = await elvAccount.Create({
         funds: funds,
