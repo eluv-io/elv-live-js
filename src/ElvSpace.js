@@ -39,7 +39,7 @@ class ElvSpace {
     this.client = elvClient;
   }
 
-  async TenantCreate({ tenantName, funds = 20 }) {
+  async TenantCreate({ tenantName, funds = 51 }) {
     let account = null;
     let elvAccount = null;
     try {

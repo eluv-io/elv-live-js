@@ -328,9 +328,8 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
 
     res = await space.TenantCreate({
       tenantName: argv.tenant_name,
-      funds: argv.funds,
+      ...(argv.funds != null && {funds : argv.funds})
     });
-
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -2011,18 +2010,20 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "space_tenant_create <tenant_name> <funds>",
-    "Creates a new tenant account including all supporting access groups and deployment of contracts. PRIVATE_KEY must be set for the space owner.",
+    "space_tenant_create <tenant_name>",
+    `Creates a new tenant account including all supporting access groups and deployment of contracts. 
+      PRIVATE_KEY must be set for the space owner.
+      By default, 51 Elv is transferred to tenant root key`,
     (yargs) => {
       yargs
         .positional("tenant_name", {
           describe: "Tenant Name",
           type: "string",
         })
-        .positional("funds", {
+        .option("funds", {
           describe:
-            "How much to fund the new tenant from this private key in ETH.",
-          type: "string",
+            "funds transferred to tenant-admin key",
+          type: "integer",
         });
     },
     (argv) => {

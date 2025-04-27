@@ -765,7 +765,7 @@ class ElvTenant {
     return res;
   }
 
-  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 2, noFunds = false }) {
+  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 20, noFunds = false }) {
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
