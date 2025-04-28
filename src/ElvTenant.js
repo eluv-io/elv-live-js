@@ -765,7 +765,7 @@ class ElvTenant {
     return res;
   }
 
-  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 2, noFunds = false }) {
+  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 20, noFunds = false }) {
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
@@ -848,6 +848,7 @@ class ElvTenant {
         console.log(`Funds after transfer: Receiver=${fundingAddress}, Balance=${finalReceiverBalance}`);
       }
       res.amount_transferred = finalReceiverBalance-initialReceiverBalance;
+      res.current_balance = finalReceiverBalance;
     }
 
     return res;

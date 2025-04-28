@@ -44,10 +44,10 @@ const typeMetadata = {
 const TENANT_OPS_KEY="tenant-ops";
 const CONTENT_OPS_KEY="content-ops";
 
-const EXPECTED_SENDER_BALANCE=2.5;
-// This value must be greater than 0.1 Elv
+const EXPECTED_SENDER_BALANCE=10.5;
+// This value must be greater than 0.1 Elv for tx fee
 // (checked by elv-client-js when adding as an access group member)
-const OPS_AMOUNT=2;
+const OPS_AMOUNT=10;
 
 // ===================================================================
 
@@ -345,6 +345,13 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
   let amount;
   if (isEmptyParams(t.base.faucet.amount)) {
     amount = undefined;
+  } else {
+    amount = t.base.faucet.amount;
+  }
+
+  let noFunds = false;
+  if (!isEmptyParams(t.base.faucet.no_funds)){
+    noFunds = true;
   }
 
   let maxAttempts = 5;
@@ -356,7 +363,8 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
       res = await elvTenant.TenantCreateFaucetAndFund({
         asUrl,
         tenantId,
-        amount,
+        ...(amount != null && {amount: amount}),
+        noFunds
       });
       console.log(`Success creating faucet for ${tenantId} on attempt ${attempt+1}`);
       break;
@@ -375,6 +383,7 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
   t.base.faucet.funding_address = res.faucet.funding_address;
   if ( "amount_transferred" in res ) {
     t.base.faucet.amount_transferred = res.amount_transferred;
+    t.base.faucet.current_balance = res.current_balance;
   }
   writeConfigToFile(t);
 };
@@ -638,11 +647,11 @@ const createTenantObjectId = async ({client, t}) => {
     if (isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_TENANT])){
       throw Error(`require t.mediaWallet.liveTypes.'${TYPE_LIVE_TENANT}' to be set`);
     }
-    if (isEmptyParams(t.base.tenantOpsKey)){
-      throw Error("require t.base.tenantOpsKey set");
+    if (isEmptyParams(t.base.opsKey.tenantOps.key)){
+      throw Error("require t.base.opsKey.tenantOps.key set");
     }
-    if (isEmptyParams(t.base.contentOpsKey)){
-      throw Error("require t.base.contentOpsKey set");
+    if (isEmptyParams(t.base.opsKey.contentOps.key)){
+      throw Error("require t.base.opsKey.contentOps.key set");
     }
 
     objectName = `${TYPE_LIVE_TENANT} - ${t.base.tenantName}`;
@@ -650,9 +659,9 @@ const createTenantObjectId = async ({client, t}) => {
 
     // get ops key address
     let wallet = client.GenerateWallet();
-    let tenantOpsSigner = wallet.AddAccount({privateKey: t.base.tenantOpsKey});
+    let tenantOpsSigner = wallet.AddAccount({privateKey: t.base.opsKey.tenantOps.key});
     let tenantOpsAddr = await tenantOpsSigner.getAddress();
-    let contentOpsSigner = wallet.AddAccount({privateKey: t.base.contentOpsKey});
+    let contentOpsSigner = wallet.AddAccount({privateKey: t.base.opsKey.contentOps.key});
     let contentOpsAddr = await contentOpsSigner.getAddress();
 
 
@@ -726,10 +735,17 @@ const createSiteId = async ({client, t}) => {
 
 const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug})=>{
   let opsKey = "";
+  let opsFund = OPS_AMOUNT;
   if (opsKeyType === TENANT_OPS_KEY){
-    opsKey = t.base.tenantOpsKey;
+    opsKey = t.base.opsKey.tenantOps.key;
+    if (!isEmptyParams(t.base.opsKey.tenantOps.amount)){
+      opsFund = t.base.opsKey.tenantOps.amount;
+    }
   } else {
-    opsKey = t.base.contentOpsKey;
+    opsKey = t.base.opsKey.contentOps.key;
+    if (!isEmptyParams(t.base.opsKey.contentOps.amount)){
+      opsFund = t.base.opsKey.contentOps.amount;
+    }
   }
 
   if (opsKey === "none") {
@@ -755,7 +771,7 @@ const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug})=>
     }
 
     let res = await elvAccount.Create({
-      funds: OPS_AMOUNT,
+      funds: opsFund,
       accountName: `${t.base.tenantName}-${opsKeyType}`,
       tenantId: t.base.tenantId,
       skipAddingToTenantUserGroup: true,
@@ -766,9 +782,11 @@ const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug})=>
     console.log(`privateKey:${res.privateKey}`);
 
     if (opsKeyType === TENANT_OPS_KEY){
-      t.base.tenantOpsKey = res.privateKey;
+      t.base.opsKey.tenantOps.key = res.privateKey;
+      t.base.opsKey.tenantOps.amount_transferred = opsFund;
     } else {
-      t.base.contentOpsKey = res.privateKey;
+      t.base.opsKey.contentOps.key = res.privateKey;
+      t.base.opsKey.contentOps.amount_transferred = opsFund;
     }
     writeConfigToFile(t);
   }
@@ -790,8 +808,16 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
   if (!statusFile) {
     t = {
       base: {
-        tenantOpsKey: "",
-        contentOpsKey: "",
+        opsKey : {
+          tenantOps: {
+            key: "",
+            amount: null
+          },
+          contentOps: {
+            key: "",
+            amount: null
+          },
+        },
         groups : {
           "tenantAdminGroupAddress": "",
           "contentAdminGroupAddress": "",
@@ -815,6 +841,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
         },
         faucet: {
           "enable": true,
+          "no_funds": false,
           "funding_address": null,
           "amount": null,
         }
@@ -849,15 +876,32 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
     return t;
   }
 
-  let expectedSignerBalance = 1;
-  if (t.base.contentOpsKey === "") {
-    expectedSignerBalance+=2;
+  // minimum signer balance required
+  let expectedSignerBalance = 10;
+  // fund content ops key
+  if (t.base.opsKey.contentOps.key === "") {
+    if (!isEmptyParams(t.base.opsKey.contentOps.key)){
+      expectedSignerBalance += t.base.opsKey.contentOps.amount;
+    } else {
+      expectedSignerBalance += 10;
+    }
   }
-  if (t.base.tenantOpsKey === "") {
-    expectedSignerBalance+=2;
+  // fund tenant ops key
+  if (t.base.opsKey.tenantOps.key === "") {
+    if (!isEmptyParams(t.base.opsKey.tenantOps.key)){
+      expectedSignerBalance += t.base.opsKey.tenantOps.amount;
+    } else {
+      expectedSignerBalance += 10;
+    }
   }
+
+  // fund faucet if enabled
   if (t.base.faucet.enable) {
-    expectedSignerBalance+=2;
+    if (!isEmptyParams(t.base.faucet.amount)) {
+      expectedSignerBalance += t.base.faucet.amount;
+    } else {
+      expectedSignerBalance += 20;
+    }
   }
 
   let elvAccount = new ElvAccount({
