@@ -3262,6 +3262,85 @@ class EluvioLive {
   }
 
   /**
+   * Get actions report for the tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {string} actions - The actions to report on
+   * @param {integer} offset - The offset to start from
+   * @param {integer} count - The number of records to return
+   * @param {integer} start_ts - The start timestamp secs
+   * @param {integer} end_ts - The end timestamp secs
+   * @param {string} start_date - The ISO start date
+   * @param {string} end_date - The ISO end date
+   * @param {string} fileout - The file to write the report to
+   * @return {Promise<Object>} - The API Response containing primary sales info
+   */
+  async TenantActionsReport({   
+    tenant, 
+    actions = "nft-open,nft-buy,nft-claim,nft-redeem,nft-offer-redeem,vote-drop,nft-transfer", 
+    offset, 
+    count, 
+    start_ts,
+    end_ts,
+    start_date,
+    end_date,
+    fileout,
+    verbose = false
+  }) {
+
+    let start_ts_param = 0;
+    let end_ts_param = 0;
+
+    let headers = {};
+    let prettyPrint = true;
+    if (fileout && fileout != "") {
+      prettyPrint = false;
+    }
+
+    let validActions = ["nft-open", "nft-buy", "nft-claim", "nft-redeem", "nft-offer-redeem", "nft-transfer", "vote-drop"];
+    let actionList = actions.split(",");
+    for (let i = 0; i < actionList.length; i++) {
+      if (!validActions.includes(actionList[i])) {
+        throw new Error(`Invalid action: ${actionList[i]}`);
+      }
+    }
+
+    // use start timestamp if provided, else convert dates string to timestamps
+    if (!(start_ts)) {
+      if (verbose) {
+        console.log("start_date: ", start_date);
+        console.log("end_date: ", end_date);
+      }
+      if (start_date || end_date) {
+
+        // convert ISO date strings to timestamps in secs
+        start_ts_param = start_date ? new Date(start_date).getTime() / 1000 : 0;
+        end_ts_param = end_date ? new Date(end_date).getTime() / 1000 : 0;
+
+        if (verbose) {
+          console.log("start_ts_param: ", start_ts_param);
+          console.log("end_ts_param: ", end_ts_param);
+        }
+      } else {
+        start_ts_param = start_ts;
+        end_ts_param = end_ts;
+      }
+
+    }
+  
+    let res = await this.GetServiceRequest({
+      path: urljoin("/tnt/", tenant, "/actions"),
+      queryParams: { actions: actions, offset: offset, count: count, 
+        start_ts : start_ts_param, end_ts : end_ts_param},
+      headers
+    });
+  
+    return prettyPrint ? await res.json() : await res.text();
+  }
+  
+
+  /**
    * Get unified primary&secondary sales history for the tenant
    *
    * @namedParams
