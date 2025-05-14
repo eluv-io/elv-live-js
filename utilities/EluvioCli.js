@@ -104,6 +104,24 @@ const CmdAccountShow = async ({ argv }) => {
   }
 };
 
+const CmdAccountBalance = async ({ argv }) => {
+
+  try {
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+    let res = await elvAccount.Balance({address: argv.address});
+    console.log(res);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdGroupCreate = async ({ argv }) => {
   console.log("Group Create\n");
   console.log(`name: ${argv.name}`);
@@ -1521,7 +1539,7 @@ yargs(hideBin(process.argv))
       yargs.option("tenant", {
         describe: "Tenant contract ID (iten...)",
         type: "string",
-      })
+      });
     },
     (argv) => {
       CmdAccountSetTenantContractId({ argv });
@@ -1531,6 +1549,20 @@ yargs(hideBin(process.argv))
   .command("account_show", "Shows current account information.", (argv) => {
     CmdAccountShow({ argv });
   })
+
+  .command("account_balance <address>",
+    "Shows account balance for provided address.",
+    (yargs) => {
+      yargs
+        .positional("address", {
+          describe: "user address",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdAccountBalance({ argv });
+    }
+  )
 
   .command(
     "account_send <address> <funds>",
