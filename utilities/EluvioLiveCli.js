@@ -3066,11 +3066,15 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_provision <tenant> [options]",
-    "Provision a new tenancy with standard media libraries and content types. " +
-    "Run as the tenant root key, as created by space_tenant_create. This is a multi-step operation, " +
-    "and intermediate status is saved in the local directory in the file tenant_status.json. " +
-    "The operation can be resumed by specifying a status file, which indicates the operations " +
-    "that have already been executed.",
+    `Provision a new tenancy with standard media libraries and content types.
+    Run as the tenant root key, as created by space_tenant_create. This is a multi-step operation,
+    and intermediate status is saved in the local directory in the file tenant_status.json using --status flag.
+    The operation can be resumed by specifying a status file, which indicates the operations
+    that have already been executed.
+      Funds transferred (default):
+      * tenant ops created: 10 elv
+      * content ops created: 10 elv
+      * faucet funding address: 20 elv`,
     (yargs) => {
       yargs.positional("tenant", {
         describe: "Tenant ID",
@@ -3083,6 +3087,7 @@ yargs(hideBin(process.argv))
       yargs.option("init_config",{
         describe: "Displays the initial provisioning config, which can be used to input existing objects",
         type: "boolean",
+        default: false
       });
     },
     (argv) => {

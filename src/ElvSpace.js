@@ -39,7 +39,7 @@ class ElvSpace {
     this.client = elvClient;
   }
 
-  async TenantCreate({ tenantName, funds = 20 }) {
+  async TenantCreate({ tenantName, funds = 51 }) {
     let account = null;
     let elvAccount = null;
     try {
@@ -51,6 +51,11 @@ class ElvSpace {
       await elvAccount.InitWithClient({
         elvClient: this.client,
       });
+
+      let initialBalance = await elvAccount.GetBalance();
+      if (initialBalance < funds){
+        throw Error(`Signer ${elvAccount.client.signer.address.toString()} has insufficient balance: ${initialBalance} Elv, require ${funds} Elv`) ;
+      }
 
       const tenantSlug = tenantName.toLowerCase().replace(/ /g, "-");
       account = await elvAccount.Create({
