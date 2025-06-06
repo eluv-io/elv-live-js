@@ -1,25 +1,25 @@
 /* eslint-disable no-console */
 const fs = require("fs");
 const path = require("path");
-const { ElvUtils } = require("../src/Utils");
+const {ElvUtils} = require("../src/Utils");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
-const { ElvAccount } = require("../src/ElvAccount.js");
+const {ElvAccount} = require("../src/ElvAccount.js");
 const {Config} = require("./Config");
-const { EluvioLive } = require("../src/EluvioLive.js");
-const { ElvFabric } = require("./ElvFabric");
-const { ElvTenant } = require("./ElvTenant");
+const {EluvioLive} = require("../src/EluvioLive.js");
+const {ElvFabric} = require("./ElvFabric");
+const {ElvTenant} = require("./ElvTenant");
 
 const TYPE_LIVE_TENANT = "Media Wallet Settings";
 const TYPE_LIVE_MARKETPLACE = "Media Wallet Marketplace";
 const TYPE_LIVE_ITEM_TEMPLATE = "Item Template";
 
 const liveTypes = [
-  { name: TYPE_LIVE_MARKETPLACE, spec: require("@eluvio/elv-client-js/typeSpecs/Marketplace") },
-  { name: TYPE_LIVE_TENANT, spec: require("@eluvio/elv-client-js/typeSpecs/EventTenant") },
-  { name: TYPE_LIVE_ITEM_TEMPLATE, spec: require("@eluvio/elv-client-js/typeSpecs/NFTTemplate") }
+  {name: TYPE_LIVE_MARKETPLACE, spec: require("@eluvio/elv-client-js/typeSpecs/Marketplace")},
+  {name: TYPE_LIVE_TENANT, spec: require("@eluvio/elv-client-js/typeSpecs/EventTenant")},
+  {name: TYPE_LIVE_ITEM_TEMPLATE, spec: require("@eluvio/elv-client-js/typeSpecs/NFTTemplate")}
 ];
 
-const STANDARD_DRM_CERT={
+const STANDARD_DRM_CERT = {
   elv: {
     media: {
       drm: {
@@ -30,7 +30,7 @@ const STANDARD_DRM_CERT={
     }
   }
 };
-let OUTPUT_FILE="./tenant_status.json";
+let OUTPUT_FILE = "./tenant_status.json";
 
 const typeMetadata = {
   bitcode_flags: "abrmaster",
@@ -41,13 +41,13 @@ const typeMetadata = {
   }
 };
 
-const TENANT_OPS_KEY="tenant-ops";
-const CONTENT_OPS_KEY="content-ops";
+const TENANT_OPS_KEY = "tenant-ops";
+const CONTENT_OPS_KEY = "content-ops";
 
-const EXPECTED_SENDER_BALANCE=10.5;
+const EXPECTED_SENDER_BALANCE = 10.5;
 // This value must be greater than 0.1 Elv for tx fee
 // (checked by elv-client-js when adding as an access group member)
-const OPS_AMOUNT=10;
+const OPS_AMOUNT = 10;
 
 // ===================================================================
 
@@ -55,7 +55,7 @@ const isEmptyParams = (value) => {
   return value === null || value === "" || value === false || value === "none";
 };
 
-const writeConfigToFile= (config) => {
+const writeConfigToFile = (config) => {
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(config, null, 2));
 };
 
@@ -113,44 +113,60 @@ const checkSignerTenantAccess = async ({client, tenantId}) => {
 
 const SetLibraryPermissions = async (client, libraryId, t) => {
 
-  if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)){
+  if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)) {
     throw Error("require tenantAdminGroupAddress to be set");
   }
-  if (isEmptyParams(t.base.groups.contentAdminGroupAddress)){
+  if (isEmptyParams(t.base.groups.contentAdminGroupAddress)) {
     throw Error("require contentAdminGroupAddress to be set");
   }
 
   const promises = [
     // Tenant admins
-    client.AddContentObjectGroupPermission({objectId: libraryId, groupAddress: t.base.groups.tenantAdminGroupAddress, permission: "manage"}),
+    client.AddContentObjectGroupPermission({
+      objectId: libraryId,
+      groupAddress: t.base.groups.tenantAdminGroupAddress,
+      permission: "manage"
+    }),
 
     // Content admins
-    client.AddContentObjectGroupPermission({objectId: libraryId, groupAddress: t.base.groups.contentAdminGroupAddress, permission: "manage"}),
+    client.AddContentObjectGroupPermission({
+      objectId: libraryId,
+      groupAddress: t.base.groups.contentAdminGroupAddress,
+      permission: "manage"
+    }),
   ];
   await Promise.all(promises);
 };
 
 const SetObjectPermissions = async (client, objectId, t) => {
 
-  if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)){
+  if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)) {
     throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
   }
-  if (isEmptyParams(t.base.groups.contentAdminGroupAddress)){
+  if (isEmptyParams(t.base.groups.contentAdminGroupAddress)) {
     throw Error("require t.base.groups.contentAdminGroupAddress to be set");
   }
 
   const promises = [
     // Tenant admins
-    client.AddContentObjectGroupPermission({objectId, groupAddress: t.base.groups.tenantAdminGroupAddress, permission: "manage"}),
+    client.AddContentObjectGroupPermission({
+      objectId,
+      groupAddress: t.base.groups.tenantAdminGroupAddress,
+      permission: "manage"
+    }),
 
     // Content admins
-    client.AddContentObjectGroupPermission({objectId, groupAddress: t.base.groups.contentAdminGroupAddress, permission: "manage"}),
+    client.AddContentObjectGroupPermission({
+      objectId,
+      groupAddress: t.base.groups.contentAdminGroupAddress,
+      permission: "manage"
+    }),
   ];
   await Promise.all(promises);
 };
 
 const SetTenantEluvioLiveId = async ({client, t}) => {
-  if (isEmptyParams(t.base.tenantId)){
+  if (isEmptyParams(t.base.tenantId)) {
     throw Error("require t.base.tenantId to be set");
   }
 
@@ -160,7 +176,7 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
     isEmptyParams(t.base.tenantTypes.masterTypeId) &&
     isEmptyParams(t.base.tenantTypes.streamTypeId) &&
     isEmptyParams(t.liveStreaming.siteId)
-  ){
+  ) {
     return;
   }
 
@@ -169,7 +185,7 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
   const objectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr});
 
   try {
-    const editResponse = await client.EditContentObject({ libraryId, objectId });
+    const editResponse = await client.EditContentObject({libraryId, objectId});
 
     if (!isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_TENANT])) {
       await client.ReplaceMetadata({
@@ -207,7 +223,7 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
         objectId,
         writeToken: editResponse.write_token,
         metadataSubtree: "public/sites",
-        metadata: { live_streams: t.liveStreaming.siteId },
+        metadata: {live_streams: t.liveStreaming.siteId},
       });
     }
 
@@ -225,7 +241,7 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
 };
 
 
-const getTenantGroups = async ({client,tenantId, t}) => {
+const getTenantGroups = async ({client, tenantId, t}) => {
   const tenantAddr = Utils.HashToAddress(tenantId);
   const abi = fs.readFileSync(
     path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
@@ -235,7 +251,7 @@ const getTenantGroups = async ({client,tenantId, t}) => {
     contractAddress: tenantAddr,
     abi: JSON.parse(abi),
     methodName: "groupsMapping",
-    methodArgs : ["tenant_admin", 0],
+    methodArgs: ["tenant_admin", 0],
     formatArguments: true,
   });
   t.base.groups.contentAdminGroupAddress = await client.CallContractMethod({
@@ -268,7 +284,7 @@ const getTenantGroups = async ({client,tenantId, t}) => {
   }
 };
 
-const setGroupPermission = async ({client,t}) => {
+const setGroupPermission = async ({client, t}) => {
   if (!t.base.groups.tenantAdminGroupAddress) {
     throw Error(`t.base.groups.tenantAdminGroupAddress not set for ${tenantId}`);
   }
@@ -312,7 +328,7 @@ const setTenantPublishPrivate = async ({tenantId, asUrl, t, debug}) => {
     asUrl
   });
 
-  if (isEmptyParams(t.base.publish.env)){
+  if (isEmptyParams(t.base.publish.env)) {
     t.base.publish.env = "production";
   }
 
@@ -326,7 +342,7 @@ const setTenantPublishPrivate = async ({tenantId, asUrl, t, debug}) => {
   if (res.response.updated_tenant_hash) {
     t.base.publish.updatedTenantHash = res.response.updated_tenant_hash;
   }
-  if (res.response.warnings && res.response.warnings.length > 0){
+  if (res.response.warnings && res.response.warnings.length > 0) {
     t.base.publish.warnings = res.response.warnings;
   }
   writeConfigToFile(t);
@@ -338,7 +354,7 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
     configUrl: Config.networks[Config.net],
     debugLogging: debug,
   });
-  await elvTenant.Init({ privateKey: process.env.PRIVATE_KEY });
+  await elvTenant.Init({privateKey: process.env.PRIVATE_KEY});
 
   let amount;
   if (isEmptyParams(t.base.faucet.amount)) {
@@ -348,7 +364,7 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
   }
 
   let noFunds = false;
-  if (!isEmptyParams(t.base.faucet.no_funds)){
+  if (!isEmptyParams(t.base.faucet.no_funds)) {
     noFunds = true;
   }
 
@@ -356,7 +372,7 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
   let baseBackoff = 15 * 1000; // start at 15s
 
   let res = {};
-  for (let attempt = 0; attempt < maxAttempts; attempt++){
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       res = await elvTenant.TenantCreateFaucetAndFund({
         asUrl,
@@ -364,10 +380,10 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
         ...(amount != null && {amount: amount}),
         noFunds
       });
-      console.log(`Success creating faucet for ${tenantId} on attempt ${attempt+1}`);
+      console.log(`Success creating faucet for ${tenantId} on attempt ${attempt + 1}`);
       break;
     } catch (err) {
-      if (attempt < maxAttempts-1) {
+      if (attempt < maxAttempts - 1) {
         let currentBackoff = baseBackoff * Math.pow(2, attempt); // exp backoff
         console.log(`Waiting ${currentBackoff / 1000} seconds before retrying creation of faucet funding address...`);
         await new Promise(resolve => setTimeout(resolve, currentBackoff));
@@ -379,7 +395,7 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
   }
 
   t.base.faucet.funding_address = res.faucet.funding_address;
-  if ( "amount_transferred" in res ) {
+  if ("amount_transferred" in res) {
     t.base.faucet.amount_transferred = res.amount_transferred;
     t.base.faucet.current_balance = res.current_balance;
   }
@@ -388,30 +404,33 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
 
 
 /* Create libraries - Properties, Title Masters, Title Mezzanines and add each to the groups */
-const createLibrariesAndSetPermissions = async({client, kmsId, t}) => {
-  if (isEmptyParams(t.base.tenantName)){
+const createLibrariesAndSetPermissions = async ({client, kmsId, t}) => {
+  if (isEmptyParams(t.base.tenantName)) {
     throw Error("require t.base.tenantName to be set");
   }
 
   // Create libraries and set permissions
   const createLibrary = async ({name, metadata}) => {
-    const libraryId = await client.CreateContentLibrary({ name, kmsId, metadata });
+    const libraryId = await client.CreateContentLibrary({name, kmsId, metadata});
     await SetLibraryPermissions(client, libraryId, t);
     return libraryId;
   };
 
   if (!t.base.libraries.propertiesLibraryId) {
-    t.base.libraries.propertiesLibraryId = await createLibrary({ name: `${t.base.tenantName} - Properties`});
+    t.base.libraries.propertiesLibraryId = await createLibrary({name: `${t.base.tenantName} - Properties`});
     writeConfigToFile(t);
   }
 
   if (!t.base.libraries.mastersLibraryId) {
-    t.base.libraries.mastersLibraryId = await createLibrary({ name: `${t.base.tenantName} - Title Masters`});
+    t.base.libraries.mastersLibraryId = await createLibrary({name: `${t.base.tenantName} - Title Masters`});
     writeConfigToFile(t);
   }
 
   if (!t.base.libraries.mezzanineLibraryId) {
-    t.base.libraries.mezzanineLibraryId = await createLibrary({name: `${t.base.tenantName} - Title Mezzanines`, metadata: STANDARD_DRM_CERT});
+    t.base.libraries.mezzanineLibraryId = await createLibrary({
+      name: `${t.base.tenantName} - Title Mezzanines`,
+      metadata: STANDARD_DRM_CERT
+    });
     writeConfigToFile(t);
   }
 
@@ -421,7 +440,7 @@ const createLibrariesAndSetPermissions = async({client, kmsId, t}) => {
 
 // helper function to create and set permissions for content types
 const createContentTypeAndSetPermissions = async ({client, name, metadata, t}) => {
-  const typeId = await client.CreateContentType({ name, metadata });
+  const typeId = await client.CreateContentType({name, metadata});
   await SetObjectPermissions(client, typeId, t);
   return typeId;
 };
@@ -436,59 +455,83 @@ const createTenantTypes = async ({client, t}) => {
     }
   };
 
-  if (isEmptyParams(t.base.tenantName)){
+  if (isEmptyParams(t.base.tenantName)) {
     throw Error("require t.base.tenantName to be set");
   }
 
   if (!t.base.tenantTypes.titleTypeId) {
     const mdata = JSON.parse(JSON.stringify(typeMetadata));
-    t.base.tenantTypes.titleTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title`, metadata: mdata, t});
+    t.base.tenantTypes.titleTypeId = await createContentTypeAndSetPermissions({
+      client,
+      name: `${t.base.tenantName} - Title`,
+      metadata: mdata,
+      t
+    });
     writeConfigToFile(t);
   }
 
   if (!t.base.tenantTypes.titleCollectionTypeId) {
     const mdata = JSON.parse(JSON.stringify(typeMetadata));
-    t.base.tenantTypes.titleCollectionTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title Collection`, metadata: mdata, t});
+    t.base.tenantTypes.titleCollectionTypeId = await createContentTypeAndSetPermissions({
+      client,
+      name: `${t.base.tenantName} - Title Collection`,
+      metadata: mdata,
+      t
+    });
     writeConfigToFile(t);
   }
 
   if (!t.base.tenantTypes.masterTypeId) {
-    t.base.tenantTypes.masterTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Title Master`, metadata: masterMetadata, t });
+    t.base.tenantTypes.masterTypeId = await createContentTypeAndSetPermissions({
+      client,
+      name: `${t.base.tenantName} - Title Master`,
+      metadata: masterMetadata,
+      t
+    });
     writeConfigToFile(t);
   }
 
   if (!t.base.tenantTypes.permissionsTypeId) {
     const mdata = JSON.parse(JSON.stringify(typeMetadata));
-    t.base.tenantTypes.permissionsTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Permissions`, metadata: { ...mdata, public: { "eluv.manageApp": "avails-manager" } }, t });
+    t.base.tenantTypes.permissionsTypeId = await createContentTypeAndSetPermissions({
+      client,
+      name: `${t.base.tenantName} - Permissions`,
+      metadata: {...mdata, public: {"eluv.manageApp": "avails-manager"}},
+      t
+    });
     writeConfigToFile(t);
   }
 
   if (!t.base.tenantTypes.channelTypeId) {
     const mdata = JSON.parse(JSON.stringify(typeMetadata));
-    t.base.tenantTypes.channelTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Channel`, metadata:{
-      ...mdata,
-      public: {
-        ...mdata.public,
-        title_configuration: {
-          "controls": ["credits", "playlists", "gallery", "channel"],
+    t.base.tenantTypes.channelTypeId = await createContentTypeAndSetPermissions({
+      client, name: `${t.base.tenantName} - Channel`, metadata: {
+        ...mdata,
+        public: {
+          ...mdata.public,
+          title_configuration: {
+            "controls": ["credits", "playlists", "gallery", "channel"],
+          },
         },
-      },
-    }, t });
+      }, t
+    });
     writeConfigToFile(t);
   }
 
   if (!t.base.tenantTypes.streamTypeId) {
     const mdata = JSON.parse(JSON.stringify(typeMetadata));
-    t.base.tenantTypes.streamTypeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - Live Stream`, metadata:{
-      bitcode_flags: "playout_live",
-      bitcode_format: "builtin",
-      public: {
-        ...mdata.public,
-        title_configuration: {
-          "controls": ["credits", "gallery", "live_stream"],
+    t.base.tenantTypes.streamTypeId = await createContentTypeAndSetPermissions({
+      client, name: `${t.base.tenantName} - Live Stream`, metadata: {
+        bitcode_flags: "playout_live",
+        bitcode_format: "builtin",
+        public: {
+          ...mdata.public,
+          title_configuration: {
+            "controls": ["credits", "gallery", "live_stream"],
+          },
         },
-      },
-    }, t });
+      }, t
+    });
     writeConfigToFile(t);
   }
 
@@ -497,7 +540,7 @@ const createTenantTypes = async ({client, t}) => {
 };
 
 const createLiveTypes = async ({client, t}) => {
-  if (isEmptyParams(t.base.tenantName)){
+  if (isEmptyParams(t.base.tenantName)) {
     throw Error("require t.base.tenantName to be set");
   }
   if (!t.mediaWallet.liveTypes) {
@@ -508,13 +551,15 @@ const createLiveTypes = async ({client, t}) => {
     if (t.mediaWallet.liveTypes[liveTypes[i].name]) continue;
 
     const mdata = JSON.parse(JSON.stringify(typeMetadata));
-    const typeId = await createContentTypeAndSetPermissions({client, name:`${t.base.tenantName} - ${liveTypes[i].name}`, metadata:{
-      ...mdata,
-      public: {
-        ...mdata.public,
-        title_configuration: liveTypes[i].spec
-      }
-    }, t });
+    const typeId = await createContentTypeAndSetPermissions({
+      client, name: `${t.base.tenantName} - ${liveTypes[i].name}`, metadata: {
+        ...mdata,
+        public: {
+          ...mdata.public,
+          title_configuration: liveTypes[i].spec
+        }
+      }, t
+    });
 
     console.log(`\t${t.base.tenantName} - ${liveTypes[i].name}: ${typeId}`);
     t.mediaWallet.liveTypes[liveTypes[i].name] = typeId;
@@ -526,7 +571,7 @@ const createLiveTypes = async ({client, t}) => {
 
 const createMarketplaceId = async ({client, t}) => {
 
-  if (isEmptyParams(t.base.tenantName)){
+  if (isEmptyParams(t.base.tenantName)) {
     throw Error("require t.base.tenantName to be set");
   }
   objectName = `${TYPE_LIVE_MARKETPLACE} - ${t.base.tenantName}`;
@@ -534,22 +579,22 @@ const createMarketplaceId = async ({client, t}) => {
   /* Create a marketplace object */
   if (!t.mediaWallet.objects.marketplaceId) {
 
-    if (isEmptyParams(t.base.tenantId)){
+    if (isEmptyParams(t.base.tenantId)) {
       throw Error("require t.base.tenantId to be set");
     }
-    if (isEmptyParams(t.base.tenantSlug)){
+    if (isEmptyParams(t.base.tenantSlug)) {
       throw Error("require t.base.tenantSlug to be set");
     }
-    if (isEmptyParams(t.base.libraries.propertiesLibraryId)){
+    if (isEmptyParams(t.base.libraries.propertiesLibraryId)) {
       throw Error("require t.base.libraries.propertiesLibraryId to be set");
     }
-    if (isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_MARKETPLACE])){
+    if (isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_MARKETPLACE])) {
       throw Error(`require t.mediaWallet.liveTypes.'${TYPE_LIVE_MARKETPLACE}' to be set`);
     }
-    if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)){
+    if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)) {
       throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
     }
-    if (isEmptyParams(t.base.groups.contentAdminGroupAddress)){
+    if (isEmptyParams(t.base.groups.contentAdminGroupAddress)) {
       throw Error("require t.base.groups.contentAdminGroupAddress to be set");
     }
 
@@ -568,10 +613,12 @@ const createMarketplaceId = async ({client, t}) => {
       }
     };
 
-    t.mediaWallet.objects.marketplaceId = await CreateFabricObject({client,
+    t.mediaWallet.objects.marketplaceId = await CreateFabricObject({
+      client,
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.mediaWallet.liveTypes[TYPE_LIVE_MARKETPLACE],
-      publicMetadata, t });
+      publicMetadata, t
+    });
 
     writeConfigToFile(t);
   }
@@ -586,10 +633,10 @@ const createMarketplaceId = async ({client, t}) => {
 };
 
 const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, privateMetadata, t}) => {
-  if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)){
+  if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)) {
     throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
   }
-  if (isEmptyParams(t.base.groups.contentAdminGroupAddress)){
+  if (isEmptyParams(t.base.groups.contentAdminGroupAddress)) {
     throw Error("require t.base.groups.contentAdminGroupAddress to be set");
   }
 
@@ -606,7 +653,7 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, pr
     metadata: publicMetadata
   });
 
-  if (privateMetadata){
+  if (privateMetadata) {
     await client.MergeMetadata({
       libraryId,
       objectId: id,
@@ -621,7 +668,8 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, pr
   await client.SetPermission({
     objectId: id,
     writeToken: write_token,
-    permission: "editable"});
+    permission: "editable"
+  });
 
   await client.FinalizeContentObject({
     libraryId,
@@ -638,28 +686,28 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, pr
 const createTenantObjectId = async ({client, t}) => {
   if (!t.mediaWallet.objects.tenantObjectId) {
 
-    if (isEmptyParams(t.base.tenantName)){
+    if (isEmptyParams(t.base.tenantName)) {
       throw Error("require t.base.tenantName to be set");
     }
-    if (isEmptyParams(t.base.tenantId)){
+    if (isEmptyParams(t.base.tenantId)) {
       throw Error("require t.base.tenantId to be set");
     }
-    if (isEmptyParams(t.base.tenantSlug)){
+    if (isEmptyParams(t.base.tenantSlug)) {
       throw Error("require t.base.tenantSlug to be set");
     }
-    if (isEmptyParams(t.mediaWallet.objects.marketplaceHash)){
+    if (isEmptyParams(t.mediaWallet.objects.marketplaceHash)) {
       throw Error("require t.mediaWallet.objects.marketplaceHash to be set");
     }
-    if (isEmptyParams(t.base.libraries.propertiesLibraryId)){
+    if (isEmptyParams(t.base.libraries.propertiesLibraryId)) {
       throw Error("require t.base.libraries.propertiesLibraryId to be set");
     }
-    if (isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_TENANT])){
+    if (isEmptyParams(t.mediaWallet.liveTypes[TYPE_LIVE_TENANT])) {
       throw Error(`require t.mediaWallet.liveTypes.'${TYPE_LIVE_TENANT}' to be set`);
     }
-    if (isEmptyParams(t.base.opsKey.tenantOps.key)){
+    if (isEmptyParams(t.base.opsKey.tenantOps.key)) {
       throw Error("require t.base.opsKey.tenantOps.key set");
     }
-    if (isEmptyParams(t.base.opsKey.contentOps.key)){
+    if (isEmptyParams(t.base.opsKey.contentOps.key)) {
       throw Error("require t.base.opsKey.contentOps.key set");
     }
 
@@ -689,9 +737,9 @@ const createTenantObjectId = async ({client, t}) => {
           }
         },
         slug: t.base.tenantSlug,
-        marketplaces:{
+        marketplaces: {
           [`${t.base.tenantSlug}-marketplace`]: {
-            "/":`/qfab/${t.mediaWallet.objects.marketplaceHash}/meta/public/asset_metadata`,
+            "/": `/qfab/${t.mediaWallet.objects.marketplaceHash}/meta/public/asset_metadata`,
             "order": 0
           }
         },
@@ -708,7 +756,8 @@ const createTenantObjectId = async ({client, t}) => {
       client,
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.mediaWallet.liveTypes[TYPE_LIVE_TENANT],
-      publicMetadata, privateMetadata, t });
+      publicMetadata, privateMetadata, t
+    });
 
     writeConfigToFile(t);
 
@@ -719,10 +768,10 @@ const createTenantObjectId = async ({client, t}) => {
 
 const createSiteId = async ({client, t}) => {
   if (!t.liveStreaming.siteId) {
-    if (isEmptyParams(t.base.libraries.propertiesLibraryId)){
+    if (isEmptyParams(t.base.libraries.propertiesLibraryId)) {
       throw Error("require t.base.libraries.propertiesLibraryId to be set");
     }
-    if (isEmptyParams(t.base.tenantTypes.titleCollectionTypeId)){
+    if (isEmptyParams(t.base.tenantTypes.titleCollectionTypeId)) {
       throw Error("require t.base.tenantTypes.titleCollectionTypeId to be set");
     }
 
@@ -740,26 +789,28 @@ const createSiteId = async ({client, t}) => {
       }
     };
 
-    t.liveStreaming.siteId = await CreateFabricObject({client,
+    t.liveStreaming.siteId = await CreateFabricObject({
+      client,
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.base.tenantTypes.titleCollectionTypeId,
-      publicMetadata, t });
+      publicMetadata, t
+    });
     console.log("\nSite Live Streams Object", t.liveStreaming.siteId);
     writeConfigToFile(t);
   }
 };
 
-const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug})=>{
+const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug}) => {
   let opsKey = "";
   let opsFund = OPS_AMOUNT;
-  if (opsKeyType === TENANT_OPS_KEY){
+  if (opsKeyType === TENANT_OPS_KEY) {
     opsKey = t.base.opsKey.tenantOps.key;
-    if (!isEmptyParams(t.base.opsKey.tenantOps.amount)){
+    if (!isEmptyParams(t.base.opsKey.tenantOps.amount)) {
       opsFund = t.base.opsKey.tenantOps.amount;
     }
   } else {
     opsKey = t.base.opsKey.contentOps.key;
-    if (!isEmptyParams(t.base.opsKey.contentOps.amount)){
+    if (!isEmptyParams(t.base.opsKey.contentOps.amount)) {
       opsFund = t.base.opsKey.contentOps.amount;
     }
   }
@@ -797,7 +848,7 @@ const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug})=>
     console.log(`address:${res.address}`);
     console.log(`privateKey:${res.privateKey}`);
 
-    if (opsKeyType === TENANT_OPS_KEY){
+    if (opsKeyType === TENANT_OPS_KEY) {
       t.base.opsKey.tenantOps.key = res.privateKey;
       t.base.opsKey.tenantOps.amount_transferred = opsFund;
     } else {
@@ -811,14 +862,24 @@ const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug})=>
 let readJsonFile = (filepath) => {
   let data = fs.readFileSync(filepath, "utf-8");
   if (data.trim() === "") {
-    throw Error ("JSON file is empty");
+    throw Error("JSON file is empty");
   }
   return JSON.parse(data);
 };
 
 // ===============================================================================================
 
-const InitializeTenant = async ({client, kmsId, tenantId, tenantSlug, tenantName, asUrl, statusFile, initConfig, debug=false}) => {
+const InitializeTenant = async ({
+  client,
+  kmsId,
+  tenantId,
+  tenantSlug,
+  tenantName,
+  asUrl,
+  statusFile,
+  initConfig,
+  debug = false
+}) => {
 
   let t;
   if (!statusFile) {
@@ -826,7 +887,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, tenantSlug, tenantName
       base: {
         tenantName: "",
         tenantSlug: "",
-        opsKey : {
+        opsKey: {
           tenantOps: {
             key: "",
             amount: null
@@ -836,7 +897,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, tenantSlug, tenantName
             amount: null
           },
         },
-        groups : {
+        groups: {
           "tenantAdminGroupAddress": "",
           "contentAdminGroupAddress": "",
           "tenantUsersGroupAddress": ""
@@ -894,13 +955,13 @@ const InitializeTenant = async ({client, kmsId, tenantId, tenantSlug, tenantName
     return t;
   }
 
-  if (!tenantSlug){
+  if (!tenantSlug) {
     throw Error("Tenant Slug not provided");
   }
   t.base.tenantSlug = tenantSlug.toLowerCase().replace(/ /g, "-");
 
-  if (!tenantName){
-    tenantName=tenantSlug;
+  if (!tenantName) {
+    tenantName = tenantSlug;
   }
   t.base.tenantName = tenantName;
 
@@ -908,7 +969,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, tenantSlug, tenantName
   let expectedSignerBalance = 10;
   // fund content ops key
   if (t.base.opsKey.contentOps.key === "") {
-    if (!isEmptyParams(t.base.opsKey.contentOps.key)){
+    if (!isEmptyParams(t.base.opsKey.contentOps.key)) {
       expectedSignerBalance += t.base.opsKey.contentOps.amount;
     } else {
       expectedSignerBalance += 10;
@@ -916,7 +977,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, tenantSlug, tenantName
   }
   // fund tenant ops key
   if (t.base.opsKey.tenantOps.key === "") {
-    if (!isEmptyParams(t.base.opsKey.tenantOps.key)){
+    if (!isEmptyParams(t.base.opsKey.tenantOps.key)) {
       expectedSignerBalance += t.base.opsKey.tenantOps.amount;
     } else {
       expectedSignerBalance += 10;
@@ -962,7 +1023,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, tenantSlug, tenantName
   return t;
 };
 
-const ProvisionBase = async ({client, kmsId, tenantId, asUrl, t, debug }) => {
+const ProvisionBase = async ({client, kmsId, tenantId, asUrl, t, debug}) => {
   await checkSignerTenantAccess({client, tenantId});
 
   t.base.tenantId = tenantId;
@@ -982,26 +1043,26 @@ const ProvisionBase = async ({client, kmsId, tenantId, asUrl, t, debug }) => {
   });
   console.log(`tenant_id: ${tenantAdminGroup} set on tenant metadata`);
 
-  await getTenantGroups({client,tenantId, t});
+  await getTenantGroups({client, tenantId, t});
   await createLibrariesAndSetPermissions({client, kmsId, t});
   await createTenantTypes({client, t});
   await setGroupPermission({client, t});
   await setTenantPublishPrivate({tenantId, asUrl, t, debug});
 };
 
-const ProvisionLiveStreaming = async({client, tenantId, t}) => {
+const ProvisionLiveStreaming = async ({client, tenantId, t}) => {
   await checkSignerTenantAccess({client, tenantId});
   await createSiteId({client, t});
 };
 
-const ProvisionMediaWallet = async({client, tenantId, t}) => {
+const ProvisionMediaWallet = async ({client, tenantId, t}) => {
   await checkSignerTenantAccess({client, tenantId});
   await createLiveTypes({client, t});
   await createMarketplaceId({client, t});
   await createTenantObjectId({client, t});
 };
 
-const ProvisionOps = async({client, tenantId, t, debug= false}) => {
+const ProvisionOps = async ({client, tenantId, t, debug = false}) => {
   await checkSignerTenantAccess({client, tenantId});
 
   if (!t.base.groups.tenantAdminGroupAddress) {
@@ -1039,7 +1100,7 @@ const ProvisionOps = async({client, tenantId, t, debug= false}) => {
   });
 };
 
-const ProvisionFaucet = async({tenantId, asUrl, t, debug = false}) => {
+const ProvisionFaucet = async ({tenantId, asUrl, t, debug = false}) => {
   if (t.base.faucet.enable) {
     await handleTenantFaucet({tenantId, asUrl, t, debug});
   }
@@ -1055,10 +1116,10 @@ const AddConsumerGroup = async ({client, tenantAddress, debug = false}) => {
   let consumerGroupContract = await ElvUtils.DeployContractFile({
     client,
     fileName: "BaseTenantConsumerGroup",
-    args:[tenantAddress]
+    args: [tenantAddress]
   });
 
-  if (debug){
+  if (debug) {
     console.log("ConsumerGroup: ", consumerGroupContract);
   }
 
