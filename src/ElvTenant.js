@@ -277,6 +277,17 @@ class ElvTenant {
       errors.push("faucet error: " + JSON.stringify(e));
     }
 
+    try {
+      let sharingRes = await this.TenantGetSharingKey({
+        asUrl,
+        tenantId,
+      });
+      tenantInfo["sharing"] = sharingRes;
+    } catch (e) {
+      tenantInfo["sharing"] = null;
+      errors.push("sharing key error: " + JSON.stringify(e));
+    }
+
     if (show_metadata) {
       let services = [];
       let tenantObjectId = ElvUtils.AddressToId({prefix: "iq__", address: tenantAddr});
@@ -292,7 +303,6 @@ class ElvTenant {
         if (liveId["public"]) {
           services.push(liveId["public"]);
         }
-
       } catch (e) {
         console.log(e);
         errors.push("Encountered an error when getting metadata for the eluvio_live_id service");
@@ -759,6 +769,7 @@ class ElvTenant {
       path: faucetGetTenantInfo,
     });
     const res = await faucetGetTenantInfoResponse.json();
+
     if (this.debug) {
       console.log("Faucet Get response:", JSON.stringify(faucetRes, null, 2));
     }
@@ -785,7 +796,7 @@ class ElvTenant {
 
     var res = {};
     // Create BaseTenantAuth token
-    const requestBody = { ts: Date.now() };
+    const requestBody = { ts: Date.now()};
     const { multiSig } = await eluvioLive.TenantSign({
       message: JSON.stringify(requestBody),
     });
@@ -851,6 +862,93 @@ class ElvTenant {
       res.current_balance = finalReceiverBalance;
     }
 
+    return res;
+  }
+
+  async TenantGetSharingKey({ asUrl, tenantId }) {
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: this.debug,
+    });
+    await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
+
+    let ts = Date.now();
+    let params = {ts};
+    const paramString = new URLSearchParams(params).toString();
+    let path=`/sharing/tnt/config/${tenantId}/sharing`;
+
+    let newPath = path + "?" + paramString;
+
+    const { multiSig } = await eluvioLive.TenantSign({
+      message: newPath,
+    });
+    if (this.debug) {
+      console.log(`Authorization: Bearer ${multiSig}`);
+    }
+
+    const sharingKeyGetTenantInfoUrl = urljoin(eluvioLive.asUrlPath, path);
+    const sharingKeyGetTenantInfoResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+      method: "GET",
+      path: sharingKeyGetTenantInfoUrl,
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+      queryParams: {ts},
+    });
+    const res = await sharingKeyGetTenantInfoResponse.json();
+    if (this.debug) {
+      console.log("Sharing Service Get response:", JSON.stringify(faucetRes, null, 2));
+    }
+    return res;
+  }
+
+  async TenantCreateSharingKey({ asUrl, tenantId }) {
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: this.debug,
+    });
+    await elvAccount.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    var res = {};
+    // Create BaseTenantAuth token
+    const requestBody = { ts: Date.now()};
+    const { multiSig } = await eluvioLive.TenantSign({
+      message: JSON.stringify(requestBody),
+    });
+
+    // Create/Get sharing key address
+    const sharingKeyPath =  urljoin(eluvioLive.asUrlPath,`/sharing/tnt/config/${tenantId}/sharing`);
+    const sharingKeyRes = await eluvioLive.client.authClient.MakeAuthServiceRequest({
+      method: "POST",
+      path: sharingKeyPath,
+      body: requestBody,
+      headers: {
+        Authorization: `Bearer ${multiSig}`,
+      },
+    });
+    res.sharing = await sharingKeyRes.json();
     return res;
   }
 
