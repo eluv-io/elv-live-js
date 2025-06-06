@@ -1337,6 +1337,7 @@ const CmdASNftRedeemOffer = async ({ argv }) => {
 const CmdTenantProvision = async ({ argv }) => {
   console.log("Tenant Provision");
   console.log(`Tenant ID: ${argv.tenant}`);
+  console.log(`Tenant Slug: ${argv.slug}`);
   console.log(`verbose: ${argv.verbose}`);
   console.log(`status: ${argv.status}`);
   console.log(`init-config: ${argv.init_config}`);
@@ -1354,6 +1355,8 @@ const CmdTenantProvision = async ({ argv }) => {
       client,
       kmsId,
       tenantId: argv.tenant,
+      tenantSlug: argv.slug,
+      tenantName: argv.name,
       asUrl: argv.as_url,
       statusFile: argv.status,
       initConfig: argv.init_config,
@@ -3065,7 +3068,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "tenant_provision <tenant> [options]",
+    "tenant_provision <tenant> <slug> [options]",
     `Provision a new tenancy with standard media libraries and content types.
     Run as the tenant root key, as created by space_tenant_create. This is a multi-step operation,
     and intermediate status is saved in the local directory in the file tenant_status.json using --status flag.
@@ -3080,6 +3083,14 @@ yargs(hideBin(process.argv))
         describe: "Tenant ID",
         type: "string",
       });
+      yargs.positional("slug", {
+        describe: "Tenant Slug",
+        type: "string",
+      });
+      yargs.option("name", {
+        describe: "Tenant name",
+        type: "string"
+      })
       yargs.option("status",{
         describe: "Path to the JSON File for existing tenant provision config",
         type: "string",
