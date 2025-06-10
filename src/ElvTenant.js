@@ -886,7 +886,7 @@ class ElvTenant {
     let ts = Date.now();
     let params = {ts};
     const paramString = new URLSearchParams(params).toString();
-    let path=`/sharing/tnt/config/${tenantId}/sharing`;
+    let path=`/tnt/config/${tenantId}/sharing`;
 
     let newPath = path + "?" + paramString;
 
@@ -939,7 +939,7 @@ class ElvTenant {
     });
 
     // Create/Get sharing key address
-    const sharingKeyPath =  urljoin(eluvioLive.asUrlPath,`/sharing/tnt/config/${tenantId}/sharing`);
+    const sharingKeyPath =  urljoin(eluvioLive.asUrlPath,`/tnt/config/${tenantId}/sharing`);
     const sharingKeyRes = await eluvioLive.client.authClient.MakeAuthServiceRequest({
       method: "POST",
       path: sharingKeyPath,
