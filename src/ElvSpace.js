@@ -118,7 +118,7 @@ class ElvSpace {
       };
 
       let tenant = await this.TenantDeploy({
-        tenantName,
+        tenantName: "", // not used
         ownerAddress: account.address,
         tenantAdminGroupAddress: tenantAdminGroup.address,
         contentAdminGroupAddress: contentAdminGroup.address,
