@@ -267,22 +267,20 @@ class ElvTenant {
     tenantInfo["tenant_status"] = await this.TenantStatus({tenantContractId: tenantId});
 
     try {
-      let faucetRes = await this.TenantGetFaucet({
+      tenantInfo["faucet"] = await this.TenantGetFaucet({
         asUrl,
         tenantId,
       });
-      tenantInfo["faucet"] = faucetRes;
     } catch (e) {
       tenantInfo["faucet"] = null;
       errors.push("faucet error: " + JSON.stringify(e));
     }
 
     try {
-      let sharingRes = await this.TenantGetSharingKey({
+      tenantInfo["sharing"] = await this.TenantGetSharingKey({
         asUrl,
         tenantId,
       });
-      tenantInfo["sharing"] = sharingRes;
     } catch (e) {
       tenantInfo["sharing"] = null;
       errors.push("sharing key error: " + JSON.stringify(e));
@@ -771,7 +769,7 @@ class ElvTenant {
     const res = await faucetGetTenantInfoResponse.json();
 
     if (this.debug) {
-      console.log("Faucet Get response:", JSON.stringify(faucetRes, null, 2));
+      console.log("Faucet Get response:", JSON.stringify(res, null, 2));
     }
     return res;
   }
@@ -908,7 +906,7 @@ class ElvTenant {
     });
     const res = await sharingKeyGetTenantInfoResponse.json();
     if (this.debug) {
-      console.log("Sharing Service Get response:", JSON.stringify(faucetRes, null, 2));
+      console.log("Sharing Service Get response:", JSON.stringify(res, null, 2));
     }
     return res;
   }
