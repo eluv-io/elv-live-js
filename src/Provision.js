@@ -389,6 +389,10 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
 };
 
 const handleTenantShareSigner = async ({tenantId, asUrl, t, debug}) => {
+  if (isEmptyParams(t.base.groups.contentAdminGroupAddress)){
+    throw Error("require t.base.groups.contentAdminGroupAddress to be set");
+  }
+
   let elvTenant = new ElvTenant({
     configUrl: Config.networks[Config.net],
     debugLogging: debug,
@@ -402,6 +406,20 @@ const handleTenantShareSigner = async ({tenantId, asUrl, t, debug}) => {
   t.base.shareSigner.signingAddress = res.share_signing_address;
   t.base.shareSigner.signingId=res.share_signing_id;
   writeConfigToFile(t);
+
+  // add to content admins group
+  let elvAccount = new ElvAccount({
+    configUrl: Config.networks[Config.net],
+    debugLogging: debug
+  });
+  await elvAccount.Init({
+    privateKey: process.env.PRIVATE_KEY,
+  });
+  await elvAccount.AddToAccessGroup({
+    groupAddress: t.base.groups.contentAdminGroupAddress,
+    accountAddress: t.base.shareSigner.signingAddress,
+    isManager: false
+  });
 };
 
 
