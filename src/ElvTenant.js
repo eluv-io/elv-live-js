@@ -1,16 +1,17 @@
-const { ElvUtils } = require("./Utils");
-const { ElvAccount } = require("./ElvAccount");
+const {ElvUtils} = require("./Utils");
+const {ElvAccount} = require("./ElvAccount");
 
-const { ElvClient } = require("@eluvio/elv-client-js");
+const {ElvClient} = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 
 const Ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
-const { Config } = require("./Config");
-const { EluvioLive } = require("./EluvioLive");
+const {Config} = require("./Config");
+const {EluvioLive} = require("./EluvioLive");
 const urljoin = require("url-join");
 const constants = require("./Constants");
+const {ElvFabric} = require("./ElvFabric");
 
 class ElvTenant {
   /**
@@ -20,12 +21,12 @@ class ElvTenant {
    * @param {string} configUrl - The Content Fabric configuration URL
    * @return {ElvSpace} - New ElvSpace object connected to the specified content fabric and blockchain
    */
-  constructor({ configUrl, debugLogging = false }) {
+  constructor({configUrl, debugLogging = false}) {
     this.configUrl = configUrl;
     this.debug = debugLogging;
   }
 
-  async Init({ privateKey }) {
+  async Init({privateKey}) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
@@ -33,7 +34,7 @@ class ElvTenant {
     let signer = wallet.AddAccount({
       privateKey: privateKey,
     });
-    this.client.SetSigner({ signer });
+    this.client.SetSigner({signer});
     this.client.ToggleLogging(this.debug);
   }
 
@@ -41,7 +42,7 @@ class ElvTenant {
    * Get tenant-level information
    * @param {string} tenantId Tenant ID (iten)
    */
-  async TenantInfo({ tenantId }) {
+  async TenantInfo({tenantId}) {
 
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
@@ -93,7 +94,7 @@ class ElvTenant {
       methodArgs: [],
       formatArguments: true,
     });
-    tenant.kmsId = ElvUtils.AddressToId({prefix:"ikms", address: kmsAddress});
+    tenant.kmsId = ElvUtils.AddressToId({prefix: "ikms", address: kmsAddress});
 
     tenant.owner = await this.client.CallContractMethod({
       contractAddress: tenantAddr,
@@ -115,7 +116,7 @@ class ElvTenant {
       methodArgs: [],
       formatArguments: true,
     });
-    tenant.creatorId = ElvUtils.AddressToId({prefix:"ispc", address: tenant.creator});
+    tenant.creatorId = ElvUtils.AddressToId({prefix: "ispc", address: tenant.creator});
     if (tenant.creator != spaceOwner) {
       tenant.warns.push(`Bad space ID creator id=${tenant.creatorId}`);
     }
@@ -155,7 +156,7 @@ class ElvTenant {
     }
 
     tenant.libs = await this.client.ContentLibraries();
-    for (var i = 0; i < tenant.libs.length; i ++) {
+    for (var i = 0; i < tenant.libs.length; i++) {
       const libTenantAdminsIdHex = await this.client.CallContractMethod({
         contractAddress: Utils.HashToAddress(tenant.libs[i]),
         abi: JSON.parse(abiLib),
@@ -179,7 +180,7 @@ class ElvTenant {
    * @param {string} asUrl - authority service URL
    * @param {boolean} show_metadata - Enable retrieving metadata from tenant object
    */
-  async TenantShow({ tenantId, asUrl,  show_metadata = false }) {
+  async TenantShow({tenantId, asUrl, show_metadata = false}) {
     let contractType = await this.client.authClient.AccessType(tenantId);
     if (contractType !== this.client.authClient.ACCESS_TYPES.TENANT) {
       throw Error("the contract corresponding to this tenantId is not a tenant contract");
@@ -246,7 +247,7 @@ class ElvTenant {
       tenantUsersAddr = null;
       errors.push("missing tenant users group");
     }
-    if (tenantUsersAddr){
+    if (tenantUsersAddr) {
       tenantInfo["tenant_users_address"] = tenantUsersAddr;
     }
 
@@ -296,7 +297,7 @@ class ElvTenant {
           libraryId: tenantLibraryId,
           objectId: tenantObjectId,
           noAuth: true,
-          select:"public/eluvio_live_id",
+          select: "public/eluvio_live_id",
         });
         if (liveId["public"]) {
           services.push(liveId["public"]);
@@ -323,7 +324,7 @@ class ElvTenant {
    * @param {string} contentAdminAddr - Content Admin Group's address, new group will be created if not specified (optional)
    * @returns {string} Content Admin Group's address
    */
-  async TenantSetContentAdmins({ tenantId, contentAdminAddr }) {
+  async TenantSetContentAdmins({tenantId, contentAdminAddr}) {
     //Check that the user is the owner of the tenant
     const tenantOwner = await this.client.authClient.Owner({id: tenantId});
     if (tenantOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
@@ -363,8 +364,8 @@ class ElvTenant {
       return logMsg;
     }
 
-    let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
-    elvAccount.InitWithClient({elvClient:this.client});
+    let elvAccount = new ElvAccount({configUrl: this.configUrl, debugLogging: this.debug});
+    elvAccount.InitWithClient({elvClient: this.client});
 
     //Arguments don't contain content admin group address, creating a new content admin group for the user's account.
     if (!contentAdminAddr) {
@@ -401,7 +402,7 @@ class ElvTenant {
    * @param {string} tenantId - The ID of the tenant (iten***)
    * @param {string} contentAdminsAddress - Address of content admin we want to remove.
    */
-  async TenantRemoveContentAdmin({ tenantId, contentAdminsAddress }) {
+  async TenantRemoveContentAdmin({tenantId, contentAdminsAddress}) {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
@@ -425,7 +426,7 @@ class ElvTenant {
    * @param {string} tenantUsersAddr - Tenant users Group's address, new group will be created if not specified (optional)
    * @returns {string} Tenant users Group's address
    */
-  async TenantSetTenantUsers({ tenantId, tenantUsersAddr }) {
+  async TenantSetTenantUsers({tenantId, tenantUsersAddr}) {
     //Check that the user is the owner of the tenant
     const tenantOwner = await this.client.authClient.Owner({id: tenantId});
     if (tenantOwner.toLowerCase() !== this.client.signer.address.toLowerCase()) {
@@ -465,8 +466,8 @@ class ElvTenant {
       return logMsg;
     }
 
-    let elvAccount = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
-    elvAccount.InitWithClient({elvClient:this.client});
+    let elvAccount = new ElvAccount({configUrl: this.configUrl, debugLogging: this.debug});
+    elvAccount.InitWithClient({elvClient: this.client});
 
     //Arguments don't contain tenant users group address, creating a new tenant users group for the user's account.
     if (!tenantUsersAddr) {
@@ -503,7 +504,7 @@ class ElvTenant {
    * @param {string} tenantId - The ID of the tenant (iten***)
    * @param {string} tenantUsersAddress - Address of tenant users address we want to remove.
    */
-  async TenantRemoveTenantUsers({ tenantId, tenantUsersAddr }) {
+  async TenantRemoveTenantUsers({tenantId, tenantUsersAddr}) {
     const abi = fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
     );
@@ -524,13 +525,12 @@ class ElvTenant {
   }
 
 
-
   /**
    * Associate group with the tenant with tenantId.
    * @param {string} tenantId - The ID of the tenant (iten***)
    * @param {string} groupAddress - Address of the group we want to remove.
    */
-  async TenantSetGroupConfig({ tenantId, groupAddress }) {
+  async TenantSetGroupConfig({tenantId, groupAddress}) {
     // TODO: use elv-client-js methods
     let idHex;
     let contractHasMeta = true;
@@ -588,7 +588,7 @@ class ElvTenant {
     let groupMeta = await this.client.ContentObjectMetadata({
       libraryId: groupLibraryId,
       objectId: groupObjectId,
-      select:"elv/tenant_id",
+      select: "elv/tenant_id",
     });
     if (groupMeta && !contractHasMeta) {
       let tenantContractId = groupMeta.elv.tenant_id;
@@ -619,18 +619,21 @@ class ElvTenant {
     return res;
   }
 
-  async TenantCheckGroupConfig ({ tenantId, groupAddr, tenantOwner }) {
+  async TenantCheckGroupConfig({tenantId, groupAddr, tenantOwner}) {
     let groupOwner = await this.client.CallContractMethod({
       contractAddress: groupAddr,
       methodName: "owner",
       methodArgs: [],
     });
     if (groupOwner !== tenantOwner) {
-      return {success: false, message: `The owner of the group (${groupOwner}) is not the same as the owner of the tenant (${tenantOwner}).`};
+      return {
+        success: false,
+        message: `The owner of the group (${groupOwner}) is not the same as the owner of the tenant (${tenantOwner}).`
+      };
     }
 
     //Ensure groupAddr actually belongs to a group contract.
-    if (await this.client.authClient.AccessType("igrp"+ Utils.AddressToHash(groupAddr)) !== this.client.authClient.ACCESS_TYPES.GROUP) {
+    if (await this.client.authClient.AccessType("igrp" + Utils.AddressToHash(groupAddr)) !== this.client.authClient.ACCESS_TYPES.GROUP) {
       return {success: false, message: "on the tenant contract is not a group", need_format: true};
     }
 
@@ -639,9 +642,13 @@ class ElvTenant {
     try {
       let tenantContractId = await this.client.TenantContractId({contractAddress: groupAddr});
       if (tenantContractId === "") {
-        return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+        return {
+          success: false,
+          message: "group can't be verified or is not associated with any tenant",
+          need_format: true
+        };
       }
-      
+
       if (tenantId !== tenantContractId) {
         return {success: false, message: "group doesn't belong to this tenant", need_format: true};
       }
@@ -654,7 +661,7 @@ class ElvTenant {
       }
     }
 
-    if (!verified){
+    if (!verified) {
       //Retrieve tenant contract id associated with this group from the contract's tenant field
       try {
         let tenantContractAddress = await this.client.CallContractMethod({
@@ -664,7 +671,11 @@ class ElvTenant {
         });
         let tenantContractId = "iten" + this.client.utils.AddressToHash(tenantContractAddress);
         if (tenantId !== tenantContractId) {
-          return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+          return {
+            success: false,
+            message: "group can't be verified or is not associated with any tenant",
+            need_format: true
+          };
         }
         verified = true;
       } catch (e) {
@@ -676,7 +687,7 @@ class ElvTenant {
       }
     }
 
-    if (!verified){
+    if (!verified) {
       //Retrieve tenant contract id associated with this group from its content fabric metadata
       try {
         let groupObjectId = ElvUtils.AddressToId({prefix: "iq__", address: groupAddr});
@@ -685,15 +696,23 @@ class ElvTenant {
         let groupMeta = await this.client.ContentObjectMetadata({
           libraryId: groupLibraryId,
           objectId: groupObjectId,
-          select:"elv/tenant_id",
+          select: "elv/tenant_id",
         });
         if (!groupMeta) {
-          return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+          return {
+            success: false,
+            message: "group can't be verified or is not associated with any tenant",
+            need_format: true
+          };
         }
 
         let tenantContractId = groupMeta.elv.tenant_id;
         if (tenantContractId !== tenantId) {
-          return {success: false, message: "group can't be verified or is not associated with any tenant", need_format: true};
+          return {
+            success: false,
+            message: "group can't be verified or is not associated with any tenant",
+            need_format: true
+          };
         }
         verified = true;
       } catch (e) {
@@ -715,7 +734,7 @@ class ElvTenant {
    * @param {string} tenantId Tenant ID (iten)
    * @param {string} eluvioLiveId Object ID of the tenant-leve Eluvio Live object
    */
-  async TenantSetEluvioLiveId({ tenantId, eluvioLiveId }) {
+  async TenantSetEluvioLiveId({tenantId, eluvioLiveId}) {
 
     const tenantAddr = Utils.HashToAddress(tenantId);
 
@@ -742,7 +761,7 @@ class ElvTenant {
     return res;
   }
 
-  async TenantGetFaucet({ asUrl, tenantId }) {
+  async TenantGetFaucet({asUrl, tenantId}) {
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
@@ -774,7 +793,7 @@ class ElvTenant {
     return res;
   }
 
-  async TenantCreateFaucetAndFund({ asUrl, tenantId, amount = 20, noFunds = false }) {
+  async TenantCreateFaucetAndFund({asUrl, tenantId, amount = 20, noFunds = false}) {
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
@@ -790,17 +809,17 @@ class ElvTenant {
       configUrl: Config.networks[Config.net],
       debugLogging: this.debug,
     });
-    await elvAccount.Init({ privateKey: process.env.PRIVATE_KEY });
+    await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
 
     var res = {};
     // Create BaseTenantAuth token
-    const requestBody = { ts: Date.now()};
-    const { multiSig } = await eluvioLive.TenantSign({
+    const requestBody = {ts: Date.now()};
+    const {multiSig} = await eluvioLive.TenantSign({
       message: JSON.stringify(requestBody),
     });
 
     // Create/Get faucet funding address
-    const faucetPath =  urljoin(eluvioLive.asUrlPath,`/tnt/config/${tenantId}/faucet_funding`);
+    const faucetPath = urljoin(eluvioLive.asUrlPath, `/tnt/config/${tenantId}/faucet_funding`);
     const faucetResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
       method: "POST",
       path: faucetPath,
@@ -811,20 +830,20 @@ class ElvTenant {
     });
     const faucetRes = await faucetResponse.json();
 
-    if (this.debug){
+    if (this.debug) {
       console.log("Faucet response:", JSON.stringify(faucetRes, null, 2));
     }
 
     res.faucet = faucetRes;
     let fundingAddress = faucetRes.funding_address;
 
-    if (!noFunds){
+    if (!noFunds) {
       // Check balances
       const senderAddress = elvAccount.signer.address.toString();
-      let initialSenderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
-      let initialReceiverBalance = await elvAccount.client.GetBalance({ address: fundingAddress });
+      let initialSenderBalance = await elvAccount.client.GetBalance({address: senderAddress});
+      let initialReceiverBalance = await elvAccount.client.GetBalance({address: fundingAddress});
 
-      if (this.debug){
+      if (this.debug) {
         console.log(`Funds before transfer: Sender=${senderAddress}, Balance=${initialSenderBalance}`);
         console.log(`Funds before transfer: Receiver=${fundingAddress}, Balance=${initialReceiverBalance}`);
       }
@@ -849,21 +868,21 @@ class ElvTenant {
 
 
       // Check balances after transfer
-      let finalSenderBalance = await elvAccount.client.GetBalance({ address: senderAddress });
-      let finalReceiverBalance = await elvAccount.client.GetBalance({ address: fundingAddress });
+      let finalSenderBalance = await elvAccount.client.GetBalance({address: senderAddress});
+      let finalReceiverBalance = await elvAccount.client.GetBalance({address: fundingAddress});
 
-      if (this.debug){
+      if (this.debug) {
         console.log(`Funds after transfer: Sender=${senderAddress}, Balance=${finalSenderBalance}`);
         console.log(`Funds after transfer: Receiver=${fundingAddress}, Balance=${finalReceiverBalance}`);
       }
-      res.amount_transferred = finalReceiverBalance-initialReceiverBalance;
+      res.amount_transferred = finalReceiverBalance - initialReceiverBalance;
       res.current_balance = finalReceiverBalance;
     }
 
     return res;
   }
 
-  async TenantGetSharingKey({ asUrl, tenantId }) {
+  async TenantGetSharingKey({asUrl, tenantId}) {
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
@@ -884,11 +903,11 @@ class ElvTenant {
     let ts = Date.now();
     let params = {ts};
     const paramString = new URLSearchParams(params).toString();
-    let path=`/tnt/config/${tenantId}/sharing`;
+    let path = `/tnt/config/${tenantId}/sharing`;
 
     let newPath = path + "?" + paramString;
 
-    const { multiSig } = await eluvioLive.TenantSign({
+    const {multiSig} = await eluvioLive.TenantSign({
       message: newPath,
     });
     if (this.debug) {
@@ -911,7 +930,7 @@ class ElvTenant {
     return res;
   }
 
-  async TenantCreateSharingKey({ asUrl, tenantId }) {
+  async TenantCreateSharingKey({asUrl, tenantId}) {
     const config = {
       configUrl: Config.networks[Config.net],
       mainObjectId: Config.mainObjects[Config.net],
@@ -927,17 +946,28 @@ class ElvTenant {
       configUrl: Config.networks[Config.net],
       debugLogging: this.debug,
     });
-    await elvAccount.Init({ privateKey: process.env.PRIVATE_KEY });
+    await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
+
+    let elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    let contentAdminGroup = this.TenantContentAdminGroup({tenantId});
 
     var res = {};
     // Create BaseTenantAuth token
-    const requestBody = { ts: Date.now()};
-    const { multiSig } = await eluvioLive.TenantSign({
+    const requestBody = {ts: Date.now()};
+    const {multiSig} = await eluvioLive.TenantSign({
       message: JSON.stringify(requestBody),
     });
 
     // Create/Get sharing key address
-    const sharingKeyPath =  urljoin(eluvioLive.asUrlPath,`/tnt/config/${tenantId}/sharing`);
+    const sharingKeyPath = urljoin(eluvioLive.asUrlPath, `/tnt/config/${tenantId}/sharing`);
     const sharingKeyRes = await eluvioLive.client.authClient.MakeAuthServiceRequest({
       method: "POST",
       path: sharingKeyPath,
@@ -947,7 +977,48 @@ class ElvTenant {
       },
     });
     res.sharing = await sharingKeyRes.json();
+
+    // add to content admins group
+    if (contentAdminGroup && sharingKeyRes.share_signing_address) {
+
+      let isMember = await elvFabric.AccessGroupMember({
+        group: contentAdminGroup,
+        addr: sharingKeyRes.share_signing_address
+      });
+      if (!isMember) {
+        await elvAccount.AddToAccessGroup({
+          groupAddress: contentAdminGroup,
+          accountAddress: sharingKeyRes.share_signing_address,
+          isManager: false
+        });
+      }
+      res.sharing.is_content_admin_member = true;
+    }
     return res;
+  }
+
+  async TenantContentAdminGroup({tenantId}) {
+    let contractType = await this.client.authClient.AccessType(tenantId);
+    if (contractType !== this.client.authClient.ACCESS_TYPES.TENANT) {
+      throw Error("the contract corresponding to this tenantId is not a tenant contract");
+    }
+
+    const tenantAddr = Utils.HashToAddress(tenantId);
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
+    );
+
+    try {
+      return await this.client.CallContractMethod({
+        contractAddress: tenantAddr,
+        abi: JSON.parse(abi),
+        methodName: "groupsMapping",
+        methodArgs: ["content_admin", 0],
+        formatArguments: true,
+      });
+    } catch (e) {
+      throw Error(`tenant ${tenantId} missing content_admin group`);
+    }
   }
 
   /**
@@ -959,7 +1030,7 @@ class ElvTenant {
    */
   async TenantSetStatus({tenantContractId, tenantStatus}) {
     if (tenantStatus !== constants.TENANT_STATE_ACTIVE &&
-      tenantStatus !== constants.TENANT_STATE_INACTIVE){
+      tenantStatus !== constants.TENANT_STATE_INACTIVE) {
       throw Error(`Invalid tenant status, require active | inactive | frozen: ${tenantStatus}`);
     }
 
@@ -1000,8 +1071,7 @@ class ElvTenant {
     return tenantStatus;
   }
 
-  async TenantFundUser({ asUrl, tenantId, userAddress})
-  {
+  async TenantFundUser({asUrl, tenantId, userAddress}) {
 
     console.log("TenantFundUser");
     console.log(`as_url: ${asUrl}`);
