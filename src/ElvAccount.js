@@ -276,6 +276,16 @@ Accepted formats: igrp, iten, or address.`);
     return { address, userId, tenantId, tenantAdminsId, walletAddress, userWalletObject, userMetadata, balance };
   }
 
+  async Balance({ address }) {
+    if (!this.client) {
+      throw Error("ElvAccount not intialized");
+    }
+
+    let provider = this.client.ethClient.Provider();
+    let balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(address))).toFixed(2);
+    return balance;
+  }
+
   async SetAccountTenantAdminsAddress({ tenantAdminsAddress }) {
     if (!this.client) {
       throw Error("ElvAccount not intialized");

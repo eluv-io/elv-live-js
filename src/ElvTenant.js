@@ -950,14 +950,14 @@ class ElvTenant {
 
     let elvFabric = new ElvFabric({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
+      debugLogging: this.debug,
     });
 
     await elvFabric.Init({
       privateKey: process.env.PRIVATE_KEY
     });
 
-    let contentAdminGroup = this.TenantContentAdminGroup({tenantId});
+    let contentAdminGroup = await this.TenantContentAdminGroup({tenantId});
 
     var res = {};
     // Create BaseTenantAuth token
@@ -979,20 +979,19 @@ class ElvTenant {
     res.sharing = await sharingKeyRes.json();
 
     // add to content admins group
-    if (contentAdminGroup && sharingKeyRes.share_signing_address) {
+    if (contentAdminGroup && res.sharing.share_signing_address) {
 
       let isMember = await elvFabric.AccessGroupMember({
         group: contentAdminGroup,
-        addr: sharingKeyRes.share_signing_address
+        addr: res.sharing.share_signing_address
       });
       if (!isMember) {
         await elvAccount.AddToAccessGroup({
           groupAddress: contentAdminGroup,
-          accountAddress: sharingKeyRes.share_signing_address,
+          accountAddress: res.sharing.share_signing_address,
           isManager: false
         });
       }
-      res.sharing.is_content_admin_member = true;
     }
     return res;
   }

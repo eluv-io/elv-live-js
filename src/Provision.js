@@ -122,27 +122,17 @@ const SetLibraryPermissions = async (client, libraryId, t) => {
 
   const promises = [
     // Tenant admins
-    client.AddContentLibraryGroup({
-      libraryId,
+    client.AddContentObjectGroupPermission({
+      objectId: libraryId,
       groupAddress: t.base.groups.tenantAdminGroupAddress,
-      permission: "accessor"
-    }),
-    client.AddContentLibraryGroup({
-      libraryId,
-      groupAddress: t.base.groups.tenantAdminGroupAddress,
-      permission: "contributor"
+      permission: "manage"
     }),
 
     // Content admins
-    client.AddContentLibraryGroup({
-      libraryId,
+    client.AddContentObjectGroupPermission({
+      objectId: libraryId,
       groupAddress: t.base.groups.contentAdminGroupAddress,
-      permission: "accessor"
-    }),
-    client.AddContentLibraryGroup({
-      libraryId,
-      groupAddress: t.base.groups.contentAdminGroupAddress,
-      permission: "contributor"
+      permission: "manage"
     }),
   ];
   await Promise.all(promises);
@@ -427,8 +417,8 @@ const handleTenantShareSigner = async ({tenantId, asUrl, t, debug}) => {
     asUrl,
     tenantId,
   });
-  t.base.shareSigner.signingAddress = res.share_signing_address;
-  t.base.shareSigner.signingId = res.share_signing_id;
+  t.base.shareSigner.signingAddress = res.sharing.share_signing_address;
+  t.base.shareSigner.signingId = res.sharing.share_signing_id;
   writeConfigToFile(t);
 };
 
@@ -662,7 +652,7 @@ const createMarketplaceId = async ({client, t}) => {
   console.log(`\t${objectName}: ${t.mediaWallet.objects.marketplaceId}\n\n`);
 };
 
-const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, t}) => {
+const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, privateMetadata, t}) => {
   if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)) {
     throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
   }
@@ -682,6 +672,17 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, t}
     metadataSubtree: "public",
     metadata: publicMetadata
   });
+
+  if (privateMetadata) {
+    await client.MergeMetadata({
+      libraryId,
+      objectId: id,
+      writeToken: write_token,
+      metadataSubtree: "",
+      metadata: privateMetadata
+    });
+  }
+
 
   // set object editable
   await client.SetPermission({
@@ -741,8 +742,9 @@ const createTenantObjectId = async ({client, t}) => {
     let contentOpsAddr = await contentOpsSigner.getAddress();
 
 
-    publicMetadata = {
-      name: objectName,
+    let publicMetadata = {
+      name: t.base.tenantName,
+      slug: t.base.tenantSlug,
       asset_metadata: {
         info: {
           tenant_id: t.base.tenantId,
@@ -765,11 +767,16 @@ const createTenantObjectId = async ({client, t}) => {
       }
     };
 
+    let privateMetadata = {
+      name: t.base.tenantName,
+      slug: t.base.tenantSlug,
+    };
+
     t.mediaWallet.objects.tenantObjectId = await CreateFabricObject({
       client,
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.mediaWallet.liveTypes[TYPE_LIVE_TENANT],
-      publicMetadata, t
+      publicMetadata, privateMetadata, t
     });
 
     writeConfigToFile(t);
@@ -882,12 +889,24 @@ let readJsonFile = (filepath) => {
 
 // ===============================================================================================
 
-const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, initConfig, debug = false}) => {
+const InitializeTenant = async ({
+  client,
+  kmsId,
+  tenantId,
+  tenantSlug,
+  tenantName,
+  asUrl,
+  statusFile,
+  initConfig,
+  debug = false
+}) => {
 
   let t;
   if (!statusFile) {
     t = {
       base: {
+        tenantName: "",
+        tenantSlug: "",
         opsKey: {
           tenantOps: {
             key: "",
@@ -959,11 +978,21 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
     return t;
   }
 
+  if (!tenantSlug) {
+    throw Error("Tenant Slug not provided");
+  }
+  t.base.tenantSlug = tenantSlug.toLowerCase().replace(/ /g, "-");
+
+  if (!tenantName) {
+    tenantName = tenantSlug;
+  }
+  t.base.tenantName = tenantName;
+
   // minimum signer balance required
   let expectedSignerBalance = 10;
   // fund content ops key
   if (t.base.opsKey.contentOps.key === "") {
-    if (!isEmptyParams(t.base.opsKey.contentOps.key)) {
+    if (!isEmptyParams(t.base.opsKey.contentOps.amount)) {
       expectedSignerBalance += t.base.opsKey.contentOps.amount;
     } else {
       expectedSignerBalance += 10;
@@ -971,7 +1000,7 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
   }
   // fund tenant ops key
   if (t.base.opsKey.tenantOps.key === "") {
-    if (!isEmptyParams(t.base.opsKey.tenantOps.key)) {
+    if (!isEmptyParams(t.base.opsKey.tenantOps.amount)) {
       expectedSignerBalance += t.base.opsKey.tenantOps.amount;
     } else {
       expectedSignerBalance += 10;
@@ -1021,19 +1050,6 @@ const InitializeTenant = async ({client, kmsId, tenantId, asUrl, statusFile, ini
 const ProvisionBase = async ({client, kmsId, tenantId, asUrl, t, debug}) => {
   await checkSignerTenantAccess({client, tenantId});
 
-  const tenantAddr = Utils.HashToAddress(tenantId);
-  const abi = fs.readFileSync(
-    path.resolve(__dirname, "../contracts/v3/BaseTenantSpace.abi")
-  );
-
-  t.base.tenantName = await client.CallContractMethod({
-    contractAddress: tenantAddr,
-    abi: JSON.parse(abi),
-    methodName: "name",
-    methodArgs: [],
-    formatArguments: true,
-  });
-  t.base.tenantSlug = t.base.tenantName.toLowerCase().replace(/ /g, "-");
   t.base.tenantId = tenantId;
 
   // set tenantContractId and tenantId metadata for tenant
