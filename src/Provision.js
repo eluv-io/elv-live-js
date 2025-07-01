@@ -402,6 +402,26 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
   writeConfigToFile(t);
 };
 
+const handleTenantShareSigner = async ({tenantId, asUrl, t, debug}) => {
+  if (isEmptyParams(t.base.groups.contentAdminGroupAddress)) {
+    throw Error("require t.base.groups.contentAdminGroupAddress to be set");
+  }
+
+  let elvTenant = new ElvTenant({
+    configUrl: Config.networks[Config.net],
+    debugLogging: debug,
+  });
+  await elvTenant.Init({privateKey: process.env.PRIVATE_KEY});
+
+  let res = await elvTenant.TenantCreateSharingKey({
+    asUrl,
+    tenantId,
+  });
+  t.base.shareSigner.signingAddress = res.sharing.share_signing_address;
+  t.base.shareSigner.signingId = res.sharing.share_signing_id;
+  writeConfigToFile(t);
+};
+
 
 /* Create libraries - Properties, Title Masters, Title Mezzanines and add each to the groups */
 const createLibrariesAndSetPermissions = async ({client, kmsId, t}) => {
@@ -923,6 +943,9 @@ const InitializeTenant = async ({
           "no_funds": false,
           "funding_address": null,
           "amount": null,
+        },
+        shareSigner: {
+          "enable": true,
         }
       },
       liveStreaming: {
@@ -969,7 +992,7 @@ const InitializeTenant = async ({
   let expectedSignerBalance = 10;
   // fund content ops key
   if (t.base.opsKey.contentOps.key === "") {
-    if (!isEmptyParams(t.base.opsKey.contentOps.key)) {
+    if (!isEmptyParams(t.base.opsKey.contentOps.amount)) {
       expectedSignerBalance += t.base.opsKey.contentOps.amount;
     } else {
       expectedSignerBalance += 10;
@@ -977,7 +1000,7 @@ const InitializeTenant = async ({
   }
   // fund tenant ops key
   if (t.base.opsKey.tenantOps.key === "") {
-    if (!isEmptyParams(t.base.opsKey.tenantOps.key)) {
+    if (!isEmptyParams(t.base.opsKey.tenantOps.amount)) {
       expectedSignerBalance += t.base.opsKey.tenantOps.amount;
     } else {
       expectedSignerBalance += 10;
@@ -1010,6 +1033,7 @@ const InitializeTenant = async ({
   await ProvisionOps({client, tenantId, t, debug});
   await ProvisionMediaWallet({client, tenantId, t});
   await ProvisionFaucet({tenantId, asUrl, t, debug});
+  await ProvisionShareSigner({tenantId, asUrl, t, debug});
 
   /* Add ids of services to tenant fabric metadata */
   console.log("Tenant content object - set types and sites");
@@ -1103,6 +1127,12 @@ const ProvisionOps = async ({client, tenantId, t, debug = false}) => {
 const ProvisionFaucet = async ({tenantId, asUrl, t, debug = false}) => {
   if (t.base.faucet.enable) {
     await handleTenantFaucet({tenantId, asUrl, t, debug});
+  }
+};
+
+const ProvisionShareSigner = async ({tenantId, asUrl, t, debug = false}) => {
+  if (t.base.shareSigner.enable) {
+    await handleTenantShareSigner({tenantId, asUrl, t, debug});
   }
 };
 

@@ -376,6 +376,26 @@ const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
   }
 };
 
+const CmdTenantCreateSharingKey = async ({ argv }) => {
+  try {
+    const { as_url: asUrl, tenant_id: tenantId } = argv;
+
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    const res = await t.TenantCreateSharingKey({
+      asUrl,
+      tenantId,
+    });
+    console.log(yaml.dump(res));
+  } catch (error) {
+    console.error("ERROR:", error.message);
+  }
+};
+
 const CmdTenantFundUser = async ({ argv }) => {
   try {
     const { as_url: asUrl, tenant_id: tenantId, user_address: userAddress } = argv;
@@ -1995,6 +2015,25 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantCreateFaucetAndFund({ argv });
+    }
+  )
+
+  .command(
+    "tenant_create_sharing_key <tenant_id>",
+    "Generate/get tenant sharing key for given tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant_id", {
+          describe: "tenant id",
+          type: "string",
+        })
+        .option("as_url", {
+          describe: "Alternate authority service URL (include '/as/' route if necessary)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantCreateSharingKey({ argv });
     }
   )
 
