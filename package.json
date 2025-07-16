@@ -7,7 +7,7 @@
     "elv-live": "elv-live",
     "elv-stream": "elv-stream",
     "elv-admin": "elv-admin"
-   },
+  },
   "scripts": {
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
     "test": "jest",
@@ -53,6 +53,7 @@
     "got": "^11.8.6",
     "js-yaml": "^3.14.1",
     "keccak256": "^1.0.6",
+    "pg": "^8.16.3",
     "postgres": "^3.3.5",
     "prompt-sync": "^4.2.0",
     "seedrandom": "^3.0.5",

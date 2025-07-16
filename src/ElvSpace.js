@@ -7,6 +7,7 @@ const { ElvClient } = require("@eluvio/elv-client-js");
 const Ethers = require("ethers");
 const CBOR = require("cbor-x");
 const { ElvTenant } = require("./ElvTenant");
+const { ElvIndexer } = require("./ElvIndexer");
 
 class ElvSpace {
   /**
@@ -39,9 +40,12 @@ class ElvSpace {
     this.client = elvClient;
   }
 
-  async TenantCreate({ tenantName, funds = 51 }) {
+  async TenantCreate({ tenantName, funds = 51, indexerEnabled = false }) {
     let account = null;
     let elvAccount = null;
+    let elvIndexer = null;
+    let adminGroups = null;
+    let tenant = null;
     try {
       // Create ElvAccount
       elvAccount = new ElvAccount({
@@ -52,12 +56,44 @@ class ElvSpace {
         elvClient: this.client,
       });
 
+      const isPgEnvVarSet = () => {
+        const envList = ["PG_USER", "PG_HOST", "PG_DATABASE", "PG_PASSWORD", "PG_PORT"];
+        return envList.every(v => process.env[v]);
+      };
+
+
+      if (indexerEnabled){
+        const exists = isPgEnvVarSet();
+        if (!exists) {
+          throw Error("Indexer check is enabled but required env variables are not set: PG_USER, PG_HOST, PG_DATABASE, PG_PASSWORD, PG_PORT");
+        }
+
+        elvIndexer = new ElvIndexer({
+          pgUser: process.env.PG_USER,
+          pgHost: process.env.PG_HOST,
+          pgDatabase: process.env.PG_DATABASE,
+          pgPassword: process.env.PG_PASSWORD,
+          pgPort: process.env.PG_PORT,
+          debugLogging: this.debug,
+        });
+
+        try {
+          await elvIndexer.start();
+        } catch (err) {
+          console.log("Failed to start indexer:", err);
+          elvIndexer = null; // for finally block
+          throw err;
+        }
+
+      }
+
       let initialBalance = await elvAccount.GetBalance();
       if (initialBalance < funds){
         throw Error(`Signer ${elvAccount.client.signer.address.toString()} has insufficient balance: ${initialBalance} Elv, require ${funds} Elv`) ;
       }
 
       const tenantSlug = tenantName.toLowerCase().replace(/ /g, "-");
+
       account = await elvAccount.Create({
         funds: funds,
         accountName: `${tenantSlug}-elv-admin`,
@@ -111,13 +147,13 @@ class ElvSpace {
         console.log("content admins:", contentAdminGroup);
         console.log("tenant users:", tenantUsersGroup);
       }
-      let adminGroups = {
+      adminGroups = {
         tenantAdminGroup,
         contentAdminGroup,
         tenantUsersGroup
       };
 
-      let tenant = await this.TenantDeploy({
+      tenant = await this.TenantDeploy({
         tenantName: "", // not used
         ownerAddress: account.address,
         tenantAdminGroupAddress: tenantAdminGroup.address,
@@ -146,13 +182,43 @@ class ElvSpace {
         groupAddress: tenantUsersGroup.address
       });
 
+      if (indexerEnabled && elvIndexer) {
+        const res = await elvIndexer.checkUserTenant({userAddress: account.address});
+        if (res !== tenant.id){
+          throw Error(`Tenant mismatch for ${account.address} in indexer: expected ${tenant.id}, actual ${res}`);
+        } else {
+          console.log(`Tenant matches for ${account.address}: ${res}`);
+        }
+
+        const groups = [tenantAdminGroup, contentAdminGroup, tenantUsersGroup];
+        for (const group of groups) {
+          const res = await elvIndexer.checkGroupTenant({groupAddress: group.address});
+          if (res !== tenant.id){
+            throw Error(`Tenant mismatch for ${group.address} in indexer: expected ${tenant.id}, actual ${res}`);
+          } else {
+            console.log(`Tenant matches for ${group.address}: ${res}`);
+          }
+        }
+      }
+
       return {
         account,
         adminGroups,
         tenant,
       };
     } catch (e){
-      throw {error:e, account};
+      const err = {error: e, account};
+      if (adminGroups) { err.adminGroups = adminGroups;}
+      if (tenant) {err.tenant = tenant;}
+      throw err;
+    } finally {
+      if (elvIndexer) {
+        try {
+          await elvIndexer.stop();
+        } catch (err){
+          console.log("Error stopping indexer:", err);
+        }
+      }
     }
   }
 
