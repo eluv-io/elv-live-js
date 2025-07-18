@@ -1341,6 +1341,7 @@ const CmdTenantProvision = async ({ argv }) => {
   console.log(`verbose: ${argv.verbose}`);
   console.log(`status: ${argv.status}`);
   console.log(`init-config: ${argv.init_config}`);
+  console.log(`Indexer enabled: ${argv.indexer}`);
 
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
@@ -1360,6 +1361,7 @@ const CmdTenantProvision = async ({ argv }) => {
       asUrl: argv.as_url,
       statusFile: argv.status,
       initConfig: argv.init_config,
+      indexerEnable: argv.indexer,
       debug: argv.verbose,
     });
 
@@ -3097,6 +3099,11 @@ yargs(hideBin(process.argv))
       });
       yargs.option("init_config",{
         describe: "Displays the initial provisioning config, which can be used to input existing objects",
+        type: "boolean",
+        default: false
+      });
+      yargs.option("indexer",{
+        describe: "enable indexer check",
         type: "boolean",
         default: false
       });

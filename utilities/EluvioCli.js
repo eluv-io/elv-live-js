@@ -348,7 +348,7 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
 
     res = await space.TenantCreate({
       tenantName: argv.tenant_name,
-      indexerEnabled: argv.indexer,
+      indexerEnable: argv.indexer,
       ...(argv.funds != null && {funds : argv.funds}),
     });
     console.log(yaml.dump(res));
