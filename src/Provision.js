@@ -555,6 +555,92 @@ const createTenantTypes = async ({client, t}) => {
     writeConfigToFile(t);
   }
 
+  if(!t.base.tenantTypes.indexTypeId) {
+    const mdata = JSON.parse(JSON.stringify(typeMetadata));
+    t.base.tenantTypes.indexTypeId = await createContentTypeAndSetPermissions({
+      client, name: `${t.base.tenantName} - Content Index`, metadata: {
+        bitcode_format: "builtin",
+        public: {
+          ...mdata.public,
+          name: `${t.base.tenantName} - Content Index`,
+          title_configuration: {
+            asset_types: ["primary", "clip"],
+            associate_permissions: false,
+            associated_assets: [
+              {
+                defaultable: true,
+                indexed: true,
+                label: "Titles",
+                name: "titles",
+                orderable: true,
+                slugged: true
+              },
+              {
+                asset_types: ["primary"],
+                defaultable: false,
+                for_title_types: ["site", "collection"],
+                indexed: true,
+                label: "Series",
+                name: "series",
+                orderable: true,
+                slugged: true,
+                title_types: ["series"]
+              },
+              {
+                asset_types: ["primary"],
+                defaultable: false,
+                for_title_types: ["series"],
+                indexed: true,
+                label: "Seasons",
+                name: "seasons",
+                orderable: true,
+                slugged: true,
+                title_types: ["season"]
+              },
+              {
+                asset_types: ["primary"],
+                defaultable: false,
+                for_title_types: ["season"],
+                indexed: true,
+                label: "Episodes",
+                name: "episodes",
+                orderable: true,
+                slugged: true,
+                title_types: ["episode"]
+              }
+            ],
+            controls: ["images", "playlists"],
+            default_image_keys: ["portrait", "landscape"],
+            displayApp: "",
+            hide_image_tab: false,
+            hide_update_links_button: false,
+            info_fields: [
+              { name: "release_date", type: "date" },
+              { name: "synopsis", type: "textarea" },
+              { name: "copyright", type: "text" },
+              { name: "creator", type: "text" },
+              { name: "runtime", type: "integer" }
+            ],
+            localization: {},
+            manageApp: "",
+            playable: false,
+            show_indexer_settings: true,
+            show_searchables_tab: true,
+            title_types: [
+              "collection",
+              "episode",
+              "season",
+              "series",
+              "site",
+              "title"
+            ]
+          }
+        }
+      }, t
+    });
+    writeConfigToFile(t);
+  }
+
   console.log("\nTenant Types:\n");
   console.log(JSON.stringify(t.base.tenantTypes, null, 2));
 };
@@ -933,7 +1019,8 @@ const InitializeTenant = async ({
           "masterTypeId": null,
           "permissionsTypeId": null,
           "channelTypeId": null,
-          "streamTypeId": null
+          "streamTypeId": null,
+          "indexTypeId": null,
         },
         publish: {
           "env": null,
