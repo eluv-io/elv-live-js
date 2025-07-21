@@ -5,29 +5,6 @@
 
 const { ElvClient } = require("@eluvio/elv-client-js");
 
-var args = [...process.argv]
-var finalize = true
-
-args.shift()
-
-tasks = {}
-for (arg of args) {
-  if (arg.startsWith("-")) {
-    if(arg == "--no-finalize") {
-      finalize = false
-    }
-    else {
-      throw new Error(`invalid option ${arg}`)
-    }
-  }
-  else if (arg.startsWith("iq__")) {
-    tasks[arg] = arg
-  }
-  else {
-    console.log(`ignoring argument ${arg}`)
-  }
-}
-
 const getClient = async (privateKey) => {
   
   var client = await ElvClient.FromConfigurationUrl({
@@ -44,54 +21,67 @@ const getClient = async (privateKey) => {
 const getAdminClient = async() => {
   
   if (process.env.ADMIN_PRIVATE_KEY == null) {
-    console.error("need to set ADMIN_PRIVATE_KEY")
-    process.exitCode = 1
-    return null
+    throw new Error("need to set ADMIN_PRIVATE_KEY")
   }
   
   return await getClient(process.env.ADMIN_PRIVATE_KEY)
 }
 
+const getRegularClient = async() => {
+  
+  if (process.env.PRIVATE_KEY == null) {
+    throw new Error("need to set PRIVATE_KEY")
+  }
+  
+  return await getClient(process.env.PRIVATE_KEY)
+}
 
-getClient(process.env.PRIVATE_KEY)
+async function findPropertiesLib(client) {
+  const libs = await client.ContentLibraries();
+  let proplib = null;
+  for (const lib of libs) {
+    const libmeta = await client.ContentObjectMetadata({
+      libraryId: lib,
+      objectId: lib.replace("ilib", "iq__"),
+      resolveLinks: false,
+      metadataSubtree: "public"
+    });
+    //console.log(lib, '---------')
+    //console.dir(libmeta, { depth: null });
+    if (("" + libmeta?.name).toLowerCase().includes("properties")) {
+      proplib = lib;
+      break;
+    }
+  }
+  return proplib;
+}
+
+
+getRegularClient()
   .then(async (client) => {
     try {
+      // convert tenant to iq, and lib is the same as the iq
       const tenant = (await client.userProfileClient.TenantContractId()).replace(/^iten/, "iq__")
       const libraryId = tenant.replace("iq__", "ilib")
       
-      console.log(tenant)
+      console.log(" tenant: " + tenant)      
+      console.log("library: " + libraryId)
       
-      console.log("library ID??? " + libraryId)
-      const pub = await client.ContentObjectMetadata({
+      const pubTenantMeta = await client.ContentObjectMetadata({
         libraryId: libraryId,
         objectId: tenant,
         resolveLinks: false,
         metadataSubtree: "public"
       });
+      console.log("--- Tenant object public metadata")
+      console.dir(pubTenantMeta, { depth: null });
+      console.log("---")
 
-      console.dir(pub, { depth: null });
-
-      if (pub.ml_config == null) {
+      if (pubTenantMeta.ml_config == null) {
         console.log("no ml_config yet, need to create one")
-        const libs = await client.ContentLibraries();
-        //console.dir(libs, { depth: null });
-        let proplib = null
-        for (const lib of libs) {
-          const libmeta = await client.ContentObjectMetadata({
-            libraryId: lib,
-            objectId: lib.replace("ilib", "iq__"),
-            resolveLinks: false,
-            metadataSubtree: "public"
-          });
-          //console.log(lib, '---------')
-          console.dir(libmeta, { depth: null });
-          if ( ("" + libmeta?.name).toLowerCase().includes("properties") ) {
-            proplib = lib
-            break
-          }
-        }
+        let proplib = await findPropertiesLib(client);
         if (proplib == null) {
-          console.log("Could not find properties library for tenant");
+          console.log("Could not find properties library for tenant, don't know where to create ml config object");
           process.exitCode = 1
           return
         }
@@ -99,8 +89,8 @@ getClient(process.env.PRIVATE_KEY)
         
         let contentTypeHash = null
         
-        if (pub?.content_types?.title != null) {
-          contentTypeHash = await client.LatestVersionHashV2({objectId: pub.content_types.title})
+        if (pubTenantMeta?.content_types?.title != null) {
+          contentTypeHash = await client.LatestVersionHashV2({objectId: pubTenantMeta.content_types.title})
           console.log(`content type hash: ${contentTypeHash}`)
         }
 
@@ -108,7 +98,7 @@ getClient(process.env.PRIVATE_KEY)
           "name": "ml-config object",
         }
 
-        if (pub.search) publicmeta.search = pub.search
+        if (pubTenantMeta.search) publicmeta.search = pubTenantMeta.search
 
         const adminClient = await getAdminClient()
 
@@ -145,9 +135,22 @@ getClient(process.env.PRIVATE_KEY)
           writeToken: mlconfig.writeToken,
           commitMessage: `create ml_config from tenant object ${tenant} -- scripted mlconfig creation`,
         });
+        console.dir(finalmlconfig, { depth: null})
+        
+        console.log("---- setting ml config object to public ----")
+        
+        await client.SetPermission({
+          objectId: mlconfig.id,
+          permission: "public"
+        });
+        
+        console.dir(finalmlconfig, { depth: null });
 
-        console.dir(mlconfig, { depth: null });
-
+        if (pubTenantMeta.search) {
+          // delete off existing tenant search config
+          await adminClient.DeleteMetadata({libraryId: libraryId, objectId: tenant, writeToken, metadataSubtree: "public/search", metadata: mlconfig.id})
+        }
+        
         console.log("---- tenant finalize ----")
         finaltenant = await adminClient.FinalizeContentObject({
           libraryId: libraryId, 
@@ -156,129 +159,12 @@ getClient(process.env.PRIVATE_KEY)
           commitMessage: `point at ml_config ${mlconfig.id} -- scripted mlconfig creation`,
         });
 
-        console.dir(finaltenant, { depth: null });
-
-        //const libraryId = await client.ContentObjectLibraryId({
-        //  objectId: tenant,
-        //});
-        
+        console.dir(finaltenant, { depth: null });       
       }
       else {
-        console.log("ml_config exists, checking");
+        console.log("ml_config exists already");
       }
       
-      return
-      
-      
-      for (let objectId in tasks) {
-
-        files = await client.ContentObjectMetadata({
-          libraryId: libraryId,
-          objectId: objectId,
-          metadataSubtree: "files/assets"
-        });
-        
-        console.dir(files, {depth: null});
-        console.log("--------------------------");
-        
-        assets = await client.ContentObjectMetadata({
-          libraryId: libraryId,
-          objectId: objectId,
-          metadataSubtree: "assets",
-          resolveLinks: true
-
-        });
-
-        if (!assets) assets = {}
-        
-        console.dir(assets, {depth: null});
-
-        verhash = await client.LatestVersionHashV2({objectId: objectId})
-        console.log(`VERSION ${verhash}`)
-
-        // create an inverted index from file fields under existing assets
-        // this way we know if it's REALLY linked
-        inverted = {}
-        for (asset of Object.values(assets)) {
-          container = asset?.file?.['.']?.container
-          slash = asset?.file?.['/']
-          //console.log(asset)
-          decode =  client.utils.DecodeVersionHash(container).objectId;
-          console.log(`${container} ${slash} and object ${decode}`)
-          if (decode !== objectId) {
-            console.log(`Some other object ${decode}`)
-            continue
-          }
-          if (!slash.startsWith("./files/assets/")) {
-            console.log(`Some other path ${slash}`)
-            continue
-          }
-
-          filename = slash.split("/").slice(-1)
-
-          inverted[filename] = true                    
-        }
-
-        let redo = false
-        if (process.env.ASSET_REDO === "redo") {
-          redo = true
-        }
-        
-        changed = false
-        for (file in files) {
-          if (file === ".") {
-            continue
-          }
-          else if (!redo && inverted[file] != null) {
-            console.log(`${file} is linked as an asset`)
-          }
-          else if (!redo && assets[file] != null) {
-            throw new Error(`hey ${file} can't be created because it already exists as an asset key`)
-          }
-          else {
-            console.log(`${file} DOES NOT exist in assets`)
-            assets[file] = {
-              asset_type: "Image",
-              attachment_content_type: "image/jpeg",
-              file: {
-                '.': {
-                  auto_update: { tag: 'latest' },
-                  container: verhash
-                },
-                '/': `./files/assets/${file}`
-              },
-            }
-            changed = true
-            
-          }          
-        }
-
-        console.log(`----newfiles----changed:${changed}---------`);
-        console.dir(assets, {depth: null});
-
-        if (!changed) continue;
-
-        const editResponse = await client.EditContentObject({
-          libraryId,
-          objectId,
-        });
-        const writeToken = editResponse.write_token;
-        console.log(objectId);
-        console.log(writeToken);
-        await client.ReplaceMetadata({libraryId, objectId, writeToken, metadataSubtree: "assets", metadata: assets})
-        
-        if (finalize) {
-          await client.FinalizeContentObject({
-            libraryId,
-            objectId,
-            writeToken,
-            commitMessage: process.env.COMMIT_MESSAGE || "assetize the assets (joe)",
-          });
-        }
-        else {
-          console.log(`not finalizing ${objectId} -- write token is: ${writeToken}`)
-        }
-      }
     } catch (err) {
       console.log(err);
     }
