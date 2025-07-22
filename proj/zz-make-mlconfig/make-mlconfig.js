@@ -179,7 +179,7 @@ getRegularClient()
         console.dir(finaltenant, { depth: null });       
       }
       else {
-        console.log("ml_config exists already");
+        console.log("ml_config exists already, not doing anything");
       }
       
     } catch (err) {
