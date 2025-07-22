@@ -61,6 +61,20 @@ async function findPropertiesLib(client) {
   return proplib;
 }
 
+// get the content admin group
+function getContentAdminGroup(groups) {
+
+  const filtered = groups.filter((g) => g.meta?.name?.toLowerCase().includes("content admin"))
+
+  if (filtered.length != 1) {
+    console.log("Access Groups:")
+    console.log(groups)
+    console.log("")
+    throw new Error("did not find exactly one content admin group")    
+  }
+
+  return filtered[0].address
+}
 
 getRegularClient()
   .then(async (client) => {
