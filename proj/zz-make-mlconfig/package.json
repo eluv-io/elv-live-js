@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@eluvio/elv-client-js": "^4.0.147"
+  }
+}
