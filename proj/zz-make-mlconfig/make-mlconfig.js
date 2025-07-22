@@ -79,23 +79,34 @@ function getContentAdminGroup(groups) {
 getRegularClient()
   .then(async (client) => {
     try {
-      // convert tenant to iq, and lib is the same as the iq
-      const tenant = (await client.userProfileClient.TenantContractId()).replace(/^iten/, "iq__")
-      const libraryId = tenant.replace("iq__", "ilib")
+      // convert tenant to iq
+      const iten = await client.userProfileClient.TenantContractId()
+      const tenantObject = iten.replace(/^iten/, "iq__")
       
-      console.log(" tenant: " + tenant)      
-      console.log("library: " + libraryId)
+      console.log(" tenant: " + tenantObject)      
+
+      const conf = await client.Configuration({configUrl: CONFIG_URL})
+      const spaceId = conf.contentSpaceId
+      console.log(spaceId);
+
+      let libraryId = await client.ContentObjectLibraryId({objectId: tenantObject})
+      console.log("libraryId according to ecjs: " + libraryId)
+      
+      if (libraryId != spaceId.replace("ispc", "ilib")) {
+        throw new Error(`libraryId is NOT the space ID, it is ${libraryId}.  this might be okay but you should check with serban.`)
+      }
       
       const pubTenantMeta = await client.ContentObjectMetadata({
         libraryId: libraryId,
-        objectId: tenant,
+        objectId: tenantObject,
         resolveLinks: false,
         metadataSubtree: "public"
       });
+      
       console.log("--- Tenant object public metadata")
       console.dir(pubTenantMeta, { depth: null });
       console.log("---")
-
+      
       if (pubTenantMeta.ml_config == null) {
         console.log("no ml_config yet, need to create one")
         let proplib = await findPropertiesLib(client);
@@ -107,28 +118,40 @@ getRegularClient()
         let contentTypeHash = null
         
         if (pubTenantMeta?.content_types?.title != null) {
-          contentTypeHash = await client.LatestVersionHashV2({objectId: pubTenantMeta.content_types.title})
-          console.log(`content type hash: ${contentTypeHash}`)
+          contentTypeHash = await client.LatestVersionHash({objectId: pubTenantMeta.content_types.title})
         }
 
+        console.log(`content type hash: ${contentTypeHash}`)
+
+        const agroups = await client.ListAccessGroups()
+        //console.dir(agroups, {depth: null})
+        const contentAdminGroup = getContentAdminGroup(agroups)
+        console.log(`content admin group: ${contentAdminGroup}`);        
+        
         let publicmeta = { 
-          "name": "ml-config object",
+          "name": `ml-config object for ${iten}`,
         }
 
         if (pubTenantMeta.search) publicmeta.search = pubTenantMeta.search
 
         const adminClient = await getAdminClient()
+        const itenAdmin = await adminClient.userProfileClient.TenantContractId()
+
+        if (itenAdmin != iten) {
+          throw new Error(`tenant of ADMIN_PRIVATE_KEY (${itenAdmin}) != tenant of PRIVATE_KEY (${iten})`)
+        }
 
         const editResponse = await adminClient.EditContentObject({
           libraryId: libraryId,
-          objectId: tenant
+          objectId: tenantObject
         });
         const writeToken = editResponse.write_token;
-        console.log(`tenant object editResponse: ${writeToken}`);
+        console.log(`tenant: tenantObject object editResponse: ${writeToken}`);
 
-        console.log(`create the ml config (non-tenant) object`);
+        console.log(`create the ml config (non-tenantObject) object`);
         
         // create the ml config (non-tenant) object
+        // future: use existing object, open write token
         const mlconfig = await client.CreateContentObject({
           "libraryId": proplib,
           "options": {
@@ -143,35 +166,42 @@ getRegularClient()
         console.dir(mlconfig, { depth: null });
 
         console.log("set ml_config iq in tenant object write token")
-        await adminClient.ReplaceMetadata({libraryId: libraryId, objectId: tenant, writeToken, metadataSubtree: "public/ml_config", metadata: mlconfig.id})
+        await adminClient.ReplaceMetadata({libraryId: libraryId, objectId: tenantObject, writeToken, metadataSubtree: "public/ml_config", metadata: mlconfig.id})
+
+
+        console.log("---- setting ml config object to public ----")
+        
+        await client.SetPermission({
+          objectId: mlconfig.id,
+          permission: "public",
+          writeToken: mlconfig.writeToken
+        });        
 
         console.log("---- ml config finalize ----")
         finalmlconfig = await client.FinalizeContentObject({
           libraryId: proplib,
           objectId: mlconfig.id,
           writeToken: mlconfig.writeToken,
-          commitMessage: `create ml_config from tenant object ${tenant} -- scripted mlconfig creation`,
+          commitMessage: `create ml_config from tenantObject object ${tenantObject} -- scripted mlconfig creation`,
         });
         console.dir(finalmlconfig, { depth: null})
         
-        console.log("---- setting ml config object to public ----")
-        
-        await client.SetPermission({
+        console.log("---- setting content admin group write permission on ml config object ----")
+        await client.AddContentObjectGroupPermission({
           objectId: mlconfig.id,
-          permission: "public"
-        });
+          groupAddress: contentAdminGroup,
+          permission: "manage"
+        })
         
-        console.dir(finalmlconfig, { depth: null });
-
         if (pubTenantMeta.search) {
           // delete off existing tenant search config
-          await adminClient.DeleteMetadata({libraryId: libraryId, objectId: tenant, writeToken, metadataSubtree: "public/search", metadata: mlconfig.id})
+          await adminClient.DeleteMetadata({libraryId: libraryId, objectId: tenantObject, writeToken, metadataSubtree: "public/search", metadata: mlconfig.id})
         }
         
-        console.log("---- tenant finalize ----")
+        console.log("---- tenant object finalize ----")
         finaltenant = await adminClient.FinalizeContentObject({
           libraryId: libraryId, 
-          objectId: tenant,
+          objectId: tenantObject,
           writeToken,
           commitMessage: `point at ml_config ${mlconfig.id} -- scripted mlconfig creation`,
         });
