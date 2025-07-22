@@ -5,10 +5,12 @@
 
 const { ElvClient } = require("@eluvio/elv-client-js");
 
+const CONFIG_URL = "https://main.net955305.contentfabric.io/config"
+
 const getClient = async (privateKey) => {
-  
+
   var client = await ElvClient.FromConfigurationUrl({
-    configUrl: "https://main.net955305.contentfabric.io/config",
+    configUrl: CONFIG_URL,
   });
   const wallet = client.GenerateWallet();
   const signer = wallet.AddAccount({
