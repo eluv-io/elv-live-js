@@ -38,6 +38,7 @@ const getRegularClient = async() => {
   return await getClient(process.env.PRIVATE_KEY)
 }
 
+// find the "properties" library
 async function findPropertiesLib(client) {
   const libs = await client.ContentLibraries();
   let proplib = null;
@@ -51,8 +52,10 @@ async function findPropertiesLib(client) {
     //console.log(lib, '---------')
     //console.dir(libmeta, { depth: null });
     if (("" + libmeta?.name).toLowerCase().includes("properties")) {
+      if (proplib) {
+        throw new Error("multiple libraries matching properties library??")
+      }
       proplib = lib;
-      break;
     }
   }
   return proplib;
@@ -83,9 +86,7 @@ getRegularClient()
         console.log("no ml_config yet, need to create one")
         let proplib = await findPropertiesLib(client);
         if (proplib == null) {
-          console.log("Could not find properties library for tenant, don't know where to create ml config object");
-          process.exitCode = 1
-          return
+          throw new Error("Could not find properties library for tenant, don't know where to create ml config object");
         }
         console.log(`Properties library ${proplib}`)
         
