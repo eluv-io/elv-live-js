@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+
+#set -x -v
+
+opfindkey_findem() {
+    ## look for a matching item in the following order (example key being searched starflix-elv-admin)
+    ##   title is "starflix-elv-admin" (any type of item)
+    ##   title is "starflix-elv-admin key share" and it's a secure note
+    ##   additional information is "starflix-elv-admin" (any type of item)
+    ##   title is "starflix tenancy" and its a secure note
+    ##   additional information field contains "private" (case insensitive) and it's a secure note
+
+    ## TO CONSIDER: all secure notes??
+
+    local key
+    local tenancy
+    key="$1"
+
+    ## assume that key name has two "extra" parts (e.g -elv-admin, -content-ops, -elv-o1)
+    ## and that any parts before the last two are part of the tenant slug
+    tenancy="${key%-*}"
+    tenancy="${tenancy%-*}"
+
+    op item list --format=json | jq -c -s --arg key "$key" --arg tenancy "${tenancy} tenancy" '(.[]|sort_by(.title))|
+        (.[]|select(.title == $key)),
+        (.[]|select((.title == $key + " key share") and .category == "SECURE_NOTE")),
+        (.[]|select(.additional_information == $key)),
+        (.[]|select((.title == $tenancy) and .category == "SECURE_NOTE")),
+        (.[]|select((("" + .additional_information)|ascii_downcase|test("private")) and .category == "SECURE_NOTE"))' 
+}
+
+opfindkey_tryem() {
+    ## given a list of items, try to retreive the key
+    ## on each item try the following keys in order (example searching for starflix-elv-admin)
+    ##   password                 (this would be on LOGIN or PASSWORD items; could be on a SECURE_NOTE)
+    ##   private key              (this would be on a SECURE_NOTE)
+    ##   starflix-elv-admin       (this would be on a SECURE_NOTE)
+
+    ## function will print out the secret
+    ## unless 2nd arg is "url" in which case it will print the op:// url instead
+    local key
+    local printurl
+    local devnull
+    local tryurl
+    local action
+    local entseen
+    
+    key="$1"
+    printurl="$2"
+    if [ "$printurl" == "url" ]; then
+        action() { op read "$1" >/dev/null 2>&1; }       
+    else        
+        action() { op read "$1" 2>/dev/null | grep -v '^$' ; }
+    fi
+
+    declare -A entseen    
+    jq -r '"op://" + .vault.id + "/" + .id' | while read ent ; do
+        [ "${entseen["$ent"]}" == "" ] || continue
+        entseen["$ent"]="seen"
+        for tryurl in "$ent/password" "$ent/private key" "$ent/$key"; do
+            if action "$tryurl"; then
+                [ "$printurl" == "url" ] && echo "$tryurl"
+                return
+            fi            
+        done
+    done
+}
+
+opfindkey() {
+    if [ "$1" == "--url" ] || [ "$1" = "-u" ]; then
+        printurl=url
+        shift
+    fi
+
+    key="$1"
+
+    if [ "$2" != "" ]; then
+        shift
+        echo 1>&2 extra arguments: "$*"
+        return 1
+    fi
+    
+    opfindkey_findem "$key" | opfindkey_tryem "$key" "$printurl"
+}
+
+opsetkey() {
+    local keyname="$1"
+    local var="$2"
+
+    local key="$(opfindkey "$keyname")"
+    [ "$var" != "" ] || var=PRIVATE_KEY
+    
+    if [ "$1" = "" ] || [ "$3" != "" ]; then
+        echo 1>&2 "usage: opsetkey <key> [ENV_VAR]"
+        return 1
+    elif [ "$key" = "" ]; then
+        echo 1>&2 did not find "$keyname" -- unexporting "$var"
+        export -n "$var"
+        unset "$var"
+        return 1
+    else
+        echo 1>&2 setting "$var" to "$keyname" key
+        export "$var"="$key"
+        return 0
+    fi
+}
+
+
+if [ "$BASH_VERSION" = "" ]; then
+    echo 1>&2 NOT for non-bash shells. stop.    
+elif (return 0 2>/dev/null); then
+    ## sourced, do nothing
+    true
+else
+    opfindkey "$@"
+fi
+
