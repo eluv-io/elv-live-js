@@ -93,9 +93,16 @@ getRegularClient()
       console.log("libraryId according to ecjs: " + libraryId)
       
       if (libraryId != spaceId.replace("ispc", "ilib")) {
-        throw new Error(`libraryId is NOT the space ID, it is ${libraryId}.  this might be okay but you should check with serban.`)
+        if (process.argv.slice(-1)[0] == libraryId) {
+          console.warn(`libraryId is NOT the space ID, it is ${libraryId}.  still pausing 4 seconds so you may reconsider...\n`)
+          await new Promise(resolve => setTimeout(resolve, 4000))
+        }
+        else {
+          throw new Error(`libraryId is NOT the space ID, it is ${libraryId}.  this might be okay but you should check with serban.\n` +
+                          `To proceed anyway, run the script with ${libraryId} as an argument to allow this.`)
+        }
       }
-      
+
       const pubTenantMeta = await client.ContentObjectMetadata({
         libraryId: libraryId,
         objectId: tenantObject,
