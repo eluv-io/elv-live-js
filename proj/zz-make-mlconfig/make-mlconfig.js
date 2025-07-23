@@ -136,7 +136,7 @@ getRegularClient()
         console.log(`content admin group: ${contentAdminGroup}`);        
         
         let publicmeta = { 
-          "name": `ml-config object for ${iten}`,
+          "name": `ML Settings`,
         }
 
         if (pubTenantMeta.search) publicmeta.search = pubTenantMeta.search
