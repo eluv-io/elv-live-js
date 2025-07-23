@@ -21,20 +21,20 @@ const getClient = async (privateKey) => {
 };
 
 const getAdminClient = async() => {
-  
+
   if (process.env.ADMIN_PRIVATE_KEY == null) {
     throw new Error("need to set ADMIN_PRIVATE_KEY")
   }
-  
+
   return await getClient(process.env.ADMIN_PRIVATE_KEY)
 }
 
 const getRegularClient = async() => {
-  
+
   if (process.env.PRIVATE_KEY == null) {
     throw new Error("need to set PRIVATE_KEY")
   }
-  
+
   return await getClient(process.env.PRIVATE_KEY)
 }
 
@@ -62,7 +62,10 @@ async function findPropertiesLib(client) {
 }
 
 // get the content admin group
-function getContentAdminGroup(groups) {
+async function getContentAdminGroup(client) {
+
+  const groups = await client.ListAccessGroups()
+  //console.dir(agroups, {depth: null})
 
   const filtered = groups.filter((g) => g.meta?.name?.toLowerCase().includes("content admin"))
 
@@ -70,7 +73,7 @@ function getContentAdminGroup(groups) {
     console.log("Access Groups:")
     console.log(groups)
     console.log("")
-    throw new Error("did not find exactly one content admin group")    
+    throw new Error("did not find exactly one content admin group")
   }
 
   return filtered[0].address
@@ -79,11 +82,28 @@ function getContentAdminGroup(groups) {
 getRegularClient()
   .then(async (client) => {
     try {
+      const userProfile = await client.userProfileClient.UserMetadata()
+      if (!userProfile.tenantId) {
+        console.warn(`user ${userProfile.public?.name} tenant ID not set in user metadata, using userProfileClient.TenantContractId()`)
+        userProfile.tenantId = await client.userProfileClient.TenantContractId()
+      }
+      console.dir(userProfile, { depth : null} )
+      const contentAdminGroup = await getContentAdminGroup(client)
+      console.log(`content admin group: ${contentAdminGroup}`);
+
+
+      const allmembers = [...(await client.AccessGroupManagers({contractAddress: contentAdminGroup})),
+                    ...(await client.AccessGroupMembers({contractAddress: contentAdminGroup}))]
+      //console.log(allmembers)
+
+      if (!allmembers.includes(client.signer.address.toLowerCase())) {
+        throw new Error(`PRIVATE_KEY user ${userProfile.public?.name} (${client.signer.address}) is not in content admins group, can't use`)
+      }
+
       // convert tenant to iq
-      const iten = await client.userProfileClient.TenantContractId()
-      const tenantObject = iten.replace(/^iten/, "iq__")
-      
-      console.log(" tenant: " + tenantObject)      
+      const tenantObject = userProfile.tenantId.replace(/^iten/, "iq__")
+
+      console.log(" tenant: " + tenantObject)
 
       const conf = await client.Configuration({configUrl: CONFIG_URL})
       const spaceId = conf.contentSpaceId
@@ -91,14 +111,14 @@ getRegularClient()
 
       let libraryId = await client.ContentObjectLibraryId({objectId: tenantObject})
       console.log("libraryId according to ecjs: " + libraryId)
-      
+
       if (libraryId != spaceId.replace("ispc", "ilib")) {
         if (process.argv.slice(-1)[0] == libraryId) {
           console.warn(`libraryId is NOT the space ID, it is ${libraryId}.  still pausing 4 seconds so you may reconsider...\n`)
           await new Promise(resolve => setTimeout(resolve, 4000))
         }
         else {
-          throw new Error(`libraryId is NOT the space ID, it is ${libraryId}.  this might be okay but you should check with serban.\n` +
+          throw new Error(`libraryId is NOT the space ID, it is ${libraryId}.  this might be okay but you should check with Serban.\n` +
                           `To proceed anyway, run the script with ${libraryId} as an argument to allow this.`)
         }
       }
@@ -109,11 +129,11 @@ getRegularClient()
         resolveLinks: false,
         metadataSubtree: "public"
       });
-      
+
       console.log("--- Tenant object public metadata")
       console.dir(pubTenantMeta, { depth: null });
       console.log("---")
-      
+
       if (pubTenantMeta.ml_config == null) {
         console.log("no ml_config yet, need to create one")
         let proplib = await findPropertiesLib(client);
@@ -121,32 +141,37 @@ getRegularClient()
           throw new Error("Could not find properties library for tenant, don't know where to create ml config object");
         }
         console.log(`Properties library ${proplib}`)
-        
+
         let contentTypeHash = null
-        
+
         if (pubTenantMeta?.content_types?.title != null) {
           contentTypeHash = await client.LatestVersionHash({objectId: pubTenantMeta.content_types.title})
         }
 
         console.log(`content type hash: ${contentTypeHash}`)
 
-        const agroups = await client.ListAccessGroups()
-        //console.dir(agroups, {depth: null})
-        const contentAdminGroup = getContentAdminGroup(agroups)
-        console.log(`content admin group: ${contentAdminGroup}`);        
-        
-        let publicmeta = { 
+        let publicmeta = {
           "name": `ML Settings`,
         }
 
         if (pubTenantMeta.search) publicmeta.search = pubTenantMeta.search
 
         const adminClient = await getAdminClient()
-        const itenAdmin = await adminClient.userProfileClient.TenantContractId()
+        const adminUserProfile = await adminClient.userProfileClient.UserMetadata()
 
-        if (itenAdmin != iten) {
-          throw new Error(`tenant of ADMIN_PRIVATE_KEY (${itenAdmin}) != tenant of PRIVATE_KEY (${iten})`)
+        if (!adminUserProfile.tenantId) {
+          console.warn(`user ${adminUserProfile.public?.name} tenant ID not set in user metadata, using userProfileClient.TenantContractId()`)
+          adminUserProfile.tenantId = await adminClient.userProfileClient.TenantContractId()
         }
+
+        if ( !(("" + adminUserProfile?.public?.name).endsWith("-elv-admin")) ) {
+          throw new Error(`ADMIN_PRIVATE_KEY name does not end with elv-admin: ${adminUserProfile?.public?.name}`)
+        }
+
+        if (adminUserProfile.tenantId != userProfile.tenantId) {
+          throw new Error(`ADMIN_PRIVATE_KEY user ${adminUserProfile.public?.name} tenant ${adminUserProfile.tenantId}) != ${userProfile.tenantId} (tenant of PRIVATE_KEY user ${userProfile.public?.name})`)
+        }
+
 
         const editResponse = await adminClient.EditContentObject({
           libraryId: libraryId,
@@ -156,7 +181,7 @@ getRegularClient()
         console.log(`tenant: tenantObject object editResponse: ${writeToken}`);
 
         console.log(`create the ml config (non-tenantObject) object`);
-        
+
         // create the ml config (non-tenant) object
         // future: use existing object, open write token
         const mlconfig = await client.CreateContentObject({
@@ -169,7 +194,7 @@ getRegularClient()
             "visibility": 0
           }
         });
-        
+
         console.dir(mlconfig, { depth: null });
 
         console.log("set ml_config iq in tenant object write token")
@@ -177,12 +202,12 @@ getRegularClient()
 
 
         console.log("---- setting ml config object to public ----")
-        
+
         await client.SetPermission({
           objectId: mlconfig.id,
           permission: "public",
           writeToken: mlconfig.writeToken
-        });        
+        });
 
         console.log("---- ml config finalize ----")
         finalmlconfig = await client.FinalizeContentObject({
@@ -192,33 +217,33 @@ getRegularClient()
           commitMessage: `create ml_config from tenantObject object ${tenantObject} -- scripted mlconfig creation`,
         });
         console.dir(finalmlconfig, { depth: null})
-        
+
         console.log("---- setting content admin group write permission on ml config object ----")
         await client.AddContentObjectGroupPermission({
           objectId: mlconfig.id,
           groupAddress: contentAdminGroup,
           permission: "manage"
         })
-        
+
         if (pubTenantMeta.search) {
           // delete off existing tenant search config
           await adminClient.DeleteMetadata({libraryId: libraryId, objectId: tenantObject, writeToken, metadataSubtree: "public/search", metadata: mlconfig.id})
         }
-        
+
         console.log("---- tenant object finalize ----")
         finaltenant = await adminClient.FinalizeContentObject({
-          libraryId: libraryId, 
+          libraryId: libraryId,
           objectId: tenantObject,
           writeToken,
           commitMessage: `point at ml_config ${mlconfig.id} -- scripted mlconfig creation`,
         });
 
-        console.dir(finaltenant, { depth: null });       
+        console.dir(finaltenant, { depth: null });
       }
       else {
         console.log("ml_config exists already, not doing anything");
       }
-      
+
     } catch (err) {
       console.log(err);
     }
