@@ -849,7 +849,7 @@ const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug}) =
 
   if (!opsKey) {
     if (isEmptyParams(t.base.tenantSlug)) {
-      throw Error("require t.base.tenantName to be set");
+      throw Error("require t.base.tenantSlug to be set");
     }
 
     const signerBalance = await elvAccount.GetBalance();
