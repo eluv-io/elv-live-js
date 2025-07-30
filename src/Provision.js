@@ -848,7 +848,7 @@ const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug}) =
   });
 
   if (!opsKey) {
-    if (isEmptyParams(t.base.tenantName)) {
+    if (isEmptyParams(t.base.tenantSlug)) {
       throw Error("require t.base.tenantName to be set");
     }
 
@@ -859,12 +859,12 @@ const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug}) =
 
     let res = await elvAccount.Create({
       funds: opsFund,
-      accountName: `${t.base.tenantName}-${opsKeyType}`,
+      accountName: `${t.base.tenantSlug}-${opsKeyType}`,
       tenantId: t.base.tenantId,
       skipAddingToTenantUserGroup: true,
       groupToRoles: groupToRoles,
     });
-    console.log(`\n${t.base.tenantName}-${opsKeyType}:\n`);
+    console.log(`\n${t.base.tenantSlug}-${opsKeyType}:\n`);
     console.log(`address:${res.address}`);
     console.log(`privateKey:${res.privateKey}`);
 
@@ -1101,6 +1101,7 @@ const ProvisionOps = async ({client, tenantId, t, debug = false}) => {
 
   let tenantOpsGroupToRoles = {
     [t.base.groups.tenantAdminGroupAddress]: "manager",
+    [t.base.groups.contentAdminGroupAddress]: "manager",
     [t.base.groups.tenantUsersGroupAddress]: "manager"
   };
   // tenant ops added as manager to tenant_admin and tenant_users group
@@ -1113,6 +1114,7 @@ const ProvisionOps = async ({client, tenantId, t, debug = false}) => {
 
   let contentOpsGroupToRoles = {
     [t.base.groups.contentAdminGroupAddress]: "manager",
+    [t.base.groups.tenantAdminGroupAddress]: "member",
     [t.base.groups.tenantUsersGroupAddress]: "member"
   };
   // content ops added as manager to content_admin and tenant_users group
