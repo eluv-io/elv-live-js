@@ -8,6 +8,7 @@ const {Config} = require("./Config");
 const {EluvioLive} = require("../src/EluvioLive.js");
 const {ElvFabric} = require("./ElvFabric");
 const {ElvTenant} = require("./ElvTenant");
+const {ElvIndexer} = require("./ElvIndexer");
 
 const TYPE_LIVE_TENANT = "Media Wallet Settings";
 const TYPE_LIVE_MARKETPLACE = "Media Wallet Marketplace";
@@ -48,6 +49,8 @@ const EXPECTED_SENDER_BALANCE = 10.5;
 // This value must be greater than 0.1 Elv for tx fee
 // (checked by elv-client-js when adding as an access group member)
 const OPS_AMOUNT = 10;
+
+let elvIndexer = null;
 
 // ===================================================================
 
@@ -399,6 +402,19 @@ const handleTenantFaucet = async ({tenantId, asUrl, t, debug}) => {
     t.base.faucet.amount_transferred = res.amount_transferred;
     t.base.faucet.current_balance = res.current_balance;
   }
+
+  if(elvIndexer){
+    if(!t.base.tenantId){
+      throw Error("require t.base.tenantId to be set");
+    }
+
+    const idxRes = await elvIndexer.checkUserTenant({userAddress: res.faucet.funding_address});
+    if (idxRes !== t.base.tenantId){
+      t.warnings.push(`Tenant mismatch for faucet funding key - ${res.faucet.funding_address} in indexer: expected ${t.base.tenantId}, actual ${idxRes}`);
+    } else {
+      console.log(`Tenant matches for faucet funding key - ${res.faucet.funding_address}: ${idxRes}`);
+    }
+  }
   writeConfigToFile(t);
 };
 
@@ -419,6 +435,19 @@ const handleTenantShareSigner = async ({tenantId, asUrl, t, debug}) => {
   });
   t.base.shareSigner.signingAddress = res.sharing.share_signing_address;
   t.base.shareSigner.signingId = res.sharing.share_signing_id;
+
+  if(elvIndexer){
+    if(!t.base.tenantId){
+      throw Error("require t.base.tenantId to be set");
+    }
+
+    const idxRes = await elvIndexer.checkUserTenant({userAddress: res.sharing.share_signing_address});
+    if (idxRes !== t.base.tenantId){
+      t.warnings.push(`Tenant mismatch for share signing key - ${res.sharing.share_signing_address} in indexer: expected ${t.base.tenantId}, actual ${idxRes}`);
+    } else {
+      console.log(`Tenant matches for share signing key - ${res.sharing.share_signing_address}: ${idxRes}`);
+    }
+  }
   writeConfigToFile(t);
 };
 
@@ -428,11 +457,25 @@ const createLibrariesAndSetPermissions = async ({client, kmsId, t}) => {
   if (isEmptyParams(t.base.tenantName)) {
     throw Error("require t.base.tenantName to be set");
   }
+  if(isEmptyParams(t.base.tenantId)){
+    throw Error("require t.base.tenantId to be set");
+  }
 
   // Create libraries and set permissions
   const createLibrary = async ({name, metadata}) => {
-    const libraryId = await client.CreateContentLibrary({name, kmsId, metadata});
+
+    const tenantContractId = t.base.tenantId;
+    const libraryId = await client.CreateContentLibrary({name, kmsId, metadata, tenantContractId});
     await SetLibraryPermissions(client, libraryId, t);
+
+    if (elvIndexer) {
+      const res = await elvIndexer.checkLibraryTenant({libraryId});
+      if (res !== tenantContractId){
+        t.warnings.push(`Tenant mismatch for ${name} - ${libraryId} in indexer: expected ${tenantContractId}, actual ${res}`);
+      } else {
+        console.log(`Tenant matches for ${name} - ${libraryId}: ${res}`);
+      }
+    }
     return libraryId;
   };
 
@@ -460,8 +503,28 @@ const createLibrariesAndSetPermissions = async ({client, kmsId, t}) => {
 
 // helper function to create and set permissions for content types
 const createContentTypeAndSetPermissions = async ({client, name, metadata, t}) => {
+  if (isEmptyParams(t.base.tenantId)) {
+    throw Error("require t.base.tenantId to be set");
+  }
+
   const typeId = await client.CreateContentType({name, metadata});
   await SetObjectPermissions(client, typeId, t);
+  let tenantContractId = await client.TenantContractId({
+    objectId: typeId,
+  });
+  console.log(`Tenant contract id set on content type fabric metadata ${typeId}: ${tenantContractId}`);
+
+  // Tenant details are stored in Fabric metadata for content type object,
+  // as it doesn't have contract metadata.
+  // Hence, the indexer does not have them set.
+  // if (elvIndexer) {
+  //   const res = await elvIndexer.checkObjectTenant({objectId: typeId});
+  //   if (res !== t.base.tenantId){
+  //     t.warnings.push(`Tenant mismatch for ${name} - ${typeId} in indexer: expected ${t.base.tenantId}, actual ${res}`);
+  //   } else {
+  //     console.log(`Tenant matches for ${name} - ${typeId}: ${res}`);
+  //   }
+  // }
   return typeId;
 };
 
@@ -875,6 +938,15 @@ const createOpsKeyAndAddToGroup = async ({groupToRoles, opsKeyType, t, debug}) =
       t.base.opsKey.contentOps.key = res.privateKey;
       t.base.opsKey.contentOps.amount_transferred = opsFund;
     }
+    if(elvIndexer){
+      let tenantContractId = t.base.tenantId;
+      const idxRes = await elvIndexer.checkUserTenant({userAddress: res.address});
+      if (idxRes !== tenantContractId){
+        t.warnings.push(`Tenant mismatch for ${opsKeyType} - ${res.address} in indexer: expected ${tenantContractId}, actual ${idxRes}`);
+      } else {
+        console.log(`Tenant matches for ${opsKeyType} - ${res.address}: ${idxRes}`);
+      }
+    }
     writeConfigToFile(t);
   }
 };
@@ -898,153 +970,196 @@ const InitializeTenant = async ({
   asUrl,
   statusFile,
   initConfig,
+  indexerEnable = false,
   debug = false
 }) => {
 
-  let t;
-  if (!statusFile) {
-    t = {
-      base: {
-        tenantName: "",
-        tenantSlug: "",
-        opsKey: {
-          tenantOps: {
-            key: "",
-            amount: null
+  try {
+    let t;
+    if (!statusFile) {
+      t = {
+        base: {
+          tenantName: "",
+          tenantSlug: "",
+          opsKey: {
+            tenantOps: {
+              key: "",
+              amount: null
+            },
+            contentOps: {
+              key: "",
+              amount: null
+            },
           },
-          contentOps: {
-            key: "",
-            amount: null
+          groups: {
+            "tenantAdminGroupAddress": "",
+            "contentAdminGroupAddress": "",
+            "tenantUsersGroupAddress": ""
           },
+          libraries: {
+            "mastersLibraryId": null,
+            "mezzanineLibraryId": null,
+            "propertiesLibraryId": null
+          },
+          tenantTypes: {
+            "titleTypeId": null,
+            "titleCollectionTypeId": null,
+            "masterTypeId": null,
+            "permissionsTypeId": null,
+            "channelTypeId": null,
+            "streamTypeId": null
+          },
+          publish: {
+            "env": null,
+          },
+          faucet: {
+            "enable": true,
+            "no_funds": false,
+            "funding_address": null,
+            "amount": null,
+          },
+          shareSigner: {
+            "enable": true,
+          }
         },
-        groups: {
-          "tenantAdminGroupAddress": "",
-          "contentAdminGroupAddress": "",
-          "tenantUsersGroupAddress": ""
+        liveStreaming: {
+          siteId: null,
         },
-        libraries: {
-          "mastersLibraryId": null,
-          "mezzanineLibraryId": null,
-          "propertiesLibraryId": null
+        mediaWallet: {
+          liveTypes: {
+            "Item Template": null,
+            "Media Wallet Marketplace": null,
+            "Media Wallet Settings": null,
+          },
+          objects: {
+            marketplaceId: "",
+            marketplaceHash: null,
+            tenantObjectId: null,
+          }
         },
-        tenantTypes: {
-          "titleTypeId": null,
-          "titleCollectionTypeId": null,
-          "masterTypeId": null,
-          "permissionsTypeId": null,
-          "channelTypeId": null,
-          "streamTypeId": null
-        },
-        publish: {
-          "env": null,
-        },
-        faucet: {
-          "enable": true,
-          "no_funds": false,
-          "funding_address": null,
-          "amount": null,
-        },
-        shareSigner: {
-          "enable": true,
-        }
-      },
-      liveStreaming: {
-        siteId: null,
-      },
-      mediaWallet: {
-        liveTypes: {
-          "Item Template": null,
-          "Media Wallet Marketplace": null,
-          "Media Wallet Settings": null,
-        },
-        objects: {
-          marketplaceId: "",
-          marketplaceHash: null,
-          tenantObjectId: null,
-        }
+        warnings: []
+      };
+    } else {
+      console.log("Parsing status JSON file...");
+      t = readJsonFile(statusFile);
+      OUTPUT_FILE = statusFile;
+
+      timestamp = new Date().toISOString().replace(/[-:.]/g, "");
+      backupFile = `${path.parse(statusFile).name}_backup_${timestamp}.json`;
+      fs.copyFileSync(statusFile, backupFile);
+    }
+
+    if (initConfig) {
+      return t;
+    }
+
+    if (!tenantSlug) {
+      throw Error("Tenant Slug not provided");
+    }
+    t.base.tenantSlug = tenantSlug.toLowerCase().replace(/ /g, "-");
+
+    if (!tenantName) {
+      tenantName = tenantSlug;
+    }
+    t.base.tenantName = tenantName;
+
+    // minimum signer balance required
+    let expectedSignerBalance = 10;
+    // fund content ops key
+    if (t.base.opsKey.contentOps.key === "") {
+      if (!isEmptyParams(t.base.opsKey.contentOps.amount)) {
+        expectedSignerBalance += t.base.opsKey.contentOps.amount;
+      } else {
+        expectedSignerBalance += 10;
       }
+    }
+    // fund tenant ops key
+    if (t.base.opsKey.tenantOps.key === "") {
+      if (!isEmptyParams(t.base.opsKey.tenantOps.amount)) {
+        expectedSignerBalance += t.base.opsKey.tenantOps.amount;
+      } else {
+        expectedSignerBalance += 10;
+      }
+    }
+
+    // fund faucet if enabled
+    if (t.base.faucet.enable) {
+      if (!isEmptyParams(t.base.faucet.amount)) {
+        expectedSignerBalance += t.base.faucet.amount;
+      } else {
+        expectedSignerBalance += 20;
+      }
+    }
+
+    let elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: debug
+    });
+    await elvAccount.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+    const signerBalance = await elvAccount.GetBalance();
+    if (signerBalance < expectedSignerBalance) {
+      throw Error(`Admin key ${await elvAccount.signer.getAddress()} have balance < ${expectedSignerBalance}Elv\nCurrent balance: ${signerBalance}`);
+    }
+
+    const isPgEnvVarSet = () => {
+      const envList = ["PG_USER", "PG_HOST", "PG_DATABASE", "PG_PASSWORD", "PG_PORT"];
+      return envList.every(v => process.env[v]);
     };
-  } else {
-    console.log("Parsing status JSON file...");
-    t = readJsonFile(statusFile);
-    OUTPUT_FILE = statusFile;
 
-    timestamp = new Date().toISOString().replace(/[-:.]/g, "");
-    backupFile = `${path.parse(statusFile).name}_backup_${timestamp}.json`;
-    fs.copyFileSync(statusFile, backupFile);
-  }
+    if(indexerEnable){
+      const exists = isPgEnvVarSet();
+      if (!exists) {
+        throw Error("Indexer check is enabled but required env variables are not set: PG_USER, PG_HOST, PG_DATABASE, PG_PASSWORD, PG_PORT");
+      }
 
-  if (initConfig) {
+      elvIndexer = new ElvIndexer({
+        pgUser: process.env.PG_USER,
+        pgHost: process.env.PG_HOST,
+        pgDatabase: process.env.PG_DATABASE,
+        pgPassword: process.env.PG_PASSWORD,
+        pgPort: process.env.PG_PORT,
+        debugLogging: debug,
+      });
+
+      try {
+        await elvIndexer.start();
+      } catch (err) {
+        console.log("Failed to start indexer:", err);
+        elvIndexer = null; // for finally block
+        throw err;
+      }
+    }
+
+    await ProvisionBase({client, kmsId, tenantId, asUrl, t, debug});
+    await ProvisionLiveStreaming({client, tenantId, t, indexerEnable});
+    await ProvisionOps({client, tenantId, t, debug});
+    await ProvisionMediaWallet({client, tenantId, t});
+    await ProvisionFaucet({tenantId, asUrl, t, debug});
+    await ProvisionShareSigner({tenantId, asUrl, t, debug});
+
+    /* Add ids of services to tenant fabric metadata */
+    console.log("Tenant content object - set types and sites");
+    res = await SetTenantEluvioLiveId({client, t});
+    if (res) {
+      console.log(`\tTenantEluvioLiveId: ${JSON.stringify(res, null, 2)}`);
+    }
+
+    console.log(`JSON OUTPUT AT: ${OUTPUT_FILE}\n`);
     return t;
-  }
-
-  if (!tenantSlug) {
-    throw Error("Tenant Slug not provided");
-  }
-  t.base.tenantSlug = tenantSlug.toLowerCase().replace(/ /g, "-");
-
-  if (!tenantName) {
-    tenantName = tenantSlug;
-  }
-  t.base.tenantName = tenantName;
-
-  // minimum signer balance required
-  let expectedSignerBalance = 10;
-  // fund content ops key
-  if (t.base.opsKey.contentOps.key === "") {
-    if (!isEmptyParams(t.base.opsKey.contentOps.amount)) {
-      expectedSignerBalance += t.base.opsKey.contentOps.amount;
-    } else {
-      expectedSignerBalance += 10;
+  } catch (err) {
+    console.log(`OUTPUT stored before error at: ${OUTPUT_FILE}\n`);
+    throw err;
+  } finally {
+    if (elvIndexer) {
+      try {
+        await elvIndexer.stop();
+      } catch (err) {
+        console.log("Error stopping indexer connection:", err);
+      }
     }
   }
-  // fund tenant ops key
-  if (t.base.opsKey.tenantOps.key === "") {
-    if (!isEmptyParams(t.base.opsKey.tenantOps.amount)) {
-      expectedSignerBalance += t.base.opsKey.tenantOps.amount;
-    } else {
-      expectedSignerBalance += 10;
-    }
-  }
-
-  // fund faucet if enabled
-  if (t.base.faucet.enable) {
-    if (!isEmptyParams(t.base.faucet.amount)) {
-      expectedSignerBalance += t.base.faucet.amount;
-    } else {
-      expectedSignerBalance += 20;
-    }
-  }
-
-  let elvAccount = new ElvAccount({
-    configUrl: Config.networks[Config.net],
-    debugLogging: debug
-  });
-  await elvAccount.Init({
-    privateKey: process.env.PRIVATE_KEY,
-  });
-  const signerBalance = await elvAccount.GetBalance();
-  if (signerBalance < expectedSignerBalance) {
-    throw Error(`Admin key ${await elvAccount.signer.getAddress()} have balance < ${expectedSignerBalance}Elv\nCurrent balance: ${signerBalance}`);
-  }
-
-  await ProvisionBase({client, kmsId, tenantId, asUrl, t, debug});
-  await ProvisionLiveStreaming({client, tenantId, t});
-  await ProvisionOps({client, tenantId, t, debug});
-  await ProvisionMediaWallet({client, tenantId, t});
-  await ProvisionFaucet({tenantId, asUrl, t, debug});
-  await ProvisionShareSigner({tenantId, asUrl, t, debug});
-
-  /* Add ids of services to tenant fabric metadata */
-  console.log("Tenant content object - set types and sites");
-  res = await SetTenantEluvioLiveId({client, t});
-  if (res) {
-    console.log(`\tTenantEluvioLiveId: ${JSON.stringify(res, null, 2)}`);
-  }
-
-  console.log(`JSON OUTPUT AT: ${OUTPUT_FILE}\n`);
-
-  return t;
 };
 
 const ProvisionBase = async ({client, kmsId, tenantId, asUrl, t, debug}) => {
@@ -1061,6 +1176,17 @@ const ProvisionBase = async ({client, kmsId, tenantId, asUrl, t, debug}) => {
     objectId: tenantId,
   });
   console.log(`tenant_contract_id: ${tenantContractId} set on tenant metadata`);
+
+  // check tenant details for tenant contract id object
+  if (elvIndexer) {
+    const objectId = "iq__" + tenantId.slice(4);
+    const res = await elvIndexer.checkObjectTenant({objectId});
+    if (res !== tenantId){
+      t.warnings.push(`Tenant mismatch for ${tenantId} in indexer: expected ${tenantId}, actual ${res}`);
+    } else {
+      console.log(`Tenant matches for ${tenantId}: ${res}`);
+    }
+  }
 
   let tenantAdminGroup = await client.TenantId({
     objectId: tenantId,

@@ -333,7 +333,9 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
   console.log("Tenant Deploy");
   console.log(`Tenant name: ${argv.tenant_name}`);
   console.log(`Funds: ${argv.funds}`);
+  console.log(`Indexer: ${argv.indexer}`);
   console.log(`verbose: ${argv.verbose}`);
+
 
   try {
     let space = new ElvSpace({
@@ -346,7 +348,8 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
 
     res = await space.TenantCreate({
       tenantName: argv.tenant_name,
-      ...(argv.funds != null && {funds : argv.funds})
+      indexerEnable: argv.indexer,
+      ...(argv.funds != null && {funds : argv.funds}),
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -2095,6 +2098,10 @@ yargs(hideBin(process.argv))
           describe:
             "funds transferred to tenant-admin key",
           type: "integer",
+        })
+        .option("indexer", {
+          describe: "enable indexer query",
+          type: "boolean",
         });
     },
     (argv) => {
