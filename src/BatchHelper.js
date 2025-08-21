@@ -2,16 +2,15 @@ const { ElvClient, Utils } = require("@eluvio/elv-client-js");
 const { Config } = require("./Config.js");
 const fs = require("fs");
 const path = require("path");
-const plimit = require("p-limit");
 
 class BatchHelper {
-  constructor({ configUrl }){
+  constructor({ configUrl }) {
     this.configUrl = configUrl || ElvClient.main;
     this.spaceAddress = Config.consts[Config.net].spaceAddress;
     this.debug = false;
   }
 
-  async Init({debugLogging = false}={}) {
+  async Init({ debugLogging = false } = {}) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
     });
@@ -25,22 +24,28 @@ class BatchHelper {
     this.debug = debugLogging;
   }
 
+  async DeleteVersions({ target, startIndex, endIndex }) {
+    console.log("target:", target);
+    console.log("startIndex:", startIndex);
+    console.log("endIndex:", endIndex);
 
-  async DeleteVersions({targetAddress,startIndex,endIndex}) {
-    console.log("targetAddress:", targetAddress);
-    console.log("startIndex:",startIndex);
-    console.log("endIndex:",endIndex);
-
-    if (!Utils.ValidAddress(targetAddress)){
-      throw Error (`require valid target address:${targetAddress}`);
+    let targetAddress;
+    if (target.startsWith("0x")) {
+      targetAddress = target;
+    } else {
+      targetAddress = Utils.HashToAddress(target);
     }
 
-    if (startIndex < 0 || endIndex < 0 ){
-      throw Error (`invalid indices: startIndex=${startIndex}, endIndex=${endIndex}`);
+    if (startIndex < 0 || endIndex < 0) {
+      throw Error(
+        `invalid indices: startIndex=${startIndex}, endIndex=${endIndex}`
+      );
     }
 
     if (startIndex >= endIndex) {
-      throw Error (`invalid range: start_index (${startIndex}) must be less than end_index (${endIndex})`);
+      throw Error(
+        `invalid range: start_index (${startIndex}) must be less than end_index (${endIndex})`
+      );
     }
 
     const abiStr = fs.readFileSync(
@@ -55,13 +60,18 @@ class BatchHelper {
     });
     console.log("Total Version:", countVersionHashes.toNumber());
 
-    if (startIndex >= countVersionHashes.toNumber() || endIndex >= countVersionHashes.toNumber() ){
-      throw Error(`invalid indices: startIndex=${startIndex}, endIndex=${endIndex}, versionsCount=${countVersionHashes.toNumber()}`)
+    if (
+      startIndex >= countVersionHashes.toNumber() ||
+      endIndex >= countVersionHashes.toNumber()
+    ) {
+      throw Error(
+        `invalid indices: startIndex=${startIndex}, endIndex=${endIndex}, versionsCount=${countVersionHashes.toNumber()}`
+      );
     }
 
     let versionsInfo = [];
     let count = 0;
-    for (let i=0; i < countVersionHashes.toNumber(); i++){
+    for (let i = 0; i < countVersionHashes.toNumber(); i++) {
       const hash = await this.client.CallContractMethod({
         contractAddress: targetAddress,
         abi: JSON.parse(abiStr),
@@ -78,47 +88,79 @@ class BatchHelper {
       });
       const timestamp = timestampBN.toNumber();
 
-      const version = {hash, timestamp};
+      const version = { hash, timestamp };
       versionsInfo.push(version);
       count++;
-      if (count%5===0){
-        console.log(`Done proceesing ${count+1} version hashes...`);
+      if (count % 10 === 0) {
+        console.log(`Done processing ${count} version hashes...`);
       }
-      if (count === countVersionHashes.toNumber() - 1){
+      if (count === countVersionHashes.toNumber() - 1) {
         console.log("Done processing ALL version hashes!");
       }
     }
 
     console.log("sorting versions...");
-    versionsInfo.sort((a,b) => a.timestamp - b.timestamp);
+    versionsInfo.sort((a, b) => a.timestamp - b.timestamp);
 
-    const limit = plimit(3); // at most 3 tasks run at once
-    const hashesToDelete = versionsInfo
-      .slice(startIndex,endIndex + 1)
-      .map(v => v.hash);
-
-    const results = await Promise.all(
-      hashesToDelete.map(hash =>
-        limit(async () => {
-          try {
-            const res = await this.client.CallContractMethodAndWait({
-              contractAddress: targetAddress,
-              abi: JSON.parse(abiStr),
-              methodName: "deleteVersion",
-              methodArgs: [hash],
-              formatArguments: true
-            });
-            console.log(`Deleted: ${hash}`);
-            return {hash, success: true, tx: res.transactionHash};
-          } catch(e) {
-            console.error(`Failed to delete: ${hash}`, err.message);
-            return {hash, success: false, error: err.message};
-          }
-        }))
+    let baseNonce = await this.client.ethClient.provider.getTransactionCount(
+      this.client.signer.getAddress(),
+      "pending"
     );
 
-    const failed = results.filter(r => !r.success);
-    return failed.length > 0? failed : "All version deleted successfully!";
+    const hashesToDelete = versionsInfo
+      .slice(startIndex, endIndex + 1)
+      .map((v) => v.hash);
+
+    let results = [];
+    let isLastTx;
+
+    for (let i = 0; i < hashesToDelete.length; i++) {
+      const hash = hashesToDelete[i];
+      const nonce = baseNonce + i;
+      isLastTx = i === hashesToDelete.length - 1;
+
+      try {
+        let res;
+
+        if (!isLastTx) {
+          res = await this.client.CallContractMethod({
+            contractAddress: targetAddress,
+            abi: JSON.parse(abiStr),
+            methodName: "deleteVersion",
+            methodArgs: [hash],
+            formatArguments: true,
+            overrides: { nonce },
+          });
+        } else {
+          res = await this.client.CallContractMethodAndWait({
+            contractAddress: targetAddress,
+            abi: JSON.parse(abiStr),
+            methodName: "deleteVersion",
+            methodArgs: [hash],
+            formatArguments: true,
+            overrides: { nonce },
+          });
+        }
+
+        console.log(`Deleted: nonce=${nonce}, hash=${hash}`);
+        results.push({
+          hash,
+          success: true,
+          tx: res.transactionHash,
+          nonce,
+          error: "",
+        });
+      } catch (e) {
+        console.error(`Failed to delete: ${hash}`, e.message);
+        results.push({ hash, success: false, tx: "", error: e.message, nonce });
+
+        // stop creating new tx if an error occurs
+        break;
+      }
+    }
+
+    const failed = results.filter((r) => !r.success);
+    return failed.length > 0 ? failed : "All version deleted successfully!";
   }
 }
 

@@ -1522,7 +1522,7 @@ const CmdDeleteVersionsBatch = async({argv}) => {
     });
 
     const res = await batchHelper.DeleteVersions({
-      targetAddress: argv.target_address,
+      target: argv.target,
       startIndex: argv.start_index,
       endIndex: argv.end_index
     });
@@ -2486,12 +2486,12 @@ yargs(hideBin(process.argv))
     (yargs) => {
       return yargs
         .command(
-          "delete_versions <target_address> <start_index> <end_index>",
+          "delete_versions <target> <start_index> <end_index>",
           "Delete version hashes from object address provided",
           (yargs) => {
             yargs
-              .positional("target_address", {
-                describe: "Address of the object",
+              .positional("target", {
+                describe: "Address/Id of the object",
                 type: "string",
               })
               .positional("start_index", {
