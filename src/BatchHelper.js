@@ -24,6 +24,14 @@ class BatchHelper {
     this.debug = debugLogging;
   }
 
+  /**
+   * Delete versions of target object from startIndex to endIndex
+   *
+   * @param {string} target Address/Id of the object
+   * @param {number} startIndex Starting index (inclusive) for version deletion
+   * @param {number} endIndex Ending index (inclusive) for version deletion
+   * @returns {Promise<string[]>} Array of failed version hashes, if any or success message
+   */
   async DeleteVersions({ target, startIndex, endIndex }) {
     console.log("target:", target);
     console.log("startIndex:", startIndex);
@@ -102,8 +110,9 @@ class BatchHelper {
     console.log("sorting versions...");
     versionsInfo.sort((a, b) => a.timestamp - b.timestamp);
 
-    let baseNonce = await this.client.ethClient.provider.getTransactionCount(
-      this.client.signer.getAddress(),
+    const provider = this.client.ethClient.Provider();
+    let nonce = await provider.getTransactionCount(
+      await this.client.signer.getAddress(),
       "pending"
     );
 
@@ -116,7 +125,6 @@ class BatchHelper {
 
     for (let i = 0; i < hashesToDelete.length; i++) {
       const hash = hashesToDelete[i];
-      const nonce = baseNonce + i;
       isLastTx = i === hashesToDelete.length - 1;
 
       try {
@@ -142,25 +150,140 @@ class BatchHelper {
           });
         }
 
-        console.log(`Deleted: nonce=${nonce}, hash=${hash}`);
+        console.log(
+          `Deleted: index=${startIndex + i}, nonce=${nonce}, hash=${hash}`
+        );
+
+        // increment nonce when the call succeeds
+        nonce++;
+
         results.push({
-          hash,
           success: true,
+          hash,
           tx: res.transactionHash,
+          index: startIndex + i,
           nonce,
-          error: "",
         });
       } catch (e) {
-        console.error(`Failed to delete: ${hash}`, e.message);
-        results.push({ hash, success: false, tx: "", error: e.message, nonce });
-
-        // stop creating new tx if an error occurs
-        break;
+        console.error(
+          `Failed to delete: index=${
+            startIndex + i
+          }, nonce=${nonce}, hash=${hash}, err=${e.message}`
+        );
+        results.push({
+          success: false,
+          hash,
+          index: startIndex + i,
+          nonce,
+          error: e.message,
+        });
       }
     }
 
     const failed = results.filter((r) => !r.success);
     return failed.length > 0 ? failed : "All version deleted successfully!";
+  }
+
+  /**
+   * Delete list of content objects provided
+   *
+   * @param {string[]} contentObjects Address/Id of the object
+   * @returns {Promise<string[]>} Array of failed objects, if any or success message
+   */
+  async DeleteContents({ contentObjects }) {
+    if (contentObjects.length === 0) {
+      throw Error("require contentObjects list to be provided");
+    }
+
+    const abiStr = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseLibrary.abi")
+    );
+
+    let results = [];
+    let isLastTx;
+
+    const provider = this.client.ethClient.Provider();
+    let nonce = await provider.getTransactionCount(
+      await this.client.signer.getAddress(),
+      "pending"
+    );
+
+    for (let i = 0; i < contentObjects.length; i++) {
+      let objectAddress, libraryAddress;
+      let objectId, libraryId;
+      let contentObject = contentObjects[i];
+
+      isLastTx = i === contentObjects.length - 1;
+      try {
+        let res;
+
+        if (contentObject.startsWith("0x")) {
+          objectAddress = contentObject;
+          objectId = Utils.AddressToObjectId(objectAddress);
+        } else {
+          objectId = contentObject;
+          objectAddress = Utils.HashToAddress(contentObject);
+        }
+
+        libraryId = await this.client.ContentObjectLibraryId({
+          objectId,
+        });
+        libraryAddress = Utils.HashToAddress(libraryId);
+
+        const canEdit = await this.client.CallContractMethod({
+          contractAddress: objectAddress,
+          methodName: "canEdit",
+        });
+        if (!canEdit) {
+          throw Error(
+            `Current user does not have permission to delete content object ${objectId}`
+          );
+        }
+
+        if (!isLastTx) {
+          res = await this.client.CallContractMethod({
+            contractAddress: libraryAddress,
+            abi: JSON.parse(abiStr),
+            methodName: "deleteContent",
+            methodArgs: [objectAddress],
+            overrides: { nonce },
+          });
+        } else {
+          res = await this.client.CallContractMethodAndWait({
+            contractAddress: libraryAddress,
+            abi: JSON.parse(abiStr),
+            methodName: "deleteContent",
+            methodArgs: [objectAddress],
+            overrides: { nonce },
+          });
+        }
+
+        console.log(`Deleted object: nonce=${nonce}, object=${objectId}`);
+
+        // increment nonce when call succeeds
+        nonce++;
+
+        results.push({
+          success: true,
+          objectId,
+          libraryId,
+          tx: res.transactionHash,
+          nonce,
+        });
+      } catch (e) {
+        console.error(`Failed to delete: ${objectId}, error: ${e.message}`);
+        results.push({
+          success: false,
+          objectId,
+          error: e.message,
+        });
+      }
+    }
+
+    const failed = results.filter((r) => !r.success);
+    return failed.length > 0
+      ? failed
+      : "All content objects deleted successfully!";
   }
 }
 
