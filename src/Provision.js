@@ -738,7 +738,7 @@ const createMarketplaceId = async ({client, t}) => {
   console.log(`\t${objectName}: ${t.mediaWallet.objects.marketplaceId}\n\n`);
 };
 
-const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, privateMetadata, t}) => {
+const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, privateMetadata, permission = "editable",t}) => {
   if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)) {
     throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
   }
@@ -774,7 +774,7 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, pr
   await client.SetPermission({
     objectId: id,
     writeToken: write_token,
-    permission: "editable"
+    permission: permission
   });
 
   await client.FinalizeContentObject({
@@ -784,7 +784,6 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, pr
   });
 
   await SetObjectPermissions(client, id, t);
-
   return id;
 };
 
@@ -973,6 +972,88 @@ let readJsonFile = (filepath) => {
   return JSON.parse(data);
 };
 
+const createMLSettingsObject = async({client, t}) => {
+  if (!t.mediaWallet.objects.mlSettingsId){
+    if (isEmptyParams(t.base.tenantTypes.titleTypeId)) {
+      throw Error("require t.base.tenantTypes.titleTypeId to be set");
+    }
+
+    if (isEmptyParams(t.base.opsKey.contentOps.key)) {
+      throw Error("require t.base.opsKey.contentOps.key set");
+    }
+
+    if (isEmptyParams(t.base.groups.contentAdminGroupAddress)) {
+      throw Error("require t.base.groups.contentAdminGroupAddress set");
+    }
+
+    if (isEmptyParams(t.base.libraries.propertiesLibraryId)) {
+      throw Error("require t.base.libraries.propertiesLibraryId to be set");
+    }
+
+    if (isEmptyParams(t.mediaWallet.objects.tenantObjectId)) {
+      throw Error("require t.mediaWallet.objects.tenantObjectId to be set");
+    }
+
+    let wallet = client.GenerateWallet();
+    let contentOpsSigner = wallet.AddAccount({privateKey: t.base.opsKey.contentOps.key});
+
+    // object created by content ops key
+    client.SetSigner({signer: contentOpsSigner});
+
+    const publicMetadata = {
+      name: "ML Settings",
+      tagging : {
+        ground_truth: {
+          domains: {
+            celebrity_detection: "Celebrity Detection"
+          }
+        }
+      },
+    };
+
+    t.mediaWallet.objects.mlSettingsId = await CreateFabricObject({
+      client,
+      libraryId: t.base.libraries.propertiesLibraryId,
+      typeId: t.base.tenantTypes.titleTypeId,
+      publicMetadata,
+      permission: "public",
+      t
+    });
+    console.log(`\nMLSettingsObject:${t.mediaWallet.objects.mlSettingsId}`);
+
+    // change to root key to access tenant object
+    let tenantRootKeySigner = wallet.AddAccount({privateKey: process.env.PRIVATE_KEY});
+    client.SetSigner({signer: tenantRootKeySigner});
+
+    const tenantObjMetadata = {
+      "ml_config" : t.mediaWallet.objects.mlSettingsId
+    };
+
+    const {writeToken} = await client.EditContentObject({
+      libraryId: t.base.libraries.propertiesLibraryId,
+      objectId: t.mediaWallet.objects.tenantObjectId,
+    });
+
+    await client.MergeMetadata({
+      libraryId: t.base.libraries.propertiesLibraryId,
+      writeToken,
+      objectId: t.mediaWallet.objects.tenantObjectId,
+      metadataSubtree: "/public",
+      metadata: tenantObjMetadata
+    });
+
+    await client.FinalizeContentObject({
+      libraryId: t.base.libraries.propertiesLibraryId,
+      writeToken,
+      objectId: t.mediaWallet.objects.tenantObjectId,
+    });
+
+    console.log(`TenantObjectId ${t.mediaWallet.objects.tenantObjectId} updated with ML Settings object`);
+
+    writeConfigToFile(t);
+  }
+};
+
 // ===============================================================================================
 
 const InitializeTenant = async ({
@@ -1048,6 +1129,7 @@ const InitializeTenant = async ({
           marketplaceId: "",
           marketplaceHash: null,
           tenantObjectId: null,
+          mlSettingsId: null,
         }
       }
     };
@@ -1124,10 +1206,11 @@ const InitializeTenant = async ({
 
   /* Add ids of services to tenant fabric metadata */
   console.log("Tenant content object - set types and sites");
-  res = await SetTenantEluvioLiveId({client, t});
+  const res = await SetTenantEluvioLiveId({client, t});
   if (res) {
     console.log(`\tTenantEluvioLiveId: ${JSON.stringify(res, null, 2)}`);
   }
+  await ProvisionMLSettings({client, t});
 
   console.log(`JSON OUTPUT AT: ${OUTPUT_FILE}\n`);
 
@@ -1221,6 +1304,10 @@ const ProvisionShareSigner = async ({tenantId, asUrl, t, debug = false}) => {
   if (t.base.shareSigner.enable) {
     await handleTenantShareSigner({tenantId, asUrl, t, debug});
   }
+};
+
+const ProvisionMLSettings = async ({client,t}) => {
+  await createMLSettingsObject({client, t});
 };
 
 // ===============================================================
