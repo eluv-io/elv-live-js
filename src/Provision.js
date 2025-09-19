@@ -555,7 +555,7 @@ const createTenantTypes = async ({client, t}) => {
     writeConfigToFile(t);
   }
 
-  if(!t.base.tenantTypes.indexTypeId) {
+  if (!t.base.tenantTypes.indexTypeId) {
     const mdata = JSON.parse(JSON.stringify(typeMetadata));
     t.base.tenantTypes.indexTypeId = await createContentTypeAndSetPermissions({
       client, name: `${t.base.tenantName} - Content Index`, metadata: {
@@ -1006,7 +1006,8 @@ const createMLSettingsObject = async({client, t}) => {
         ground_truth: {
           domains: {
             celebrity_detection: "Celebrity Detection"
-          }
+          },
+          pools: [],
         }
       },
     };
