@@ -227,6 +227,20 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
       });
     }
 
+    if (!isEmptyParams(t.ml.settingsId)) {
+      const tenantObjMetadata = {
+        "ml_config" : t.ml.settingsId
+      };
+
+      await client.MergeMetadata({
+        libraryId,
+        objectId,
+        writeToken,
+        metadataSubtree: "/public",
+        metadata: tenantObjMetadata,
+      });
+    }
+
     const res = await client.FinalizeContentObject({
       libraryId,
       objectId,
@@ -973,7 +987,7 @@ let readJsonFile = (filepath) => {
 };
 
 const createMLSettingsObject = async({client, t}) => {
-  if (!t.mediaWallet.objects.mlSettingsId){
+  if (!t.ml.settingsId){
     if (isEmptyParams(t.base.tenantTypes.titleTypeId)) {
       throw Error("require t.base.tenantTypes.titleTypeId to be set");
     }
@@ -1012,7 +1026,7 @@ const createMLSettingsObject = async({client, t}) => {
       },
     };
 
-    t.mediaWallet.objects.mlSettingsId = await CreateFabricObject({
+    t.ml.settingsId = await CreateFabricObject({
       client,
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.base.tenantTypes.titleTypeId,
@@ -1022,34 +1036,10 @@ const createMLSettingsObject = async({client, t}) => {
     });
     console.log(`\nMLSettingsObject:${t.mediaWallet.objects.mlSettingsId}`);
 
-    // change to root key to access tenant object
+    // change back to tenant root key signer
+    wallet = client.GenerateWallet();
     let tenantRootKeySigner = wallet.AddAccount({privateKey: process.env.PRIVATE_KEY});
     client.SetSigner({signer: tenantRootKeySigner});
-
-    const tenantObjMetadata = {
-      "ml_config" : t.mediaWallet.objects.mlSettingsId
-    };
-
-    const {writeToken} = await client.EditContentObject({
-      libraryId: t.base.libraries.propertiesLibraryId,
-      objectId: t.mediaWallet.objects.tenantObjectId,
-    });
-
-    await client.MergeMetadata({
-      libraryId: t.base.libraries.propertiesLibraryId,
-      writeToken,
-      objectId: t.mediaWallet.objects.tenantObjectId,
-      metadataSubtree: "/public",
-      metadata: tenantObjMetadata
-    });
-
-    await client.FinalizeContentObject({
-      libraryId: t.base.libraries.propertiesLibraryId,
-      writeToken,
-      objectId: t.mediaWallet.objects.tenantObjectId,
-    });
-
-    console.log(`TenantObjectId ${t.mediaWallet.objects.tenantObjectId} updated with ML Settings object`);
 
     writeConfigToFile(t);
   }
@@ -1104,6 +1094,9 @@ const InitializeTenant = async ({
           "streamTypeId": null,
           "indexTypeId": null,
         },
+        ml: {
+          settingsId: null,
+        },
         publish: {
           "env": null,
         },
@@ -1130,7 +1123,6 @@ const InitializeTenant = async ({
           marketplaceId: "",
           marketplaceHash: null,
           tenantObjectId: null,
-          mlSettingsId: null,
         }
       }
     };
@@ -1204,6 +1196,7 @@ const InitializeTenant = async ({
   await ProvisionMediaWallet({client, tenantId, t});
   await ProvisionFaucet({tenantId, asUrl, t, debug});
   await ProvisionShareSigner({tenantId, asUrl, t, debug});
+  await ProvisionMLSettings({client, t});
 
   /* Add ids of services to tenant fabric metadata */
   console.log("Tenant content object - set types and sites");
@@ -1211,7 +1204,6 @@ const InitializeTenant = async ({
   if (res) {
     console.log(`\tTenantEluvioLiveId: ${JSON.stringify(res, null, 2)}`);
   }
-  await ProvisionMLSettings({client, t});
 
   console.log(`JSON OUTPUT AT: ${OUTPUT_FILE}\n`);
 
