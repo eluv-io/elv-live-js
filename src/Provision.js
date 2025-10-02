@@ -175,7 +175,8 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
     isEmptyParams(t.base.tenantTypes.titleTypeId) &&
     isEmptyParams(t.base.tenantTypes.masterTypeId) &&
     isEmptyParams(t.base.tenantTypes.streamTypeId) &&
-    isEmptyParams(t.liveStreaming.siteId)
+    isEmptyParams(t.liveStreaming.siteId) &&
+    isEmptyParams(t.ml.settingsId)
   ) {
     return;
   }
