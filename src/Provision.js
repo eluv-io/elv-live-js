@@ -176,7 +176,7 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
     isEmptyParams(t.base.tenantTypes.masterTypeId) &&
     isEmptyParams(t.base.tenantTypes.streamTypeId) &&
     isEmptyParams(t.liveStreaming.siteId) &&
-    isEmptyParams(t.ml.settingsId)
+    isEmptyParams(t.base.ml.settingsId)
   ) {
     return;
   }
@@ -228,15 +228,15 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
       });
     }
 
-    if (!isEmptyParams(t.ml.settingsId)) {
+    if (!isEmptyParams(t.base.ml.settingsId)) {
       const tenantObjMetadata = {
-        "ml_config" : t.ml.settingsId
+        "ml_config" : t.base.ml.settingsId
       };
 
       await client.MergeMetadata({
         libraryId,
         objectId,
-        writeToken,
+        writeToken: editResponse.write_token,
         metadataSubtree: "/public",
         metadata: tenantObjMetadata,
       });
@@ -988,7 +988,7 @@ let readJsonFile = (filepath) => {
 };
 
 const createMLSettingsObject = async({client, t}) => {
-  if (!t.ml.settingsId){
+  if (!t.base.ml.settingsId){
     if (isEmptyParams(t.base.tenantTypes.titleTypeId)) {
       throw Error("require t.base.tenantTypes.titleTypeId to be set");
     }
@@ -1027,7 +1027,7 @@ const createMLSettingsObject = async({client, t}) => {
       },
     };
 
-    t.ml.settingsId = await CreateFabricObject({
+    t.base.ml.settingsId = await CreateFabricObject({
       client,
       libraryId: t.base.libraries.propertiesLibraryId,
       typeId: t.base.tenantTypes.titleTypeId,
