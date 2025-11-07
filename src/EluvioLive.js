@@ -3291,8 +3291,8 @@ class EluvioLive {
    *
    * @namedParams
    * @param {string} tenant - The Tenant ID
-   * @param {int} start_ts - start secs
-   * @param {int} end_ts - end secs
+   * @param {int} start_ts - Start timestamp in seconds since epoch
+   * @param {int} end_ts - End timestamp in seconds since epoch
    * @return {Promise<Object>} - The API Response containing session csv info
    */
   async TenantSessionsCsv({ tenant, start_ts, end_ts }) {
