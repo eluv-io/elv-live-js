@@ -3314,12 +3314,6 @@ class EluvioLive {
     };
     const body = {};
 
-    // curl 'https://appsvc.svc.eluv.io/casa/main/iten2u3PfWdtjHE4Ex63GaF3wJxiYQv6/sessions?srt=false&limit=10000000&start_ts=1762457698&end_ts=1762544098&offset=0' \
-    //   -H 'Accept: text/csv' \
-    //   -H 'Authorization: Bearer acspj...' \
-    //   -H 'Content-Type: application/json' \
-    //   --data-raw '{}'
-
     const httpClient = new HttpClient({uris: path});
     const res = await httpClient.Request({
       method,
