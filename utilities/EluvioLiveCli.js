@@ -2847,7 +2847,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("start_ts", {
-          describe: "start timestamp (secondss since epoch)",
+          describe: "start timestamp (seconds since epoch)",
           type: "int",
         })
         .positional("end_ts", {
