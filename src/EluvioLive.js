@@ -14,6 +14,7 @@ const url = require("url");
 const crypto = require("crypto");
 const ethers = require("ethers");
 const { parse } = require("csv-parse");
+const HttpClient = require("@eluvio/elv-client-js/src/HttpClient");
 
 /**
  * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
@@ -3283,6 +3284,52 @@ class EluvioLive {
     });
 
     return toJson ? await res.json() : await res.text();
+  }
+
+  /**
+   * Get unified primary&secondary sales history for the tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {int} start_ts - start secs
+   * @param {int} end_ts - end secs
+   * @return {Promise<Object>} - The API Response containing session csv info
+   */
+  async TenantSessionsCsv({ tenant, start_ts, end_ts }) {
+    const method = "POST";
+    const token = await this.client.CreateFabricToken({
+      duration:ElvAccount.TOKEN_DURATION
+    });
+    const headers = {
+      Accept: "text/csv",
+      Authorization: `Bearer ${token}`
+    };
+    const path = `https://appsvc.svc.eluv.io/casa/main/${tenant}/sessions`;
+    const queryParams = {
+      offset: 0,
+      start_ts: start_ts,
+      end_ts: end_ts,
+      limit: 1000000,
+      srt: false
+    };
+    const body = {};
+
+    // curl 'https://appsvc.svc.eluv.io/casa/main/iten2u3PfWdtjHE4Ex63GaF3wJxiYQv6/sessions?srt=false&limit=10000000&start_ts=1762457698&end_ts=1762544098&offset=0' \
+    //   -H 'Accept: text/csv' \
+    //   -H 'Authorization: Bearer acspj...' \
+    //   -H 'Content-Type: application/json' \
+    //   --data-raw '{}'
+
+    const httpClient = new HttpClient({uris: path});
+    const res = await httpClient.Request({
+      method,
+      path,
+      body,
+      headers,
+      queryParams
+    });
+
+    return await res.text();
   }
 
   async TenantAddConsumers({groupId, accountAddresses}){
