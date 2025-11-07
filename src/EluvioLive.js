@@ -14,6 +14,7 @@ const url = require("url");
 const crypto = require("crypto");
 const ethers = require("ethers");
 const { parse } = require("csv-parse");
+const HttpClient = require("@eluvio/elv-client-js/src/HttpClient");
 
 /**
  * EluvioLive is an application platform built on top of the Eluvio Content Fabric.
@@ -3283,6 +3284,48 @@ class EluvioLive {
     });
 
     return toJson ? await res.json() : await res.text();
+  }
+
+  /**
+   * Fetch session data from the analytics API for a tenant
+   *
+   * @namedParams
+   * @param {string} tenant - The Tenant ID
+   * @param {int} start_ts - Start timestamp in seconds since epoch
+   * @param {int} end_ts - End timestamp in seconds since epoch
+   * @return {Promise<Object>} - The API Response containing session csv info
+   */
+  async TenantSessionsCsv({ tenant, start_ts, end_ts }) {
+    const method = "POST";
+    const token = await this.client.CreateFabricToken({
+      duration: ElvAccount.TOKEN_DURATION
+    });
+    const headers = {
+      Accept: "text/csv",
+      Authorization: `Bearer ${token}`
+    };
+    const net = this.client.networkName.replace("demov3", "dv3");
+
+    const path = `https://appsvc.svc.eluv.io/casa/${net}/${tenant}/sessions`;
+    const queryParams = {
+      offset: 0,
+      start_ts: start_ts,
+      end_ts: end_ts,
+      limit: 1000000,
+      srt: false
+    };
+    const body = {};
+
+    const httpClient = new HttpClient({uris: path});
+    const res = await httpClient.Request({
+      method,
+      path,
+      body,
+      headers,
+      queryParams
+    });
+
+    return await res.text();
   }
 
   async TenantAddConsumers({groupId, accountAddresses}){
