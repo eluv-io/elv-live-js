@@ -2839,7 +2839,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_sessions <tenant> <start_ts> <end_ts> <filename>",
-    "Export CSV file of tenant sessions from analytics history",
+    "Export CSV file of session data from the analytics API for a given tenant and time range",
     (yargs) => {
       yargs
         .positional("tenant", {
