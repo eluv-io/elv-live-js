@@ -3287,7 +3287,7 @@ class EluvioLive {
   }
 
   /**
-   * Get unified primary&secondary sales history for the tenant
+   * Fetch session data from the analytics API for a tenant
    *
    * @namedParams
    * @param {string} tenant - The Tenant ID
