@@ -3304,7 +3304,9 @@ class EluvioLive {
       Accept: "text/csv",
       Authorization: `Bearer ${token}`
     };
-    const path = `https://appsvc.svc.eluv.io/casa/main/${tenant}/sessions`;
+    const net = this.client.networkName.replace("demov3", "dv3");
+
+    const path = `https://appsvc.svc.eluv.io/casa/${net}/${tenant}/sessions`;
     const queryParams = {
       offset: 0,
       start_ts: start_ts,
