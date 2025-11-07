@@ -3298,7 +3298,7 @@ class EluvioLive {
   async TenantSessionsCsv({ tenant, start_ts, end_ts }) {
     const method = "POST";
     const token = await this.client.CreateFabricToken({
-      duration:ElvAccount.TOKEN_DURATION
+      duration: ElvAccount.TOKEN_DURATION
     });
     const headers = {
       Accept: "text/csv",
