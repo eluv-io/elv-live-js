@@ -376,6 +376,26 @@ const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
   }
 };
 
+const CmdTenantDeleteFaucet = async ({ argv }) => {
+  try {
+    const { as_url: asUrl, tenant_id: tenantId } = argv;
+
+    let t = new ElvTenant({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    await t.TenantDeleteFaucet({
+      asUrl,
+      tenantId,
+    });
+    console.log(`Deleted tenant faucet for ${tenantId} successfully`);
+  } catch (error) {
+    console.error("ERROR:", error.message);
+  }
+};
+
 const CmdTenantCreateSharingKey = async ({ argv }) => {
   try {
     const { as_url: asUrl, tenant_id: tenantId } = argv;
@@ -2015,6 +2035,25 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantCreateFaucetAndFund({ argv });
+    }
+  )
+
+  .command(
+    "tenant_delete_faucet <tenant_id>",
+    "Delete faucet information for given tenant",
+    (yargs) => {
+      yargs
+        .positional("tenant_id", {
+          describe: "tenant id",
+          type: "string",
+        })
+        .option("as_url", {
+          describe: "Alternate authority service URL (include '/as/' route if necessary)",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantDeleteFaucet({ argv });
     }
   )
 

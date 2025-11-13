@@ -882,6 +882,48 @@ class ElvTenant {
     return res;
   }
 
+  async TenantDeleteFaucet({asUrl, tenantId}) {
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const elvAccount = new ElvAccount({
+      configUrl: Config.networks[Config.net],
+      debugLogging: this.debug,
+    });
+    await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
+
+    // Create TenantPath token
+    const ts = Date.now();
+    const path = `/tnt/config/${tenantId}/faucet_funding?ts=${ts}&purge=false`;
+    const { multiSig } = await eluvioLive.TenantSign({
+      message: path,
+    });
+
+
+    let prefix = eluvioLive.client.authServiceURIs[0];
+    if (asUrl) {
+      prefix = asUrl;
+    }
+    const fullUrl = `${prefix}${path}`;
+
+    const faucetResponse = await fetch(fullUrl, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${multiSig}` },
+    });
+
+    if (!faucetResponse.ok) {
+      throw new Error(`${faucetResponse.status} ${faucetResponse.statusText}`);
+    }
+  }
+
   async TenantGetSharingKey({asUrl, tenantId}) {
     const config = {
       configUrl: Config.networks[Config.net],

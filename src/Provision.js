@@ -1195,8 +1195,6 @@ const InitializeTenant = async ({
   await ProvisionLiveStreaming({client, tenantId, t});
   await ProvisionOps({client, tenantId, t, debug});
   await ProvisionMediaWallet({client, tenantId, t});
-  await ProvisionFaucet({tenantId, asUrl, t, debug});
-  await ProvisionShareSigner({tenantId, asUrl, t, debug});
   await ProvisionMLSettings({client, t});
 
   /* Add ids of services to tenant fabric metadata */
@@ -1205,6 +1203,9 @@ const InitializeTenant = async ({
   if (res) {
     console.log(`\tTenantEluvioLiveId: ${JSON.stringify(res, null, 2)}`);
   }
+
+  await ProvisionFaucet({tenantId, asUrl, t, debug});
+  await ProvisionShareSigner({tenantId, asUrl, t, debug});
 
   console.log(`JSON OUTPUT AT: ${OUTPUT_FILE}\n`);
 
