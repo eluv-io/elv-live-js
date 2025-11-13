@@ -900,23 +900,11 @@ class ElvTenant {
     });
     await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
 
-    // Create TenantPath token
-    const ts = Date.now();
-    const path = `/tnt/config/${tenantId}/faucet_funding?ts=${ts}&purge=false`;
-    const { multiSig } = await eluvioLive.TenantSign({
-      message: path,
-    });
-
-
-    let prefix = eluvioLive.client.authServiceURIs[0];
-    if (asUrl) {
-      prefix = asUrl;
-    }
-    const fullUrl = `${prefix}${path}`;
-
-    const faucetResponse = await fetch(fullUrl, {
+    const path = `/tnt/config/${tenantId}/faucet_funding`;
+    const faucetResponse = await eluvioLive.TenantPathAuthServiceRequest({
+      path,
       method: "DELETE",
-      headers: { Authorization: `Bearer ${multiSig}` },
+      queryParams: {purge:false}
     });
 
     if (!faucetResponse.ok) {
