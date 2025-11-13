@@ -894,12 +894,6 @@ class ElvTenant {
       asUrl
     });
 
-    const elvAccount = new ElvAccount({
-      configUrl: Config.networks[Config.net],
-      debugLogging: this.debug,
-    });
-    await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
-
     const path = `/tnt/config/${tenantId}/faucet_funding`;
     const faucetResponse = await eluvioLive.TenantPathAuthServiceRequest({
       path,
