@@ -268,6 +268,7 @@ class ElvTenant {
     tenantInfo["tenant_status"] = await this.TenantStatus({tenantContractId: tenantId});
 
     try {
+
       tenantInfo["faucet"] = await this.TenantGetFaucet({
         asUrl,
         tenantId,
@@ -779,11 +780,10 @@ class ElvTenant {
     });
     await elvAccount.Init({privateKey: process.env.PRIVATE_KEY});
 
-
-    const faucetGetTenantInfo = urljoin(eluvioLive.asUrlPath, `/faucet/get_tenant/${tenantId}`);
-    const faucetGetTenantInfoResponse = await eluvioLive.client.authClient.MakeAuthServiceRequest({
-      method: "GET",
-      path: faucetGetTenantInfo,
+    const path = `/tnt/config/${tenantId}/faucet_funding`;
+    const faucetGetTenantInfoResponse = await eluvioLive.TenantPathAuthServiceRequest({
+      path,
+      method: "GET"
     });
     const res = await faucetGetTenantInfoResponse.json();
 
@@ -880,6 +880,30 @@ class ElvTenant {
     }
 
     return res;
+  }
+
+  async TenantDeleteFaucet({asUrl, tenantId}) {
+    const config = {
+      configUrl: Config.networks[Config.net],
+      mainObjectId: Config.mainObjects[Config.net],
+    };
+
+    const eluvioLive = new EluvioLive(config);
+    await eluvioLive.Init({
+      debugLogging: this.debug,
+      asUrl
+    });
+
+    const path = `/tnt/config/${tenantId}/faucet_funding`;
+    const faucetResponse = await eluvioLive.TenantPathAuthServiceRequest({
+      path,
+      method: "DELETE",
+      queryParams: {purge:false}
+    });
+
+    if (!faucetResponse.ok) {
+      throw new Error(`${faucetResponse.status} ${faucetResponse.statusText}`);
+    }
   }
 
   async TenantGetSharingKey({asUrl, tenantId}) {
