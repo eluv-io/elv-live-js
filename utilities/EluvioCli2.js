@@ -2602,7 +2602,7 @@ given object: wallet|content-type|tenant|group|library`)
                 }
               )
               .command(
-                "rm <address>",
+                "remove <address>",
                 "Remove an address from the authorized address list",
                 (yargs) => {
                   yargs
