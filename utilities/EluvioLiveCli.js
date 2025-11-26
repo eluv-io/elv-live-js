@@ -1913,7 +1913,7 @@ const CmdContentClearPolicy = async ({ argv }) => {
 };
 
 yargs(hideBin(process.argv))
-  .option("verbose", {
+  .option("verbose",{
     describe: "Verbose mode",
     type: "boolean",
     alias: "v"
@@ -1924,1747 +1924,1768 @@ yargs(hideBin(process.argv))
   })
 
   .command(
-    "nft_show <addr> [options]",
-    "Show info on this NFT",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT address (hex)",
-          type: "string",
-        })
-        .option("check_minter", {
-          describe: "Check that all NFTs use this mint helper",
-        })
-        .option("show_owners", {
-          describe: "Show up to these many owners (default 0), loaded from an index. Only used when token_id is not specified.",
-          type: "integer",
-        })
-        .option("show_owners_via_contract", {
-          describe: "Show up to these many owners (default 0), parsed directly from the contract. Only used when token_id is not specified.",
-          type: "integer",
-        })
-        .option("include_email", {
-          describe: "Include owner(s) email(s) when available, as bound to the given tenant ID.",
-          type: "string",
-        })
-        .option("token_id", {
-          describe: "External token ID. This will take precedence over show_owners.",
-          type: "string", // BigNumber as string
-        });
-    },
-    (argv) => {
-      CmdNftShow({ argv });
-    }
-  )
-
-  .command(
-    "nft_balance_of <addr> <owner>",
-    "Call NFT ownerOf - determine if this is an owner",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT address (hex)",
-          type: "string",
-        })
-        .positional("owner", {
-          describe: "Owner address to check (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdNftBalanceOf({ argv });
-    }
-  )
-
-  .command(
-    "nft_refresh <tenant> <addr>",
-    "Synchronize backend listings with fabric metadata for a specific tenant's NFT. Requires tenant Key.",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdNFTRefresh({ argv });
-    }
-  )
-
-  .command(
-    "nft_transfer <addr> <token_id> <to_addr> [options]",
-    "Transfer the specified NFT as the token owner",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "Local NFT contract address",
-          type: "string",
-        })
-        .positional("token_id", {
-          describe: "External token ID",
-          type: "string", // BigNumber as string
-        })
-        .positional("to_addr", {
-          describe: "Address to transfer to (hex)",
-          type: "string",
-        })
-        .option("auth_service", {
-          describe: "Use the Authority Service to do the transfer"
-        });
-    },
-    (argv) => {
-      CmdNftTransfer({ argv });
-    }
-  )
-
-  .command(
-    "transfer_errors <tenant>",
-    "Show tenant transfer failures. Used to identify payments collected on failed transfers.",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantTransferFailures({ argv });
-    }
-  )
-
-  .command(
-    "nft_proxy_transfer <addr> <token_id> <from_addr> <to_addr>",
-    "Tranfer NFT as a proxy owner",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT address (hex)",
-          type: "string",
-        })
-        .positional("token_id", {
-          describe: "Token Id",
-          type: "integer",
-        })
-        .positional("from_addr", {
-          describe: "Address to transfer from (hex)",
-          type: "string",
-        })
-        .positional("to_addr", {
-          describe: "Address to transfer to (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdNftProxyTransfer({ argv });
-    }
-  )
-
-  .command(
-    "nft_build <library> <object> [options]",
-    "Build the public/nft section based on asset metadata. If --nft_dir is specified, will build a generative nft based on *.json files inside the dir. See README.md for more details.",
-    (yargs) => {
-      yargs
-        .positional("library", {
-          describe: "Content library",
-          type: "string",
-        })
-        .positional("object", {
-          describe: "Content object hash (hq__) or id (iq__)",
-          type: "string",
-        })
-        .option("nft_dir", {
-          describe:
-            "Create a multi-media NFT (generative). " +
-            "Directory contains json files describing the nft.  See documentation to see *.json structure.",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdNftBuild({ argv });
-    }
-  )
-
-  .command(
-    "nft_set_proxy <addr> [proxy_addr]",
-    "Set a proxy on an NFT contract",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT address (hex)",
-          type: "string",
-        })
-        .option("proxy_addr", {
-          describe: "Proxy contract address (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmfNftSetProxy({ argv });
-    }
-  )
-
-  .command(
-    "nft_pack_get_dist <hash>",
-    "Compute pack distribution based on NFT Template spec. Saves to file.",
-    (yargs) => {
-      yargs
-        .positional("hash", {
-          describe: "NFT Template content hash (hq__)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdNftPackGetDist({ argv });
-    }
-  )
-
-  .command(
-    "nft_pack_set_dist <hash>",
-    "Set the pack distribution for an NFT Template. Reads distribution from file.",
-    (yargs) => {
-      yargs
-        .positional("hash", {
-          describe: "NFT Template content hash (hq__)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdNftPackSetDist({ argv });
-    }
-  )
-
-  .command(
-    "nft_burn <addr> <token_id>",
-    "Burn the specified NFT as the owner",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "Local NFT contract address",
-          type: "string",
-        })
-        .positional("token_id", {
-          describe: "External token ID",
-          type: "string", // BigNumber as string
-        });
-    },
-    (argv) => {
-      CmdNftBurn({ argv });
-    }
-  )
-
-  .command(
-    "nft_proxy_burn <addr> <token_id>",
-    "Burn the specified NFT",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "Local NFT contract address",
-          type: "string",
-        })
-        .positional("token_id", {
-          describe: "External token ID",
-          type: "string", // BigNumber as string
-        });
-    },
-    (argv) => {
-      CmdNftProxyBurn({ argv });
-    }
-  )
-
-  .command(
-    "nft_set_transfer_fee <addr> <fee>",
-    "Decode and look up a local NFT by external token ID",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        })
-        .positional("fee", {
-          describe: "Fee in ETH",
-          type: "string", // BigNumber as string
-        });
-    },
-    (argv) => {
-      CmdNftSetTransferFee({ argv });
-    }
-  )
-
-  .command(
-    "nft_get_transfer_fee <addr>",
-    "Decode and look up a local NFT by external token ID",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdNftGetTransferFee({ argv });
-    }
-  )
-
-  .command(
-    "nft_add_contract <tenant> <object> <cap> <name> <symbol> [options]",
-    "Add a new or existing NFT contract to an NFT Template object",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("object", {
-          describe: "NFT Template object ID",
-          type: "string",
-        })
-        .positional("cap", {
-          describe: "NFT total supply cap",
-          type: "number",
-        })
-        .positional("name", {
-          describe: "NFT collection name",
-          type: "string",
-        })
-        .positional("symbol", {
-          describe: "NFT collection symbol",
-          type: "string",
-        })
-        .option("hold", {
-          describe: "Hold period in seconds (default 7 days)",
-          type: "number",
-        });
-    },
-    (argv) => {
-      CmfNftTemplateAddNftContract({ argv });
-    }
-  )
-
-  .command(
-    "nft_add_offer <addr>",
-    "Add a redeemable offer to the NFT contract as the contract owner or minter",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdNftAddRedeemableOffer({ argv });
-    }
-  )
-
-  .command(
-    "nft_remove_offer <addr> <offer_id>",
-    "Remove (disable) a redeemable offer from the NFT contract as the contract owner or minter",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        })
-        .positional("offer_id", {
-          describe: "Offer ID",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdNftRemoveRedeemableOffer({ argv });
-    }
-  )
-
-  .command(
-    "nft_offer_redeemed <addr> <token_id> <offer_id>",
-    "Returns true if offer is redeemed",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        })
-        .positional("token_id", {
-          describe: "Offer ID",
-          type: "integer",
-        })
-        .positional("offer_id", {
-          describe: "Offer ID",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdNftIsOfferRedeemed({ argv });
-    }
-  )
-
-  .command(
-    "nft_offer_active <addr> <offer_id>",
-    "Returns true if offer is active",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        })
-        .positional("offer_id", {
-          describe: "Offer ID",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdNftIsOfferActive({ argv });
-    }
-  )
-
-  .command(
-    "nft_redeem_offer <addr> <redeemer> <token_id> <offer_id>",
-    "Redeem an nft offer",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        })
-        .positional("redeemer", {
-          describe: "Redeemer address",
-          type: "string",
-        })
-        .positional("token_id", {
-          describe: "Offer ID",
-          type: "integer",
-        })
-        .positional("offer_id", {
-          describe: "Offer ID",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdNftRedeemOffer({ argv });
-    }
-  )
-
-  .command(
-    "as_nft_redeem_offer <addr> <tenant> <mint_helper_addr> <token_id> <offer_id>",
-    "Redeem an nft offer using the authority service",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        })
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("mint_helper_addr", {
-          describe: "Address of the mint helper (hex), used with --auth_service",
-          type: "string",
-        })
-        .positional("token_id", {
-          describe: "Offer ID",
-          type: "integer",
-        })
-        .positional("offer_id", {
-          describe: "Offer ID",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdASNftRedeemOffer({ argv });
-    }
-  )
-
-  .command(
-    "nft_get_policy_permissions <object>",
-    "Gets the policy and permissions of a content object.",
-    (yargs) => {
-      yargs.positional("object", {
-        describe: "ID of the content fabric object",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdNFTGetPolicyPermissions({ argv });
-    }
-  )
-
-  .command(
-    "nft_set_policy_permissions <object> <policy_path> <addrs..>",
-    "Sets the policy and permissions granting NFT owners access to a content object. When no addresses are specified, only the policy is set.",
-    (yargs) => {
-      yargs
-        .positional("object", {
-          describe: "ID of the content object to grant access to",
-          type: "string",
-        })
-        .positional("policy_path", {
-          describe: "Path of policy object file",
-          type: "string",
-        })
-        .positional("addrs", {
-          describe:
-            "List of space separated NFT contract addresses to set. Calling multiple times with a new list will replace the existing.",
-          type: "string",
-        })
-        .option("clear", {
-          describe: "clear the nft owners",
-          type: "boolean",
-          default: false
-        });
-    },
-    (argv) => {
-      CmdNFTSetPolicyPermissions({ argv });
-    }
-  )
-
-  .command(
-    "tenant_show <tenant> [options]",
-    "Show info on this tenant",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("check_nfts", {
-          describe:
-            "Check that all NFTs are part of the tenant contract's tenant_nfts group",
-          type: "boolean",
-        });
-    },
-    (argv) => {
-      CmdTenantShow({ argv });
-    }
-  )
-
-  .command(
-    "tenant_auth_token <path_or_body>",
-    "Generate a tenant token",
-    (yargs) => {
-      yargs
-        .positional("path_or_body", {
-          describe: "URL path or request body",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantAuthToken({argv}).then();
-    }
-  )
-
-  .command(
-    "tenant_auth_curl <url_path> [post_body]",
-    "Generate a tenant token and use it to call a baseTenantAuth authd endpoint.",
-    (yargs) => {
-      yargs
-        .positional("url_path", {
-          describe: "URL path",
-          type: "string",
-        })
-        .positional("post_body", {
-          describe: "either json body for POST, or '' for GET",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantAuthCurl({argv}).then();
-    }
-  )
-
-  .command(
-    "tenant_path_auth_curl <url_path> [post_body]",
-    "Generate a tenant token and use it to call a tenantPathAuth authd endpoint.",
-    (yargs) => {
-      yargs
-        .positional("url_path", {
-          describe: "URL path",
-          type: "string",
-        })
-        .positional("post_body", {
-          describe: "either json body for POST, or '' for GET",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantPathAuthCurl({argv}).then();
-    }
-  )
-
-  .command(
-    "tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]",
-    "Reset the token URI(s) for tenant NFT contract(s)",
-    (yargs) => {
-      yargs
-        .positional("request_type", {
-          describe: "Request Type (single, batch, all)",
-          type: "string",
-        })
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("contract_address", {
-          describe: "NFT contract address",
-          type: "string",
-        })
-        .positional("new_token_uri", {
-          describe: "New token URI; ignored if CSV batch, use -",
-          type: "string",
-        })
-        .option("token_id", {
-          describe:
-            "Optional Token ID; required for single request type",
-          type: "number",
-        })
-        .option("csv", {
-          describe: "CSV file for batch request type",
-          type: "string",
-        });
-
-
-    },
-    (argv) => {
-      CmdTenantSetTokenURI({ argv });
-    }
-  )
-
-  .command(
-    "tenant_update_token_uri <tenant> <addr> <hash> [options]",
-    "Reset the token URI(s) for tenant NFT contract(s)",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("addr", {
-          describe: "NFT contract address",
-          type: "string",
-        })
-        .positional("hash", {
-          describe: "New NFT template object hash",
-          type: "string",
-        })
-        .option("dry_run", {
-          describe:
-            "Default 'true'",
-          type: "boolean",
-        });
-    },
-    (argv) => {
-      CmdTenantUpdateTokenURI({ argv });
-    }
-  )
-
-  .command(
-    "tenant_balance_of <tenant> <owner>",
-    "Show NFTs owned by this owner in this tenant using contracts.",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("owner", {
-          describe: "Owner address (hex)",
-          type: "string",
-        })
-        .option("csv", {
-          describe: "File path to output csv",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantBalanceOf({ argv });
-    }
-  )
-
-  .command(
-    "fabric_tenant_balance_of <object> <owner> [options]",
-    "Show NFTs owned by this owner in this tenant by using the Fabric EluvioLive object tree.",
-    (yargs) => {
-      yargs
-        .positional("object", {
-          describe: "Tenant-level EluvioLive object ID",
-          type: "string",
-        })
-        .positional("owner", {
-          describe: "Owner address (hex)",
-          type: "string",
-        })
-        .option("max_results", {
-          describe: "Show up to these many results (default 0 = unlimited)",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdFabricTenantBalanceOf({ argv });
-    }
-  )
-
-  .command(
-    "site_show <library> <object>",
-    "Show info on this site/event",
-    (yargs) => {
-      yargs
-        .positional("library", {
-          describe: "Site library",
-          type: "string",
-        })
-        .positional("object", {
-          describe: "Site object ID",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdSiteShow({ argv });
-    }
-  )
-
-  .command(
-    "site_set_drop <library> <object> <uuid> <start_date> [options]",
-    "Set drop dates for a site/event",
-    (yargs) => {
-      yargs
-        .positional("library", {
-          describe: "Site library",
-          type: "string",
-        })
-        .positional("object", {
-          describe: "Site object ID",
-          type: "string",
-        })
-        .positional("uuid", {
-          describe: "Drop UUID",
-          type: "string",
-        })
-        .positional("start_date", {
-          describe: "Event start date (ISO format)",
-          type: "string",
-        })
-        .option("end_date", {
-          describe: "Event end date (ISO format)",
-          type: "string",
-        })
-        .option("end_vote", {
-          describe: "Event vote end date (ISO foramt)",
-          type: "string",
-        })
-        .option("start_mint", {
-          describe: "Event start mint date (ISO format)",
-          type: "string",
-        })
-        .option("new_uuid", {
-          describe: "Assign a new UUID",
-          type: "boolean",
-        })
-        .option("update", {
-          describe: "Tenant-level EluvioLive object to update",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdSiteSetDrop({ argv });
-    }
-  )
-
-  .command(
-    "tenant_tickets_generate <tenant> <otp>",
-    "Generate tickets for a given tenant OTP ID",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("otp", {
-          describe: "OTP ID (including prefix)",
-          type: "string",
-        })
-        .option("quantity", {
-          describe: "Specify how many to generate (default 1)",
-          type: "integer",
-        })
-        .option("emails", {
-          describe: "File containing one email per line (or any user identifier). Generate codes bound to these identifiers",
-          type: "string",
-        })
-        .option("embed_url_base", {
-          describe: "Generate embed URLs for each ticket based on this template",
-          type: "string",
-        })
-        .option("otp_class", {
-          describe: "Use authority services (class 5) or contract (class 4) (default 5)",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdTenantTicketsGenerate({ argv });
-    }
-  )
-
-  .command(
-    "tenant_mint <tenant> <marketplace> <sku> <addr>",
-    "Mint a marketplace NFT by SKU as tenant admin",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("marketplace", {
-          describe: "Marketplace ID",
-          type: "string",
-        })
-        .positional("sku", {
-          describe: "NFT marketplace SKU",
-          type: "string",
-        })
-        .positional("addr", {
-          describe: "Target address to mint to",
-          type: "string",
-        })
-        .option("quantity", {
-          describe: "Specify how many to mint (default 1)",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdTenantMint({ argv });
-    }
-  )
-
-  .command(
-    "tenant_primary_sales <tenant> <marketplace>",
-    "Show tenant primary sales history",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("marketplace", {
-          describe: "Marketplace ID",
-          type: "string",
-        })
-        .option("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
-          type: "string",
-          default: "",
-        })
-        .option("csv", {
-          describe: "File path to output csv",
-          type: "string",
-        })
-        .option("offset", {
-          describe: "Offset in months to dump data where 0 is the current month",
-          type: "number",
-          default: 1,
-        })
-        .option("admin", {
-          describe: "Use the Admin API endpoint to resolve this query instead of the tenant API. " +
-            "This is required for inactive marketplaces.",
-          type: "boolean",
-          default: false,
-        });
-    },
-    (argv) => {
-      CmdTenantPrimarySales({ argv });
-    }
-  )
-
-  .command(
-    "tenant_secondary_sales <tenant>",
-    "Show tenant secondary sales history",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
-          type: "string",
-          default: "",
-        })
-        .option("csv", {
-          describe: "File path to output csv",
-          type: "string",
-        })
-        .option("offset", {
-          describe:
-            "Offset in months to dump data where 0 is the current month",
-          type: "number",
-          default: 1,
-        });
-    },
-    (argv) => {
-      CmdTenantSecondarySales({ argv });
-    }
-  )
-
-  .command(
-    "tenant_sales <tenant>",
-    "Show tenant sales history",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("processor", {
-          describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
-          type: "string",
-          default: "",
-        })
-        .option("csv", {
-          describe: "File path to output csv",
-          type: "string",
-        })
-        .option("offset", {
-          describe:
-            "Offset in months to dump data where 0 is the current month",
-          type: "number",
-          default: 1,
-        });
-    },
-    (argv) => {
-      CmdTenantUnifiedSales({ argv });
-    }
-  )
-
-  .command(
-    "tenant_sessions <tenant> <start_ts> <end_ts> <filename>",
-    "Export CSV file of session data from the analytics API for a given tenant and time range",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("start_ts", {
-          describe: "start timestamp (seconds since epoch)",
-          type: "int",
-        })
-        .positional("end_ts", {
-          describe: "end timestamp (seconds since epoch)",
-          type: "int",
-        })
-        .positional("filename", {
-          describe: "filename to output csv",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantSessionsCsv({ argv });
-    }
-  )
-
-  .command(
-    "tenant_wallets <tenant> [options]",
-    "Show the wallets associated with this tenant",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("csv", {
-          describe: "File path to output csv",
-          type: "string",
-        })
-        .option("max_results", {
-          describe: "Show up to these many results (default 0 = unlimited)",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdTenantWallets({ argv });
-    }
-  )
-
-  .command(
-    "tenant_nft_remove <tenant> <addr>",
-    "Removes the nft address from the tenant contract",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("addr", {
-          describe: "NFT Address",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantNftRemove({ argv });
-    }
-  )
-
-  .command(
-    "tenant_nft_list <tenant>",
-    "List all tenant_nfts within a tenant contract",
-    (yargs) => {
-      yargs.positional("tenant", {
-        describe: "Tenant ID",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdTenantNftList({ argv });
-    }
-  )
-
-  .command(
-    "tenant_has_nft <tenant> <addr>",
-    "Searches tenant_nfts list in tenant contract and returns true if exists",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("addr", {
-          describe: "NFT Address",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantHasNft({ argv });
-    }
-  )
-
-  .command(
-    "tenant_add_consumers <group_id> [addrs..]",
-    "Adds address(es) to the tenant's consumer group",
-    (yargs) => {
-      yargs
-        .positional("group_id", {
-          describe: "Tenant consumer group ID",
-          type: "string",
-        })
-        .option("addrs", {
-          describe:
-            "Addresses to add",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantAddConsumers({ argv });
-    }
-  )
-
-  .command(
-    "tenant_remove_consumer <group_id> <addr>",
-    "Removes consumer from tenant consumer group",
-    (yargs) => {
-      yargs
-        .positional("group_id", {
-          describe: "Tenant consumer group ID",
-          type: "string",
-        })
-        .positional("addr", {
-          describe:
-            "Address the to add",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantRemoveConsumer({ argv });
-    }
-  )
-
-  .command(
-    "tenant_has_consumer <group_id> <addr>",
-    "Returns true or false if addr is in the tenant consumer group",
-    (yargs) => {
-      yargs
-        .positional("group_id", {
-          describe: "Tenant consumer group ID",
-          type: "string",
-        })
-        .positional("addr", {
-          describe:
-            "Address the to add",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantHasConsumer({ argv });
-    }
-  )
-
-  .command(
-    "marketplace_add_item <marketplace> <object> <name> [price] [forSale]",
-    "Adds an item to a marketplace",
-    (yargs) => {
-      yargs.positional("marketplace", {
-        describe: "Marketplace object ID",
-        type: "string",
-      });
-      yargs.positional("object", {
-        describe: "NFT Template object hash (hq__) or id (iq__)",
-        type: "string",
-      });
-      yargs.positional("name", {
-        describe: "Item name"
-      });
-      yargs.positional("price", {
-        describe: "Price to list for",
-        type: "number",
-      });
-      yargs.positional("forSale", {
-        describe: "Whether to show for sale",
-        type: "boolean",
-        default: true,
-      });
-    },
-    (argv) => {
-      CmdMarketplaceAddItem({ argv });
-    }
-  )
-
-  .command(
-    "marketplace_add_item_batch <marketplace> <csv>",
-    "Adds multiple items to a marketplace",
-    (yargs) => {
-      yargs.positional("marketplace", {
-        describe: "Marketplace object ID",
-        type: "string",
-      });
-      yargs.positional("csv", {
-        describe: "CSV file containing object ID's and marketplace item name. Expects first row to be header row with columns ordered as object, name",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdMarketplaceAddItemBatch({ argv });
-    }
-  )
-
-  .command(
-    "marketplace_remove_item <marketplace> <object>",
-    "Removes an item from a marketplace",
-    (yargs) => {
-      yargs.positional("marketplace", {
-        describe: "Marketplace object ID",
-        type: "string",
-      });
-      yargs.positional("object", {
-        describe: "NFT Template object ID (iq__)",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdMarketplaceRemoveItem({ argv });
-    }
-  )
-
-  .command(
-    "storefront_section_add_item <marketplace> <sku> [section]",
-    "Adds an item to a marketplace storefront section",
-    (yargs) => {
-      yargs.positional("marketplace", {
-        describe: "Marketplace object ID",
-        type: "string",
-      });
-      yargs.positional("sku", {
-        describe: "Marketplace item SKU",
-        type: "string",
-      });
-      yargs.positional("section", {
-        describe: "Storefront section name",
-        type: "string",
-        string: true,
-      });
-    },
-    (argv) => {
-      CmdStorefrontSectionAddItem({ argv });
-    }
-  )
-
-  .command(
-    "storefront_section_remove_item <marketplace> <sku> [writeToken]",
-    "Removes an item from a marketplace storefront section",
-    (yargs) => {
-      yargs.positional("marketplace", {
-        describe: "Marketplace object ID",
-        type: "string",
-      });
-      yargs.positional("sku", {
-        describe: "Marketplace item SKU",
-        type: "string",
-      });
-      yargs.positional("writeToken", {
-        describe: "Write token (if not provided, object will be finalized)",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdStorefrontSectionRemoveItem({ argv });
-    }
-  )
-
-  .command(
-    "tenant_provision <tenant> <slug> [options]",
-    `Provision a new tenancy with standard media libraries and content types.
-    Run as the tenant root key, as created by space_tenant_create. This is a multi-step operation,
-    and intermediate status is saved in the local directory in the file tenant_status.json using --status flag.
-    The operation can be resumed by specifying a status file, which indicates the operations
-    that have already been executed.
-      Funds transferred (default):
-      * tenant ops created: 10 elv
-      * content ops created: 10 elv
-      * faucet funding address: 20 elv`,
-    (yargs) => {
-      yargs.positional("tenant", {
-        describe: "Tenant ID",
-        type: "string",
-      });
-      yargs.positional("slug", {
-        describe: "Tenant Slug",
-        type: "string",
-      });
-      yargs.option("name", {
-        describe: "Tenant name",
-        type: "string"
-      })
-      yargs.option("status",{
-        describe: "Path to the JSON File for existing tenant provision config",
-        type: "string",
-      });
-      yargs.option("init_config",{
-        describe: "Displays the initial provisioning config, which can be used to input existing objects",
-        type: "boolean",
-        default: false
-      });
-    },
-    (argv) => {
-      CmdTenantProvision({ argv });
-    }
-  )
-
-  .command(
-    "tenant_add_consumer_group <tenant>",
-    "Deploys a BaseTenantConsumerGroup and adds it to this tenant's contract.",
-    (yargs) => {
-      yargs.positional("tenant", {
-        describe: "Tenant ID",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdTenantAddConsumerGroup({ argv });
-    }
-  )
-
-  .command(
-    "tenant_get_minter_config <tenant> [options]",
-    "Gets the minter configuration for this tenant key",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantGetMinter({ argv });
-    }
-  )
-
-  .command(
-    "tenant_create_minter_config <tenant> [options]",
-    "Creates the minter configuration for this tenant key",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("funds", {
-          describe: "How much to fund the minter and proxy addresses. Default: 0 (do not fund)",
-          type: "integer",
-        })
-        .option("deploy", {
-          describe: "Deploy a new minter helper contract as the minter using the Authority Service. Default: false",
-          type: "boolean",
-        });
-    },
-    (argv) => {
-      CmdTenantCreateMinter({ argv });
-    }
-  )
-
-  .command(
-    "tenant_replace_minter_config <tenant> [options]",
-    "Creates the minter configuration for this tenant key",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("proxy_owner", {
-          describe: "Replace proxy owner ID (eg. ikms..). Note that the key must already be stored in the Authority Service to use this.",
-          type: "string",
-        })
-        .option("minter", {
-          describe: "Replace minter ID (eg. ikms..). Note that the key must already be stored in the Authority Service to use this.",
-          type: "string",
-        })
-        .option("mint_helper", {
-          describe: "Replace minter helper address (hex). The minter must be the owner of this contract.",
-          type: "string",
-        })
-        .option("proxy", {
-          describe: "Replace the transfer proxy address (hex). The proxy owner must be the owner of this contract.",
-          type: "string",
-        })
-        .option("mint_shuffle_key", {
-          describe: "Replace the mint shuffle key (ikms).  The secret must be already stored in the Authority Service",
-          type: "string",
-        })
-        .option("legacy_shuffle_seed", {
-          describe: "Replace the legacy shuffle seed (use '0' to disable).",
-          type: "string",
-        })
-        .option("purge", {
-          describe: "Purge will delete the keys first before replacing",
-          type: "bool",
-        });
-    },
-    (argv) => {
-      CmdTenantReplaceMinter({ argv });
-    }
-  )
-
-  .command(
-    "tenant_deploy_helper_contracts <tenant> [options]",
-    "Deploys the minter helper and transfer proxy contracts using the authority service as the minter. Specify option proxy or minthelper to only deploy that specific contract.",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("mint_helper", {
-          describe: "Deploy mint helper contract.",
-          type: "bool",
-        })
-        .option("proxy", {
-          describe: "Deploy Proxy contract.",
-          type: "bool",
-        });
-    },
-    (argv) => {
-      CmdTenantDeployHelpers({ argv });
-    }
-  )
-
-  .command(
-    "tenant_delete_minter_config <tenant> [options]",
-    "Creates the minter configuration for this tenant key",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("force", {
-          describe: "Attempt to delete all keys even on error",
-          type: "boolean",
-        });
-    },
-    (argv) => {
-      CmdTenantDeleteMinter({ argv });
-    }
-  )
-
-  .command(
-    "tenant_publish_data <tenant> <content_hash> [options]",
-    "Submits the new version hash of the tenant Fabric object for validation. The top level Eluvio Live object link will be updated if there are no errors.",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("content_hash", {
-          describe: "Version hash of the new tenant media-wallet settings object; ignored if --media-wallet=false",
-          type: "string",
-        })
-        .option("media_wallet", {
-          describe: "indicates if this is a media-wallet-enabled tenant; default: true",
-          type: "boolean",
-          default: true,
-        })
-        .option("update_links", {
-          describe: "Update links on your tenant Fabric object",
-          type: "boolean",
-        })
-        .option("env", {
-          describe: "Environment to use, 'staging' or 'production' (default: production)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantPublishData({ argv });
-    }
-  )
-
-  .command(
-    "notif_send <user_addr> <tenant> <event>",
-    "Sends a notification (using the notification service).",
-    (yargs) => {
-      yargs
-        .positional("user_addr", {
-          describe: "User address",
-          type: "string",
-        })
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("event", {
-          describe: "One of: TOKEN_UPDATED",
-          type: "string",
-        })
-        .option("nft_addr", {
-          describe: "NFT contract address (hex)",
-          type: "string",
-          default: ""
-        })
-        .option("token_id", {
-          describe: "NFT token ID",
-          type: "string",
-          default: ""
-        })
-        .option("notif_url", {
-          describe: "Notification service URL",
-          type: "string",
-          default: ""
-        });
-    },
-    (argv) => {
-      CmdNotifSend({ argv });
-    }
-  )
-
-  .command(
-    "notif_send_token_update <nft_addr> <tenant>",
-    "Sends a TOKEN_UPDATED notification to all owners of this NFT.",
-    (yargs) => {
-      yargs
-        .positional("nft_addr", {
-          describe: "NFT contract address (hex)",
-          type: "string",
-        })
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("notif_url", {
-          describe: "Notification service URL",
-          type: "string",
-          default: ""
-        });
-    },
-    (argv) => {
-      CmdNotifSendTokenUpdate({ argv });
-    }
-  )
-
-  .command(
-    "account_create <funds> <account_name> <tenant_admins>",
-    "Create a new account -> mnemonic, address, private key",
-    (yargs) => {
-      yargs
-        .positional("funds", {
-          describe:
-            "How much to fund the new account from this private key in ETH.",
-          type: "string",
-        })
-        .positional("account_name", {
-          describe: "Account Name",
-          type: "string",
-        })
-        .positional("tenant_admins", {
-          describe: "Tenant Admins group ID",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdAccountCreate({ argv });
-    }
-  )
-
-  .command("account_show", "Shows current account information.", () => {
-    CmdAccountShow();
-  })
-
-  .command(
-    "payment_contract_create addresses shares",
-    "Deploy a payment contract for revenue split.",
-    (yargs) => {
-      yargs
-        .positional("addresses", {
-          describe: "List of stake holder addresses (hex), comma separated",
-          type: "string"
-        })
-        .positional("shares", {
-          describe: "List of stake holder shares, comma separated (one for each address)",
-          type: "string"
-        });
-    },
-    (argv) => {
-      CmdPaymentCreate({ argv });
-    }
-  )
-
-  .command(
-    "payment_contract_show addr token_addr",
-    "Show status of payment contract stakeholders.",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "Address of the payment contract (hex)",
-          type: "string"
-        })
-        .positional("token_addr", {
-          describe: "Address of the ERC20 token contract (hex)",
-          type: "string"
-        });
-    },
-    (argv) => {
-      CmdPaymentShow({ argv });
-    }
-  )
-
-  .command(
-    "payment_release addr token_addr",
-    "Retrieve payment from payment splitter contract as a payee or for a payee using --payee flag",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "Address of the payment contract (hex)",
-          type: "string"
-        })
-        .positional("token_addr", {
-          describe: "Address of the ERC20 token contract (hex)",
-          type: "string"
-        })
-        .option("payee", {
-          describe: "payee address",
-          type: "string",
-          default: "",
-        });
-    },
-    (argv) => {
-      CmdPaymentRelease({ argv });
-    }
-  )
-
-  .command(
-    "token_contract_create <name> <symbol> <decimals> <amount> [options]",
-    "Deploy elv token  contract",
-    (yargs) => {
-      yargs
-        .positional("name", {
-          describe: "elv_token name",
-          type: "string",
-        })
-        .positional("symbol", {
-          describe: "elv_token symbol",
-          type: "string",
-        })
-        .positional("decimals", {
-          describe: "elv_token decimals",
-          type: "number",
-        })
-        .positional("amount", {
-          describe: "elv_token premint amount",
-          type: "number",
-        });
-    },
-    (argv) => {
-      CmdTokenCreate({ argv });
-    }
-  )
-
-  .command(
-    "token_transfer <token_addr> <to_addr> <amount> [options]",
-    "Transfer given elv tokens to address provided",
-    (yargs) => {
-      yargs
-        .positional("token_addr", {
-          describe: "elv_token address",
-          type: "string",
-        })
-        .positional("to_addr", {
-          describe: "to address",
-          type: "string",
-        })
-        .positional("amount", {
-          describe: "transfer amount",
-          type: "number",
-        });
-    },
-    (argv) => {
-      CmdTokenTransfer({ argv });
-    }
-  )
-
-
-  .command(
-    "token_balance_of <token_addr> <user_addr> [options]",
-    "Get the token balance of a given user",
-    (yargs) => {
-      yargs
-        .positional("token_addr", {
-          describe: "elv_token address",
-          type: "string",
-        })
-        .positional("user_addr", {
-          describe: "user address",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTokenBalanceOf({ argv });
-    }
-  )
-
-  .command(
-    "token_add_minter <addr> <minter>",
-    "Add minter or mint helper address to NFT or Token",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT or Token address (hex)",
-          type: "string",
-        })
-        .option("minter", {
-          describe: "Minter or mint helper address (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTokenAddMinter({ argv });
-    }
-  )
-
-  .command(
-    "token_renounce_minter <addr>",
-    "Renounce the minter(msg.sender) from NFT or Token",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT or Token address (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTokenRenounceMinter({ argv });
-    }
-  )
-
-  .command(
-    "token_is_minter <addr> <minter>",
-    "check if minter to NFT or Token",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "NFT or Token address (hex)",
-          type: "string",
-        })
-        .option("minter", {
-          describe: "Minter address (hex)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTokenIsMinter({ argv });
-    }
-  )
-
-  .command(
-    "content_set_policy <object> <policy_path> [data]",
-    "Set the policy on an existing content object. This also sets the delegate on the object contract to itself.",
-    (yargs) => {
-      yargs
-        .positional("object", {
-          describe: "ID of the content object",
-          type: "string",
-        })
-        .positional("policy_path", {
-          describe: "Path to the content object policy file (eg. policy.yaml)",
-          type: "string",
-        })
-        .option("data", {
-          describe: "Metadata path within the policy object to link to",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdContentSetPolicy({ argv });
-    }
-  )
-
-  .command(
-    "content_set_policy_delegate <object> <delegate>",
-    "Set the policy delegate on the object contract.",
-    (yargs) => {
-      yargs
-        .positional("object", {
-          describe: "ID of the content object",
-          type: "string",
-        })
-        .positional("delegate", {
-          describe: "ID of the content object policy delegate",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdContentSetPolicyDelegate({ argv });
-    }
-  )
-
-  .command(
-    "content_get_policy <object>",
-    "Get the content object policy from the object metadata and the delegate from the object's contract meta",
-    (yargs) => {
-      yargs
-        .positional("object", {
-          describe: "ID of the content object",
-          type: "string",
-        });
+    "nft <command>",
+    "NFT related commands",
+    (yargs) => {
+      return yargs
+        .command(
+          "show <addr> [options]",
+          "Show info on this NFT",
+          (yargs) => {
+            yargs
+              .positional("addr", {
+                describe: "NFT address (hex)",
+                type: "string",
+              })
+              .option("check_minter", {
+                describe: "Check that all NFTs use this mint helper",
+              })
+              .option("show_owners", {
+                describe: "Show up to these many owners (default 0), loaded from an index. Only used when token_id is not specified.",
+                type: "integer",
+              })
+              .option("show_owners_via_contract", {
+                describe: "Show up to these many owners (default 0), parsed directly from the contract. Only used when token_id is not specified.",
+                type: "integer",
+              })
+              .option("include_email", {
+                describe: "Include owner(s) email(s) when available, as bound to the given tenant ID.",
+                type: "string",
+              })
+              .option("token_id", {
+                describe: "External token ID. This will take precedence over show_owners.",
+                type: "string", // BigNumber as string
+              });
+          },
+          (argv) => {
+            CmdNftShow({ argv });
+          }
+        )
+
+        .command(
+          "balance_of <addr> <owner>",
+          "Check ownership of an NFT for a given address",
+          (yargs) => {
+            yargs
+              .positional("addr", {
+                describe: "NFT address (hex)",
+                type: "string",
+              })
+              .positional("owner", {
+                describe: "Owner address to check (hex)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdNftBalanceOf({ argv });
+          }
+        )
+
+        .command(
+          "refresh <tenant> <addr>",
+          "Sync backend listings with tenant NFT metadata",
+          (yargs) => {
+            yargs
+              .usage(
+                `Usage: elv-live nft refresh <tenant> <addr>
+
+Synchronize backend listings with Fabric metadata for a specific tenant's NFT. 
+This operation requires tenant's Key to access and update the listings.`
+              )
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .positional("addr", {
+                describe: "NFT contract address",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdNFTRefresh({ argv });
+          }
+        )
+
+        .command(
+          "transfer <addr> <token_id> <to_addr> [options]",
+          "Transfer the specified NFT as the token owner",
+          (yargs) => {
+            yargs
+              .positional("addr", {
+                describe: "Local NFT contract address",
+                type: "string",
+              })
+              .positional("token_id", {
+                describe: "External token ID",
+                type: "string", // BigNumber as string
+              })
+              .positional("to_addr", {
+                describe: "Address to transfer to (hex)",
+                type: "string",
+              })
+              .option("auth_service", {
+                describe: "Use the Authority Service to do the transfer"
+              });
+          },
+          (argv) => {
+            CmdNftTransfer({ argv });
+          }
+        )
+
+        .command(
+          "proxy_transfer <addr> <token_id> <from_addr> <to_addr>",
+          "Tranfer NFT as a proxy owner",
+          (yargs) => {
+            yargs
+              .positional("addr", {
+                describe: "NFT address (hex)",
+                type: "string",
+              })
+              .positional("token_id", {
+                describe: "Token Id",
+                type: "integer",
+              })
+              .positional("from_addr", {
+                describe: "Address to transfer from (hex)",
+                type: "string",
+              })
+              .positional("to_addr", {
+                describe: "Address to transfer to (hex)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdNftProxyTransfer({ argv });
+          }
+        )
+
+        .command(
+          "build <library> <object> [options]",
+          "Build the public/nft section",
+          (yargs) => {
+            yargs
+              .usage(
+                `
+Usage: elv-live nft build <library> <object>
+
+Build the public/nft section based on asset metadata. 
+If --nft_dir is specified, will build a generative nft based on *.json files inside the dir. 
+See README.md for more details. `
+              )
+              .positional("library", {
+                describe: "Content library",
+                type: "string",
+              })
+              .positional("object", {
+                describe: "Content object hash (hq__) or id (iq__)",
+                type: "string",
+              })
+              .option("nft_dir", {
+                describe:
+                  "Create a multi-media NFT (generative). " +
+                  "Directory contains json files describing the nft.  See documentation to see *.json structure.",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdNftBuild({ argv });
+          }
+        )
+
+        .command(
+          "proxy <command>",
+          "NFT proxy commands",
+          (yargs) => {
+            return yargs
+              .command(
+                "set <addr> [proxy_addr]",
+                "Set a proxy on an NFT contract",
+                (yargs) => {
+                  yargs
+                    .positional("addr", {
+                      describe: "NFT address (hex)",
+                      type: "string",
+                    })
+                    .option("proxy_addr", {
+                      describe: "Proxy contract address (hex)",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmfNftSetProxy({ argv });
+                }
+              );
+          },
+          () => {
+            yargs.showHelp();
+          }
+        )
+
+
+
+        .command(
+          "pack <command>",
+          "Pack related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "dist <command>",
+                "Pack distribution commands",
+                (yargs) => {
+                  yargs
+                    .command(
+                      "get <hash>",
+                      "Compute pack distribution",
+                      (yargs) => {
+                        yargs
+                          .usage(
+                            `Usage: elv-live nft pack dist get <hash>
+
+Compute pack distribution based on NFT Template spec. Saves to file.
+                            `
+                          )
+                          .positional("hash", {
+                            describe: "NFT Template content hash (hq__)",
+                            type: "string",
+                          });
+                      },
+                      (argv) => {
+                        CmdNftPackGetDist({ argv });
+                      }
+                    )
+
+                    .command(
+                      "set <hash>",
+                      "Set the pack distribution for an NFT Template",
+                      (yargs) => {
+                        yargs
+                          .usage(
+                            `elv-live nft pack dist set <hash>
+
+Set the pack distribution for an NFT Template. 
+Reads distribution from file.                            `
+                          )
+                          .positional("hash", {
+                            describe: "NFT Template content hash (hq__)",
+                            type: "string",
+                          });
+                      },
+                      (argv) => {
+                        CmdNftPackSetDist({ argv });
+                      }
+                    );
+                },
+                () => {
+                  yargs.showHelp();
+                }
+              );
+          },
+          () => {
+            yargs.showHelp();
+          }
+        )
+
+        .command(
+          "burn <addr> <token_id>",
+          "Burn the specified NFT as the owner",
+          (yargs) => {
+            yargs
+              .positional("addr", {
+                describe: "Local NFT contract address",
+                type: "string",
+              })
+              .positional("token_id", {
+                describe: "External token ID",
+                type: "string", // BigNumber as string
+              });
+          },
+          (argv) => {
+            CmdNftBurn({ argv });
+          }
+        )
+
+        .command(
+          "proxy_burn <addr> <token_id>",
+          "Burn the specified NFT",
+          (yargs) => {
+            yargs
+              .positional("addr", {
+                describe: "Local NFT contract address",
+                type: "string",
+              })
+              .positional("token_id", {
+                describe: "External token ID",
+                type: "string", // BigNumber as string
+              });
+          },
+          (argv) => {
+            CmdNftProxyBurn({ argv });
+          }
+        )
+
+        .command(
+          "transfer_fee <command>",
+          "Transfer Fee related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "set <addr> <fee>",
+                "Set the transfer fee for an NFT contract",
+                (yargs) => {
+                  yargs
+                    .positional("addr", {
+                      describe: "NFT contract address",
+                      type: "string",
+                    })
+                    .positional("fee", {
+                      describe: "Fee in ETH",
+                      type: "string", // BigNumber as string
+                    });
+                },
+                (argv) => {
+                  CmdNftSetTransferFee({ argv });
+                }
+              )
+
+              .command(
+                "get <addr>",
+                "Get the transfer fee for an NFT contract",
+                (yargs) => {
+                  yargs
+                    .positional("addr", {
+                      describe: "NFT contract address",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdNftGetTransferFee({ argv });
+                }
+              );
+          },
+          () => {
+            yargs.showHelp();
+          }
+        )
+
+        .command(
+          "contract <command>",
+          "NFT contract commands",
+          (yargs) => {
+            yargs
+              .command(
+                "add <tenant> <object> <cap> <name> <symbol> [options]",
+                "Adds an NFT contract (new/existing) to an NFT Template",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .positional("object", {
+                      describe: "NFT Template object ID",
+                      type: "string",
+                    })
+                    .positional("cap", {
+                      describe: "NFT total supply cap",
+                      type: "number",
+                    })
+                    .positional("name", {
+                      describe: "NFT collection name",
+                      type: "string",
+                    })
+                    .positional("symbol", {
+                      describe: "NFT collection symbol",
+                      type: "string",
+                    })
+                    .option("hold", {
+                      describe: "Hold period in seconds (default 7 days)",
+                      type: "number",
+                    });
+                },
+                (argv) => {
+                  CmfNftTemplateAddNftContract({ argv });
+                }
+              )
+
+              .command(
+                "offer <command>",
+                "Offer related commands",
+                (yargs) => {
+                  yargs
+                    .command(
+                      "add <addr>",
+                      "Adds a redeemable offer to an NFT contract",
+                      (yargs) => {
+                        yargs
+                          .usage(`Usage: elv-live nft contract offer add <addr> 
+
+Add a redeemable offer to the NFT contract as the contract owner or minter.
+`)
+                          .positional("addr", {
+                            describe: "NFT contract address",
+                            type: "string",
+                          });
+                      },
+                      (argv) => {
+                        CmdNftAddRedeemableOffer({ argv });
+                      }
+                    )
+
+                    .command(
+                      "remove <addr> <offer_id>",
+                      "Removes a redeemable offer from an NFT contract",
+                      (yargs) => {
+                        yargs
+                          .usage(
+                            `Usage: elv-live nft contract offer remove <addr> <offer_id>
+
+Remove (disable) a redeemable offer from the NFT contract as the contract owner or minter.          
+                            `
+                          )
+                          .positional("addr", {
+                            describe: "NFT contract address",
+                            type: "string",
+                          })
+                          .positional("offer_id", {
+                            describe: "Offer ID",
+                            type: "integer",
+                          });
+                      },
+                      (argv) => {
+                        CmdNftRemoveRedeemableOffer({ argv });
+                      }
+                    )
+
+                    .command(
+                      "is_redeemed <addr> <token_id> <offer_id>",
+                      "Checks if an offer has been redeemed",
+                      (yargs) => {
+                        yargs
+                          .positional("addr", {
+                            describe: "NFT contract address",
+                            type: "string",
+                          })
+                          .positional("token_id", {
+                            describe: "Offer ID",
+                            type: "integer",
+                          })
+                          .positional("offer_id", {
+                            describe: "Offer ID",
+                            type: "integer",
+                          });
+                      },
+                      (argv) => {
+                        CmdNftIsOfferRedeemed({ argv });
+                      }
+                    )
+
+                    .command(
+                      "is_active <addr> <offer_id>",
+                      "Checks if offer is active",
+                      (yargs) => {
+                        yargs
+                          .positional("addr", {
+                            describe: "NFT contract address",
+                            type: "string",
+                          })
+                          .positional("offer_id", {
+                            describe: "Offer ID",
+                            type: "integer",
+                          });
+                      },
+                      (argv) => {
+                        CmdNftIsOfferActive({ argv });
+                      }
+                    )
+
+                    .command(
+                      "redeem <addr> <redeemer> <token_id> <offer_id>",
+                      "Redeem an nft offer",
+                      (yargs) => {
+                        yargs
+                          .positional("addr", {
+                            describe: "NFT contract address",
+                            type: "string",
+                          })
+                          .positional("redeemer", {
+                            describe: "Redeemer address",
+                            type: "string",
+                          })
+                          .positional("token_id", {
+                            describe: "Offer ID",
+                            type: "integer",
+                          })
+                          .positional("offer_id", {
+                            describe: "Offer ID",
+                            type: "integer",
+                          });
+                      },
+                      (argv) => {
+                        CmdNftRedeemOffer({ argv });
+                      }
+                    )
+
+                    .command(
+                      "as_redeem <addr> <tenant> <mint_helper_addr> <token_id> <offer_id>",
+                      "Redeem an nft offer using the authority service",
+                      (yargs) => {
+                        yargs
+                          .positional("addr", {
+                            describe: "NFT contract address",
+                            type: "string",
+                          })
+                          .positional("tenant", {
+                            describe: "Tenant ID",
+                            type: "string",
+                          })
+                          .positional("mint_helper_addr", {
+                            describe: "Address of the mint helper (hex), used with --auth_service",
+                            type: "string",
+                          })
+                          .positional("token_id", {
+                            describe: "Offer ID",
+                            type: "integer",
+                          })
+                          .positional("offer_id", {
+                            describe: "Offer ID",
+                            type: "integer",
+                          });
+                      },
+                      (argv) => {
+                        CmdASNftRedeemOffer({ argv });
+                      }
+                    );
+                },
+                () => {
+                  yargs.showHelp();
+                }
+              );
+
+          },
+          () => {
+            yargs.showHelp();
+          }
+        )
+
+        .command(
+          "policy <command>",
+          "Policy related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "contract <command>",
+                "Contract related commands",
+                (yargs) => {
+                  yargs
+                    .command(
+                      "get <object>",
+                      "Gets the policy and permissions of a content object.",
+                      (yargs) => {
+                        yargs.positional("object", {
+                          describe: "ID of the content fabric object",
+                          type: "string",
+                        });
+                      },
+                      (argv) => {
+                        CmdNFTGetPolicyPermissions({ argv });
+                      }
+                    )
+
+                    .command(
+                      "set <object> <policy_path> <addrs..>",
+                      "Sets NFT access policy and permissions for a content object.",
+                      (yargs) => {
+                        yargs
+                          .usage(`Usage: elv-live nft policy contract set <object> <policy_path> <addrs..>
+
+Sets the policy and permissions granting NFT owners access to a content object. 
+When no addresses are specified, only the policy is set.
+                          `)
+                          .positional("object", {
+                            describe: "ID of the content object to grant access to",
+                            type: "string",
+                          })
+                          .positional("policy_path", {
+                            describe: "Path of policy object file",
+                            type: "string",
+                          })
+                          .positional("addrs", {
+                            describe:
+                              "List of space separated NFT contract addresses to set. Calling multiple times with a new list will replace the existing.",
+                            type: "string",
+                          })
+                          .option("clear", {
+                            describe: "clear the nft owners",
+                            type: "boolean",
+                            default: false
+                          });
+                      },
+                      (argv) => {
+                        CmdNFTSetPolicyPermissions({ argv });
+                      }
+                    );
+                },
+                ()=> {
+                  yargs.showHelp();
+                }
+              );
+          },
+          ()=>{
+            yargs.showHelp();
+          }
+        );
+
+    }
+  )
+  .command(
+    "tenant <command>",
+    "Tenant related commands",
+    (yargs) => {
+      yargs
+        .command(
+          "show <tenant> [options]",
+          "Show info on this tenant",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .option("check_nfts", {
+                describe:
+                  "Check that all NFTs are part of the tenant contract's tenant_nfts group",
+                type: "boolean",
+              });
+          },
+          (argv) => {
+            CmdTenantShow({ argv });
+          }
+        )
+
+        .command(
+          "auth_token <path_or_body>",
+          "Generate a tenant token",
+          (yargs) => {
+            yargs
+              .positional("path_or_body", {
+                describe: "URL path or request body",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdTenantAuthToken({argv}).then();
+          }
+        )
+
+        .command(
+          "auth_curl <url_path> [post_body]",
+          "Generates a tenant token for calling a baseTenantAuth endpoint.",
+          (yargs) => {
+            yargs
+              .positional("url_path", {
+                describe: "URL path",
+                type: "string",
+              })
+              .positional("post_body", {
+                describe: "either json body for POST, or '' for GET",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdTenantAuthCurl({argv}).then();
+          }
+        )
+
+        .command(
+          "path_auth_curl <url_path> [post_body]",
+          "Generates a tenant token for calling a tenantPathAuth authd endpoint.",
+          (yargs) => {
+            yargs
+              .positional("url_path", {
+                describe: "URL path",
+                type: "string",
+              })
+              .positional("post_body", {
+                describe: "either json body for POST, or '' for GET",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdTenantPathAuthCurl({argv}).then();
+          }
+        )
+
+        .command(
+          "token_uri <command>",
+          "Tenant token URI commands",
+          (yargs) => {
+            yargs
+              .command(
+                "set <request_type> <tenant> <contract_address> <new_token_uri> [options]",
+                "Reset the token URI(s) for tenant NFT contract(s)",
+                (yargs) => {
+                  yargs
+                    .positional("request_type", {
+                      describe: "Request Type (single, batch, all)",
+                      type: "string",
+                    })
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .positional("contract_address", {
+                      describe: "NFT contract address",
+                      type: "string",
+                    })
+                    .positional("new_token_uri", {
+                      describe: "New token URI; ignored if CSV batch, use -",
+                      type: "string",
+                    })
+                    .option("token_id", {
+                      describe:
+                        "Optional Token ID; required for single request type",
+                      type: "number",
+                    })
+                    .option("csv", {
+                      describe: "CSV file for batch request type",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantSetTokenURI({ argv });
+                }
+              )
+
+              .command(
+                "update <tenant> <addr> <hash> [options]",
+                "Reset the token URI(s) for tenant NFT contract(s)",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .positional("addr", {
+                      describe: "NFT contract address",
+                      type: "string",
+                    })
+                    .positional("hash", {
+                      describe: "New NFT template object hash",
+                      type: "string",
+                    })
+                    .option("dry_run", {
+                      describe:
+                        "Default 'true'",
+                      type: "boolean",
+                    });
+                },
+                (argv) => {
+                  CmdTenantUpdateTokenURI({ argv });
+                }
+              );
+          },
+          ()=>{
+            yargs.showHelp();
+          }
+        )
+
+        .command(
+          "balance_of <tenant> <owner>",
+          "Shows the NFT balance of an owner within a tenant",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .positional("owner", {
+                describe: "Owner address (hex)",
+                type: "string",
+              })
+              .option("csv", {
+                describe: "File path to output csv",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdTenantBalanceOf({ argv });
+          }
+        )
+
+        .command(
+          "fabric_balance_of <object> <owner> [options]",
+          "Shows an owner's NFT balance in a tenant via the EluvioLive object tree",
+          (yargs) => {
+            yargs
+              .positional("object", {
+                describe: "Tenant-level EluvioLive object ID",
+                type: "string",
+              })
+              .positional("owner", {
+                describe: "Owner address (hex)",
+                type: "string",
+              })
+              .option("max_results", {
+                describe: "Show up to these many results (default 0 = unlimited)",
+                type: "integer",
+              });
+          },
+          (argv) => {
+            CmdFabricTenantBalanceOf({ argv });
+          }
+        )
+
+        .command(
+          "tickets_generate <tenant> <otp>",
+          "Generate tickets for a given tenant OTP ID",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .positional("otp", {
+                describe: "OTP ID (including prefix)",
+                type: "string",
+              })
+              .option("quantity", {
+                describe: "Specify how many to generate (default 1)",
+                type: "integer",
+              })
+              .option("emails", {
+                describe: "File containing one email per line (or any user identifier). Generate codes bound to these identifiers",
+                type: "string",
+              })
+              .option("embed_url_base", {
+                describe: "Generate embed URLs for each ticket based on this template",
+                type: "string",
+              })
+              .option("otp_class", {
+                describe: "Use authority services (class 5) or contract (class 4) (default 5)",
+                type: "integer",
+              });
+          },
+          (argv) => {
+            CmdTenantTicketsGenerate({ argv });
+          }
+        )
+
+        .command(
+          "mint <tenant> <marketplace> <sku> <addr>",
+          "Mint a marketplace NFT by SKU as tenant admin",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .positional("marketplace", {
+                describe: "Marketplace ID",
+                type: "string",
+              })
+              .positional("sku", {
+                describe: "NFT marketplace SKU",
+                type: "string",
+              })
+              .positional("addr", {
+                describe: "Target address to mint to",
+                type: "string",
+              })
+              .option("quantity", {
+                describe: "Specify how many to mint (default 1)",
+                type: "integer",
+              });
+          },
+          (argv) => {
+            CmdTenantMint({ argv });
+          }
+        )
+
+        .command(
+          "primary_sales <tenant> <marketplace>",
+          "Show tenant primary sales history",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .positional("marketplace", {
+                describe: "Marketplace ID",
+                type: "string",
+              })
+              .option("processor", {
+                describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
+                type: "string",
+                default: "",
+              })
+              .option("csv", {
+                describe: "File path to output csv",
+                type: "string",
+              })
+              .option("offset", {
+                describe: "Offset in months to dump data where 0 is the current month",
+                type: "number",
+                default: 1,
+              })
+              .option("admin", {
+                describe: "Use the Admin API endpoint to resolve this query instead of the tenant API. " +
+                  "This is required for inactive marketplaces.",
+                type: "boolean",
+                default: false,
+              });
+          },
+          (argv) => {
+            CmdTenantPrimarySales({ argv });
+          }
+        )
+
+        .command(
+          "secondary_sales <tenant>",
+          "Show tenant secondary sales history",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .option("processor", {
+                describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
+                type: "string",
+                default: "",
+              })
+              .option("csv", {
+                describe: "File path to output csv",
+                type: "string",
+              })
+              .option("offset", {
+                describe:
+                  "Offset in months to dump data where 0 is the current month",
+                type: "number",
+                default: 1,
+              });
+          },
+          (argv) => {
+            CmdTenantSecondarySales({ argv });
+          }
+        )
+
+        .command(
+          "sales <tenant>",
+          "Show tenant sales history",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .option("processor", {
+                describe: "Payment processor: eg. stripe, coinbase, eluvio. Omit for all.",
+                type: "string",
+                default: "",
+              })
+              .option("csv", {
+                describe: "File path to output csv",
+                type: "string",
+              })
+              .option("offset", {
+                describe:
+                  "Offset in months to dump data where 0 is the current month",
+                type: "number",
+                default: 1,
+              });
+          },
+          (argv) => {
+            CmdTenantUnifiedSales({ argv });
+          }
+        )
+
+        .command(
+          "sessions <tenant> <start_ts> <end_ts> <filename>",
+          "Exports session data for a tenant to CSV from the analytics API",
+          (yargs) => {
+            yargs
+              .usage(`Usage: elv-live tenant sessions <tenant> <start_ts> <end_ts> <filename>
+
+Export CSV file of session data from the analytics API for a given tenant and time range
+              `)
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .positional("start_ts", {
+                describe: "start timestamp (seconds since epoch)",
+                type: "int",
+              })
+              .positional("end_ts", {
+                describe: "end timestamp (seconds since epoch)",
+                type: "int",
+              })
+              .positional("filename", {
+                describe: "filename to output csv",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdTenantSessionsCsv({ argv });
+          }
+        )
+
+        .command(
+          "wallets <tenant> [options]",
+          "Show the wallets associated with this tenant",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .option("csv", {
+                describe: "File path to output csv",
+                type: "string",
+              })
+              .option("max_results", {
+                describe: "Show up to these many results (default 0 = unlimited)",
+                type: "integer",
+              });
+          },
+          (argv) => {
+            CmdTenantWallets({ argv });
+          }
+        )
+
+        .command(
+          "nft <command>",
+          "Tenant NFT related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "remove <tenant> <addr>",
+                "Removes the nft address from the tenant contract",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .positional("addr", {
+                      describe: "NFT Address",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantNftRemove({ argv });
+                }
+              )
+
+              .command(
+                "list <tenant>",
+                "List all tenant_nfts within a tenant contract",
+                (yargs) => {
+                  yargs.positional("tenant", {
+                    describe: "Tenant ID",
+                    type: "string",
+                  });
+                },
+                (argv) => {
+                  CmdTenantNftList({ argv });
+                }
+              )
+
+              .command(
+                "exists <tenant> <addr>",
+                "Searches tenant_nfts list in tenant contract and returns true if exists",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .positional("addr", {
+                      describe: "NFT Address",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantHasNft({ argv });
+                }
+              );
+          },
+          ()=>{
+            yargs.showHelp();
+          }
+        )
+
+        .command(
+          "consumers <command>",
+          "Tenant consumers management commands",
+          (yargs) => {
+            yargs
+              .command(
+                "add <group_id> [addrs..]",
+                "Adds address(es) to the tenant's consumer group",
+                (yargs) => {
+                  yargs
+                    .positional("group_id", {
+                      describe: "Tenant consumer group ID",
+                      type: "string",
+                    })
+                    .option("addrs", {
+                      describe:
+                        "Addresses to add",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantAddConsumers({ argv });
+                }
+              )
+
+              .command(
+                "remove <group_id> <addr>",
+                "Removes consumer from tenant consumer group",
+                (yargs) => {
+                  yargs
+                    .positional("group_id", {
+                      describe: "Tenant consumer group ID",
+                      type: "string",
+                    })
+                    .positional("addr", {
+                      describe:
+                        "Address the to add",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantRemoveConsumer({ argv });
+                }
+              )
+
+              .command(
+                "exists <group_id> <addr>",
+                "Checks if addr is in the tenant consumer group",
+                (yargs) => {
+                  yargs
+                    .positional("group_id", {
+                      describe: "Tenant consumer group ID",
+                      type: "string",
+                    })
+                    .positional("addr", {
+                      describe:
+                        "Address the to add",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantHasConsumer({ argv });
+                }
+              );
+          },
+          () => {
+            yargs.showHelp();
+          }
+        )
+
+        .command(
+          "provision <tenant> <slug> [options]",
+          "Provision tenant.",
+          (yargs) => {
+            yargs.usage(`elv-live tenant provision <tenant> <slug> [options]
+            
+Provision a new tenancy with standard media libraries and content types.
+Run as the tenant root key, as created by space_tenant_create. This is a multi-step operation,
+and intermediate status is saved in the local directory in the file tenant_status.json using --status flag.
+
+The operation can be resumed by specifying a status file, which indicates the operations
+that have already been executed.
+
+Funds transferred (default):
+  * tenant ops created: 10 elv
+  * content ops created: 10 elv
+  * faucet funding address: 20 elv`);
+            yargs.positional("tenant", {
+              describe: "Tenant ID",
+              type: "string",
+            });
+            yargs.positional("slug", {
+              describe: "Tenant Slug",
+              type: "string",
+            });
+            yargs.option("name", {
+              describe: "Tenant name",
+              type: "string"
+            });
+            yargs.option("status",{
+              describe: "Path to the JSON File for existing tenant provision config",
+              type: "string",
+            });
+            yargs.option("init_config",{
+              describe: "Displays the initial provisioning config, which can be used to input existing objects",
+              type: "boolean",
+              default: false
+            });
+          },
+          (argv) => {
+            CmdTenantProvision({ argv });
+          }
+        )
+
+        .command(
+          "add_consumer_group <tenant>",
+          "Deploys a BaseTenantConsumerGroup and links it to the tenant's contract",
+          (yargs) => {
+            yargs.positional("tenant", {
+              describe: "Tenant ID",
+              type: "string",
+            });
+          },
+          (argv) => {
+            CmdTenantAddConsumerGroup({ argv });
+          }
+        )
+
+        .command(
+          "create_wallet_account <email> <tenant> <property_slug>",
+          "Create a wallet account and sends a tenant-branded email",
+          (yargs) => {
+            yargs
+              .positional("email", {
+                describe: "the email to create the account for, or @filename for list of emails",
+                type: "string",
+              })
+              .positional("tenant", {
+                describe: "the tenant in format iten...",
+                type: "string",
+              })
+              .positional("property_slug", {
+                describe: "the property slug. e.g., epcrtv",
+                type: "string",
+              })
+              .option("only_create_account", {
+                describe: "only create the account, don't send email",
+                type: "boolean",
+              })
+              .option("only_send_email", {
+                describe: "only send account-creation email, do not create the account",
+                type: "boolean",
+              })
+              .option("schedule_at", {
+                describe: "set future time for account-creation email (format is 2024-11-13T01:07:05Z)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdCreateWalletAccount({ argv });
+          }
+        )
+
+        .command(
+          "transfer_errors <tenant>",
+          "Tenant transfer failures to track uncollected payments",
+          (yargs) => {
+            yargs
+              .usage(`Usage: elv-live tenant transfer_errors <tenant>
+
+Show tenant transfer failures. Used to identify payments collected on failed transfers.
+`)
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdTenantTransferFailures({ argv });
+          }
+        )
+
+        .command(
+          "minter_config <command>",
+          "Tenant minter_config related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "get <tenant> [options]",
+                "Gets the minter configuration for this tenant key",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantGetMinter({ argv });
+                }
+              )
+
+              .command(
+                "create <tenant> [options]",
+                "Creates the minter configuration for this tenant key",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .option("funds", {
+                      describe: "How much to fund the minter and proxy addresses. Default: 0 (do not fund)",
+                      type: "integer",
+                    })
+                    .option("deploy", {
+                      describe: "Deploy a new minter helper contract as the minter using the Authority Service. Default: false",
+                      type: "boolean",
+                    });
+                },
+                (argv) => {
+                  CmdTenantCreateMinter({ argv });
+                }
+              )
+
+              .command(
+                "replace <tenant> [options]",
+                "Creates the minter configuration for this tenant key",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .option("proxy_owner", {
+                      describe: "Replace proxy owner ID (eg. ikms..). Note that the key must already be stored in the Authority Service to use this.",
+                      type: "string",
+                    })
+                    .option("minter", {
+                      describe: "Replace minter ID (eg. ikms..). Note that the key must already be stored in the Authority Service to use this.",
+                      type: "string",
+                    })
+                    .option("mint_helper", {
+                      describe: "Replace minter helper address (hex). The minter must be the owner of this contract.",
+                      type: "string",
+                    })
+                    .option("proxy", {
+                      describe: "Replace the transfer proxy address (hex). The proxy owner must be the owner of this contract.",
+                      type: "string",
+                    })
+                    .option("mint_shuffle_key", {
+                      describe: "Replace the mint shuffle key (ikms).  The secret must be already stored in the Authority Service",
+                      type: "string",
+                    })
+                    .option("legacy_shuffle_seed", {
+                      describe: "Replace the legacy shuffle seed (use '0' to disable).",
+                      type: "string",
+                    })
+                    .option("purge", {
+                      describe: "Purge will delete the keys first before replacing",
+                      type: "bool",
+                    });
+                },
+                (argv) => {
+                  CmdTenantReplaceMinter({ argv });
+                }
+              )
+
+              .command(
+                "delete <tenant> [options]",
+                "Delete the minter configuration for this tenant key",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .option("force", {
+                      describe: "Attempt to delete all keys even on error",
+                      type: "boolean",
+                    });
+                },
+                (argv) => {
+                  CmdTenantDeleteMinter({ argv });
+                }
+              );
+          },
+          ()=>{
+            yargs.showHelp();
+          }
+        )
+
+        .command(
+          "deploy_helper_contracts <tenant> [options]",
+          "Deploys minter helper and transfer proxy contracts via the authority service",
+          (yargs) => {
+            yargs
+              .usage(`Usage: elv-live tenant deploy_helper_contracts <tenant> [options]
+              
+Deploys minter helper and transfer proxy contracts via the authority service as the minter. 
+Specify option proxy or mint helper to only deploy that specific contract.              `)
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .option("mint_helper", {
+                describe: "Deploy mint helper contract.",
+                type: "bool",
+              })
+              .option("proxy", {
+                describe: "Deploy Proxy contract.",
+                type: "bool",
+              });
+          },
+          (argv) => {
+            CmdTenantDeployHelpers({ argv });
+          }
+        )
+
+        .command(
+          "publish_data <tenant> <content_hash> [options]",
+          "Submits a tenant Fabric object version for validation and updates the top-level link if valid",
+          (yargs) => {
+            yargs
+              .usage(`Usage: elv-live tenant publish_data <tenant> <content_hash>
+
+Submits the new version hash of the tenant Fabric object for validation. 
+The top level Eluvio Live object link will be updated if there are no errors.
+              `)
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .positional("content_hash", {
+                describe: "Version hash of the new tenant media-wallet settings object; ignored if --media-wallet=false",
+                type: "string",
+              })
+              .option("media_wallet", {
+                describe: "indicates if this is a media-wallet-enabled tenant; default: true",
+                type: "boolean",
+                default: true,
+              })
+              .option("update_links", {
+                describe: "Update links on your tenant Fabric object",
+                type: "boolean",
+              })
+              .option("env", {
+                describe: "Environment to use, 'staging' or 'production' (default: production)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdTenantPublishData({ argv });
+          }
+        )
+
+        .command(
+          "notif_send <user_addr> <tenant> <event>",
+          "Sends a notification (using the notification service)",
+          (yargs) => {
+            yargs
+              .positional("user_addr", {
+                describe: "User address",
+                type: "string",
+              })
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .positional("event", {
+                describe: "One of: TOKEN_UPDATED",
+                type: "string",
+              })
+              .option("nft_addr", {
+                describe: "NFT contract address (hex)",
+                type: "string",
+                default: ""
+              })
+              .option("token_id", {
+                describe: "NFT token ID",
+                type: "string",
+                default: ""
+              })
+              .option("notif_url", {
+                describe: "Notification service URL",
+                type: "string",
+                default: ""
+              });
+          },
+          (argv) => {
+            CmdNotifSend({ argv });
+          }
+        )
+
+        .command(
+          "notif_send_token_update <nft_addr> <tenant>",
+          "Sends a TOKEN_UPDATED notification to all owners of this NFT",
+          (yargs) => {
+            yargs
+              .positional("nft_addr", {
+                describe: "NFT contract address (hex)",
+                type: "string",
+              })
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .option("notif_url", {
+                describe: "Notification service URL",
+                type: "string",
+                default: ""
+              });
+          },
+          (argv) => {
+            CmdNotifSendTokenUpdate({ argv });
+          }
+        );
+    }
+  )
+  .command(
+    "account <command>",
+    "Account related commands",
+    (yargs) => {
+      yargs
+        .command(
+          "create <funds> <account_name> <tenant_admins>",
+          "Create a new account",
+          (yargs) => {
+            yargs
+              .positional("funds", {
+                describe:
+                  "How much to fund the new account from this private key in ETH.",
+                type: "string",
+              })
+              .positional("account_name", {
+                describe: "Account Name",
+                type: "string",
+              })
+              .positional("tenant_admins", {
+                describe: "Tenant Admins group ID",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdAccountCreate({ argv });
+          }
+        )
+
+        .command("show", "Shows current account information.", () => {
+          CmdAccountShow();
+        })
+        .demandCommand()
+        .strict();
+    },
+
+  )
+  .command(
+    "payment_contract <command>",
+    "payment contract related commands",
+    (yargs) => {
+      yargs
+        .command(
+          "create <addresses> <shares>",
+          "Deploy a payment contract for revenue split.",
+          (yargs) => {
+            yargs
+              .positional("addresses", {
+                describe: "List of stake holder addresses (hex), comma separated",
+                type: "string"
+              })
+              .positional("shares", {
+                describe: "List of stake holder shares, comma separated (one for each address)",
+                type: "string"
+              });
+          },
+          (argv) => {
+            CmdPaymentCreate({ argv });
+          }
+        )
+
+        .command(
+          "show <addr> <token_addr>",
+          "Show status of payment contract stakeholders",
+          (yargs) => {
+            yargs
+              .positional("addr", {
+                describe: "Address of the payment contract (hex)",
+                type: "string"
+              })
+              .positional("token_addr", {
+                describe: "Address of the ERC20 token contract (hex)",
+                type: "string"
+              });
+          },
+          (argv) => {
+            CmdPaymentShow({ argv });
+          }
+        )
+
+        .command(
+          "release <addr> <token_addr>",
+          "Retrieves payments from a payment splitter contract for a specified payee",
+          (yargs) => {
+            yargs
+              .usage(`Usage: elv-live payment_contract release <addr> <token_addr>
+
+Retrieve payment from payment splitter contract as a payee or for a payee using --payee flag
+              `)
+              .positional("addr", {
+                describe: "Address of the payment contract (hex)",
+                type: "string"
+              })
+              .positional("token_addr", {
+                describe: "Address of the ERC20 token contract (hex)",
+                type: "string"
+              })
+              .option("payee", {
+                describe: "payee address",
+                type: "string",
+                default: "",
+              });
+          },
+          (argv) => {
+            CmdPaymentRelease({ argv });
+          }
+        )
+        .demandCommand()
+        .strict();
+    },
+
+  )
+  .command(
+    "token <command>",
+    "Token related commands",
+    (yargs) => {
+      yargs
+        .command(
+          "create <name> <symbol> <decimals> <amount> [options]",
+          "Deploy elv token  contract",
+          (yargs) => {
+            yargs
+              .positional("name", {
+                describe: "elv_token name",
+                type: "string",
+              })
+              .positional("symbol", {
+                describe: "elv_token symbol",
+                type: "string",
+              })
+              .positional("decimals", {
+                describe: "elv_token decimals",
+                type: "number",
+              })
+              .positional("amount", {
+                describe: "elv_token premint amount",
+                type: "number",
+              });
+          },
+          (argv) => {
+            CmdTokenCreate({ argv });
+          }
+        )
+
+        .command(
+          "transfer <token_addr> <to_addr> <amount> [options]",
+          "Transfer given elv tokens to address provided",
+          (yargs) => {
+            yargs
+              .positional("token_addr", {
+                describe: "elv_token address",
+                type: "string",
+              })
+              .positional("to_addr", {
+                describe: "to address",
+                type: "string",
+              })
+              .positional("amount", {
+                describe: "transfer amount",
+                type: "number",
+              });
+          },
+          (argv) => {
+            CmdTokenTransfer({ argv });
+          }
+        )
+
+        .command(
+          "balance_of <token_addr> <user_addr> [options]",
+          "Get the token balance of a given user",
+          (yargs) => {
+            yargs
+              .positional("token_addr", {
+                describe: "elv_token address",
+                type: "string",
+              })
+              .positional("user_addr", {
+                describe: "user address",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdTokenBalanceOf({ argv });
+          }
+        )
+
+        .command(
+          "minter <command>",
+          "Token Minter related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "add <addr> <minter>",
+                "Add minter or mint helper address to NFT or Token",
+                (yargs) => {
+                  yargs
+                    .positional("addr", {
+                      describe: "NFT or Token address (hex)",
+                      type: "string",
+                    })
+                    .option("minter", {
+                      describe: "Minter or mint helper address (hex)",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTokenAddMinter({ argv });
+                }
+              )
+
+              .command(
+                "renounce <addr>",
+                "Renounce the minter(msg.sender) from NFT or Token",
+                (yargs) => {
+                  yargs
+                    .positional("addr", {
+                      describe: "NFT or Token address (hex)",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTokenRenounceMinter({ argv });
+                }
+              );
+          },
+
+        )
+
+        .command(
+          "is_minter <addr> <minter>",
+          "Check if minter to NFT or Token",
+          (yargs) => {
+            yargs
+              .positional("addr", {
+                describe: "NFT or Token address (hex)",
+                type: "string",
+              })
+              .option("minter", {
+                describe: "Minter address (hex)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdTokenIsMinter({ argv });
+          }
+        )
+        .demandCommand()
+        .strict();
     },
-    (argv) => {
-      CmdContentGetPolicy({ argv });
-    }
-  )
 
-  .command(
-    "content_clear_policy <object>",
-    "Remove content object policy from the object metadata and the delegate from the object's contract meta",
-    (yargs) => {
-      yargs
-        .positional("object", {
-          describe: "ID of the content object",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdContentClearPolicy({ argv });
-    }
   )
-
   .command(
     "list [options]",
     "List the Eluvio Live Tenants",
@@ -3683,42 +3704,300 @@ yargs(hideBin(process.argv))
       CmdList({ argv });
     }
   )
-
   .command(
-    "create_wallet_account <email> <tenant> <property_slug>",
-    "create a wallet account and send tenant-branded email",
+    "content_policy <command>",
+    "Object related commands",
     (yargs) => {
       yargs
-        .positional("email", {
-          describe: "the email to create the account for, or @filename for list of emails",
-          type: "string",
-        })
-        .positional("tenant", {
-          describe: "the tenant in format iten...",
-          type: "string",
-        })
-        .positional("property_slug", {
-          describe: "the property slug. e.g., epcrtv",
-          type: "string",
-        })
-        .option("only_create_account", {
-          describe: "only create the account, don't send email",
-          type: "boolean",
-        })
-        .option("only_send_email", {
-          describe: "only send account-creation email, do not create the account",
-          type: "boolean",
-        })
-        .option("schedule_at", {
-          describe: "set future time for account-creation email (format is 2024-11-13T01:07:05Z)",
-          type: "string",
-        });
+        .command(
+          "set <object> <policy_path> [data]",
+          "Set the policy on an existing content object. This also sets the delegate on the object contract to itself.",
+          (yargs) => {
+            yargs
+              .positional("object", {
+                describe: "ID of the content object",
+                type: "string",
+              })
+              .positional("policy_path", {
+                describe: "Path to the content object policy file (eg. policy.yaml)",
+                type: "string",
+              })
+              .option("data", {
+                describe: "Metadata path within the policy object to link to",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdContentSetPolicy({ argv });
+          })
+
+        .command(
+          "set_delegate <object> <delegate>",
+          "Set the policy delegate on the object contract",
+          (yargs) => {
+            yargs
+              .positional("object", {
+                describe: "ID of the content object",
+                type: "string",
+              })
+              .positional("delegate", {
+                describe: "ID of the content object policy delegate",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdContentSetPolicyDelegate({ argv });
+          }
+        )
+
+        .command(
+          "get <object>",
+          "Get the content object policy from the object metadata and the delegate from the object's contract meta",
+          (yargs) => {
+            yargs
+              .positional("object", {
+                describe: "ID of the content object",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdContentGetPolicy({ argv });
+          }
+        )
+
+        .command(
+          "clear <object>",
+          "Remove content object policy from the object metadata and the delegate from the object's contract meta",
+          (yargs) => {
+            yargs
+              .positional("object", {
+                describe: "ID of the content object",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdContentClearPolicy({ argv });
+          }
+        )
+        .demandCommand()
+        .strict();
     },
-    (argv) => {
-      CmdCreateWalletAccount({ argv });
-    }
   )
 
+
+  .command(
+    "marketplace <command>",
+    "Marketplace related commands",
+    (yargs) => {
+      yargs
+        .command(
+          "item <command>",
+          "Marketplace Item commands",
+          (yargs) => {
+            yargs
+              .command(
+                "add <marketplace> <object> <name> [price] [forSale]",
+                "Adds an item to a marketplace",
+                (yargs) => {
+                  yargs.positional("marketplace", {
+                    describe: "Marketplace object ID",
+                    type: "string",
+                  });
+                  yargs.positional("object", {
+                    describe: "NFT Template object hash (hq__) or id (iq__)",
+                    type: "string",
+                  });
+                  yargs.positional("name", {
+                    describe: "Item name"
+                  });
+                  yargs.positional("price", {
+                    describe: "Price to list for",
+                    type: "number",
+                  });
+                  yargs.positional("forSale", {
+                    describe: "Whether to show for sale",
+                    type: "boolean",
+                    default: true,
+                  });
+                },
+                (argv) => {
+                  CmdMarketplaceAddItem({ argv });
+                }
+              )
+
+              .command(
+                "add_batch <marketplace> <csv>",
+                "Adds multiple items to a marketplace",
+                (yargs) => {
+                  yargs.positional("marketplace", {
+                    describe: "Marketplace object ID",
+                    type: "string",
+                  });
+                  yargs.positional("csv", {
+                    describe: "CSV file containing object ID's and marketplace item name. Expects first row to be header row with columns ordered as object, name",
+                    type: "string",
+                  });
+                },
+                (argv) => {
+                  CmdMarketplaceAddItemBatch({ argv });
+                }
+              )
+
+              .command(
+                "remove <marketplace> <object>",
+                "Removes an item from a marketplace",
+                (yargs) => {
+                  yargs.positional("marketplace", {
+                    describe: "Marketplace object ID",
+                    type: "string",
+                  });
+                  yargs.positional("object", {
+                    describe: "NFT Template object ID (iq__)",
+                    type: "string",
+                  });
+                },
+                (argv) => {
+                  CmdMarketplaceRemoveItem({ argv });
+                }
+              );
+          },
+          () => {
+            yargs.showHelp();
+          }
+        )
+        .demandCommand()
+        .strict();
+    },
+  )
+  .command(
+    "site <command>",
+    "Site related commands",
+    (yargs) => {
+      yargs
+        .command(
+          "show <library> <object>",
+          "Show info on this site/event",
+          (yargs) => {
+            yargs
+              .positional("library", {
+                describe: "Site library",
+                type: "string",
+              })
+              .positional("object", {
+                describe: "Site object ID",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdSiteShow({ argv });
+          }
+        )
+
+        .command(
+          "set_drop <library> <object> <uuid> <start_date> [options]",
+          "Set drop dates for a site/event",
+          (yargs) => {
+            yargs
+              .positional("library", {
+                describe: "Site library",
+                type: "string",
+              })
+              .positional("object", {
+                describe: "Site object ID",
+                type: "string",
+              })
+              .positional("uuid", {
+                describe: "Drop UUID",
+                type: "string",
+              })
+              .positional("start_date", {
+                describe: "Event start date (ISO format)",
+                type: "string",
+              })
+              .option("end_date", {
+                describe: "Event end date (ISO format)",
+                type: "string",
+              })
+              .option("end_vote", {
+                describe: "Event vote end date (ISO foramt)",
+                type: "string",
+              })
+              .option("start_mint", {
+                describe: "Event start mint date (ISO format)",
+                type: "string",
+              })
+              .option("new_uuid", {
+                describe: "Assign a new UUID",
+                type: "boolean",
+              })
+              .option("update", {
+                describe: "Tenant-level EluvioLive object to update",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdSiteSetDrop({ argv });
+          }
+        )
+        .demandCommand()
+        .strict();
+    },
+  )
+
+  .command(
+    "storefront_section <command>",
+    "Storefront section related commands",
+    (yargs) => {
+      yargs
+        .command(
+          "add_item <marketplace> <sku> [section]",
+          "Adds an item to a marketplace storefront section",
+          (yargs) => {
+            yargs.positional("marketplace", {
+              describe: "Marketplace object ID",
+              type: "string",
+            });
+            yargs.positional("sku", {
+              describe: "Marketplace item SKU",
+              type: "string",
+            });
+            yargs.positional("section", {
+              describe: "Storefront section name",
+              type: "string",
+              string: true,
+            });
+          },
+          (argv) => {
+            CmdStorefrontSectionAddItem({ argv });
+          }
+        )
+
+        .command(
+          "remove_item <marketplace> <sku> [writeToken]",
+          "Removes an item from a marketplace storefront section",
+          (yargs) => {
+            yargs.positional("marketplace", {
+              describe: "Marketplace object ID",
+              type: "string",
+            });
+            yargs.positional("sku", {
+              describe: "Marketplace item SKU",
+              type: "string",
+            });
+            yargs.positional("writeToken", {
+              describe: "Write token (if not provided, object will be finalized)",
+              type: "string",
+            });
+          },
+          (argv) => {
+            CmdStorefrontSectionRemoveItem({ argv });
+          }
+        )
+
+        .demandCommand()
+        .strict();
+    },
+  )
   .command(
     "shuffle <file> [options]",
     "Sort each line deterministically based on the seed",
@@ -3746,12 +4025,16 @@ yargs(hideBin(process.argv))
       CmdShuffle({ argv });
     }
   )
-
   .command(
     "admin_health [options]",
-    "Checks the health of the Authority Service APIs. Note the current key must be a system admin configured in the AuthD servers.",
+    "Checks the health of Authority Service APIs",
     (yargs) => {
-      yargs;
+      yargs
+        .usage(`Usage: elv-live admin_health [options]
+        
+Checks the health of the Authority Service APIs. 
+Note the current key must be a system admin configured in the AuthD servers.
+        `);
     },
     (argv) => {
       CmdAdminHealth({ argv });
@@ -3767,3 +4050,4 @@ yargs(hideBin(process.argv))
 
 // For unit testing
 exports.CmdShuffle = CmdShuffle;
+

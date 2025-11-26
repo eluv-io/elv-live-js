@@ -2,10 +2,7 @@ const { ElvSpace } = require("../src/ElvSpace.js");
 const { ElvTenant } = require("../src/ElvTenant.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
 const { ElvContracts } = require("../src/ElvContracts.js");
-const { EluvioLive } = require("../src/EluvioLive.js");
-const { BatchHelper } = require("../src/BatchHelper");
 const { Config } = require("../src/Config.js");
-const Ethers = require("ethers");
 const constants = require("../src/Constants");
 
 const yargs = require("yargs/yargs");
@@ -17,11 +14,11 @@ const { ElvFabric } = require("../src/ElvFabric");
 const Utils = require("@eluvio/elv-client-js/src/Utils");
 const { ElvUtils } = require("../src/Utils");
 const sql = postgres({
-  host: "rep1.elv",
+  host : "rep1.elv",
   port: 5432,
   database: "indexer",
   username: "",
-  password: "",
+  password: ""
 });
 
 // hack that quiets this msg:
@@ -29,11 +26,7 @@ const sql = postgres({
 //  (Use `node --trace-warnings ...` to show where the warning was created)
 const originalEmit = process.emit;
 process.emit = function (name, data, ...args) {
-  if (
-    name === "warning" &&
-    typeof data === "object" &&
-    data.name === "ExperimentalWarning"
-  ) {
+  if(name === "warning" && typeof data === "object" && data.name === "ExperimentalWarning") {
     return false;
   }
   return originalEmit.apply(process, arguments);
@@ -49,7 +42,7 @@ const CmdAccountCreate = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -77,7 +70,7 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await elvAccount.InitWithId({
       privateKey: process.env.PRIVATE_KEY,
@@ -89,13 +82,14 @@ const CmdAccountSetTenantContractId = async ({ argv }) => {
   }
 };
 
+
 const CmdAccountShow = async ({ argv }) => {
   console.log("Account Show\n");
 
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -109,16 +103,17 @@ const CmdAccountShow = async ({ argv }) => {
 };
 
 const CmdAccountBalance = async ({ argv }) => {
+
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
-    let res = await elvAccount.Balance({ address: argv.address });
+    let res = await elvAccount.Balance({address: argv.address});
     console.log(res);
   } catch (e) {
     console.error("ERROR:", e);
@@ -132,7 +127,7 @@ const CmdGroupCreate = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -185,10 +180,7 @@ const CmdSetTenantContractId = async ({ argv }) => {
 
     console.log(yaml.dump(response));
   } catch (error) {
-    console.error(
-      "error occurred setting the tenant contract ID:",
-      error.message
-    );
+    console.error("error occurred setting the tenant contract ID:", error.message);
     console.error(error);
   }
 };
@@ -223,7 +215,7 @@ const CmdGetTenantInfo = async ({ argv }) => {
     const response = await elvAccount.GetTenantInfo({
       contractAddress,
       objectId,
-      versionHash,
+      versionHash
     });
 
     console.log(yaml.dump(response));
@@ -241,7 +233,7 @@ const CmdAccountSend = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -250,7 +242,7 @@ const CmdAccountSend = async ({ argv }) => {
 
     await elvAccount.Send({
       address: argv.address,
-      funds: argv.funds,
+      funds: argv.funds
     });
     console.log("Success!");
   } catch (e) {
@@ -263,7 +255,7 @@ const CmdReplaceStuckTx = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -279,6 +271,7 @@ const CmdReplaceStuckTx = async ({ argv }) => {
   }
 };
 
+
 const CmdGroupAdd = async ({ argv }) => {
   console.log("Group Add\n");
   console.log(`Group address: ${argv.group_address}`);
@@ -288,7 +281,7 @@ const CmdGroupAdd = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -315,7 +308,7 @@ const CmdGroupRemove = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -331,6 +324,7 @@ const CmdGroupRemove = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
+
 };
 
 const CmdSpaceTenantCreate = async ({ argv }) => {
@@ -344,13 +338,13 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
       configUrl: Config.networks[Config.net],
       spaceAddress: Config.consts[Config.net].spaceAddress,
       kmsAddress: Config.consts[Config.net].kmsAddress,
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
 
     res = await space.TenantCreate({
       tenantName: argv.tenant_name,
-      ...(argv.funds != null && { funds: argv.funds }),
+      ...(argv.funds != null && {funds : argv.funds})
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -360,16 +354,11 @@ const CmdSpaceTenantCreate = async ({ argv }) => {
 
 const CmdTenantCreateFaucetAndFund = async ({ argv }) => {
   try {
-    const {
-      as_url: asUrl,
-      tenant_id: tenantId,
-      funds,
-      no_funds: noFunds,
-    } = argv;
+    const { as_url: asUrl, tenant_id: tenantId, funds, no_funds: noFunds } = argv;
 
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
@@ -411,7 +400,7 @@ const CmdTenantCreateSharingKey = async ({ argv }) => {
 
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
@@ -427,15 +416,11 @@ const CmdTenantCreateSharingKey = async ({ argv }) => {
 
 const CmdTenantFundUser = async ({ argv }) => {
   try {
-    const {
-      as_url: asUrl,
-      tenant_id: tenantId,
-      user_address: userAddress,
-    } = argv;
+    const { as_url: asUrl, tenant_id: tenantId, user_address: userAddress } = argv;
 
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
@@ -450,6 +435,7 @@ const CmdTenantFundUser = async ({ argv }) => {
   }
 };
 
+
 const CmdSpaceTenantDeploy = async ({ argv }) => {
   console.log("Tenant Deploy");
   console.log(`Tenant name: ${argv.tenant_name}`);
@@ -463,7 +449,7 @@ const CmdSpaceTenantDeploy = async ({ argv }) => {
       configUrl: Config.networks[Config.net],
       spaceAddress: Config.consts[Config.net].spaceAddress,
       kmsAddress: Config.consts[Config.net].kmsAddress,
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
 
@@ -488,12 +474,12 @@ const CmdSpaceTenantInfo = async ({ argv }) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     res = await t.TenantInfo({
-      tenantId: argv.tenant,
+      tenantId: argv.tenant
     });
 
     console.log(yaml.dump(res));
@@ -509,20 +495,18 @@ const CmdTenantShow = async ({ argv }) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     let res = await t.TenantShow({
       tenantId: argv.tenant,
       asUrl: argv.as_url,
-      show_metadata: argv.show_metadata,
+      show_metadata: argv.show_metadata
     });
     console.log(yaml.dump(res));
     if (res.errors) {
-      console.log(
-        `ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`
-      );
+      console.log(`ERROR: tenant_show detected ${res.errors.length} error(s), run ./elv-admin tenant_fix ${argv.tenant} to resolve them.`);
     }
   } catch (e) {
     console.error("ERROR:", e);
@@ -536,27 +520,18 @@ const CmdTenantFix = async ({ argv }) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     let res = await t.TenantShow({
-      tenantId: argv.tenant,
+      tenantId: argv.tenant
     });
     let errors = res.errors;
     let unresolved = [];
 
-    if (
-      argv.content_admin_address &&
-      res.content_admin_address &&
-      !t.client.utils.EqualAddress(
-        res.content_admin_address,
-        argv.content_admin_address
-      )
-    ) {
-      throw Error(
-        `Tenant ${argv.tenant} already has a content admin group: ${res.content_admin_address}, aborting...`
-      );
+    if (argv.content_admin_address && res.content_admin_address && !t.client.utils.EqualAddress(res.content_admin_address, argv.content_admin_address)) {
+      throw Error(`Tenant ${argv.tenant} already has a content admin group: ${res.content_admin_address}, aborting...`);
     }
 
     if (!errors) {
@@ -570,25 +545,17 @@ const CmdTenantFix = async ({ argv }) => {
         case "missing content admins":
           let addr = await t.TenantSetContentAdmins({
             tenantId: argv.tenant,
-            contentAdminAddr: argv.content_admin_address,
+            contentAdminAddr: argv.content_admin_address
           });
-          console.log(
-            `Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`
-          );
+          console.log(`Set content admin group for tenant with tenantId ${argv.tenant} to ${addr}`);
           break;
 
         case "tenant admin group can't be verified or is not associated with any tenant":
-          await t.TenantSetGroupConfig({
-            tenantId: argv.tenant,
-            groupAddress: res.tenant_admin_address,
-          });
+          await t.TenantSetGroupConfig({ tenantId: argv.tenant, groupAddress: res.tenant_admin_address });
           break;
 
         case "content admin group can't be verified or is not associated with any tenant":
-          await t.TenantSetGroupConfig({
-            tenantId: argv.tenant,
-            groupAddress: res.content_admin_address,
-          });
+          await t.TenantSetGroupConfig({ tenantId: argv.tenant, groupAddress: res.content_admin_address });
           break;
 
         default:
@@ -597,15 +564,11 @@ const CmdTenantFix = async ({ argv }) => {
       }
     }
 
-    console.log(
-      `${errors.length - unresolved.length} errors fixed, ${
-        unresolved.length
-      } errors remaining.`
-    );
+    console.log(`${errors.length - unresolved.length} errors fixed, ${unresolved.length} errors remaining.`);
     return unresolved;
   } catch (e) {
     console.log(e);
-
+    return;
   }
 };
 
@@ -614,7 +577,7 @@ const CmdTenantFixSuite = async ({ argv }) => {
     //Add tenantContractId to the account's metadata if not already exists
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await elvAccount.Init({
       privateKey: process.env.PRIVATE_KEY,
@@ -622,18 +585,13 @@ const CmdTenantFixSuite = async ({ argv }) => {
 
     let tenantContractId;
     try {
-      tenantContractId =
-        await elvAccount.client.userProfileClient.TenantContractId();
+      tenantContractId = await elvAccount.client.userProfileClient.TenantContractId();
     } catch (e) {
-      throw Error(
-        `Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${Config.net} network, aborting...`
-      );
+      throw Error(`Can't find an account with private key ${process.env.PRIVATE_KEY} on the ${Config.net} network, aborting...`);
     }
     if (tenantContractId) {
       if (!elvAccount.client.utils.EqualHash(tenantContractId, argv.tenant)) {
-        throw Error(
-          `The account with private key ${process.env.PRIVATE_KEY} is already associated with tenant ${tenantContractId}`
-        );
+        throw Error(`The account with private key ${process.env.PRIVATE_KEY} is already associated with tenant ${tenantContractId}`);
       }
     } else {
       elvAccount.SetAccountTenantContractId({ tenantId: argv.tenant });
@@ -653,166 +611,44 @@ const CmdTenantFixSuite = async ({ argv }) => {
           await elvAccount.client.CallContractMethod({
             contractAddress: libAddr,
             methodName: "putMeta",
-            methodArgs: ["_ELV_TENANT_ID", argv.tenant],
-            formatArguments: true,
+            methodArgs: [
+              "_ELV_TENANT_ID",
+              argv.tenant,
+            ],
+            formatArguments: true
           });
         } catch (e) {
           let libOwner = await elvAccount.client.CallContractMethod({
             contractAddress: libAddr,
             methodName: "owner",
             methodArgs: [],
-            formatArguments: true,
+            formatArguments: true
           });
-          console.log(
-            `Failed to set _ELV_TENANT_ID of ${lib} - doesn't belong to this account and can only be set by the account with address ${libOwner}`
-          );
+          console.log(`Failed to set _ELV_TENANT_ID of ${lib} - doesn't belong to this account and can only be set by the account with address ${libOwner}`);
           failedLibraries.push(lib);
         }
       }
       if (failedLibraries.length == 0) {
         console.log("Tenant successfully fixed!");
       } else {
-        console.log(
-          "_ELV_ACCOUNT_ID couldn't be added to the following libraries:"
-        );
+        console.log("_ELV_ACCOUNT_ID couldn't be added to the following libraries:");
         console.log(failedLibraries);
       }
     }
   } catch (e) {
-    throw e;
+    throw (e);
   }
 };
 
 const CmdQuery = async ({ argv }) => {
   REP1V_TENANT_ADDRESSES = [
-    "0x2c07551A4496c3E27E0311F6eBeDdc15b32297F6",
-    "0x714c4Be6bCa847005aBb1Cb7AB3e80e3aaa4B4c0",
-    "0x3cC0c93915d812D4faf3A061886B0DdfDdC13D48",
-    "0xf23197d15ABC1366C5153ffc0D17Ef07943C4A39",
-    "0xa9bA823bb963D589E36C53e06136dE9660541155",
-    "0x9Ebd35e2a036f40a76F9142b563f94b020F9D96C",
-    "0x7aFC069c78f576099b0A818A1cf492Ed621e9782",
-    "0xA179b345dB18e2a42F85DF3913B4a23A131919B6",
-    "0x4ecE33d9822A9F46a21684deEa1D26eC6f37CdbD",
-    "0x1E56dE48412d58f5e4613C7B5D309e4919b55150",
-    "0x1eD884a289580EC10D4c4a8d7115229BBF4fb7fA",
-    "0x75136c2a738aE3Aac5A92F49BFa3b5038b971D33",
-    "0xdbFB2c45e9F9B9b3254B52ddfBc3180AF36E37bD",
-    "0xaE34E8d680D8f3F9287d76F37D73d485430aBB49",
-    "0x36A83153f0A55D4691FA77057170E09382318144",
-    "0x71F0Cacd8F4d3b44722C11B11e59B19e7E87B0ee",
-    "0x452b05C729b08568A2289447c3f1Fc722461cA6b",
-    "0xE8e3eB4e204F75e94dB84D0f1Bf397c351b020CC",
-    "0xa15b57d8A2662B7fe5a66C633B0b06aE1A2062b7",
-    "0x3475e7f8b6D324b75bEFcCaD1933d84Ed3e0e8C0",
-    "0x95222A22d64B90cbA72e63860E5D18D597FC460f",
-    "0xc12c0F82E510CB388cF5371bf9F086183bD854B1",
-    "0xf78eaee6C000BB1df9401D0694E91B5c5e0FE80B",
-    "0xa0d066Ad1FF8c6A91e9f26dF24E7f4EF1f00C28d",
-    "0xBe0b80A31bb254E77BBD79299d847D3849aD1216",
-    "0xd8E69D47B1BD9cF3dBfce212ee8724E18F88EDdA",
-    "0x3864d2a2B02403cBA81DFb73b3eFc64313f5A52f",
-    "0xB266F13cF7ad298ca5eECbd11Dd532b93C0B792D",
-    "0x81602F301924F17D86Cbf2BF2Cd37DD056F3Ef62",
-    "0xF86C0D46f941433D345b8D6ed2999616FE2f97DD",
-    "0xA1e0896445c5868407E02943b79C274911C56388",
-    "0x5293A4615dD587B59842C134ECb6A801AE811d92",
-    "0xF2bDb066ED30D8D5594Ef36B199ceAA6D5f57777",
-    "0x9D7F2966F8B6bdE35f4090295b281e39caA90760",
-    "0x5621c53138824c233a012Ca03A66b6fBB71abDAA",
-    "0x69a245795292a3771665ac028c30e132c13433eB",
-    "0x3D81c153B6f86cDe641F3cc9f84CE1DAB098AFbB",
-    "0x55A9521E1829D82D6511fA2ce65De4Ec6EDE6D1B",
-    "0x6fFEe5d2D398992b125B3871284Bd4af7248C2a1",
-    "0xe25d688f86e96517e41AdA42aa174533a7eed94E",
-    "0x2a4C258b352f224f217EF26B7Fb044e3FfD8821F",
-    "0x46c4e0cE270675f85ebe641Fde30ef1EF3F94290",
-    "0x18A48C2DB800cde99fe7346F79E1c059205Cd5c8",
-    "0x171cB30b3db328e7272ee532FDe9aBb85D868657",
-    "0x6BcBECF5D51c61B243b7095fC13b94b01A1734eC",
-    "0xf4BcBb526d90a53D2bbB2EEc4Ded6A535475EDC5",
-    "0x8A64942Df99613c0618C75B3C14a6cAfF1987670",
-    "0xA2b0ACA9b30ddC1fa82495AFBC77BEcaDBd30eEa",
-    "0x741515714446dB947aa5246E79aCE4F9542d5550",
-    "0x50C5b54be8005A45f81B049700aE43aae234D8F6",
-    "0xe1d75c8D99aa9a3819F8c1CDbA9c908BC2267F87",
-    "0xd34e10385FeB8598CcAfE267E34C5774ABC3742D",
-    "0xF432fd18eC218c1D6A310B9066CaB51AEb0c6c3f",
-    "0xA5fad4738e65c309F0E5E88198fecCAdf28Cdc52",
-    "0x56a4f256425224aeCE3152E3E2DE94a1fAcB391f",
-    "0x7829c4Cf39F3d7aEA5678E6fEd6969A8efe26090",
-    "0x74414E5F2E07c594a11cbF9E5B7761B0B107754B",
-    "0xA77dd02453D82f7038bA144e1abd1450DA9046Fc",
-    "0x8Acf64e19e7420c52636F526B2FB0bC2752D3351",
-    "0x947cC80fCD9718E15d9737dFDa7Db4675AD423e2",
-    "0xa9c2c40aa14fC4057628801EAab484C4E0e998Aa",
-    "0x2ecAEc97FC88aA25987791ae38559E2F8175B3c8",
+    "0x2c07551A4496c3E27E0311F6eBeDdc15b32297F6", "0x714c4Be6bCa847005aBb1Cb7AB3e80e3aaa4B4c0", "0x3cC0c93915d812D4faf3A061886B0DdfDdC13D48", "0xf23197d15ABC1366C5153ffc0D17Ef07943C4A39", "0xa9bA823bb963D589E36C53e06136dE9660541155", "0x9Ebd35e2a036f40a76F9142b563f94b020F9D96C", "0x7aFC069c78f576099b0A818A1cf492Ed621e9782", "0xA179b345dB18e2a42F85DF3913B4a23A131919B6", "0x4ecE33d9822A9F46a21684deEa1D26eC6f37CdbD", "0x1E56dE48412d58f5e4613C7B5D309e4919b55150", "0x1eD884a289580EC10D4c4a8d7115229BBF4fb7fA", "0x75136c2a738aE3Aac5A92F49BFa3b5038b971D33", "0xdbFB2c45e9F9B9b3254B52ddfBc3180AF36E37bD", "0xaE34E8d680D8f3F9287d76F37D73d485430aBB49", "0x36A83153f0A55D4691FA77057170E09382318144", "0x71F0Cacd8F4d3b44722C11B11e59B19e7E87B0ee", "0x452b05C729b08568A2289447c3f1Fc722461cA6b", "0xE8e3eB4e204F75e94dB84D0f1Bf397c351b020CC", "0xa15b57d8A2662B7fe5a66C633B0b06aE1A2062b7", "0x3475e7f8b6D324b75bEFcCaD1933d84Ed3e0e8C0", "0x95222A22d64B90cbA72e63860E5D18D597FC460f", "0xc12c0F82E510CB388cF5371bf9F086183bD854B1", "0xf78eaee6C000BB1df9401D0694E91B5c5e0FE80B", "0xa0d066Ad1FF8c6A91e9f26dF24E7f4EF1f00C28d", "0xBe0b80A31bb254E77BBD79299d847D3849aD1216", "0xd8E69D47B1BD9cF3dBfce212ee8724E18F88EDdA", "0x3864d2a2B02403cBA81DFb73b3eFc64313f5A52f", "0xB266F13cF7ad298ca5eECbd11Dd532b93C0B792D", "0x81602F301924F17D86Cbf2BF2Cd37DD056F3Ef62", "0xF86C0D46f941433D345b8D6ed2999616FE2f97DD", "0xA1e0896445c5868407E02943b79C274911C56388", "0x5293A4615dD587B59842C134ECb6A801AE811d92", "0xF2bDb066ED30D8D5594Ef36B199ceAA6D5f57777", "0x9D7F2966F8B6bdE35f4090295b281e39caA90760", "0x5621c53138824c233a012Ca03A66b6fBB71abDAA", "0x69a245795292a3771665ac028c30e132c13433eB", "0x3D81c153B6f86cDe641F3cc9f84CE1DAB098AFbB", "0x55A9521E1829D82D6511fA2ce65De4Ec6EDE6D1B", "0x6fFEe5d2D398992b125B3871284Bd4af7248C2a1", "0xe25d688f86e96517e41AdA42aa174533a7eed94E", "0x2a4C258b352f224f217EF26B7Fb044e3FfD8821F", "0x46c4e0cE270675f85ebe641Fde30ef1EF3F94290", "0x18A48C2DB800cde99fe7346F79E1c059205Cd5c8", "0x171cB30b3db328e7272ee532FDe9aBb85D868657", "0x6BcBECF5D51c61B243b7095fC13b94b01A1734eC", "0xf4BcBb526d90a53D2bbB2EEc4Ded6A535475EDC5", "0x8A64942Df99613c0618C75B3C14a6cAfF1987670", "0xA2b0ACA9b30ddC1fa82495AFBC77BEcaDBd30eEa", "0x741515714446dB947aa5246E79aCE4F9542d5550", "0x50C5b54be8005A45f81B049700aE43aae234D8F6", "0xe1d75c8D99aa9a3819F8c1CDbA9c908BC2267F87", "0xd34e10385FeB8598CcAfE267E34C5774ABC3742D", "0xF432fd18eC218c1D6A310B9066CaB51AEb0c6c3f", "0xA5fad4738e65c309F0E5E88198fecCAdf28Cdc52", "0x56a4f256425224aeCE3152E3E2DE94a1fAcB391f", "0x7829c4Cf39F3d7aEA5678E6fEd6969A8efe26090", "0x74414E5F2E07c594a11cbF9E5B7761B0B107754B", "0xA77dd02453D82f7038bA144e1abd1450DA9046Fc", "0x8Acf64e19e7420c52636F526B2FB0bC2752D3351", "0x947cC80fCD9718E15d9737dFDa7Db4675AD423e2", "0xa9c2c40aa14fC4057628801EAab484C4E0e998Aa", "0x2ecAEc97FC88aA25987791ae38559E2F8175B3c8"
   ];
   REP1V_TENANT_ADMINS_GROUP_ADDRESSES = [
-    "igrp3KyPXics86uRoEwgqUEcorw3tM4M",
-    "igrp2SojFNfcR5UfXKC2ewDLdMC9copD",
-    "igrp2dek8LKQfeMqL9g2aE4rXroHSApz",
-    "",
-    "igrp2EpWqyKbwPKKsKMJzdCjevwqp2BU",
-    "igrp4LrvPrAuZBt44vexW38uwzMq6xH4",
-    "igrp4RV4mUYGXaQWiZsLb3ZysWzGzs61",
-    "igrp2MeSGHtEB9UM48TmikWTM6o5Dctb",
-    "igrp3DqwCoerGck9FK2j6GCeMQpnW5Mm",
-    "igrp2cCyXtpvbUtWsatx9mjMAQVfy5Nr",
-    "igrp2PKzesRZiP2nuZMi8mgFvShE2PqM",
-    "igrp2bdviny15TSCyU8ZZfaAJUNZ13P8",
-    "",
-    "igrp225tXhe49xzQCEfDeSYSHsC837tN",
-    "igrp3SoMsdR3Q7NtiiaEzkFHYhGF7Eg",
-    "igrpcHFPeTXByhFcH6NA4FDtR1RRMqw",
-    "igrpXq8VtKe6CagDY4yvftVzZ45nVHQ",
-    "igrpJALbSYiFJwsMWpnWNUxwrgsWu5V",
-    "",
-    "igrp3Vw6myR1oseSb2U9Va8L7ck2gT2e",
-    "igrp2PFyWkMHuKpodEsykd1RXLLMhimc",
-    "igrp4Dd2keZRUZW9iLAEsg2VJC9PZJwC",
-    "igrp2MCxjcGEXbLiKLKuEV8cNvfynsuE",
-    "igrp2CRa3A4SopDMr3QSxQNPMr1SdzSz",
-    "igrp3wuCsdMvzVwTWN9MZ6BrhA7jXdJG",
-    "igrpLVv2RUHtTQaU5QauUoGDVbbHep7",
-    "",
-    "",
-    "igrpAWPkUuKWfBi1SfFVsGdNyaqHKY4",
-    "igrp28CzvQWowqNdhCvW2iQ35VpapihX",
-    "igrp3kMSymwHhioHCts6WkpaWrLRAev5",
-    "igrpnZDzjnPkbC58j2N1YFw153o7gXb",
-    "igrp41F4hEWUBY2J3iTNmw9tMgDaEv5s",
-    "igrpoAHYmr1aw2DYZj7exvHXKVrnvt5",
-    "igrp4QJ8YGLS9bJRstNmVipipCGjq4cc",
-    "igrp2VDgcdrNHkpSjrcPeUit2rtWSQzS",
-    "igrpYg4BwajufJVZCVunefYbZxr2KxR",
-    "igrp3na2bhs59hbczNhK7yE62mBiVpbZ",
-    "igrp2P3kWoEL6EA4uddWY2Mww3PXAE8D",
-    "igrpJahtxAmyaivjes57y1zUE23E3Cs",
-    "igrp2JU96Mapj2wWdj15ZKfBhzJmQeM1",
-    "igrp3LKpRuDs7RoMipmW5QpQLCQRu8dP",
-    "igrpwY48gXovj36TM7vJN6UyRNU8MqA",
-    "igrp2UaEZjMqMfXqjp7W7KYYGQh5zRQ",
-    "igrp3B2df4y647g2n1ibUpZXrP8dFaC5",
-    "igrp3hrwPjzuPn66x3rivXgYpWvYco8A",
-    "igrp3cxJ3YZXD9nkpxT4i8WC4oArr537",
-    "igrp2oENEyu6b7tE294FNYJgrHsvWR7s",
-    "igrp4MNJq3C2CRYFGBuS7K8V2a6NwBFP",
-    "igrp3DdTmNkaYkSiYAchCBwHpKRCA8qu",
-    "igrp3ZSPfSJTXwkJYAztUw5As4WYtUJ8",
-    "igrp2q4XUiBZKZmbmU1nQfaefonBMES3",
-    "igrp3iY6X82oaxZt6u7rRQzoafTiiaJ6",
-    "igrp3f6eD5sUe9ULhq58cuCHZx3zTAAj",
-    "igrpvaLrzbX8utzhFVe64TU5ZBvzx5m",
-    "igrp4Lh9Eb6NCkSxiwQsVamevZn48oy",
-    "igrp2ZEh3NVP7Nt6jQSswPMMxELKHs3v",
-    "igrp47dtoWBupUbmJfQ97JdAbCLkHeZc",
-    "igrp2URymAJBJFjFxgGJ59pxTHENbQbf",
-    "igrpMN6YoB9fcy4rQuNSRp5NEQuQL4k",
-    "igrp3gaJrceQ97V25JeH32unrh8XKqXR",
-    "igrp4LrvPrAuZBt44vexW38uwzMq6xH4",
+    "igrp3KyPXics86uRoEwgqUEcorw3tM4M", "igrp2SojFNfcR5UfXKC2ewDLdMC9copD", "igrp2dek8LKQfeMqL9g2aE4rXroHSApz", "", "igrp2EpWqyKbwPKKsKMJzdCjevwqp2BU", "igrp4LrvPrAuZBt44vexW38uwzMq6xH4", "igrp4RV4mUYGXaQWiZsLb3ZysWzGzs61", "igrp2MeSGHtEB9UM48TmikWTM6o5Dctb", "igrp3DqwCoerGck9FK2j6GCeMQpnW5Mm", "igrp2cCyXtpvbUtWsatx9mjMAQVfy5Nr", "igrp2PKzesRZiP2nuZMi8mgFvShE2PqM", "igrp2bdviny15TSCyU8ZZfaAJUNZ13P8", "", "igrp225tXhe49xzQCEfDeSYSHsC837tN", "igrp3SoMsdR3Q7NtiiaEzkFHYhGF7Eg", "igrpcHFPeTXByhFcH6NA4FDtR1RRMqw", "igrpXq8VtKe6CagDY4yvftVzZ45nVHQ", "igrpJALbSYiFJwsMWpnWNUxwrgsWu5V", "", "igrp3Vw6myR1oseSb2U9Va8L7ck2gT2e", "igrp2PFyWkMHuKpodEsykd1RXLLMhimc", "igrp4Dd2keZRUZW9iLAEsg2VJC9PZJwC", "igrp2MCxjcGEXbLiKLKuEV8cNvfynsuE", "igrp2CRa3A4SopDMr3QSxQNPMr1SdzSz", "igrp3wuCsdMvzVwTWN9MZ6BrhA7jXdJG", "igrpLVv2RUHtTQaU5QauUoGDVbbHep7", "", "", "igrpAWPkUuKWfBi1SfFVsGdNyaqHKY4", "igrp28CzvQWowqNdhCvW2iQ35VpapihX", "igrp3kMSymwHhioHCts6WkpaWrLRAev5", "igrpnZDzjnPkbC58j2N1YFw153o7gXb", "igrp41F4hEWUBY2J3iTNmw9tMgDaEv5s", "igrpoAHYmr1aw2DYZj7exvHXKVrnvt5", "igrp4QJ8YGLS9bJRstNmVipipCGjq4cc", "igrp2VDgcdrNHkpSjrcPeUit2rtWSQzS", "igrpYg4BwajufJVZCVunefYbZxr2KxR", "igrp3na2bhs59hbczNhK7yE62mBiVpbZ", "igrp2P3kWoEL6EA4uddWY2Mww3PXAE8D", "igrpJahtxAmyaivjes57y1zUE23E3Cs", "igrp2JU96Mapj2wWdj15ZKfBhzJmQeM1", "igrp3LKpRuDs7RoMipmW5QpQLCQRu8dP", "igrpwY48gXovj36TM7vJN6UyRNU8MqA", "igrp2UaEZjMqMfXqjp7W7KYYGQh5zRQ", "igrp3B2df4y647g2n1ibUpZXrP8dFaC5", "igrp3hrwPjzuPn66x3rivXgYpWvYco8A", "igrp3cxJ3YZXD9nkpxT4i8WC4oArr537", "igrp2oENEyu6b7tE294FNYJgrHsvWR7s", "igrp4MNJq3C2CRYFGBuS7K8V2a6NwBFP", "igrp3DdTmNkaYkSiYAchCBwHpKRCA8qu", "igrp3ZSPfSJTXwkJYAztUw5As4WYtUJ8", "igrp2q4XUiBZKZmbmU1nQfaefonBMES3", "igrp3iY6X82oaxZt6u7rRQzoafTiiaJ6", "igrp3f6eD5sUe9ULhq58cuCHZx3zTAAj", "igrpvaLrzbX8utzhFVe64TU5ZBvzx5m", "igrp4Lh9Eb6NCkSxiwQsVamevZn48oy", "igrp2ZEh3NVP7Nt6jQSswPMMxELKHs3v", "igrp47dtoWBupUbmJfQ97JdAbCLkHeZc", "igrp2URymAJBJFjFxgGJ59pxTHENbQbf", "igrpMN6YoB9fcy4rQuNSRp5NEQuQL4k", "igrp3gaJrceQ97V25JeH32unrh8XKqXR", "igrp4LrvPrAuZBt44vexW38uwzMq6xH4"
   ];
   ADMINS_SET = new Set(REP1V_TENANT_ADMINS_GROUP_ADDRESSES);
+
 
   without_admins = [];
   dict = {};
@@ -825,20 +661,16 @@ const CmdQuery = async ({ argv }) => {
       if (!dict[REP1V_TENANT_ADMINS_GROUP_ADDRESSES[i]]) {
         dict[REP1V_TENANT_ADMINS_GROUP_ADDRESSES[i]] = [];
       } else {
-        console.log(
-          `warnings: ${REP1V_TENANT_ADMINS_GROUP_ADDRESSES[i]} belongs to multiple tenants`
-        );
+        console.log(`warnings: ${REP1V_TENANT_ADMINS_GROUP_ADDRESSES[i]} belongs to multiple tenants`);
       }
-      dict[REP1V_TENANT_ADMINS_GROUP_ADDRESSES[i]].push(
-        REP1V_TENANT_ADDRESSES[i]
-      );
+      dict[REP1V_TENANT_ADMINS_GROUP_ADDRESSES[i]].push(REP1V_TENANT_ADDRESSES[i]);
     }
   }
 
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
@@ -858,22 +690,10 @@ const CmdQuery = async ({ argv }) => {
         FROM libraries as l
         WHERE l.tenant_id != 'iten11111111111111111111' AND l.tenant_id != 'iten11111111111111111112'
     `;
-    console.log(
-      "number of entries in rep1.elv indexer tenants: ",
-      bcindexer_tenant_count[0].count_tenant
-    );
-    console.log(
-      "number of entries in rep1.elv indexer libraries: ",
-      bcindexer_library_count[0].count_library
-    );
-    console.log(
-      "number of tenants found on chain: ",
-      REP1V_TENANT_ADDRESSES.length
-    );
-    console.log(
-      "number of tenants on chain without tenant admins group: ",
-      without_admins.length
-    );
+    console.log("number of entries in rep1.elv indexer tenants: ", bcindexer_tenant_count[0].count_tenant);
+    console.log("number of entries in rep1.elv indexer libraries: ", bcindexer_library_count[0].count_library);
+    console.log("number of tenants found on chain: ", REP1V_TENANT_ADDRESSES.length);
+    console.log("number of tenants on chain without tenant admins group: ", without_admins.length);
 
     let tenants = await sql`
         SELECT t.id,
@@ -894,8 +714,7 @@ const CmdQuery = async ({ argv }) => {
       if (Object.keys(dict).includes(tenant_admins_id)) {
         ADMINS_SET.delete(tenant_admins_id);
         for (const tenant_contract_address of dict[tenant_admins_id]) {
-          let tenant_contract_id =
-            "iten" + t.client.utils.AddressToHash(tenant_contract_address);
+          let tenant_contract_id = "iten" + t.client.utils.AddressToHash(tenant_contract_address);
 
           let res;
           let owner;
@@ -904,7 +723,7 @@ const CmdQuery = async ({ argv }) => {
               contractAddress: tenant_contract_address,
               methodName: "owner",
               methodArgs: [],
-              formatArguments: true,
+              formatArguments: true
             });
 
             res = await t.TenantShow({ tenantId: tenant_contract_id });
@@ -917,22 +736,19 @@ const CmdQuery = async ({ argv }) => {
               tenant_contract_id: tenant_contract_id,
               tenant_admins_id: tenant_admins_id,
               libraries: tenant.libraries,
-              fix_required: res.errors.length,
+              fix_required: res.errors.length
             });
             failure_count += 1;
+
           } catch (e) {
             failure_log.push({
               owner: owner,
               tenant_contract_id: tenant_contract_id,
               tenant_admins_id: tenant_admins_id,
               libraries: tenant.libraries,
-              errors: e.message,
+              errors: e.message
             });
-            if (
-              e.message.includes(
-                "must be logged in with an account in the tenant admins group"
-              )
-            ) {
+            if (e.message.includes("must be logged in with an account in the tenant admins group")) {
               need_further_check += 1;
             } else {
               failure_count += 1;
@@ -941,33 +757,25 @@ const CmdQuery = async ({ argv }) => {
         }
       } else {
         // The tenant admins in bc indexer doesn't have a corresponding on chain tenant.
-
+        continue;
       }
     }
 
     for (const admin of ADMINS_SET) {
       if (admin != "") {
-        console.log(
-          `The tenant with address ${dict[admin]} doesn't have a corresponding match in bcindexer.tenants`
-        );
+        console.log(`The tenant with address ${dict[admin]} doesn't have a corresponding match in bcindexer.tenants`);
       }
     }
-    console.log(
-      "Number of tenants that support the new tenant system: ",
-      success_count
-    );
+    console.log("Number of tenants that support the new tenant system: ", success_count);
     console.log("Number of tenants that need to be fixed: ", failure_count);
-    console.log(
-      "Number of tenants that the check needed access to their content fabric metadata: ",
-      need_further_check
-    );
+    console.log("Number of tenants that the check needed access to their content fabric metadata: ", need_further_check);
 
     require("fs").writeFile(
       "./tenant_contracts_fix_info.json",
 
       JSON.stringify(failure_log, null, 1),
 
-      function (err) {
+      function(err) {
         if (err) {
           console.log("Failed to create a fix info file.");
         }
@@ -979,7 +787,7 @@ const CmdQuery = async ({ argv }) => {
     throw e;
   }
 
-
+  return;
 };
 
 const CmdTenantSetContentAdmins = async ({ argv }) => {
@@ -989,7 +797,7 @@ const CmdTenantSetContentAdmins = async ({ argv }) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
@@ -1012,13 +820,13 @@ const CmdTenantRemoveContentAdmin = async ({ argv }) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     let res = await t.TenantRemoveContentAdmin({
       tenantId: argv.tenant,
-      contentAdminsAddress: argv.content_admin_address,
+      contentAdminsAddress: argv.content_admin_address
     });
 
     console.log(yaml.dump(res));
@@ -1034,7 +842,7 @@ const CmdTenantSetTenantUsers = async ({ argv }) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
@@ -1058,13 +866,13 @@ const CmdTenantRemoveTenantUsers = async ({ argv }) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     let res = await t.TenantRemoveTenantUsers({
       tenantId: argv.tenant,
-      tenantUsersAddr: argv.tenant_users_address,
+      tenantUsersAddr: argv.tenant_users_address
     });
 
     console.log(yaml.dump(res));
@@ -1073,13 +881,13 @@ const CmdTenantRemoveTenantUsers = async ({ argv }) => {
   }
 };
 
-const CmdTenantSetStatus = async ({ argv }) => {
+const CmdTenantSetStatus = async ({argv}) => {
   try {
-    const tenantContractId = argv.tenant;
-    const tenantStatus = argv.tenant_status;
+    const tenantContractId =  argv.tenant;
+    const tenantStatus =  argv.tenant_status;
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
@@ -1102,19 +910,20 @@ const CmdSpaceTenantSetEluvioLiveId = async ({ argv }) => {
   try {
     let t = new ElvTenant({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
     res = await t.TenantSetEluvioLiveId({
       tenantId: argv.tenant,
-      eluvioLiveId: argv.eluvio_live_id,
+      eluvioLiveId: argv.eluvio_live_id
     });
 
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
   }
+
 };
 
 const CmdAccountOfferSignature = async ({ argv }) => {
@@ -1124,7 +933,7 @@ const CmdAccountOfferSignature = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -1135,7 +944,7 @@ const CmdAccountOfferSignature = async ({ argv }) => {
       nftAddress: argv.nft_addr,
       mintHelperAddress: argv.mint_helper_addr,
       tokenId: argv.token_id,
-      offerId: argv.offer_id,
+      offerId: argv.offer_id
     });
 
     console.log(yaml.dump(res));
@@ -1151,7 +960,7 @@ const CmdAccountFabricToken = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -1159,7 +968,7 @@ const CmdAccountFabricToken = async ({ argv }) => {
     });
 
     let res = await elvAccount.CreateFabricToken({
-      duration: argv.duration,
+      duration: argv.duration
     });
 
     console.log(yaml.dump(res));
@@ -1175,7 +984,7 @@ const CmdAccountSignedToken = async ({ argv }) => {
   try {
     let elvAccount = new ElvAccount({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvAccount.Init({
@@ -1197,7 +1006,7 @@ const CmdAccountSignedToken = async ({ argv }) => {
       granttype: argv.grant_type,
       duration: argv.duration,
       allowDecryption: argv.allow_decryption,
-      context,
+      context
     });
 
     console.log(yaml.dump(res));
@@ -1210,7 +1019,7 @@ const CmdFabricGetMetaBatch = async ({ argv }) => {
   try {
     let elvFabric = new ElvFabric({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvFabric.Init({
@@ -1220,7 +1029,7 @@ const CmdFabricGetMetaBatch = async ({ argv }) => {
     let res = await elvFabric.GetMetaBatch({
       csvFile: argv.csv_file,
       libraryId: argv.library,
-      limit: argv.limit,
+      limit: argv.limit
     });
 
     console.log(res); // CSV output
@@ -1235,17 +1044,17 @@ const CmdFabricSetMetaBatch = async ({ argv }) => {
   try {
     let elvFabric = new ElvFabric({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvFabric.Init({
       privateKey: process.env.PRIVATE_KEY,
-      update: true,
+      update: true
     });
 
     let res = await elvFabric.SetMetaBatch({
       csvFile: argv.csv_file,
-      duplicate: argv.duplicate,
+      duplicate: argv.duplicate
     });
 
     console.log(yaml.dump(res));
@@ -1255,26 +1064,24 @@ const CmdFabricSetMetaBatch = async ({ argv }) => {
 };
 
 const CmdContractGetMeta = async ({ argv }) => {
-  console.log(
-    "Get Contract Metadata",
+  console.log("Get Contract Metadata",
     `address: ${argv.addr}`,
     `key: ${argv.key}`,
-    `verbose: ${argv.verbose}`
-  );
+    `verbose: ${argv.verbose}`);
 
   try {
     let elvFabric = new ElvFabric({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvFabric.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: process.env.PRIVATE_KEY
     });
 
     let res = await elvFabric.GetContractMeta({
       address: argv.addr,
-      key: argv.key,
+      key: argv.key
     });
 
     console.log(yaml.dump(res));
@@ -1284,28 +1091,26 @@ const CmdContractGetMeta = async ({ argv }) => {
 };
 
 const CmdContractSetMeta = async ({ argv }) => {
-  console.log(
-    "Set Contract Metadata",
+  console.log("Set Contract Metadata",
     `address: ${argv.addr}`,
     `key: ${argv.key}`,
     `value: ${argv.value}`,
-    `verbose: ${argv.verbose}`
-  );
+    `verbose: ${argv.verbose}`);
 
   try {
     let elvFabric = new ElvFabric({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvFabric.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: process.env.PRIVATE_KEY
     });
 
     let res = await elvFabric.SetContractMeta({
       address: argv.addr,
       key: argv.key,
-      value: argv.value,
+      value: argv.value
     });
 
     console.log(yaml.dump(res));
@@ -1315,25 +1120,23 @@ const CmdContractSetMeta = async ({ argv }) => {
 };
 
 const CmdAccessGroupMember = async ({ argv }) => {
-  console.log(
-    "AccessGroupMember",
+  console.log("AccessGroupMember",
     `group: ${argv.group}`,
-    `addr: ${argv.addr}`
-  );
+    `addr: ${argv.addr}`);
 
   try {
     let elvFabric = new ElvFabric({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvFabric.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: process.env.PRIVATE_KEY
     });
 
     let res = await elvFabric.AccessGroupMember({
       group: argv.group,
-      addr: argv.addr,
+      addr: argv.addr
     });
 
     console.log(yaml.dump(res));
@@ -1343,20 +1146,21 @@ const CmdAccessGroupMember = async ({ argv }) => {
 };
 
 const CmdAccessGroupMembers = async ({ argv }) => {
-  console.log("AccessGroupMembers", `group: ${argv.group}`);
+  console.log("AccessGroupMembers",
+    `group: ${argv.group}`);
 
   try {
     let elvFabric = new ElvFabric({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvFabric.Init({
-      privateKey: process.env.PRIVATE_KEY,
+      privateKey: process.env.PRIVATE_KEY
     });
 
     let res = await elvFabric.AccessGroupMembers({
-      group: argv.group,
+      group: argv.group
     });
 
     console.log(yaml.dump(res));
@@ -1372,7 +1176,7 @@ const CmdClaimerAllocate = async ({ argv }) => {
   try {
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvContract.Init({
@@ -1382,7 +1186,7 @@ const CmdClaimerAllocate = async ({ argv }) => {
     let res = await elvContract.ClaimerAllocate({
       address: argv.address,
       amount: argv.amount,
-      expirationDate: argv.yyyy_mm_dd,
+      expirationDate: argv.yyyy_mm_dd
     });
 
     console.log(yaml.dump(res));
@@ -1398,7 +1202,7 @@ const CmdClaimerClaim = async ({ argv }) => {
   try {
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvContract.Init({
@@ -1406,7 +1210,7 @@ const CmdClaimerClaim = async ({ argv }) => {
     });
 
     let res = await elvContract.ClaimerClaim({
-      amount: argv.amount,
+      amount: argv.amount
     });
 
     console.log(yaml.dump(res));
@@ -1422,7 +1226,7 @@ const CmdClaimerBurn = async ({ argv }) => {
   try {
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvContract.Init({
@@ -1430,7 +1234,7 @@ const CmdClaimerBurn = async ({ argv }) => {
     });
 
     let res = await elvContract.ClaimerBurn({
-      amount: argv.amount,
+      amount: argv.amount
     });
 
     console.log(yaml.dump(res));
@@ -1439,6 +1243,7 @@ const CmdClaimerBurn = async ({ argv }) => {
   }
 };
 
+
 const CmdClaimerListAllocations = async ({ argv }) => {
   console.log("Claimer List Allocations\n");
   console.log("args", argv);
@@ -1446,7 +1251,7 @@ const CmdClaimerListAllocations = async ({ argv }) => {
   try {
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvContract.Init({
@@ -1454,7 +1259,7 @@ const CmdClaimerListAllocations = async ({ argv }) => {
     });
 
     let res = await elvContract.ClaimerListAllocations({
-      address: argv.address,
+      address: argv.address
     });
 
     console.log(yaml.dump(res));
@@ -1470,7 +1275,7 @@ const CmdClaimerAddAuthAddr = async ({ argv }) => {
   try {
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvContract.Init({
@@ -1478,7 +1283,7 @@ const CmdClaimerAddAuthAddr = async ({ argv }) => {
     });
 
     let res = await elvContract.ClaimerAddAuthAddr({
-      address: argv.address,
+      address: argv.address
     });
 
     console.log(yaml.dump(res));
@@ -1494,7 +1299,7 @@ const CmdClaimerRmAuthAddr = async ({ argv }) => {
   try {
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvContract.Init({
@@ -1502,7 +1307,7 @@ const CmdClaimerRmAuthAddr = async ({ argv }) => {
     });
 
     let res = await elvContract.ClaimerRmAuthAddr({
-      address: argv.address,
+      address: argv.address
     });
 
     console.log(yaml.dump(res));
@@ -1518,7 +1323,7 @@ const CmdClaimerBalanceOf = async ({ argv }) => {
   try {
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvContract.Init({
@@ -1526,7 +1331,7 @@ const CmdClaimerBalanceOf = async ({ argv }) => {
     });
 
     let res = await elvContract.ClaimerBalanceOf({
-      address: argv.address,
+      address: argv.address
     });
 
     console.log(yaml.dump(res));
@@ -1542,7 +1347,7 @@ const CmdClaimerBurnOf = async ({ argv }) => {
   try {
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvContract.Init({
@@ -1550,7 +1355,7 @@ const CmdClaimerBurnOf = async ({ argv }) => {
     });
 
     let res = await elvContract.ClaimerBurnOf({
-      address: argv.address,
+      address: argv.address
     });
 
     console.log(yaml.dump(res));
@@ -1565,13 +1370,13 @@ const CmdNodes = async ({ argv }) => {
       configUrl: Config.networks[Config.net],
       spaceAddress: Config.consts[Config.net].spaceAddress,
       kmsAddress: Config.consts[Config.net].kmsAddress,
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
 
     let res = await space.SpaceNodes({
       matchEndpoint: argv.endpoint,
-      matchNodeId: argv.node_id,
+      matchNodeId: argv.node_id
     });
 
     console.log(yaml.dump(res));
@@ -1591,16 +1396,17 @@ const CmdSetObjectGroupPermission = async ({ argv }) => {
   let group = argv.group;
   let permission = argv.permission;
   try {
-    if (group.startsWith("igrp")) {
+
+    if (group.startsWith("igrp")){
       group = Utils.HashToAddress(group);
     }
-    if (object.startsWith("0x")) {
-      object = ElvUtils.AddressToId({ prefix: "iq__", address: object });
+    if (object.startsWith("0x")){
+      object = ElvUtils.AddressToId({prefix:"iq__", address:object});
     }
 
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvContract.Init({
@@ -1612,9 +1418,7 @@ const CmdSetObjectGroupPermission = async ({ argv }) => {
       groupAddress: group,
       permission,
     });
-    console.log(
-      `The group ${group} has been granted '${permission}' permission for the object ${object}`
-    );
+    console.log(`The group ${group} has been granted '${permission}' permission for the object ${object}`);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -1626,27 +1430,22 @@ const CmdCleanupObject = async ({ argv }) => {
   console.log("object_type", argv.object_type);
 
   try {
+
     const object = argv.object;
     const objectType = argv.object_type;
 
     let objectAddr;
-    if (
-      object.startsWith("iq") ||
-      object.startsWith("iusr") ||
-      object.startsWith("igrp")
-    ) {
-      objectAddr = Utils.HashToAddress(object);
+    if (object.startsWith("iq") || object.startsWith("iusr") || object.startsWith("igrp")) {
+      objectAddr =  Utils.HashToAddress(object);
     } else if (object.startsWith("0x")) {
       objectAddr = object;
     } else {
-      throw new Error(
-        `Invalid object provided: ${object}, require address or id`
-      );
+      throw new Error(`Invalid object provided: ${object}, require address or id`);
     }
 
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
 
     await elvContract.Init({
@@ -1655,7 +1454,7 @@ const CmdCleanupObject = async ({ argv }) => {
 
     const res = await elvContract.CleanupObjects({
       objectAddr,
-      objectType,
+      objectType
     });
     console.log("objects cleaned:", res);
   } catch (e) {
@@ -1663,7 +1462,7 @@ const CmdCleanupObject = async ({ argv }) => {
   }
 };
 
-const CmdDeleteLibrary = async ({ argv }) => {
+const CmdDeleteLibrary = async ({argv}) => {
   console.log("Parameters:");
   console.log("object", argv.library);
 
@@ -1671,7 +1470,7 @@ const CmdDeleteLibrary = async ({ argv }) => {
     const library = argv.library;
     let libraryAddr;
     if (library.startsWith("ilib")) {
-      libraryAddr = Utils.HashToAddress(library);
+      libraryAddr =  Utils.HashToAddress(library);
     } else if (library.startsWith("0x")) {
       libraryAddr = library;
     } else {
@@ -1680,14 +1479,14 @@ const CmdDeleteLibrary = async ({ argv }) => {
 
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await elvContract.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
 
     const res = await elvContract.DeleteLibrary({
-      libraryAddr,
+      libraryAddr
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -1703,66 +1502,24 @@ const CmdListObjects = async ({ argv }) => {
     const object = argv.object;
     let objectAddr;
     if (object.startsWith("iusr") || object.startsWith("igrp")) {
-      objectAddr = Utils.HashToAddress(object);
+      objectAddr =  Utils.HashToAddress(object);
     } else if (object.startsWith("0x")) {
       // can be user address or contract address
       objectAddr = object;
     } else {
-      throw new Error(
-        `Invalid object provided: ${object}, require address or id (user/group id)`
-      );
+      throw new Error(`Invalid object provided: ${object}, require address or id (user/group id)`);
     }
 
     let elvContract = new ElvContracts({
       configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose,
+      debugLogging: argv.verbose
     });
     await elvContract.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
 
     const res = await elvContract.ListContentObjects({
-      objectAddr,
-    });
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", argv.verbose ? e : e.message);
-  }
-};
-
-const CmdDeleteVersionsBatch = async ({ argv }) => {
-  try {
-    const batchHelper = new BatchHelper({
-      configUrl: Config.networks[Config.net],
-    });
-
-    await batchHelper.Init({
-      debugLogging: argv.verbose,
-    });
-
-    const res = await batchHelper.DeleteVersions({
-      target: argv.target,
-      startIndex: argv.start_index,
-      endIndex: argv.end_index,
-    });
-    console.log(yaml.dump(res));
-  } catch (e) {
-    console.error("ERROR:", argv.verbose ? e : e.message);
-  }
-};
-
-const CmdDeleteContentsBatch = async ({ argv }) => {
-  try {
-    const batchHelper = new BatchHelper({
-      configUrl: Config.networks[Config.net],
-    });
-
-    await batchHelper.Init({
-      debugLogging: argv.verbose,
-    });
-
-    const res = await batchHelper.DeleteContents({
-      contentObjects: argv.content_objects,
+      objectAddr
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -1774,877 +1531,1163 @@ yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
     type: "boolean",
-    alias: "v",
+    alias: "v"
   })
   .command(
-    "account_create <funds> <account_name> <tenant>",
-    "Create a new account -> mnemonic, address, private key",
+    "account <command>",
+    "Account related commands",
     (yargs) => {
       yargs
-        .positional("funds", {
-          describe:
-            "How much to fund the new account from this private key (ELV).",
-          type: "string",
-        })
-        .positional("account_name", {
-          describe: "Account Name",
-          type: "string",
-        })
-        .positional("tenant", {
-          describe: "Tenant ID (iten)",
-          type: "string",
-        })
+        .command(
+          "create <funds> <account_name> <tenant>",
+          "Create a new account",
+          (yargs) => {
+            yargs
+              .positional("funds", {
+                describe:
+                  "How much to fund the new account from this private key (ELV)",
+                type: "string",
+              })
+              .positional("account_name", {
+                describe: "Account Name",
+                type: "string",
+              })
+              .positional("tenant", {
+                describe: "Tenant ID (iten)",
+                type: "string",
+              })
 
-        .options("group_roles", {
-          describe:
-            'group and role pairs in JSON format, Eg: {"grp1":"member"}',
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdAccountCreate({ argv });
+              .options("group_roles", {
+                describe: "group and role pairs in JSON format, Eg: {\"grp1\":\"member\"}",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdAccountCreate({ argv });
+          }
+        )
+
+        .command(
+          "set_tenant <tenant>",
+          "Associates the account with a tenant",
+          (yargs) => {
+            yargs
+              .usage(`Usage: elv-admin account set_tenant <tenant>
+              
+Associate this account to the tenant.
+If an admins group ID is used, it will be converted to the tenant ID.`)
+              .option("tenant", {
+                describe: "Tenant contract ID (iten...)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdAccountSetTenantContractId({ argv });
+          }
+        )
+
+        .command("show",
+          "Shows current account information",
+          (argv) => {
+            CmdAccountShow({ argv });
+          }
+        )
+
+        .command("balance <address>",
+          "Shows account balance for provided address",
+          (yargs) => {
+            yargs
+              .positional("address", {
+                describe: "user address",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdAccountBalance({ argv });
+          }
+        )
+
+        .command(
+          "send <address> <funds>",
+          "Send funds to a given address using this key",
+          (yargs) => {
+            yargs
+              .positional("address", {
+                describe: "Account address to send",
+                type: "string",
+              })
+              .positional("funds", {
+                describe:
+                  "How much to fund the new account from this private key in ETH.",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdAccountSend({ argv });
+          }
+        )
+
+        .command(
+          "offer_signature <nft_addr> <mint_helper_addr> <token_id> <offer_id>",
+          "Creates an offer signature for the minter to redeem an NFT offer",
+          (yargs) => {
+            yargs
+              .usage(`Usage: elv-admin account offer_signature <nft_addr> <mint_helper_addr> <token_id> <offer_id>
+              
+Creates an offer signature for use by the minter to redeem and nft offer. 
+Note the current key must be a token owner of the nft.              `)
+              .positional("nft_addr", {
+                describe: "NFT contract address (hex)",
+                type: "string",
+              })
+              .positional("mint_helper_addr", {
+                describe: "Address of the mint helper (hex)",
+                type: "string",
+              })
+              .positional("token_id", {
+                describe: "Token ID of the offer",
+                type: "integer",
+              })
+              .positional("offer_id", {
+                describe: "Offer_id",
+                type: "integer",
+              });
+          },
+          (argv) => {
+            CmdAccountOfferSignature({ argv });
+          }
+        )
+
+        .command(
+          "token <command>",
+          "Token related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "fabric [Options]",
+                "Creates a fabric token using this key",
+                (yargs) => {
+                  yargs
+                    .option("duration", {
+                      describe: "Library ID to authorize",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdAccountFabricToken({ argv });
+                }
+              )
+
+              .command(
+                "signed [Options]",
+                "Creates a client signed token using this key",
+                (yargs) => {
+                  yargs
+                    .option("library_id", {
+                      describe: "Library ID to authorize",
+                      type: "string",
+                    })
+                    .option("object_id", {
+                      describe: "Object ID to authorize",
+                      type: "string",
+                    })
+                    .option("version_hash", {
+                      describe: "Version hash to authorize",
+                      type: "string",
+                    })
+                    .option("policy_id", {
+                      describe: "The object ID of the policy for this token",
+                      type: "string",
+                    })
+                    .option("subject", {
+                      describe: "Subject of the token. Default is the current address",
+                      type: "string",
+                    })
+                    .option("grant_type", {
+                      describe: "Permissions to grant for this token. Options: 'access', 'read', 'create', 'update', 'read-crypt'. Default 'read'",
+                      type: "string",
+                    })
+                    .option("duration", {
+                      describe: "Time until the token expires, in milliseconds. Default 2 min = 2 * 60 * 1000 = 120000)",
+                      type: "integer",
+                    })
+                    .option("allow_decryption", {
+                      describe: "If specified, the re-encryption key will be included in the token, enabling the user of this token to download encrypted content from the specified object",
+                      type: "boolean",
+                    })
+                    .option("context", {
+                      describe: "Additional JSON context",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdAccountSignedToken({ argv });
+                }
+              );
+          }
+        );
     }
   )
-
-  .command("query", "Query the indexer", (argv) => {
-    CmdQuery({ argv });
-  })
-
   .command(
-    "account_set_tenant <tenant>",
-    "Associate this account to the tenant - if an admins group ID is used, it will be converted to the tenant ID.",
-    (yargs) => {
-      yargs.option("tenant", {
-        describe: "Tenant contract ID (iten...)",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdAccountSetTenantContractId({ argv });
-    }
-  )
-
-  .command("account_show", "Shows current account information.", (argv) => {
-    CmdAccountShow({ argv });
-  })
-
-  .command(
-    "account_balance <address>",
-    "Shows account balance for provided address.",
-    (yargs) => {
-      yargs.positional("address", {
-        describe: "user address",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdAccountBalance({ argv });
-    }
-  )
-
-  .command(
-    "account_send <address> <funds>",
-    "Send funds to a given address using this key",
-    (yargs) => {
-      yargs
-        .positional("address", {
-          describe: "Account address to send",
-          type: "string",
-        })
-        .positional("funds", {
-          describe:
-            "How much to fund the new account from this private key in ETH.",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdAccountSend({ argv });
-    }
-  )
-
-  .command(
-    "replace_stuck_transaction",
-    "replace stuck transaction at given nonce using this key with higher gas-price",
-    (yargs) => {
-      yargs.option("nonce", {
-        describe: "Nonce of the transaction to be replaced",
-        type: "integer",
-      });
-    },
-    (argv) => {
-      CmdReplaceStuckTx({ argv });
-    }
-  )
-
-  .command(
-    "account_offer_signature <nft_addr> <mint_helper_addr> <token_id> <offer_id>",
-    "Creates an offer signature for use by the minter to redeem and nft offer. Note the current key must be a token owner of the nft.",
-    (yargs) => {
-      yargs
-        .positional("nft_addr", {
-          describe: "NFT contract address (hex)",
-          type: "string",
-        })
-        .positional("mint_helper_addr", {
-          describe: "Address of the mint helper (hex)",
-          type: "string",
-        })
-        .positional("token_id", {
-          describe: "Token ID of the offer",
-          type: "integer",
-        })
-        .positional("offer_id", {
-          describe: "Offer_id",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdAccountOfferSignature({ argv });
-    }
-  )
-
-  .command(
-    "account_fabric_token [Options]",
-    "Creates a fabric token using this key",
-    (yargs) => {
-      yargs.option("duration", {
-        describe: "Library ID to authorize",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdAccountFabricToken({ argv });
-    }
-  )
-
-  .command(
-    "account_signed_token [Options]",
-    "Creates a client signed token using this key",
-    (yargs) => {
-      yargs
-        .option("library_id", {
-          describe: "Library ID to authorize",
-          type: "string",
-        })
-        .option("object_id", {
-          describe: "Object ID to authorize",
-          type: "string",
-        })
-        .option("version_hash", {
-          describe: "Version hash to authorize",
-          type: "string",
-        })
-        .option("policy_id", {
-          describe: "The object ID of the policy for this token",
-          type: "string",
-        })
-        .option("subject", {
-          describe: "Subject of the token. Default is the current address",
-          type: "string",
-        })
-        .option("grant_type", {
-          describe:
-            "Permissions to grant for this token. Options: 'access', 'read', 'create', 'update', 'read-crypt'. Default 'read'",
-          type: "string",
-        })
-        .option("duration", {
-          describe:
-            "Time until the token expires, in milliseconds. Default 2 min = 2 * 60 * 1000 = 120000)",
-          type: "integer",
-        })
-        .option("allow_decryption", {
-          describe:
-            "If specified, the re-encryption key will be included in the token, enabling the user of this token to download encrypted content from the specified object",
-          type: "boolean",
-        })
-        .option("context", {
-          describe: "Additional JSON context",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdAccountSignedToken({ argv });
-    }
-  )
-
-  .command(
-    "group_create <name>",
-    "Create a new access group",
-    (yargs) => {
-      yargs.positional("name", {
-        describe: "The name of the access group",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdGroupCreate({ argv });
-    }
-  )
-
-  .command(
-    "group_add <group_address> <account_address>",
-    "Add account to access group",
+    "indexer <command>",
+    "Indexer related commands",
     (yargs) => {
       yargs
-        .positional("group_address", {
-          describe: "The address of the access group (hex)",
-          type: "string",
-        })
-        .positional("account_address", {
-          describe: "The address to add as member (hex)",
-          type: "string",
-        })
-        .option("is_manager", {
-          describe: "Set new address as group manager",
-          type: "boolean",
-        });
-    },
-    (argv) => {
-      CmdGroupAdd({ argv });
+        .command(
+          "query",
+          "Query the indexer",
+          (argv) => {
+            CmdQuery({ argv });
+          }
+        );
     }
   )
-
   .command(
-    "group_remove <group_address> <account_address>",
-    "Remove account from access group",
+    "blockchain <command>",
+    "Blockchain related commands",
     (yargs) => {
       yargs
-        .positional("group_address", {
-          describe: "The address of the access group (hex)",
-          type: "string",
-        })
-        .positional("account_address", {
-          describe: "The address to remove as member (hex)",
-          type: "string",
-        })
-        .option("is_manager", {
-          describe: "remove address as group manager",
-          type: "boolean",
-        });
-    },
-    (argv) => {
-      CmdGroupRemove({ argv });
+        .command(
+          "replace_stuck_transaction",
+          "replace stuck transaction at given nonce using this key with higher gas-price",
+          (yargs) => {
+            yargs
+              .option("nonce", {
+                describe: "Nonce of the transaction to be replaced",
+                type: "integer",
+              });
+          },
+          (argv) => {
+            CmdReplaceStuckTx({ argv });
+          }
+        );
     }
   )
-
   .command(
-    "space_tenant_info <tenant>",
-    "Shot tenant information.",
-    (yargs) => {
-      yargs.positional("tenant", {
-        describe: "Tenant ID (iten)",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdSpaceTenantInfo({ argv });
-    }
-  )
-
-  .command(
-    "tenant_show <tenant> [options]",
-    "Show info on this tenant",
+    "group <command>",
+    "Group related commands",
     (yargs) => {
       yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .option("as_url", {
-          describe:
-            "Alternate authority service URL (include '/as/' route if necessary)",
-          type: "string",
-        })
-        .option("show_metadata", {
-          describe:
-            "Show the content fabric metadata associated to this tenant",
-          type: "boolean",
-        });
-    },
-    (argv) => {
-      CmdTenantShow({ argv });
+        .command(
+          "create <name>",
+          "Create a new access group",
+          (yargs) => {
+            yargs.positional("name", {
+              describe: "The name of the access group",
+              type: "string",
+            });
+          },
+          (argv) => {
+            CmdGroupCreate({ argv });
+          }
+        )
+
+        .command(
+          "add <group_address> <account_address>",
+          "Add account to access group",
+          (yargs) => {
+            yargs
+              .positional("group_address", {
+                describe: "The address of the access group (hex)",
+                type: "string",
+              })
+              .positional("account_address", {
+                describe: "The address to add as member (hex)",
+                type: "string",
+              })
+              .option("is_manager", {
+                describe: "Set new address as group manager",
+                type: "boolean",
+              });
+          },
+          (argv) => {
+            CmdGroupAdd({ argv });
+          }
+        )
+
+        .command(
+          "remove <group_address> <account_address>",
+          "Remove account from access group",
+          (yargs) => {
+            yargs
+              .positional("group_address", {
+                describe: "The address of the access group (hex)",
+                type: "string",
+              })
+              .positional("account_address", {
+                describe: "The address to remove as member (hex)",
+                type: "string",
+              })
+              .option("is_manager", {
+                describe: "remove address as group manager",
+                type: "boolean",
+              });
+          },
+          (argv) => {
+            CmdGroupRemove({ argv });
+          }
+        )
+
+        .command(
+          "is_member <group> <addr>",
+          "Checks if the user address is a member of the access group",
+          (yargs) => {
+            yargs
+              .positional("group", {
+                describe: "Access control group ID or address (igrp or hex format)",
+                type: "string",
+              })
+              .positional("addr", {
+                describe: "User address (hex format)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdAccessGroupMember({ argv });
+          }
+        )
+
+        .command(
+          "member_lists <group>",
+          "Returns a list of group members",
+          (yargs) => {
+            yargs
+              .positional("group", {
+                describe: "Access control group ID or address (igrp or hex format)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdAccessGroupMembers({ argv });
+          }
+        );
     }
   )
-
   .command(
-    "tenant_fix <tenant> [options]",
-    "Fix tenant",
+    "tenant <command>",
+    "Tenant related commands",
     (yargs) => {
       yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .options("content_admin_address", {
-          describe: "Address of the content admins groups",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantFix({ argv });
-    }
-  )
 
-  .command(
-    "tenant_fix_suite <tenant> <content_admin_address> [options]",
-    "Fix old-gen tenant",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("content_admin_address", {
-          describe: "Address of the content admins groups",
-          type: "string",
-        })
-        .options("libraries", {
-          describe: "List of libraries that belong to this tenant",
-          type: "array",
-        });
-    },
-    (argv) => {
-      CmdTenantFixSuite({ argv });
-    }
-  )
+        .command(
+          "show <tenant> [options]",
+          "Show info on this tenant",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .option("as_url", {
+                describe: "Alternate authority service URL (include '/as/' route if necessary)",
+                type: "string",
+              })
+              .option("show_metadata", {
+                describe: "Show the content fabric metadata associated to this tenant",
+                type: "boolean",
+              });
+          },
+          (argv) => {
+            CmdTenantShow({ argv });
+          }
+        )
 
-  .command(
-    "tenant_set_content_admins <tenant> [options]",
-    "Set new content admin",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .options("content_admin_address", {
-          describe: "Address of the content admins groups",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantSetContentAdmins({ argv });
-    }
-  )
+        .command(
+          "fix <tenant> [options]",
+          "Fix tenant",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .options("content_admin_address", {
+                describe: "Address of the content admins groups",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdTenantFix({ argv });
+          }
+        )
 
-  .command(
-    "tenant_remove_content_admin <tenant> <content_admin_address>",
-    "Remove a content admin",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("content_admin_address", {
-          describe: "Content Admin's address",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantRemoveContentAdmin({ argv });
-    }
-  )
+        .command(
+          "fix_suite <tenant> <content_admin_address> [options]",
+          "Fix old-gen tenant",
+          (yargs) => {
+            yargs
+              .positional("tenant", {
+                describe: "Tenant ID",
+                type: "string",
+              })
+              .positional("content_admin_address", {
+                describe: "Address of the content admins groups",
+                type: "string",
+              })
+              .options("libraries", {
+                describe: "List of libraries that belong to this tenant",
+                type: "array",
+              });
+          },
+          (argv) => {
+            CmdTenantFixSuite({ argv });
+          }
+        )
 
-  .command(
-    "tenant_set_tenant_users <tenant> [options]",
-    "Set new tenant users",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .options("tenant_users_address", {
-          describe: "Address of the tenant users groups",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantSetTenantUsers({ argv });
-    }
-  )
+        .command(
+          "content_admins <command>",
+          "Content Admins group command",
+          (yargs) => {
+            yargs
+              .command(
+                "set <tenant> [options]",
+                "Set new content admin",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .options("content_admin_address", {
+                      describe: "Address of the content admins groups",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantSetContentAdmins({ argv });
+                }
+              )
 
-  .command(
-    "tenant_remove_tenant_users <tenant> <tenant_users_address>",
-    "Remove a tenant users group",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("tenant_users_address", {
-          describe: "Tenant users address",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantRemoveTenantUsers({ argv });
-    }
-  )
+              .command(
+                "remove <tenant> <content_admin_address>",
+                "Remove a content admin",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .positional("content_admin_address", {
+                      describe: "Content Admin's address",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantRemoveContentAdmin({ argv });
+                }
+              );
 
-  .command(
-    "set_tenant_contract_id <object> <tenantContractId>",
-    "set tenant contract id for the given object: wallet|content-type|tenant|group|library",
-    (yargs) => {
-      yargs
-        .positional("object", {
-          describe: "object Id | version hash | contract address",
-          type: "string",
-        })
-        .positional("tenantContractId", {
-          describe: "tenant contract id",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdSetTenantContractId({ argv });
-    }
-  )
+          }
+        )
 
-  .command(
-    "get_tenant_info <object>",
-    "get tenant contract id and tenant id for the given object: wallet|content-type|tenant|group|library",
-    (yargs) => {
-      yargs.positional("object", {
-        describe: "object Id | version hash | contract address",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdGetTenantInfo({ argv });
-    }
-  )
+        .command(
+          "tenant_users <command>",
+          "Tenant Users group related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "set <tenant> [options]",
+                "Set new tenant users",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .options("tenant_users_address", {
+                      describe: "Address of the tenant users groups",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantSetTenantUsers({ argv });
+                }
+              )
 
-  .command(
-    "space_tenant_deploy <tenant_name> <owner_addr> <tenant_admin_addr> <content_admin_addr>",
-    "Deploys a tenant contract",
-    (yargs) => {
-      yargs
-        .positional("tenant_name", {
-          describe: "Tenant Name",
-          type: "string",
-        })
-        .positional("owner_addr", {
-          describe: "Owner of the new contract",
-          type: "string",
-        })
-        .positional("tenant_admin_addr", {
-          describe: "Address of the tenant admins groups",
-          type: "string",
-        })
-        .positional("content_admin_addr", {
-          describe: "Address of the content admins groups",
-          type: "string",
-        })
-        .positional("tenant_users_addr", {
-          describe: "Address of the tenant users groups",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdSpaceTenantDeploy({ argv });
-    }
-  )
+              .command(
+                "remove <tenant> <tenant_users_address>",
+                "Remove a tenant users group",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .positional("tenant_users_address", {
+                      describe: "Tenant users address",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantRemoveTenantUsers({ argv });
+                }
+              );
+          }
+        )
 
-  .command(
-    "tenant_create_faucet <tenant_id>",
-    "Generate/get tenant funding address for given tenant and provide funds",
-    (yargs) => {
-      yargs
-        .positional("tenant_id", {
-          describe: "tenant id",
-          type: "string",
-        })
-        .option("funds", {
-          describe:
-            "The amount to fund the faucet funding address, specified in Elv's",
-          type: "number",
-        })
-        .option("as_url", {
-          describe:
-            "Alternate authority service URL (include '/as/' route if necessary)",
-          type: "string",
-        })
-        .option("no_funds", {
-          describe: "funds are not transferred to tenant funding address",
-          type: "boolean",
-        });
-    },
-    (argv) => {
-      CmdTenantCreateFaucetAndFund({ argv });
-    }
-  )
 
-  .command(
-    "tenant_delete_faucet <tenant_id>",
-    "Delete faucet information for given tenant",
-    (yargs) => {
-      yargs
-        .positional("tenant_id", {
-          describe: "tenant id",
-          type: "string",
-        })
-        .option("as_url", {
-          describe: "Alternate authority service URL (include '/as/' route if necessary)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantDeleteFaucet({ argv });
-    }
-  )
 
-  .command(
-    "tenant_create_sharing_key <tenant_id>",
-    "Generate/get tenant sharing key for given tenant",
-    (yargs) => {
-      yargs
-        .positional("tenant_id", {
-          describe: "tenant id",
-          type: "string",
-        })
-        .option("as_url", {
-          describe:
-            "Alternate authority service URL (include '/as/' route if necessary)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantCreateSharingKey({ argv });
-    }
-  )
+        .command(
+          "faucet <command>",
+          "Faucet related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "create <tenant_id>",
+                "Generate/get tenant funding address for given tenant and provide funds",
+                (yargs) => {
+                  yargs
+                    .positional("tenant_id", {
+                      describe: "tenant id",
+                      type: "string",
+                    })
+                    .option("funds", {
+                      describe: "The amount to fund the faucet funding address, specified in Elv's",
+                      type: "number",
+                    })
+                    .option("as_url", {
+                      describe: "Alternate authority service URL (include '/as/' route if necessary)",
+                      type: "string",
+                    })
+                    .option("no_funds", {
+                      describe: "funds are not transferred to tenant funding address",
+                      type: "boolean",
+                    });
+                },
+                (argv) => {
+                  CmdTenantCreateFaucetAndFund({ argv });
+                }
+              )
 
-  .command(
-    "tenant_fund_user <tenant_id> <user_address>",
-    "fund the user for given tenant_id",
-    (yargs) => {
-      yargs
-        .positional("tenant_id", {
-          describe: "tenant id",
-          type: "string",
-        })
-        .positional("user_address", {
-          describe: "user address",
-          type: "string",
-        })
-        .option("as_url", {
-          describe:
-            "Alternate authority service URL (include '/as/' route if necessary)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantFundUser({ argv });
-    }
-  )
+              .command(
+                "delete <tenant_id>",
+                "Delete faucet information for given tenant",
+                (yargs) => {
+                  yargs
+                    .positional("tenant_id", {
+                      describe: "tenant id",
+                      type: "string",
+                    })
+                    .option("as_url", {
+                      describe: "Alternate authority service URL (include '/as/' route if necessary)",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantDeleteFaucet({ argv });
+                }
+              )
 
-  .command(
-    "tenant_set_status <tenant> <tenant_status>",
-    "Set tenant status for given tenant",
-    (yargs) => {
-      yargs
-        .positional("tenant", {
-          describe: "Tenant ID",
-          type: "string",
-        })
-        .positional("tenant_status", {
-          describe: "Tenant Status",
-          choices: [
-            constants.TENANT_STATE_ACTIVE,
-            constants.TENANT_STATE_INACTIVE,
-          ],
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdTenantSetStatus({ argv });
-    }
-  )
+              .command(
+                "fund_user <tenant_id> <user_address>",
+                "Fund the user for given tenant_id",
+                (yargs) => {
+                  yargs
+                    .positional("tenant_id", {
+                      describe: "tenant id",
+                      type: "string",
+                    })
+                    .positional("user_address", {
+                      describe: "user address",
+                      type: "string",
+                    })
+                    .option("as_url", {
+                      describe: "Alternate authority service URL (include '/as/' route if necessary)",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantFundUser({ argv });
+                }
+              );
+          }
+        )
 
-  .command(
-    "space_tenant_create <tenant_name>",
-    `Creates a new tenant account including all supporting access groups and deployment of contracts. 
+        .command(
+          "sharing_key <command>",
+          "Sharing key related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "create <tenant_id>",
+                "Generate/get tenant sharing key for given tenant",
+                (yargs) => {
+                  yargs
+                    .positional("tenant_id", {
+                      describe: "tenant id",
+                      type: "string",
+                    })
+                    .option("as_url", {
+                      describe: "Alternate authority service URL (include '/as/' route if necessary)",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantCreateSharingKey({ argv });
+                }
+              );
+          }
+        )
+
+        .command(
+          "status <command>",
+          "Status related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "set <tenant> <tenant_status>",
+                "Set tenant status for given tenant",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID",
+                      type: "string",
+                    })
+                    .positional("tenant_status", {
+                      describe: "Tenant Status",
+                      choices: [constants.TENANT_STATE_ACTIVE, constants.TENANT_STATE_INACTIVE],
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdTenantSetStatus({argv});
+                }
+              );
+          }
+        )
+
+        .command(
+          "space <command>",
+          "Space related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "create <tenant_name>",
+                `Creates a new tenant account including all supporting access groups and deployment of contracts. 
       PRIVATE_KEY must be set for the space owner.
       By default, 51 Elv is transferred to tenant root key`,
+                (yargs) => {
+                  yargs
+                    .positional("tenant_name", {
+                      describe: "Tenant Name",
+                      type: "string",
+                    })
+                    .option("funds", {
+                      describe:
+                        "funds transferred to tenant-admin key",
+                      type: "integer",
+                    });
+                },
+                (argv) => {
+                  CmdSpaceTenantCreate({ argv });
+                }
+              )
+
+              .command(
+                "deploy <tenant_name> <owner_addr> <tenant_admin_addr> <content_admin_addr>",
+                "Deploys a tenant contract",
+                (yargs) => {
+                  yargs
+                    .positional("tenant_name", {
+                      describe: "Tenant Name",
+                      type: "string",
+                    })
+                    .positional("owner_addr", {
+                      describe: "Owner of the new contract",
+                      type: "string",
+                    })
+                    .positional("tenant_admin_addr", {
+                      describe: "Address of the tenant admins groups",
+                      type: "string",
+                    })
+                    .positional("content_admin_addr", {
+                      describe: "Address of the content admins groups",
+                      type: "string",
+                    })
+                    .positional("tenant_users_addr", {
+                      describe: "Address of the tenant users groups",
+                      type: "string",
+                    });
+
+                },
+                (argv) => {
+                  CmdSpaceTenantDeploy({ argv });
+                }
+              )
+
+              .command(
+                "info <tenant>",
+                "Short tenant information.",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID (iten)",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdSpaceTenantInfo({ argv });
+                }
+              )
+
+              .command(
+                "set_eluvio_live_id <tenant> <eluvio_live_id>",
+                "Set the tenant-level Eluvio Live object ID in the tenant contract",
+                (yargs) => {
+                  yargs
+                    .positional("tenant", {
+                      describe: "Tenant ID (iten)",
+                      type: "string",
+                    })
+                    .positional("eluvio_live_id", {
+                      describe: "Object ID of the tenant-leve Eluvio Live object (iq)",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdSpaceTenantSetEluvioLiveId({ argv });
+                }
+              );
+          }
+        );
+    }
+  )
+  .command(
+    "content <command>",
+    "Content management commands",
     (yargs) => {
       yargs
-        .positional("tenant_name", {
-          describe: "Tenant Name",
-          type: "string",
-        })
-        .option("funds", {
-          describe: "funds transferred to tenant-admin key",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdSpaceTenantCreate({ argv });
+        .command(
+          "tenant_contract_id <command>",
+          "Tenant contract id commands",
+          (yargs) => {
+            yargs
+              .command(
+                "set <object> <tenantContractId>",
+                "set tenant contract id for the given object: wallet|content-type|tenant|group|library",
+                (yargs) => {
+                  yargs
+                    .positional("object", {
+                      describe: "object Id | version hash | contract address",
+                      type: "string",
+                    })
+                    .positional("tenantContractId", {
+                      describe: "tenant contract id",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdSetTenantContractId({ argv });
+                }
+              )
+
+              .command(
+                "get <object>",
+                "Get tenant contract id and tenant id for the given object",
+                (yargs) => {
+                  yargs
+                    .usage(`Usage: elv-admin content tenant_contract_id get <object>
+
+Get tenant contract id and tenant id for the 
+given object: wallet|content-type|tenant|group|library`)
+                    .positional("object", {
+                      describe: "object Id | version hash | contract address",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdGetTenantInfo({ argv });
+                }
+              );
+          }
+
+        )
+
+        .command(
+          "group_permission <command>",
+          "Group permission related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "set <object> <group> <permission> [options]",
+                "Add a permission on the specified group for the specified object",
+                (yargs) => {
+                  yargs.positional("object", {
+                    describe: "object ID or address",
+                    type: "string",
+                  });
+                  yargs.positional("group",{
+                    describe: "group ID or address",
+                    type: "string",
+                  });
+                  yargs.positional("permission",{
+                    describe: "type of permission to add (see, access, manage)",
+                    type: "string",
+                  });
+                },
+                (argv) => {
+                  CmdSetObjectGroupPermission({ argv });
+                }
+              );
+          }
+        )
+
+        .command(
+          "batch_helper <command>",
+          "Batch Helper commands",
+          (yargs) => {
+            return yargs
+              .command(
+                "delete_versions <target> <start_index> <end_index>",
+                "Delete version hashes from object address provided",
+                (yargs) => {
+                  yargs
+                    .positional("target", {
+                      describe: "Address/Id of the object",
+                      type: "string",
+                    })
+                    .positional("start_index", {
+                      describe: "Starting index for version hash deletion",
+                      type: "number",
+                    })
+                    .positional("end_index", {
+                      describe: "Ending index for version hash deletion",
+                      type: "number",
+                    });
+                },
+                (argv) => {
+                  CmdDeleteVersionsBatch({ argv });
+                }
+              )
+              .command(
+                "delete_contents <content_objects>",
+                "Delete content objects provided",
+                (yargs) => {
+                  yargs.positional("content_objects", {
+                    describe: "comma separated list of content objects",
+                    type: "string",
+                    coerce: (arg) => arg.split(",").map((s) => s.trim()),
+                  });
+                },
+                (argv) => {
+                  CmdDeleteContentsBatch({ argv });
+                }
+              );
+          }
+        )
+
+        .command(
+          "cleanup <object> <object_type>",
+          "Cleanup given object access to dead objects like libraries, groups",
+          (yargs) => {
+            yargs
+              .positional("object", {
+                describe: "object to be cleaned",
+                type: "string",
+              })
+              .positional("object_type", {
+                describe: "object type: library | content_object | group | content_type",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdCleanupObject({ argv });
+          }
+        )
+
+        .command(
+          "list <object>",
+          "List the content objects the given user or group has access to",
+          (yargs) => {
+            yargs
+              .positional("object", {
+                describe: "user or group id/address",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdListObjects({ argv });
+          }
+        )
+
+        .command(
+          "meta <command>",
+          "Meta related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "batch <command>",
+                "Meta batch related commands",
+                (yargs) => {
+                  yargs
+                    .command(
+                      "get <csv_file> [options]",
+                      "Get metadata fields for the list of content object IDs in the CSV file or library",
+                      (yargs) => {
+                        yargs
+                          .positional("csv_file", {
+                            describe: "CSV file",
+                            type: "string",
+                          })
+                          .option("library", {
+                            describe: "Libary ID",
+                            type: "string",
+                          })
+                          .option("limit", {
+                            describe: "Max number of objects",
+                            type: "integer",
+                          });
+                      },
+                      (argv) => {
+                        CmdFabricGetMetaBatch({ argv });
+                      }
+                    )
+
+                    .command(
+                      "set <csv_file>",
+                      "Set metadata fields for the list of content object IDs in the CSV fle",
+                      (yargs) => {
+                        yargs
+                          .positional("csv_file", {
+                            describe: "CSV file",
+                            type: "string",
+                          })
+                          .option("duplicate", {
+                            describe:
+                              "Clone the content objects instead of editing them directly.",
+                            type: "boolean",
+                          })
+                          .option("dryrun", {
+                            describe:
+                              "Print resulting metadata but don't actually edit the objects.",
+                            type: "boolean",
+                          });
+                      },
+                      (argv) => {
+                        CmdFabricSetMetaBatch({ argv });
+                      }
+                    );
+                }
+              );
+          }
+        );
     }
   )
-
   .command(
-    "space_tenant_set_eluvio_live_id <tenant> <eluvio_live_id>",
-    "Set the tenant-leve Eluvio Live object ID in the tenant contract.",
+    "contract <command>",
+    "Contract related commands",
     (yargs) => {
       yargs
-        .positional("tenant", {
-          describe: "Tenant ID (iten)",
-          type: "string",
-        })
-        .positional("eluvio_live_id", {
-          describe: "Object ID of the tenant-leve Eluvio Live object (iq)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdSpaceTenantSetEluvioLiveId({ argv });
+        .command(
+          "meta <command>",
+          "Contract meta related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "get <addr> <key>",
+                "Get contract metadata",
+                (yargs) => {
+                  yargs
+                    .positional("addr", {
+                      describe: "Contract address. NFT object ID also accepted eg. iqxxx.",
+                      type: "string",
+                    })
+                    .positional("key", {
+                      describe: "Metadata key to retrieve.",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdContractGetMeta({ argv });
+                }
+              )
+
+              .command(
+                "set <addr> <key> <value>",
+                "Set contract metadata using key/value",
+                (yargs) => {
+                  yargs
+                    .positional("addr", {
+                      describe: "Contract address. NFT object ID also accepted eg. iqxxx.",
+                      type: "string",
+                    })
+                    .positional("key", {
+                      describe: "Metadata key.",
+                      type: "string",
+                    })
+                    .positional("value", {
+                      describe: "Metadata value.",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdContractSetMeta({ argv });
+                }
+              );
+          }
+        );
     }
   )
-
   .command(
-    "content_meta_get_batch <csv_file> [options]",
-    "Get metadata fields for the list of content object IDs in the CSV file or library.",
+    "claimer <command>",
+    "Claimer management commands",
     (yargs) => {
       yargs
-        .positional("csv_file", {
-          describe: "CSV file",
-          type: "string",
-        })
-        .option("library", {
-          describe: "Libary ID",
-          type: "string",
-        })
-        .option("limit", {
-          describe: "Max number of objects",
-          type: "integer",
-        });
-    },
-    (argv) => {
-      CmdFabricGetMetaBatch({ argv });
+        .command(
+          "allocate <address> <amount> <yyyy_mm_dd>",
+          "Allocate an allocation to an user, an allocation contains an amount and an expiration date (in UTC)",
+          (yargs) => {
+            yargs
+              .positional("address", {
+                describe: "Address to allocate",
+                type: "string",
+              })
+              .positional("amount", {
+                describe: "Amount to allocate",
+                type: "string",
+              })
+              .positional("expiration_date", {
+                describe: "Expiration date of the allocation (in UTC)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdClaimerAllocate({ argv });
+          }
+        )
+
+        .command(
+          "claim <amount>",
+          "Claim an amount of your allocations",
+          (yargs) => {
+            yargs
+              .positional("amount", {
+                describe: "Amount to claim",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdClaimerClaim({ argv });
+          }
+        )
+        .command(
+          "burn <amount>",
+          "Burn an amount of your allocations",
+          (yargs) => {
+            yargs
+              .positional("amount", {
+                describe: "Amount to burn",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdClaimerBurn({ argv });
+          }
+        )
+        .command(
+          "list_allocations <address>",
+          "List the allocations of an address",
+          (yargs) => {
+            yargs
+              .positional("address", {
+                describe: "the allocations of this address would be listed",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdClaimerListAllocations({ argv });
+          }
+        )
+        .command(
+          "balance_of <address>",
+          "Get the balance of an address",
+          (yargs) => {
+            yargs
+              .positional("address", {
+                describe: "the balance of this address would be given",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdClaimerBalanceOf({ argv });
+          }
+        )
+        .command(
+          "burn_of <address>",
+          "Get the burn of an address",
+          (yargs) => {
+            yargs
+              .positional("address", {
+                describe: "the burn of this address would be given",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdClaimerBurnOf({ argv });
+          }
+        )
+        .command(
+          "auth_address <command>",
+          "Auth address related commands",
+          (yargs) => {
+            yargs
+              .command(
+                "add <address>",
+                "Add an address to the authorized address list",
+                (yargs) => {
+                  yargs
+                    .positional("address", {
+                      describe: "this address would be added to the authorized address list",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdClaimerAddAuthAddr({ argv });
+                }
+              )
+              .command(
+                "remove <address>",
+                "Remove an address from the authorized address list",
+                (yargs) => {
+                  yargs
+                    .positional("address", {
+                      describe: "this address would be remove from the authorized address list",
+                      type: "string",
+                    });
+                },
+                (argv) => {
+                  CmdClaimerRmAuthAddr({ argv });
+                }
+              );
+          }
+        );
     }
   )
 
   .command(
-    "content_meta_set_batch <csv_file>",
-    "Set metadata fields for the list of content object IDs in the CSV fle.",
+    "library <command>",
+    "Library related commands",
     (yargs) => {
       yargs
-        .positional("csv_file", {
-          describe: "CSV file",
-          type: "string",
-        })
-        .option("duplicate", {
-          describe:
-            "Clone the content objects instead of editing them directly.",
-          type: "boolean",
-        })
-        .option("dryrun", {
-          describe:
-            "Print resulting metadata but don't actually edit the objects.",
-          type: "boolean",
-        });
-    },
-    (argv) => {
-      CmdFabricSetMetaBatch({ argv });
+        .command(
+          "delete <library>",
+          "delete library by the owner",
+          (yargs) => {
+            yargs
+              .positional("library", {
+                describe: "library id/address",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdDeleteLibrary({ argv });
+          }
+        );
     }
   )
-
-  .command(
-    "contract_get_meta <addr> <key>",
-    "Get contract metadata.",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "Contract address. NFT object ID also accepted eg. iqxxx.",
-          type: "string",
-        })
-        .positional("key", {
-          describe: "Metadata key to retrieve.",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdContractGetMeta({ argv });
-    }
-  )
-
-  .command(
-    "contract_set_meta <addr> <key> <value>",
-    "Set contract metadata using key/value.",
-    (yargs) => {
-      yargs
-        .positional("addr", {
-          describe: "Contract address. NFT object ID also accepted eg. iqxxx.",
-          type: "string",
-        })
-        .positional("key", {
-          describe: "Metadata key.",
-          type: "string",
-        })
-        .positional("value", {
-          describe: "Metadata value.",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdContractSetMeta({ argv });
-    }
-  )
-
-  .command(
-    "access_group_member <group> <addr>",
-    "Checks if the user address is a member of the access group.",
-    (yargs) => {
-      yargs
-        .positional("group", {
-          describe: "Access control group ID or address (igrp or hex format)",
-          type: "string",
-        })
-        .positional("addr", {
-          describe: "User address (hex format)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdAccessGroupMember({ argv });
-    }
-  )
-
-  .command(
-    "access_group_members <group>",
-    "Returns a list of group members.",
-    (yargs) => {
-      yargs.positional("group", {
-        describe: "Access control group ID or address (igrp or hex format)",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdAccessGroupMembers({ argv });
-    }
-  )
-
-  .command(
-    "claimer_allocate <address> <amount> <yyyy_mm_dd>",
-    "Allocate an allocation to an user, an allocation contains an amount and an expiration date (in UTC)",
-    (yargs) => {
-      yargs
-        .positional("address", {
-          describe: "Address to allocate",
-          type: "string",
-        })
-        .positional("amount", {
-          describe: "Amount to allocate",
-          type: "string",
-        })
-        .positional("expiration_date", {
-          describe: "Expiration date of the allocation (in UTC)",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdClaimerAllocate({ argv });
-    }
-  )
-
-  .command(
-    "claimer_claim <amount>",
-    "Claim an amount of your allocations",
-    (yargs) => {
-      yargs.positional("amount", {
-        describe: "Amount to claim",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdClaimerClaim({ argv });
-    }
-  )
-  .command(
-    "claimer_burn <amount>",
-    "Burn an amount of your allocations",
-    (yargs) => {
-      yargs.positional("amount", {
-        describe: "Amount to burn",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdClaimerBurn({ argv });
-    }
-  )
-  .command(
-    "claimer_list_allocations <address>",
-    "List the allocations of an address",
-    (yargs) => {
-      yargs.positional("address", {
-        describe: "the allocations of this address would be listed",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdClaimerListAllocations({ argv });
-    }
-  )
-  .command(
-    "claimer_add_auth_address <address>",
-    "Add an address to the authorized address list",
-    (yargs) => {
-      yargs.positional("address", {
-        describe: "this address would be added to the authorized address list",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdClaimerAddAuthAddr({ argv });
-    }
-  )
-  .command(
-    "claimer_rm_auth_address <address>",
-    "Remove an address from the authorized address list",
-    (yargs) => {
-      yargs.positional("address", {
-        describe:
-          "this address would be remove from the authorized address list",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdClaimerRmAuthAddr({ argv });
-    }
-  )
-  .command(
-    "claimer_balance_of <address>",
-    "Get the balance of an address",
-    (yargs) => {
-      yargs.positional("address", {
-        describe: "the balance of this address would be given",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdClaimerBalanceOf({ argv });
-    }
-  )
-  .command(
-    "claimer_burn_of <address>",
-    "Get the burn of an address",
-    (yargs) => {
-      yargs.positional("address", {
-        describe: "the burn of this address would be given",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdClaimerBurnOf({ argv });
-    }
-  )
-
   .command(
     "nodes",
-    "Retrieve all nodes in the content space, with optional filters.",
+    "Retrieve all nodes in the content space, with optional filters",
     (yargs) => {
       yargs
         .option("endpoint", {
@@ -2660,121 +2703,6 @@ yargs(hideBin(process.argv))
       CmdNodes({ argv });
     }
   )
-
-  .command(
-    "set_object_group_permission <object> <group> <permission> [options]",
-    "Add a permission on the specified group for the specified object",
-    (yargs) => {
-      yargs.positional("object", {
-        describe: "object ID or address",
-        type: "string",
-      });
-      yargs.positional("group", {
-        describe: "group ID or address",
-        type: "string",
-      });
-      yargs.positional("permission", {
-        describe: "type of permission to add (see, access, manage)",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdSetObjectGroupPermission({ argv });
-    }
-  )
-
-  .command(
-    "object_cleanup <object> <object_type>",
-    "cleanup given object access to dead objects like libraries, groups",
-    (yargs) => {
-      yargs
-        .positional("object", {
-          describe: "object to be cleaned",
-          type: "string",
-        })
-        .positional("object_type", {
-          describe:
-            "object type: library | content_object | group | content_type",
-          type: "string",
-        });
-    },
-    (argv) => {
-      CmdCleanupObject({ argv });
-    }
-  )
-
-  .command(
-    "library_delete <library>",
-    "delete library by the owner",
-    (yargs) => {
-      yargs.positional("library", {
-        describe: "library id/address",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdDeleteLibrary({ argv });
-    }
-  )
-
-  .command(
-    "object_list <object>",
-    "list the content objects the given user or group has access to",
-    (yargs) => {
-      yargs.positional("object", {
-        describe: "user or group id/address",
-        type: "string",
-      });
-    },
-    (argv) => {
-      CmdListObjects({ argv });
-    }
-  )
-
-  .command(
-    "batch_helper <commands> [args...]",
-    "Batch Helper commands",
-    (yargs) => {
-      return yargs
-        .command(
-          "delete_versions <target> <start_index> <end_index>",
-          "Delete version hashes from object address provided",
-          (yargs) => {
-            yargs
-              .positional("target", {
-                describe: "Address/Id of the object",
-                type: "string",
-              })
-              .positional("start_index", {
-                describe: "Starting index for version hash deletion",
-                type: "number",
-              })
-              .positional("end_index", {
-                describe: "Ending index for version hash deletion",
-                type: "number",
-              });
-          },
-          (argv) => {
-            CmdDeleteVersionsBatch({ argv });
-          }
-        )
-        .command(
-          "delete_contents <content_objects>",
-          "Delete content objects provided",
-          (yargs) => {
-            yargs.positional("content_objects", {
-              describe: "comma separated list of content objects",
-              type: "string",
-              coerce: (arg) => arg.split(",").map((s) => s.trim()),
-            });
-          },
-          (argv) => {
-            CmdDeleteContentsBatch({ argv });
-          }
-        );
-    }
-  )
-
   .strict()
   .help()
   .usage("EluvioLive Admin CLI\n\nUsage: elv-admin <command>")
