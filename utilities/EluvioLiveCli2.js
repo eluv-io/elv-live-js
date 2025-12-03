@@ -3,6 +3,7 @@ const { hideBin } = require("yargs/helpers");
 
 const nftCommand = require("./elv_live_commands/commands/nft");
 const contentPolicyCommand = require("./elv_live_commands/commands/content_policy");
+const tenantCommand = require("./elv_live_commands/commands/tenant");
 
 yargs(hideBin(process.argv))
   .option("verbose",{
@@ -16,6 +17,7 @@ yargs(hideBin(process.argv))
   })
   .command(nftCommand)
   .command(contentPolicyCommand)
+  .command(tenantCommand)
   .strict()
   .wrap(yargs().terminalWidth() != null ? Math.min(120, yargs().terminalWidth()) : 120)
   .help()
