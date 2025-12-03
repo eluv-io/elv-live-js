@@ -2,13 +2,30 @@
 
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ -e $SOURCE_DIR/utilities/EluvioLiveCli2.js ]
-then
-  exec node $SOURCE_DIR/utilities/EluvioLiveCli2.js "$@" 2>&1
-elif [ -e $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/EluvioLiveCli2.js ]
-then
-  exec node $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/EluvioLiveCli2.js "$@" 2>&1
+USE_V1=false
+ARGS=()
+
+for arg in "$@"; do
+  if [ "$arg" = "--v1" ]; then
+    USE_V1=true
+  else
+    ARGS+=("$arg")
+  fi
+done
+
+if [ "$USE_V1" = true ]; then
+  CLI_FILE="EluvioLiveCliV1.js"
 else
-  echo "(elv-live-js) cannot find utilities/EluvioLiveCli2.js" 1>&2
+  CLI_FILE="EluvioLiveCli.js"
+fi
+
+if [ -e $SOURCE_DIR/utilities/$CLI_FILE ]
+then
+  exec node $SOURCE_DIR/utilities/$CLI_FILE "${ARGS[@]}" 2>&1
+elif [ -e $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/$CLI_FILE ]
+then
+  exec node $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/$CLI_FILE "${ARGS[@]}" 2>&1
+else
+  echo "(elv-live-js) cannot find utilities/$CLI_FILE" 1>&2
   exit 1
 fi

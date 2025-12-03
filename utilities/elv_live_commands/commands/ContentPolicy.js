@@ -1,4 +1,4 @@
-const ContentPolicyCommands  = require("../lib/content_policy");
+const ContentPolicyCommands  = require("../lib/ContentPolicy");
 
 module.exports = {
   command: "content_policy <command>",

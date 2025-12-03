@@ -1,4 +1,4 @@
-const { Init, elvlv } = require("./init");
+const { Init, elvlv } = require("./Init");
 const yaml = require("js-yaml");
 const { ElvUtils } = require("../../../src/Utils");
 

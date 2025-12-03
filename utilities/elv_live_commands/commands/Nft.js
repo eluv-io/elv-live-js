@@ -1,4 +1,4 @@
-const NftCommands = require("../lib/nft");
+const NftCommands = require("../lib/Nft");
 
 module.exports = {
   command : "nft <command>",

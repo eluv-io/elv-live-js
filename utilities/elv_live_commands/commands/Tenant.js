@@ -1,4 +1,4 @@
-const TenantCommands = require("../lib/tenant");
+const TenantCommands = require("../lib/Tenant");
 
 module.exports = {
   command: "tenant <command>",
