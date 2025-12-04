@@ -3,7 +3,7 @@ const { Config } = require("../../../src/Config");
 const postgres = require("postgres");
 
 const sql = postgres({
-  host : "rep1.elv",
+  host: "rep1.elv",
   port: 5432,
   database: "indexer",
   username: "",
@@ -159,35 +159,35 @@ const CmdQuery = async ({ argv }) => {
     }
   }
 
-  try {
-    let t = new ElvTenant({
-      configUrl: Config.networks[Config.net],
-      debugLogging: argv.verbose
-    });
-    await t.Init({ privateKey: process.env.PRIVATE_KEY });
+  
+  let t = new ElvTenant({
+    configUrl: Config.networks[Config.net],
+    debugLogging: argv.verbose
+  });
+  await t.Init({ privateKey: process.env.PRIVATE_KEY });
 
-    let success_count = 0;
-    let failure_count = 0;
-    let need_further_check = 0;
-    let failure_log = [];
+  let success_count = 0;
+  let failure_count = 0;
+  let need_further_check = 0;
+  let failure_log = [];
 
-    let bcindexer_tenant_count = await sql`
+  let bcindexer_tenant_count = await sql`
         SELECT COUNT(*) as count_tenant
         FROM tenants as t
         WHERE t.id != 'iten11111111111111111111' AND t.id != 'iten11111111111111111112'
     `;
 
-    let bcindexer_library_count = await sql`
+  let bcindexer_library_count = await sql`
         SELECT COUNT(*) as count_library
         FROM libraries as l
         WHERE l.tenant_id != 'iten11111111111111111111' AND l.tenant_id != 'iten11111111111111111112'
     `;
-    console.log("number of entries in rep1.elv indexer tenants: ", bcindexer_tenant_count[0].count_tenant);
-    console.log("number of entries in rep1.elv indexer libraries: ", bcindexer_library_count[0].count_library);
-    console.log("number of tenants found on chain: ", REP1V_TENANT_ADDRESSES.length);
-    console.log("number of tenants on chain without tenant admins group: ", without_admins.length);
+  console.log("number of entries in rep1.elv indexer tenants: ", bcindexer_tenant_count[0].count_tenant);
+  console.log("number of entries in rep1.elv indexer libraries: ", bcindexer_library_count[0].count_library);
+  console.log("number of tenants found on chain: ", REP1V_TENANT_ADDRESSES.length);
+  console.log("number of tenants on chain without tenant admins group: ", without_admins.length);
 
-    let tenants = await sql`
+  let tenants = await sql`
         SELECT t.id,
                count(t.id),
                t.space_id,
@@ -199,85 +199,82 @@ const CmdQuery = async ({ argv }) => {
         GROUP BY t.id, t.space_id
     `;
 
-    for (const tenant of tenants) {
-      //These id(s) belong to spaces and nodes
-      let tenant_admins_id = "igrp" + tenant.id.slice(4);
+  for (const tenant of tenants) {
+    //These id(s) belong to spaces and nodes
+    let tenant_admins_id = "igrp" + tenant.id.slice(4);
 
-      if (Object.keys(dict).includes(tenant_admins_id)) {
-        ADMINS_SET.delete(tenant_admins_id);
-        for (const tenant_contract_address of dict[tenant_admins_id]) {
-          let tenant_contract_id = "iten" + t.client.utils.AddressToHash(tenant_contract_address);
+    if (Object.keys(dict).includes(tenant_admins_id)) {
+      ADMINS_SET.delete(tenant_admins_id);
+      for (const tenant_contract_address of dict[tenant_admins_id]) {
+        let tenant_contract_id = "iten" + t.client.utils.AddressToHash(tenant_contract_address);
 
-          let res;
-          let owner;
-          try {
-            owner = await t.client.CallContractMethod({
-              contractAddress: tenant_contract_address,
-              methodName: "owner",
-              methodArgs: [],
-              formatArguments: true
-            });
+        let res;
+        let owner;
+        try {
+          owner = await t.client.CallContractMethod({
+            contractAddress: tenant_contract_address,
+            methodName: "owner",
+            methodArgs: [],
+            formatArguments: true
+          });
 
-            res = await t.TenantShow({ tenantId: tenant_contract_id });
-            if (!res.errors) {
-              success_count += 1;
-              continue;
-            }
-            failure_log.push({
-              owner: owner,
-              tenant_contract_id: tenant_contract_id,
-              tenant_admins_id: tenant_admins_id,
-              libraries: tenant.libraries,
-              fix_required: res.errors.length
-            });
+          res = await t.TenantShow({ tenantId: tenant_contract_id });
+          if (!res.errors) {
+            success_count += 1;
+            continue;
+          }
+          failure_log.push({
+            owner: owner,
+            tenant_contract_id: tenant_contract_id,
+            tenant_admins_id: tenant_admins_id,
+            libraries: tenant.libraries,
+            fix_required: res.errors.length
+          });
+          failure_count += 1;
+
+        } catch (e) {
+          failure_log.push({
+            owner: owner,
+            tenant_contract_id: tenant_contract_id,
+            tenant_admins_id: tenant_admins_id,
+            libraries: tenant.libraries,
+            errors: e.message
+          });
+          if (e.message.includes("must be logged in with an account in the tenant admins group")) {
+            need_further_check += 1;
+          } else {
             failure_count += 1;
-
-          } catch (e) {
-            failure_log.push({
-              owner: owner,
-              tenant_contract_id: tenant_contract_id,
-              tenant_admins_id: tenant_admins_id,
-              libraries: tenant.libraries,
-              errors: e.message
-            });
-            if (e.message.includes("must be logged in with an account in the tenant admins group")) {
-              need_further_check += 1;
-            } else {
-              failure_count += 1;
-            }
           }
         }
-      } else {
-        // The tenant admins in bc indexer doesn't have a corresponding on chain tenant.
-        continue;
       }
+    } else {
+      // The tenant admins in bc indexer doesn't have a corresponding on chain tenant.
+      continue;
     }
-
-    for (const admin of ADMINS_SET) {
-      if (admin != "") {
-        console.log(`The tenant with address ${dict[admin]} doesn't have a corresponding match in bcindexer.tenants`);
-      }
-    }
-    console.log("Number of tenants that support the new tenant system: ", success_count);
-    console.log("Number of tenants that need to be fixed: ", failure_count);
-    console.log("Number of tenants that the check needed access to their content fabric metadata: ", need_further_check);
-
-    require("fs").writeFile(
-      "./tenant_contracts_fix_info.json",
-
-      JSON.stringify(failure_log, null, 1),
-
-      function(err) {
-        if (err) {
-          console.log("Failed to create a fix info file.");
-        }
-      }
-    );
-
-    sql.end();
-  } catch (e) {
-    throw e;
   }
+
+  for (const admin of ADMINS_SET) {
+    if (admin != "") {
+      console.log(`The tenant with address ${dict[admin]} doesn't have a corresponding match in bcindexer.tenants`);
+    }
+  }
+  console.log("Number of tenants that support the new tenant system: ", success_count);
+  console.log("Number of tenants that need to be fixed: ", failure_count);
+  console.log("Number of tenants that the check needed access to their content fabric metadata: ", need_further_check);
+
+  require("fs").writeFile(
+    "./tenant_contracts_fix_info.json",
+
+    JSON.stringify(failure_log, null, 1),
+
+    function(err) {
+      if (err) {
+        console.log("Failed to create a fix info file.");
+      }
+    }
+  );
+
+  sql.end();
 };
 
 module.exports = {

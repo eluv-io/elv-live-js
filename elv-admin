@@ -14,9 +14,9 @@ for arg in "$@"; do
 done
 
 if [ "$USE_V2" = true ]; then
-  CLI_FILE="EluvioCli.js"
+  CLI_FILE="EluvioCliV2.js"
 else
-  CLI_FILE="EluvioCliV1.js"
+  CLI_FILE="EluvioCli.js"
 fi
 
 if [ -e $SOURCE_DIR/utilities/$CLI_FILE ]
