@@ -2,21 +2,21 @@
 
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-USE_V1=false
+USE_V2=false
 ARGS=()
 
 for arg in "$@"; do
-  if [ "$arg" = "--v1" ]; then
-    USE_V1=true
+  if [ "$arg" = "--v2" ]; then
+    USE_V2=true
   else
     ARGS+=("$arg")
   fi
 done
 
-if [ "$USE_V1" = true ]; then
-  CLI_FILE="EluvioLiveCliV1.js"
-else
+if [ "$USE_V2" = true ]; then
   CLI_FILE="EluvioLiveCli.js"
+else
+  CLI_FILE="EluvioLiveCliV1.js"
 fi
 
 if [ -e $SOURCE_DIR/utilities/$CLI_FILE ]
