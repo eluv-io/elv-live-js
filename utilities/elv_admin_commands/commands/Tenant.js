@@ -4,7 +4,7 @@ const TenantCommand = require("../lib/Tenant");
 module.exports = {
   command: "tenant <command>",
   describe: "Tenant related commands",
-  handler: (yargs) => {
+  builder: (yargs) => {
     yargs
 
       .command(

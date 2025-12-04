@@ -3,7 +3,7 @@ const GroupCommand = require("../lib/Group");
 module.exports = {
   command:"group <command>",
   describe:"Group related commands",
-  handler: (yargs) => {
+  builder: (yargs) => {
     yargs
       .command(
         "create <name>",

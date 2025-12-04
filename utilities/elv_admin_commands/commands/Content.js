@@ -3,7 +3,7 @@ const ContentCommand = require("../lib/Content");
 module.exports = {
   command:"content <command>",
   describe:"Content management commands",
-  handler: (yargs) => {
+  builder: (yargs) => {
     yargs
       .command(
         "tenant_contract_id <command>",

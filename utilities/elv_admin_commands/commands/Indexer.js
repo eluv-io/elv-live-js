@@ -3,7 +3,7 @@ const IndexerCommand = require("../lib/Indexer");
 module.exports = {
   command: "indexer <command>",
   describe: "Indexer related commands",
-  handler: (yargs) => {
+  builder: (yargs) => {
     yargs
       .command(
         "query",

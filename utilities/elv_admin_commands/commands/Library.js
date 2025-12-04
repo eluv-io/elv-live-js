@@ -3,7 +3,7 @@ const LibraryCommand = require("../lib/Library");
 module.exports = {
   command:"library <command>",
   describe:"Library related commands",
-  handler:(yargs) => {
+  builder:(yargs) => {
     yargs
       .command(
         "delete <library>",

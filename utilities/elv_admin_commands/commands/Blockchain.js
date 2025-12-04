@@ -3,7 +3,7 @@ const BlockchainCommand = require("../lib/Blockchain");
 module.exports = {
   command: "blockchain <command>",
   describe: "Blockchain related commands",
-  handler: (yargs) => {
+  builder: (yargs) => {
     yargs
       .command(
         "replace_stuck_transaction",
