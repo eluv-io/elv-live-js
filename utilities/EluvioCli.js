@@ -3,19 +3,19 @@ const { ElvTenant } = require("../src/ElvTenant.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
 const { ElvContracts } = require("../src/ElvContracts.js");
 const { EluvioLive } = require("../src/EluvioLive.js");
-const { BatchHelper } = require("../src/BatchHelper");
+const { BatchHelper } = require("../src/BatchHelper.js");
 const { Config } = require("../src/Config.js");
 const Ethers = require("ethers");
-const constants = require("../src/Constants");
+const constants = require("../src/Constants.js");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 
 const postgres = require("postgres");
-const { ElvFabric } = require("../src/ElvFabric");
+const { ElvFabric } = require("../src/ElvFabric.js");
 const Utils = require("@eluvio/elv-client-js/src/Utils");
-const { ElvUtils } = require("../src/Utils");
+const { ElvUtils } = require("../src/Utils.js");
 const sql = postgres({
   host: "rep1.elv",
   port: 5432,

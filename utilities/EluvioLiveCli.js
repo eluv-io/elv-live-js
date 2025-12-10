@@ -1,11 +1,11 @@
 const { EluvioLive } = require("../src/EluvioLive.js");
-const { ElvUtils } = require("../src/Utils");
+const { ElvUtils } = require("../src/Utils.js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
-const { InitializeTenant, AddConsumerGroup } = require("../src/Provision");
+const { InitializeTenant, AddConsumerGroup } = require("../src/Provision.js");
 const { Config } = require("../src/Config.js");
-const { Shuffler } = require("../src/Shuffler");
-const { Marketplace } = require("../src/Marketplace");
-const { Notifier } = require ("../src/Notifier");
+const { Shuffler } = require("../src/Shuffler.js");
+const { Marketplace } = require("../src/Marketplace.js");
+const { Notifier } = require ("../src/Notifier.js");
 const { ElvToken } = require ("../src/ElvToken.js");
 const { ElvContracts } = require ("../src/ElvContracts.js");
 
