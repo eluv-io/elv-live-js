@@ -70,6 +70,11 @@ module.exports = {
                                         describe: "Set Item to Public",
                                         type: "boolean",
                                     })
+                                    .option("composition_key", {
+                                        alias: "ck",
+                                        describe: "Name of Composition Key",
+                                        type: "string"
+                                    })
                             },
                             (argv) => {
                                 CatalogCommand.CmdCatalogItemSet({argv});
@@ -94,11 +99,12 @@ module.exports = {
                                         describe: "Type of Content ID",
                                         type: "string",
                                     })
-                                    // .option("public", {
-                                    //     alias: "p",
-                                    //     describe: "Set Item to Public",
-                                    //     type: "boolean",
-                                    // })
+                                    .option("public", {
+                                        alias: "p",
+                                        describe: "Set Item to Public",
+                                        type: "boolean",
+                                        default: false
+                                    })
                             },
                             (argv) => {
                                 CatalogCommand.CmdCatalogItemSet({argv});

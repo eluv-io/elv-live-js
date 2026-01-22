@@ -57,13 +57,13 @@ class ElvMediaWallet {
     return res;
   }
 
-  async CatalogItemSet({ objectId, itemId, contentId, contentIdType }) {
+  async CatalogItemSet({ objectId, itemId, contentId, contentIdType, isPublic = false, compositionKey }) {
     console.log("Object ID:", objectId);
     console.log("Item ID:", itemId);
     console.log("Content ID:", contentId);
     console.log("Content ID Type:", contentIdType);
-    // console.log("Public:", isPublic);
-
+    console.log("Composition Key:", compositionKey);
+    console.log("Public:", isPublic);
 
     const catalogLibraryId = await this.client.ContentObjectLibraryId({ objectId });
     const catalogLatestVersionHash = await this.client.LatestVersionHash({ objectId });
@@ -107,26 +107,46 @@ class ElvMediaWallet {
         mediaItemMeta.media_link_info.type = "main";
         break;
 
-      case "composition":
-        const hasOfferings =
-          contentMeta?.channel?.offerings &&
-          Object.keys(contentMeta.channel.offerings).length > 0;
-        if (!hasOfferings) {
+      case "composition": {
+        const offerings = contentMeta?.channel?.offerings;
+
+        if (!offerings || typeof offerings !== "object") {
           return "Content object has no compositions";
+        }
+
+        const offeringKeys = Object.keys(offerings);
+
+        if (offeringKeys.length === 0) {
+          return "Content object has no compositions";
+        }
+
+        let selectedCompositionKey;
+
+        if (compositionKey) {
+          // Validate provided composition key
+          if (!offerings[compositionKey]) {
+            return `Composition does not exist: ${compositionKey}`;
+          }
+          selectedCompositionKey = compositionKey;
+        } else {
+          // Default to first available composition
+          selectedCompositionKey = offeringKeys[0];
         }
 
         mediaItemMeta.live_video = false;
         mediaItemMeta.media_link["."] = { container: catalogLatestVersionHash };
         mediaItemMeta.media_link["/"] = `/qfab/${contentLatestVersionHash}/meta/public/asset_metadata`;
-        mediaItemMeta.media_link_info.name = contentMeta.public.name;
         mediaItemMeta.media_link_info.type = "composition";
+        mediaItemMeta.media_link_info.composition_key = selectedCompositionKey;
+
         break;
+      }
 
       default:
         throw new Error(`Invalid contentType: ${contentIdType}`);
     }
 
-    // mediaItemMeta["public"] = !!isPublic;
+    mediaItemMeta["public"] = !!isPublic;
 
     var e = await this.client.EditContentObject({
       libraryId: catalogLibraryId,
@@ -151,7 +171,7 @@ class ElvMediaWallet {
     return mediaItemMeta;
   }
 
-  async CatalogItemAdd({objectId }) {
+  async CatalogItemAdd({ objectId }) {
     console.log("Object ID:", objectId);
 
   }

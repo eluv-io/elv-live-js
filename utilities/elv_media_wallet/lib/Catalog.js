@@ -65,7 +65,8 @@ const CmdCatalogItemSet = async({argv}) => {
             itemId: argv.item_id,
             contentId: argv.content_id,
             contentIdType: argv.content_id_type,
-            // isPublic: argv.public
+            isPublic: argv.public, 
+            compositionKey: argv.composition_key
         });
         
         console.log(yaml.dump(res));
