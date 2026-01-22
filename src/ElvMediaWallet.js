@@ -86,7 +86,7 @@ class ElvMediaWallet {
       libraryId: contentLibraryId,
       objectId: contentId,
       resolveLinks: false
-    })
+    });
     mediaItemMeta.media_link = mediaItemMeta.media_link || {};
     mediaItemMeta.media_link_info = mediaItemMeta.media_link_info || {};
 
