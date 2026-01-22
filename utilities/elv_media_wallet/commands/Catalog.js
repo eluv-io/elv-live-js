@@ -65,6 +65,40 @@ module.exports = {
                                         describe: "Type of Content ID",
                                         type: "string",
                                     })
+                                    .option("public", {
+                                        alias: "p",
+                                        describe: "Set Item to Public",
+                                        type: "boolean",
+                                    })
+                            },
+                            (argv) => {
+                                CatalogCommand.CmdCatalogItemSet({argv});
+                            }        
+                        )
+                        .command(
+                            "add <object_id> [options]",
+                            "Add object as catalog item",
+                            (yargs) => {
+                                yargs
+                                    .positional("object_id", {
+                                        describe: "Catalog Object ID",
+                                        type: "string",
+                                    })
+                                    .option("content_id", {
+                                        alias: "c",
+                                        describe: "Content ID to add as catalog item",
+                                        type: "string",
+                                    })
+                                    .option("content_id_type", {
+                                        alias: "t",
+                                        describe: "Type of Content ID",
+                                        type: "string",
+                                    })
+                                    // .option("public", {
+                                    //     alias: "p",
+                                    //     describe: "Set Item to Public",
+                                    //     type: "boolean",
+                                    // })
                             },
                             (argv) => {
                                 CatalogCommand.CmdCatalogItemSet({argv});

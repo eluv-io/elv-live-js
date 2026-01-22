@@ -64,12 +64,39 @@ const CmdCatalogItemSet = async({argv}) => {
             objectId: argv.object_id,
             itemId: argv.item_id,
             contentId: argv.content_id,
-            contentIdType: argv.content_id_type
+            contentIdType: argv.content_id_type,
+            // isPublic: argv.public
         });
         
         console.log(yaml.dump(res));
     } catch(error) {
-        console.error("Error setting catalog items:", error);
+        console.error("Error setting catalog item:", error);
+    }
+    
+}
+const CmdCatalogItemAdd = async({argv}) => {
+    console.log("Catalog Item Add Command Invoked\n");
+
+    try {
+        let elvMediaWallet = new ElvMediaWallet({
+            configUrl: Config.networks[Config.net],
+            debugLogging: argv.verbose
+        });
+
+        await elvMediaWallet.Init({
+            privateKey: process.env.PRIVATE_KEY,
+        });
+        let res = await elvMediaWallet.CatalogItemAdd({
+            // objectId: argv.object_id,
+            // itemId: argv.item_id,
+            // contentId: argv.content_id,
+            // contentIdType: argv.content_id_type,
+            // public: argv.public
+        });
+        
+        console.log(yaml.dump(res));
+    } catch(error) {
+        console.error("Error adding catalog item:", error);
     }
     
 }
