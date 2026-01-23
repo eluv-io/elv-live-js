@@ -187,11 +187,11 @@ class ElvMediaWallet {
       catalogMediaMeta = await this.client.ContentObjectMetadata({
         libraryId: catalogLibraryId,
         objectId,
-        metadataSubtree: '/public/asset_metadata/info/media/',
+        metadataSubtree: "/public/asset_metadata/info/media/",
         resolveLinks: false
       });
     } catch (err) {
-      throw new Error(`Object not of Catalog Type`);
+      throw new Error("Object not of Catalog Type");
     }
 
     catalogMediaMeta = catalogMediaMeta || {};
@@ -203,7 +203,7 @@ class ElvMediaWallet {
         id += chars.charAt(Math.floor(Math.random() * chars.length));
       }
       return id;
-    }
+    };
 
     const newMediaId = generateMediaId();
 
@@ -219,9 +219,9 @@ class ElvMediaWallet {
     // Create the new media item
     const newMediaItem = {
       id: newMediaId,
-      name: itemName,
+      label: itemName,
+      media_catalog_id: objectId,
       media_type: "Video",
-      public: !!isPublic,
       live_video: false,
       media_link: {},
       media_link_info: {},
@@ -285,6 +285,7 @@ class ElvMediaWallet {
         throw new Error(`Invalid contentType: ${contentIdType}`);
     }
 
+    newMediaItem["public"] = !!isPublic;
     catalogMediaMeta[newMediaId] = newMediaItem;
     console.log(catalogMediaMeta);
 
@@ -297,7 +298,7 @@ class ElvMediaWallet {
       objectId,
       writeToken: e.write_token,
       metadata: catalogMediaMeta,
-      metadataSubtree: `/public/asset_metadata/info/media`
+      metadataSubtree: "/public/asset_metadata/info/media"
     });
     await this.client.FinalizeContentObject({
       libraryId: catalogLibraryId,
@@ -307,7 +308,7 @@ class ElvMediaWallet {
     });
 
     console.log(`✅ Media Item ${newMediaId} added to Catalog ${objectId}`);
-    return newMediaItem
+    return newMediaItem;
   }
 }
 
