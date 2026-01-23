@@ -89,6 +89,11 @@ module.exports = {
                                         describe: "Catalog Object ID",
                                         type: "string",
                                     })
+                                    .option("item_name", {
+                                        alias: "n", 
+                                        describe: "New Media Item Name",
+                                        type: "string"
+                                    })
                                     .option("content_id", {
                                         alias: "c",
                                         describe: "Content ID to add as catalog item",
@@ -107,7 +112,7 @@ module.exports = {
                                     })
                             },
                             (argv) => {
-                                CatalogCommand.CmdCatalogItemSet({argv});
+                                CatalogCommand.CmdCatalogItemAdd({argv});
                             }        
                         )
                 }        

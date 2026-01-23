@@ -88,11 +88,11 @@ const CmdCatalogItemAdd = async({argv}) => {
             privateKey: process.env.PRIVATE_KEY,
         });
         let res = await elvMediaWallet.CatalogItemAdd({
-            // objectId: argv.object_id,
-            // itemId: argv.item_id,
-            // contentId: argv.content_id,
-            // contentIdType: argv.content_id_type,
-            // public: argv.public
+            objectId: argv.object_id,
+            itemName: argv.item_name,
+            contentId: argv.content_id,
+            contentIdType: argv.content_id_type,
+            public: argv.public
         });
         
         console.log(yaml.dump(res));
@@ -105,5 +105,6 @@ const CmdCatalogItemAdd = async({argv}) => {
 module.exports = {
     CmdCatalogList,
     CmdCatalogItemGet,
-    CmdCatalogItemSet
+    CmdCatalogItemSet,
+    CmdCatalogItemAdd
 };
