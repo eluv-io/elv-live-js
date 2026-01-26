@@ -90,6 +90,10 @@ class ElvMediaWallet {
     mediaItemMeta.media_link = mediaItemMeta.media_link || {};
     mediaItemMeta.media_link_info = mediaItemMeta.media_link_info || {};
 
+    if (!contentMeta?.public?.name) {
+      throw new Error("Content object missing public.name property");
+    }
+
     switch (contentIdType) {
       case "live":
         mediaItemMeta.live_video = true;
@@ -111,13 +115,13 @@ class ElvMediaWallet {
         const offerings = contentMeta?.channel?.offerings;
 
         if (!offerings || typeof offerings !== "object") {
-          return "Content object has no compositions";
+          throw new Error("Content object has no compositions");
         }
 
         const offeringKeys = Object.keys(offerings);
 
         if (offeringKeys.length === 0) {
-          return "Content object has no compositions";
+          throw new Error("Content object has no compositions");
         }
 
         let selectedCompositionKey;
@@ -227,6 +231,10 @@ class ElvMediaWallet {
       media_link_info: {},
       offerings: []
     };
+
+    if (!contentMeta?.public?.name) {
+      throw new Error("Content object missing public.name property");
+    }
 
     switch (contentIdType) {
       case "live":
