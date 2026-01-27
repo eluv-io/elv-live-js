@@ -19,209 +19,195 @@ class ElvMediaWallet {
     this.client.ToggleLogging(this.debugLogging);
   }
 
+  async getLibraryAndHash(objectId) {
+    const libraryId = await this.client.ContentObjectLibraryId({ objectId });
+    const versionHash = await this.client.LatestVersionHash({ objectId });
+    return { libraryId, versionHash };
+  }
+
+  async getContentMeta(objectId) {
+    const { libraryId } = await this.getLibraryAndHash(objectId);
+
+    const meta = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      resolveLinks: false
+    });
+
+    if (!meta?.public?.name) {
+      throw new Error("Content object missing public.name property");
+    }
+
+    return meta;
+  }
+
+  resolveCompositionKey(contentMeta, compositionKey) {
+    const offerings = contentMeta?.channel?.offerings;
+
+    if (!offerings || typeof offerings !== "object") {
+      throw new Error("Content object has no compositions");
+    }
+
+    const keys = Object.keys(offerings);
+    if (!keys.length) {
+      throw new Error("Content object has no compositions");
+    }
+
+    const key = compositionKey ?? keys[0];
+
+    if (!offerings[key]) {
+      throw new Error(`Composition does not exist: ${key}`);
+    }
+
+    return key;
+  }
+
+  applyMediaLink({
+    target,
+    contentMeta,
+    catalogHash,
+    contentHash,
+    contentIdType,
+    compositionKey
+  }) {
+    target.media_link = target.media_link || {};
+    target.media_link_info = target.media_link_info || {};
+
+    target.media_link["."] = { container: catalogHash };
+    target.media_link["/"] =
+      `/qfab/${contentHash}/meta/public/asset_metadata`;
+
+    switch (contentIdType) {
+      case "live":
+      case "vod":
+        target.live_video = contentIdType === "live";
+        target.media_link_info.type = "main";
+        target.media_link_info.name = contentMeta.public.name;
+        break;
+
+      case "composition":
+        target.live_video = false;
+        target.media_link_info.type = "composition";
+        target.media_link_info.composition_key =
+          this.resolveCompositionKey(contentMeta, compositionKey);
+        target.media_link_info.name = contentMeta.public.name;
+        break;
+
+      default:
+        throw new Error(`Invalid contentType: ${contentIdType}`);
+    }
+  }
+
+  /* ----------------------- Catalog APIs ----------------------- */
+
+
   async CatalogList({ objectId }) {
     console.log("Object ID:", objectId);
 
-    const libraryId = await this.client.ContentObjectLibraryId({
-      objectId,
-    });
+    const { libraryId } = await this.getLibraryAndHash(objectId);
 
-    const res = await this.client.ContentObjectMetadata({
+    return await this.client.ContentObjectMetadata({
       libraryId,
       objectId,
       metadataSubtree: "/public/asset_metadata/info/media",
       resolveLinks: false
     });
-
-    return res;
   }
 
   async CatalogItemGet({ objectId, itemId }) {
     console.log("Object ID:", objectId);
     console.log("Item ID:", itemId);
 
-    const libraryId = await this.client.ContentObjectLibraryId({ objectId });
-    let res;
-
+    const { libraryId } = await this.getLibraryAndHash(objectId);
     try {
-      res = await this.client.ContentObjectMetadata({
+      return await this.client.ContentObjectMetadata({
         libraryId,
         objectId,
         metadataSubtree: `/public/asset_metadata/info/media/${itemId}`,
         resolveLinks: false
       });
-    } catch (err) {
+    } catch {
       throw new Error(`Item ${itemId} does not exist in Catalog ${objectId}`);
     }
-
-    return res;
   }
 
-  async CatalogItemSet({ objectId, itemId, contentId, contentIdType, isPublic = false, compositionKey }) {
-    console.log("Object ID:", objectId);
-    console.log("Item ID:", itemId);
-    console.log("Content ID:", contentId);
-    console.log("Content ID Type:", contentIdType);
-    console.log("Composition Key:", compositionKey);
-    console.log("Public:", isPublic);
+  async CatalogItemSet({
+    objectId,
+    itemId,
+    contentId,
+    contentIdType,
+    isPublic = false,
+    compositionKey
+  }) {
+    const { libraryId: catalogLib, versionHash: catalogHash } =
+      await this.getLibraryAndHash(objectId);
 
-    const catalogLibraryId = await this.client.ContentObjectLibraryId({ objectId });
-    const catalogLatestVersionHash = await this.client.LatestVersionHash({ objectId });
+    const mediaItemMeta = await this.CatalogItemGet({ objectId, itemId });
 
-    try {
-      var mediaItemMeta = await this.client.ContentObjectMetadata({
-        libraryId: catalogLibraryId,
-        objectId,
-        metadataSubtree: `/public/asset_metadata/info/media/${itemId}`,
-        resolveLinks: false
-      });
-    } catch (err) {
-      throw new Error(`Item ${itemId} does not exist in Catalog ${objectId}`);
-    }
+    const contentMeta = await this.getContentMeta(contentId);
+    const { versionHash: contentHash } =
+      await this.getLibraryAndHash(contentId);
 
-    const contentLibraryId = await this.client.ContentObjectLibraryId({ objectId: contentId });
-    const contentLatestVersionHash = await this.client.LatestVersionHash({ objectId: contentId });
-
-    const contentMeta = await this.client.ContentObjectMetadata({
-      libraryId: contentLibraryId,
-      objectId: contentId,
-      resolveLinks: false
+    this.applyMediaLink({
+      target: mediaItemMeta,
+      contentMeta,
+      catalogHash,
+      contentHash,
+      contentIdType,
+      compositionKey
     });
-    mediaItemMeta.media_link = mediaItemMeta.media_link || {};
-    mediaItemMeta.media_link_info = mediaItemMeta.media_link_info || {};
 
-    if (!contentMeta?.public?.name) {
-      throw new Error("Content object missing public.name property");
-    }
+    mediaItemMeta.public = !!isPublic;
 
-    switch (contentIdType) {
-      case "live":
-        mediaItemMeta.live_video = true;
-        mediaItemMeta.media_link["."] = { container: catalogLatestVersionHash };
-        mediaItemMeta.media_link["/"] = `/qfab/${contentLatestVersionHash}/meta/public/asset_metadata`;
-        mediaItemMeta.media_link_info.name = contentMeta.public.name;
-        mediaItemMeta.media_link_info.type = "main";
-        break;
-
-      case "vod":
-        mediaItemMeta.live_video = false;
-        mediaItemMeta.media_link["."] = { container: catalogLatestVersionHash };
-        mediaItemMeta.media_link["/"] = `/qfab/${contentLatestVersionHash}/meta/public/asset_metadata`;
-        mediaItemMeta.media_link_info.name = contentMeta.public.name;
-        mediaItemMeta.media_link_info.type = "main";
-        break;
-
-      case "composition": {
-        const offerings = contentMeta?.channel?.offerings;
-
-        if (!offerings || typeof offerings !== "object") {
-          throw new Error("Content object has no compositions");
-        }
-
-        const offeringKeys = Object.keys(offerings);
-
-        if (offeringKeys.length === 0) {
-          throw new Error("Content object has no compositions");
-        }
-
-        let selectedCompositionKey;
-
-        if (compositionKey) {
-          // Validate provided composition key
-          if (!offerings[compositionKey]) {
-            return `Composition does not exist: ${compositionKey}`;
-          }
-          selectedCompositionKey = compositionKey;
-        } else {
-          // Default to first available composition
-          selectedCompositionKey = offeringKeys[0];
-        }
-
-        mediaItemMeta.live_video = false;
-        mediaItemMeta.media_link["."] = { container: catalogLatestVersionHash };
-        mediaItemMeta.media_link["/"] = `/qfab/${contentLatestVersionHash}/meta/public/asset_metadata`;
-        mediaItemMeta.media_link_info.type = "composition";
-        mediaItemMeta.media_link_info.composition_key = selectedCompositionKey;
-
-        break;
-      }
-
-      default:
-        throw new Error(`Invalid contentType: ${contentIdType}`);
-    }
-
-    mediaItemMeta["public"] = !!isPublic;
-
-    var e = await this.client.EditContentObject({
-      libraryId: catalogLibraryId,
-      objectId,
+    const edit = await this.client.EditContentObject({
+      libraryId: catalogLib,
+      objectId
     });
+
     await this.client.ReplaceMetadata({
-      libraryId: catalogLibraryId,
+      libraryId: catalogLib,
       objectId,
-      writeToken: e.write_token,
+      writeToken: edit.write_token,
       metadata: mediaItemMeta,
       metadataSubtree: `/public/asset_metadata/info/media/${itemId}`
     });
-    await this.client.FinalizeContentObject({
-      libraryId: catalogLibraryId,
-      objectId,
-      writeToken: e.write_token,
-      commitMessage: `Added Media Item ${itemId} to Catalog ${objectId}`
-    });
 
-    console.log(`Content Object ${contentId} of type ${contentIdType} added to Media Item ${itemId} in Catalog ${objectId}`);
+    await this.client.FinalizeContentObject({
+      libraryId: catalogLib,
+      objectId,
+      writeToken: edit.write_token,
+      commitMessage: `Updated Media Item ${itemId}`
+    });
 
     return mediaItemMeta;
   }
 
-  async CatalogItemAdd({ objectId, itemName = "New Media Item", contentId, contentIdType, isPublic = false, compositionKey }) {
-    console.log("Object ID:", objectId);
-    console.log("New Item Name:", itemName);
-    console.log("Content ID:", contentId);
-    console.log("Content ID Type:", contentIdType);
-    console.log("Composition Key:", compositionKey);
-    console.log("Public:", isPublic);
+  async CatalogItemAdd({
+    objectId,
+    itemName = "New Media Item",
+    contentId,
+    contentIdType,
+    isPublic = false,
+    compositionKey
+  }) {
+    const { libraryId: catalogLib, versionHash: catalogHash } =
+      await this.getLibraryAndHash(objectId);
 
-    const catalogLibraryId = await this.client.ContentObjectLibraryId({ objectId });
-    const catalogLatestVersionHash = await this.client.LatestVersionHash({ objectId });
-
-    let catalogMediaMeta;
-    try {
-      catalogMediaMeta = await this.client.ContentObjectMetadata({
-        libraryId: catalogLibraryId,
+    const catalogMedia =
+      (await this.client.ContentObjectMetadata({
+        libraryId: catalogLib,
         objectId,
-        metadataSubtree: "/public/asset_metadata/info/media/",
+        metadataSubtree: "/public/asset_metadata/info/media",
         resolveLinks: false
-      });
-    } catch (err) {
-      throw new Error("Object not of Catalog Type");
-    }
+      })) || {};
 
-    catalogMediaMeta = catalogMediaMeta || {};
+    const newMediaId = `mvid${Math.random().toString(36).slice(2, 24)}`;
 
-    const generateMediaId = () => {
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789";
-      let id = "mvid";
-      for (let i = 0; i < 22; i++) {
-        id += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return id;
-    };
+    const contentMeta = await this.getContentMeta(contentId);
+    const { versionHash: contentHash } =
+      await this.getLibraryAndHash(contentId);
 
-    const newMediaId = generateMediaId();
-
-    const contentLibraryId = await this.client.ContentObjectLibraryId({ objectId: contentId });
-    const contentLatestVersionHash = await this.client.LatestVersionHash({ objectId: contentId });
-
-    const contentMeta = await this.client.ContentObjectMetadata({
-      libraryId: contentLibraryId,
-      objectId: contentId,
-      resolveLinks: false
-    });
-
-    // Create the new media item
-    const newMediaItem = {
+    const newItem = {
       id: newMediaId,
       label: itemName,
       media_catalog_id: objectId,
@@ -229,94 +215,42 @@ class ElvMediaWallet {
       live_video: false,
       media_link: {},
       media_link_info: {},
-      offerings: []
+      offerings: [],
+      public: !!isPublic
     };
 
-    if (!contentMeta?.public?.name) {
-      throw new Error("Content object missing public.name property");
-    }
-
-    switch (contentIdType) {
-      case "live":
-        newMediaItem.live_video = true;
-        newMediaItem.media_link["."] = { container: catalogLatestVersionHash };
-        newMediaItem.media_link["/"] = `/qfab/${contentLatestVersionHash}/meta/public/asset_metadata`;
-        newMediaItem.media_link_info.name = contentMeta.public.name;
-        newMediaItem.media_link_info.type = "main";
-        break;
-
-      case "vod":
-        newMediaItem.live_video = false;
-        newMediaItem.media_link["."] = { container: catalogLatestVersionHash };
-        newMediaItem.media_link["/"] = `/qfab/${contentLatestVersionHash}/meta/public/asset_metadata`;
-        newMediaItem.media_link_info.name = contentMeta.public.name;
-        newMediaItem.media_link_info.type = "main";
-        break;
-
-      case "composition": {
-        const offerings = contentMeta?.channel?.offerings;
-
-        if (!offerings || typeof offerings !== "object") {
-          return "Content object has no compositions";
-        }
-
-        const offeringKeys = Object.keys(offerings);
-
-        if (offeringKeys.length === 0) {
-          return "Content object has no compositions";
-        }
-
-        let selectedCompositionKey;
-
-        if (compositionKey) {
-          // Validate provided composition key
-          if (!offerings[compositionKey]) {
-            return `Composition does not exist: ${compositionKey}`;
-          }
-          selectedCompositionKey = compositionKey;
-        } else {
-          // Default to first available composition
-          selectedCompositionKey = offeringKeys[0];
-        }
-
-        newMediaItem.live_video = false;
-        newMediaItem.media_link["."] = { container: catalogLatestVersionHash };
-        newMediaItem.media_link["/"] = `/qfab/${contentLatestVersionHash}/meta/public/asset_metadata`;
-        newMediaItem.media_link_info.type = "composition";
-        newMediaItem.media_link_info.composition_key = selectedCompositionKey;
-        newMediaItem.media_link_info.name = contentMeta.public.name;
-
-        break;
-      }
-
-      default:
-        throw new Error(`Invalid contentType: ${contentIdType}`);
-    }
-
-    newMediaItem["public"] = !!isPublic;
-    catalogMediaMeta[newMediaId] = newMediaItem;
-    console.log(catalogMediaMeta);
-
-    var e = await this.client.EditContentObject({
-      libraryId: catalogLibraryId,
-      objectId,
+    this.applyMediaLink({
+      target: newItem,
+      contentMeta,
+      catalogHash,
+      contentHash,
+      contentIdType,
+      compositionKey
     });
+
+    catalogMedia[newMediaId] = newItem;
+
+    const edit = await this.client.EditContentObject({
+      libraryId: catalogLib,
+      objectId
+    });
+
     await this.client.ReplaceMetadata({
-      libraryId: catalogLibraryId,
+      libraryId: catalogLib,
       objectId,
-      writeToken: e.write_token,
-      metadata: catalogMediaMeta,
+      writeToken: edit.write_token,
+      metadata: catalogMedia,
       metadataSubtree: "/public/asset_metadata/info/media"
     });
+
     await this.client.FinalizeContentObject({
-      libraryId: catalogLibraryId,
+      libraryId: catalogLib,
       objectId,
-      writeToken: e.write_token,
-      commitMessage: `Added Media Item ${newMediaId} to Catalog ${objectId}`
+      writeToken: edit.write_token,
+      commitMessage: `Added Media Item ${newMediaId}`
     });
 
-    console.log(`✅ Media Item ${newMediaId} added to Catalog ${objectId}`);
-    return newMediaItem;
+    return newItem;
   }
 }
 
