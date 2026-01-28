@@ -1,5 +1,8 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
-
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+const mime = require("mime-types");
 
 class ElvMediaWallet {
   constructor({ configUrl, debugLogging = false }) {
@@ -60,6 +63,76 @@ class ElvMediaWallet {
     }
 
     return key;
+  }
+
+  // 
+
+  async applyThumbnailLink({
+    libraryId,
+    objectId,
+    writeToken,
+    target,
+    catalogHash,
+    thumbnail_landscape,
+    thumbnail_portrait,
+    thumbnail_square
+  }) {
+    console.log(thumbnail_portrait);
+    console.log(thumbnail_square);
+
+    const thumbnails = {
+      landscape: thumbnail_landscape,
+      portrait: thumbnail_portrait,
+      square: thumbnail_square
+    };
+    
+    console.log("Received thumbnails:");
+    console.log("Landscape:", thumbnails.landscape);
+    console.log("Portrait:", thumbnails.portrait);
+    console.log("Square:", thumbnails.square);
+
+
+    for (const [size, filePath] of Object.entries(thumbnails)) {
+      if (!filePath) continue; // skip if not provided
+      if (!fs.existsSync(filePath)) {
+        console.warn(`Thumbnail file for ${size} not found, skipping: ${filePath}`);
+        continue;
+      }
+
+      const fileName = path.basename(filePath);
+      const mimeType = mime.lookup(filePath) || "application/octet-stream";
+      const fileBuffer = fs.readFileSync(filePath);
+      const hashBuffer = crypto.randomBytes(32); // random 256-bit hash
+
+      // Upload the file to the catalog object
+      await this.client.UploadFiles({
+        libraryId,
+        objectId,
+        writeToken,
+        encrypted: false,
+        fileInfo: [
+          {
+            path: fileName,
+            mime_type: mimeType,
+            size: fileBuffer.byteLength,
+            data: fileBuffer
+          }
+        ]
+      });
+
+      // Metadata keys for this thumbnail size
+      const imgKey = `thumbnail_image_${size}`;
+      const hashKey = `thumbnail_image_${size}_hash`;
+
+      // Merge into existing metadata without overwriting other sizes
+      target[imgKey] = target[imgKey] || {};
+      target[hashKey] = target[hashKey] || {};
+
+      target[imgKey]["."] = { container: catalogHash };
+      target[imgKey]["/"] = `./files/${fileName}`;
+
+      target[hashKey] = hashBuffer.toString("base64");
+    }
   }
 
   applyMediaLink({
@@ -137,25 +210,30 @@ class ElvMediaWallet {
     contentId,
     contentIdType,
     isPublic = false,
-    compositionKey
+    compositionKey,
+    thumbnail_landscape,
+    thumbnail_portrait,
+    thumbnail_square
   }) {
     const { libraryId: catalogLib, versionHash: catalogHash } =
       await this.getLibraryAndHash(objectId);
 
     const mediaItemMeta = await this.CatalogItemGet({ objectId, itemId });
 
-    const contentMeta = await this.getContentMeta(contentId);
-    const { versionHash: contentHash } =
-      await this.getLibraryAndHash(contentId);
+    if (contentId) {
+      const contentMeta = await this.getContentMeta(contentId);
+      const { versionHash: contentHash } =
+        await this.getLibraryAndHash(contentId);
 
-    this.applyMediaLink({
-      target: mediaItemMeta,
-      contentMeta,
-      catalogHash,
-      contentHash,
-      contentIdType,
-      compositionKey
-    });
+      this.applyMediaLink({
+        target: mediaItemMeta,
+        contentMeta,
+        catalogHash,
+        contentHash,
+        contentIdType,
+        compositionKey
+      });
+    }
 
     mediaItemMeta.public = !!isPublic;
 
@@ -163,6 +241,19 @@ class ElvMediaWallet {
       libraryId: catalogLib,
       objectId
     });
+
+    if (thumbnail_landscape || thumbnail_portrait || thumbnail_square) {
+      await this.applyThumbnailLink({
+        libraryId: catalogLib,
+        objectId,
+        writeToken: edit.write_token,
+        target: mediaItemMeta,
+        catalogHash,
+        thumbnail_landscape,
+        thumbnail_portrait,
+        thumbnail_square
+      })
+    }
 
     await this.client.ReplaceMetadata({
       libraryId: catalogLib,
@@ -201,7 +292,7 @@ class ElvMediaWallet {
         resolveLinks: false
       })) || {};
 
-    const newMediaId = `mvid${Math.random().toString(36).slice(2, 24)}`;
+    const newMediaId = "mvid" + crypto.randomBytes(18).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 24);
 
     const contentMeta = await this.getContentMeta(contentId);
     const { versionHash: contentHash } =

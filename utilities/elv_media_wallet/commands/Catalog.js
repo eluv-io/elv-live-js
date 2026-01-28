@@ -74,6 +74,21 @@ module.exports = {
                     alias: "ck",
                     describe: "Name of Composition Key",
                     type: "string"
+                  })
+                  .option("thumbnail_landscape", {
+                    alias: "tl",
+                    describe: "Landscape Thumbnail Image (16:9) of Media Item",
+                    type: "string"
+                  })
+                  .option("thumbnail_portrait", {
+                    alias: "tp",
+                    describe: "Portrait Thumbnail Image (2:3) of Media Item",
+                    type: "string"
+                  })
+                  .option("thumbnail_square", {
+                    alias: "ts",
+                    describe: "Square Thumbnail Image (1:1) of Media Item",
+                    type: "string"
                   });
               },
               (argv) => {
