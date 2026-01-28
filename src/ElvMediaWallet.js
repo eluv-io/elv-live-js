@@ -83,7 +83,7 @@ class ElvMediaWallet {
       portrait: thumbnail_portrait,
       square: thumbnail_square
     };
-    
+
     console.log("Received thumbnails:");
     console.log("Landscape:", thumbnails.landscape);
     console.log("Portrait:", thumbnails.portrait);
@@ -202,6 +202,34 @@ class ElvMediaWallet {
     }
   }
 
+  async CatalogItemDelete({ objectId, itemId }) {
+    console.log("Object ID:", objectId);
+    console.log("Item ID:", itemId);
+
+    const { libraryId } = await this.getLibraryAndHash(objectId);
+    const edit = await this.client.EditContentObject({
+      libraryId,
+      objectId
+    });
+    
+    await this.client.DeleteMetadata({
+      libraryId,
+      objectId,
+      writeToken: edit.write_token,
+      metadataSubtree: `/public/asset_metadata/info/media/${itemId}`,
+      resolveLinks: false
+    });
+
+    await this.client.FinalizeContentObject({
+      libraryId,
+      objectId,
+      writeToken: edit.write_token,
+      commitMessage: `Deleted Media Item ${itemId}`
+    });
+
+    return console.log(`Deleted Media Item ${itemId}`);
+  }
+
   async CatalogItemSet({
     objectId,
     itemId,
@@ -301,9 +329,6 @@ class ElvMediaWallet {
       media_catalog_id: objectId,
       media_type: "Video",
       live_video: contentIdType === "live",
-      // media_link: {},
-      // media_link_info: {},
-      // offerings: [],
       public: !!isPublic
     };
 

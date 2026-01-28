@@ -43,6 +43,24 @@ module.exports = {
               }        
             )
             .command(
+              "delete <object_id> <item_id>",
+              "Delete catalog item",
+              (yargs) => {
+                yargs
+                  .positional("object_id", {
+                    describe: "Catalog Object ID",
+                    type: "string",
+                  })
+                  .positional("item_id", {
+                    describe: "Catalog Item ID",
+                    type: "string",
+                  });
+              },
+              (argv) => {
+                CatalogCommand.CmdCatalogItemDelete({argv});
+              }        
+            )
+            .command(
               "set <object_id> <item_id> [options]",
               "Set catalog item content",
               (yargs) => {
