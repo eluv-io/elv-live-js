@@ -77,8 +77,6 @@ class ElvMediaWallet {
     thumbnail_portrait,
     thumbnail_square
   }) {
-    console.log(thumbnail_portrait);
-    console.log(thumbnail_square);
 
     const thumbnails = {
       landscape: thumbnail_landscape,
@@ -279,7 +277,10 @@ class ElvMediaWallet {
     contentId,
     contentIdType,
     isPublic = false,
-    compositionKey
+    compositionKey,
+    thumbnail_landscape,
+    thumbnail_portrait,
+    thumbnail_square
   }) {
     const { libraryId: catalogLib, versionHash: catalogHash } =
       await this.getLibraryAndHash(objectId);
@@ -294,37 +295,52 @@ class ElvMediaWallet {
 
     const newMediaId = "mvid" + crypto.randomBytes(18).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 24);
 
-    const contentMeta = await this.getContentMeta(contentId);
-    const { versionHash: contentHash } =
-      await this.getLibraryAndHash(contentId);
-
     const newItem = {
       id: newMediaId,
       label: itemName,
       media_catalog_id: objectId,
       media_type: "Video",
-      live_video: false,
-      media_link: {},
-      media_link_info: {},
-      offerings: [],
+      live_video: contentIdType === "live",
+      // media_link: {},
+      // media_link_info: {},
+      // offerings: [],
       public: !!isPublic
     };
 
-    this.applyMediaLink({
-      target: newItem,
-      contentMeta,
-      catalogHash,
-      contentHash,
-      contentIdType,
-      compositionKey
-    });
-
     catalogMedia[newMediaId] = newItem;
+
+    if (contentId) {
+      const contentMeta = await this.getContentMeta(contentId);
+      const { versionHash: contentHash } =
+        await this.getLibraryAndHash(contentId);
+
+      this.applyMediaLink({
+        target: newItem,
+        contentMeta,
+        catalogHash,
+        contentHash,
+        contentIdType,
+        compositionKey
+      });
+    }
 
     const edit = await this.client.EditContentObject({
       libraryId: catalogLib,
       objectId
     });
+
+    if (thumbnail_landscape || thumbnail_portrait || thumbnail_square) {
+      await this.applyThumbnailLink({
+        libraryId: catalogLib,
+        objectId,
+        writeToken: edit.write_token,
+        target: newItem,
+        catalogHash,
+        thumbnail_landscape,
+        thumbnail_portrait,
+        thumbnail_square
+      });
+    }
 
     await this.client.ReplaceMetadata({
       libraryId: catalogLib,

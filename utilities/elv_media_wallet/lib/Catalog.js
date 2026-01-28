@@ -95,7 +95,11 @@ const CmdCatalogItemAdd = async({argv}) => {
       itemName: argv.item_name,
       contentId: argv.content_id,
       contentIdType: argv.content_id_type,
-      isPublic: argv.public
+      isPublic: argv.public, 
+      compositionKey: argv.composition_key,
+      thumbnail_landscape: argv.thumbnail_landscape,
+      thumbnail_portrait: argv.thumbnail_portrait,
+      thumbnail_square: argv.thumbnail_square
     });
         
     console.log(yaml.dump(res));

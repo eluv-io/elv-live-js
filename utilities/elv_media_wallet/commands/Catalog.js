@@ -56,37 +56,30 @@ module.exports = {
                     type: "string",
                   })
                   .option("content_id", {
-                    alias: "c",
                     describe: "Content ID to set for the catalog item",
                     type: "string",
                   })
                   .option("content_id_type", {
-                    alias: "t",
                     describe: "Type of Content ID",
                     type: "string",
                   })
                   .option("public", {
-                    alias: "p",
                     describe: "Set Item to Public",
                     type: "boolean",
                   })
                   .option("composition_key", {
-                    alias: "ck",
                     describe: "Name of Composition Key",
                     type: "string"
                   })
                   .option("thumbnail_landscape", {
-                    alias: "tl",
                     describe: "Landscape Thumbnail Image (16:9) of Media Item",
                     type: "string"
                   })
                   .option("thumbnail_portrait", {
-                    alias: "tp",
                     describe: "Portrait Thumbnail Image (2:3) of Media Item",
                     type: "string"
                   })
                   .option("thumbnail_square", {
-                    alias: "ts",
                     describe: "Square Thumbnail Image (1:1) of Media Item",
                     type: "string"
                   });
@@ -124,6 +117,22 @@ module.exports = {
                     describe: "Set Item to Public",
                     type: "boolean",
                     default: false
+                  })
+                  .option("composition_key", {
+                    describe: "Name of Composition Key",
+                    type: "string"
+                  })
+                  .option("thumbnail_landscape", {
+                    describe: "Landscape Thumbnail Image (16:9) of Media Item",
+                    type: "string"
+                  })
+                  .option("thumbnail_portrait", {
+                    describe: "Portrait Thumbnail Image (2:3) of Media Item",
+                    type: "string"
+                  })
+                  .option("thumbnail_square", {
+                    describe: "Square Thumbnail Image (1:1) of Media Item",
+                    type: "string"
                   });
               },
               (argv) => {
