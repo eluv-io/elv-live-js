@@ -252,7 +252,7 @@ class ElvMediaWallet {
         thumbnail_landscape,
         thumbnail_portrait,
         thumbnail_square
-      })
+      });
     }
 
     await this.client.ReplaceMetadata({
