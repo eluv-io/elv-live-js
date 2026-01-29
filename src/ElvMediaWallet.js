@@ -124,12 +124,11 @@ class ElvMediaWallet {
 
       // Merge into existing metadata without overwriting other sizes
       target[imgKey] = target[imgKey] || {};
-      target[hashKey] = target[hashKey] || {};
 
       target[imgKey]["."] = { container: catalogHash };
       target[imgKey]["/"] = `./files/${fileName}`;
 
-      target[hashKey] = hashBuffer.toString("base64");
+      target[hashKey] = target[hashKey] || hashBuffer.toString("base64");
     }
   }
 
@@ -211,7 +210,7 @@ class ElvMediaWallet {
       libraryId,
       objectId
     });
-    
+
     await this.client.DeleteMetadata({
       libraryId,
       objectId,
