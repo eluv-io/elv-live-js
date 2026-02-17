@@ -116,14 +116,19 @@ const CmdCatalogItemAdd = async({argv}) => {
     });
     let res = await elvMediaWallet.CatalogItemAdd({
       objectId: argv.object_id,
-      itemName: argv.item_name,
+      itemLabel: argv.item_label,
+      catalogTitle: argv.catalog_title,
+      displayTitle: argv.display_title,
+      subtitle: argv.subtitle,
+      description: argv.description,
       contentId: argv.content_id,
       contentIdType: argv.content_id_type,
       isPublic: argv.public, 
       compositionKey: argv.composition_key,
       thumbnail_landscape: argv.thumbnail_landscape,
       thumbnail_portrait: argv.thumbnail_portrait,
-      thumbnail_square: argv.thumbnail_square
+      thumbnail_square: argv.thumbnail_square,
+      mediaMetadata: argv.media_metadata
     });
         
     console.log(yaml.dump(res));

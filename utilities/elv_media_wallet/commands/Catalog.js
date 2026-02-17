@@ -115,9 +115,29 @@ module.exports = {
                     describe: "Catalog Object ID",
                     type: "string",
                   })
-                  .option("item_name", {
+                  .option("item_label", {
                     alias: "n", 
-                    describe: "New Media Item Name",
+                    describe: "New Media Item Label",
+                    type: "string"
+                  })
+                  .option("catalog_title", {
+                    alias: "n", 
+                    describe: "New Media Item Catalog Title",
+                    type: "string"
+                  })
+                  .option("display_title", {
+                    alias: "n", 
+                    describe: "New Media Item Display Title",
+                    type: "string"
+                  })
+                  .option("subtitle", {
+                    alias: "n", 
+                    describe: "New Media Item Subtitle",
+                    type: "string"
+                  })
+                  .option("description", {
+                    alias: "n", 
+                    describe: "New Media Item Description",
                     type: "string"
                   })
                   .option("content_id", {
@@ -150,6 +170,10 @@ module.exports = {
                   })
                   .option("thumbnail_square", {
                     describe: "Square Thumbnail Image (1:1) of Media Item",
+                    type: "string"
+                  })
+                  .option("media_metadata", {
+                    describe: "Path to .json or .yaml file containing media item metadata to add",
                     type: "string"
                   });
               },
