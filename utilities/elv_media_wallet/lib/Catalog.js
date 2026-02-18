@@ -93,7 +93,8 @@ const CmdCatalogItemSet = async({argv}) => {
       compositionKey: argv.composition_key,
       thumbnail_landscape: argv.thumbnail_landscape,
       thumbnail_portrait: argv.thumbnail_portrait,
-      thumbnail_square: argv.thumbnail_square
+      thumbnail_square: argv.thumbnail_square,
+       mediaMetadata: argv.media_metadata
     });
         
     console.log(yaml.dump(res));

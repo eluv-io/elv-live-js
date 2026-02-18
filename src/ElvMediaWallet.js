@@ -323,54 +323,199 @@ class ElvMediaWallet {
     return console.log(`Deleted Media Item ${itemId}`);
   }
 
+  // async CatalogItemSet({
+  //   objectId,
+  //   itemId,
+  //   contentId,
+  //   contentIdType,
+  //   isPublic = false,
+  //   compositionKey,
+  //   thumbnail_landscape,
+  //   thumbnail_portrait,
+  //   thumbnail_square
+  // }) {
+  //   const { libraryId: catalogLib, versionHash: catalogHash } =
+  //     await this.getLibraryAndHash(objectId);
+
+  //   const mediaItemMeta = await this.CatalogItemGet({ objectId, itemId });
+
+  //   if (contentId) {
+  //     const contentMeta = await this.getContentMeta(contentId);
+  //     const { versionHash: contentHash } =
+  //       await this.getLibraryAndHash(contentId);
+
+  //     this.applyMediaLink({
+  //       target: mediaItemMeta,
+  //       contentMeta,
+  //       catalogHash,
+  //       contentHash,
+  //       contentIdType,
+  //       compositionKey
+  //     });
+  //   }
+
+  //   mediaItemMeta.public = !!isPublic;
+
+  //   const edit = await this.client.EditContentObject({
+  //     libraryId: catalogLib,
+  //     objectId
+  //   });
+
+  //   if (thumbnail_landscape || thumbnail_portrait || thumbnail_square) {
+  //     await this.applyThumbnailLink({
+  //       libraryId: catalogLib,
+  //       objectId,
+  //       writeToken: edit.write_token,
+  //       target: mediaItemMeta,
+  //       catalogHash,
+  //       thumbnail_landscape,
+  //       thumbnail_portrait,
+  //       thumbnail_square
+  //     });
+  //   }
+
+  //   await this.client.ReplaceMetadata({
+  //     libraryId: catalogLib,
+  //     objectId,
+  //     writeToken: edit.write_token,
+  //     metadata: mediaItemMeta,
+  //     metadataSubtree: `/public/asset_metadata/info/media/${itemId}`
+  //   });
+
+  //   await this.client.FinalizeContentObject({
+  //     libraryId: catalogLib,
+  //     objectId,
+  //     writeToken: edit.write_token,
+  //     commitMessage: `Updated Media Item ${itemId}`
+  //   });
+
+  //   return mediaItemMeta;
+  // }
+
   async CatalogItemSet({
     objectId,
     itemId,
+
+    // existing flags
     contentId,
     contentIdType,
     isPublic = false,
     compositionKey,
     thumbnail_landscape,
     thumbnail_portrait,
-    thumbnail_square
+    thumbnail_square,
+
+    // NEW: JSON / YAML file or object
+    mediaMetadata
   }) {
     const { libraryId: catalogLib, versionHash: catalogHash } =
       await this.getLibraryAndHash(objectId);
 
+    // Get existing media item subtree
     const mediaItemMeta = await this.CatalogItemGet({ objectId, itemId });
 
-    if (contentId) {
-      const contentMeta = await this.getContentMeta(contentId);
+    /* --------------------------------------------
+     * Read mediaMetadata directly (JSON / YAML / object)
+     * -------------------------------------------- */
+    let metadata = {};
+
+    if (mediaMetadata) {
+      if (typeof mediaMetadata === "string") {
+        const ext = path.extname(mediaMetadata).toLowerCase();
+        const raw = fs.readFileSync(mediaMetadata, "utf-8");
+
+        if (ext === ".json") {
+          metadata = JSON.parse(raw);
+        } else if (ext === ".yaml" || ext === ".yml") {
+          metadata = yaml.load(raw);
+        } else {
+          throw new Error(
+            `Unsupported metadata file type: ${ext} (use .json, .yaml, .yml)`
+          );
+        }
+      } else if (typeof mediaMetadata === "object") {
+        metadata = mediaMetadata;
+      }
+    }
+
+    // Normalize attached-JSON shapes
+    metadata = this.normalizeMediaMetadata(metadata);
+
+    /* --------------------------------------------
+     * Resolve values (file > flags)
+     * -------------------------------------------- */
+    const resolvedContentId = metadata.contentId ?? contentId;
+    const resolvedContentIdType = metadata.contentIdType ?? contentIdType;
+    const resolvedPublic = metadata.public ?? isPublic;
+    const resolvedCompositionKey = metadata.compositionKey ?? compositionKey;
+
+    const resolvedThumbnails = {
+      landscape: metadata.thumbnails?.landscape ?? thumbnail_landscape,
+      portrait: metadata.thumbnails?.portrait ?? thumbnail_portrait,
+      square: metadata.thumbnails?.square ?? thumbnail_square
+    };
+
+    /* --------------------------------------------
+     * Apply file metadata fields onto existing item
+     * -------------------------------------------- */
+    // Copy over all relevant fields present in the metadata file
+    // (this updates the existing item in-place)
+    this.applyMediaMetadataFields(mediaItemMeta, metadata);
+
+    // Explicitly set public if provided by file or flags
+    mediaItemMeta.public = !!resolvedPublic;
+
+    /* --------------------------------------------
+     * Media link
+     * -------------------------------------------- */
+    // If JSON provides media_link, keep it and skip applyMediaLink.
+    // Otherwise, if contentId is provided, generate link via applyMediaLink.
+    const hasDirectMediaLink = !!metadata.media_link;
+
+    if (!hasDirectMediaLink && resolvedContentId) {
+      const contentMeta = await this.getContentMeta(resolvedContentId);
       const { versionHash: contentHash } =
-        await this.getLibraryAndHash(contentId);
+        await this.getLibraryAndHash(resolvedContentId);
 
       this.applyMediaLink({
         target: mediaItemMeta,
         contentMeta,
         catalogHash,
         contentHash,
-        contentIdType,
-        compositionKey
+        contentIdType: resolvedContentIdType,
+        compositionKey: resolvedCompositionKey
       });
     }
-
-    mediaItemMeta.public = !!isPublic;
 
     const edit = await this.client.EditContentObject({
       libraryId: catalogLib,
       objectId
     });
 
-    if (thumbnail_landscape || thumbnail_portrait || thumbnail_square) {
+    /* --------------------------------------------
+     * Thumbnails
+     * -------------------------------------------- */
+    // If file already includes thumbnail_image_* objects, do NOT call applyThumbnailLink.
+    const hasDirectThumbs =
+      !!metadata.thumbnail_image_landscape ||
+      !!metadata.thumbnail_image_portrait ||
+      !!metadata.thumbnail_image_square;
+
+    if (
+      !hasDirectThumbs &&
+      (resolvedThumbnails.landscape ||
+        resolvedThumbnails.portrait ||
+        resolvedThumbnails.square)
+    ) {
       await this.applyThumbnailLink({
         libraryId: catalogLib,
         objectId,
         writeToken: edit.write_token,
         target: mediaItemMeta,
         catalogHash,
-        thumbnail_landscape,
-        thumbnail_portrait,
-        thumbnail_square
+        thumbnail_landscape: resolvedThumbnails.landscape,
+        thumbnail_portrait: resolvedThumbnails.portrait,
+        thumbnail_square: resolvedThumbnails.square
       });
     }
 

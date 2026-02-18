@@ -100,6 +100,10 @@ module.exports = {
                   .option("thumbnail_square", {
                     describe: "Square Thumbnail Image (1:1) of Media Item",
                     type: "string"
+                  })
+                  .option("media_metadata", {
+                    describe: "Path to .json or .yaml file containing media item metadata to add",
+                    type: "string"
                   });
               },
               (argv) => {
