@@ -73,17 +73,46 @@ module.exports = {
                     describe: "Catalog Item ID",
                     type: "string",
                   })
+                  .option("item_label", {
+                    alias: "l", 
+                    describe: "New Media Item Label",
+                    type: "string"
+                  })
+                  .option("catalog_title", {
+                    alias: "ct", 
+                    describe: "New Media Item Catalog Title",
+                    type: "string"
+                  })
+                  .option("display_title", {
+                    alias: "dt", 
+                    describe: "New Media Item Display Title",
+                    type: "string"
+                  })
+                  .option("subtitle", {
+                    alias: "st", 
+                    describe: "New Media Item Subtitle",
+                    type: "string"
+                  })
+                  .option("description", {
+                    alias: "d", 
+                    describe: "New Media Item Description",
+                    type: "string"
+                  })
                   .option("content_id", {
-                    describe: "Content ID to set for the catalog item",
+                    alias: "c",
+                    describe: "Content ID to add as catalog item",
                     type: "string",
                   })
                   .option("content_id_type", {
+                    alias: "t",
                     describe: "Type of Content ID",
                     type: "string",
                   })
                   .option("public", {
+                    alias: "p",
                     describe: "Set Item to Public",
                     type: "boolean",
+                    default: false
                   })
                   .option("composition_key", {
                     describe: "Name of Composition Key",
@@ -120,27 +149,27 @@ module.exports = {
                     type: "string",
                   })
                   .option("item_label", {
-                    alias: "n", 
+                    alias: "l", 
                     describe: "New Media Item Label",
                     type: "string"
                   })
                   .option("catalog_title", {
-                    alias: "n", 
+                    alias: "ct", 
                     describe: "New Media Item Catalog Title",
                     type: "string"
                   })
                   .option("display_title", {
-                    alias: "n", 
+                    alias: "dt", 
                     describe: "New Media Item Display Title",
                     type: "string"
                   })
                   .option("subtitle", {
-                    alias: "n", 
+                    alias: "st", 
                     describe: "New Media Item Subtitle",
                     type: "string"
                   })
                   .option("description", {
-                    alias: "n", 
+                    alias: "d", 
                     describe: "New Media Item Description",
                     type: "string"
                   })

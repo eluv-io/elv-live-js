@@ -87,6 +87,11 @@ const CmdCatalogItemSet = async({argv}) => {
     let res = await elvMediaWallet.CatalogItemSet({
       objectId: argv.object_id,
       itemId: argv.item_id,
+      itemLabel: argv.item_label,
+      catalogTitle: argv.catalog_title,
+      displayTitle: argv.display_title,
+      subtitle: argv.subtitle,
+      description: argv.description,
       contentId: argv.content_id,
       contentIdType: argv.content_id_type,
       isPublic: argv.public, 
@@ -94,7 +99,7 @@ const CmdCatalogItemSet = async({argv}) => {
       thumbnail_landscape: argv.thumbnail_landscape,
       thumbnail_portrait: argv.thumbnail_portrait,
       thumbnail_square: argv.thumbnail_square,
-       mediaMetadata: argv.media_metadata
+      mediaMetadata: argv.media_metadata
     });
         
     console.log(yaml.dump(res));
