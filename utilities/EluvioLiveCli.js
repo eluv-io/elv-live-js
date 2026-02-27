@@ -853,6 +853,22 @@ const CmdTenantUnifiedSales = async ({ argv }) => {
   }
 };
 
+const CmdTenantSessionsCsv = async ({ argv }) => {
+  try {
+    await Init({debugLogging: argv.verbose, asUrl: argv.as_url});
+
+    let res = await elvlv.TenantSessionsCsv({
+      tenant: argv.tenant,
+      start_ts: argv.start_ts,
+      end_ts: argv.end_ts,
+    });
+
+    fs.writeFileSync(argv.filename, res);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 const CmdTenantTransferFailures = async ({ argv }) => {
   console.log(`Tenant Trasfer Failures: ${argv.tenant}`);
 
@@ -1610,7 +1626,7 @@ const CmdTenantPublishData  = async ({ argv }) => {
 
     console.log("\n" + yaml.dump(res));
   } catch (e) {
-    console.error("ERROR:", e);
+    console.error("ERROR:", JSON.stringify(e, null, 2));
   }
 };
 
@@ -2818,6 +2834,33 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdTenantUnifiedSales({ argv });
+    }
+  )
+
+  .command(
+    "tenant_sessions <tenant> <start_ts> <end_ts> <filename>",
+    "Export CSV file of session data from the analytics API for a given tenant and time range",
+    (yargs) => {
+      yargs
+        .positional("tenant", {
+          describe: "Tenant ID",
+          type: "string",
+        })
+        .positional("start_ts", {
+          describe: "start timestamp (seconds since epoch)",
+          type: "int",
+        })
+        .positional("end_ts", {
+          describe: "end timestamp (seconds since epoch)",
+          type: "int",
+        })
+        .positional("filename", {
+          describe: "filename to output csv",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdTenantSessionsCsv({ argv });
     }
   )
 

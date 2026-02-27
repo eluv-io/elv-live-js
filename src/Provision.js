@@ -175,7 +175,8 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
     isEmptyParams(t.base.tenantTypes.titleTypeId) &&
     isEmptyParams(t.base.tenantTypes.masterTypeId) &&
     isEmptyParams(t.base.tenantTypes.streamTypeId) &&
-    isEmptyParams(t.liveStreaming.siteId)
+    isEmptyParams(t.liveStreaming.siteId) &&
+    isEmptyParams(t.base.ml.settingsId)
   ) {
     return;
   }
@@ -224,6 +225,20 @@ const SetTenantEluvioLiveId = async ({client, t}) => {
         writeToken: editResponse.write_token,
         metadataSubtree: "public/sites",
         metadata: {live_streams: t.liveStreaming.siteId},
+      });
+    }
+
+    if (!isEmptyParams(t.base.ml.settingsId)) {
+      const tenantObjMetadata = {
+        "ml_config" : t.base.ml.settingsId
+      };
+
+      await client.MergeMetadata({
+        libraryId,
+        objectId,
+        writeToken: editResponse.write_token,
+        metadataSubtree: "/public",
+        metadata: tenantObjMetadata,
       });
     }
 
@@ -555,6 +570,92 @@ const createTenantTypes = async ({client, t}) => {
     writeConfigToFile(t);
   }
 
+  if (!t.base.tenantTypes.indexTypeId) {
+    const mdata = JSON.parse(JSON.stringify(typeMetadata));
+    t.base.tenantTypes.indexTypeId = await createContentTypeAndSetPermissions({
+      client, name: `${t.base.tenantName} - Content Index`, metadata: {
+        bitcode_format: "builtin",
+        public: {
+          ...mdata.public,
+          name: `${t.base.tenantName} - Content Index`,
+          title_configuration: {
+            asset_types: ["primary", "clip"],
+            associate_permissions: false,
+            associated_assets: [
+              {
+                defaultable: true,
+                indexed: true,
+                label: "Titles",
+                name: "titles",
+                orderable: true,
+                slugged: true
+              },
+              {
+                asset_types: ["primary"],
+                defaultable: false,
+                for_title_types: ["site", "collection"],
+                indexed: true,
+                label: "Series",
+                name: "series",
+                orderable: true,
+                slugged: true,
+                title_types: ["series"]
+              },
+              {
+                asset_types: ["primary"],
+                defaultable: false,
+                for_title_types: ["series"],
+                indexed: true,
+                label: "Seasons",
+                name: "seasons",
+                orderable: true,
+                slugged: true,
+                title_types: ["season"]
+              },
+              {
+                asset_types: ["primary"],
+                defaultable: false,
+                for_title_types: ["season"],
+                indexed: true,
+                label: "Episodes",
+                name: "episodes",
+                orderable: true,
+                slugged: true,
+                title_types: ["episode"]
+              }
+            ],
+            controls: ["images", "playlists"],
+            default_image_keys: ["portrait", "landscape"],
+            displayApp: "",
+            hide_image_tab: false,
+            hide_update_links_button: false,
+            info_fields: [
+              { name: "release_date", type: "date" },
+              { name: "synopsis", type: "textarea" },
+              { name: "copyright", type: "text" },
+              { name: "creator", type: "text" },
+              { name: "runtime", type: "integer" }
+            ],
+            localization: {},
+            manageApp: "",
+            playable: false,
+            show_indexer_settings: true,
+            show_searchables_tab: true,
+            title_types: [
+              "collection",
+              "episode",
+              "season",
+              "series",
+              "site",
+              "title"
+            ]
+          }
+        }
+      }, t
+    });
+    writeConfigToFile(t);
+  }
+
   console.log("\nTenant Types:\n");
   console.log(JSON.stringify(t.base.tenantTypes, null, 2));
 };
@@ -652,7 +753,7 @@ const createMarketplaceId = async ({client, t}) => {
   console.log(`\t${objectName}: ${t.mediaWallet.objects.marketplaceId}\n\n`);
 };
 
-const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, privateMetadata, t}) => {
+const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, privateMetadata, permission = "editable",t}) => {
   if (isEmptyParams(t.base.groups.tenantAdminGroupAddress)) {
     throw Error("require t.base.groups.tenantAdminGroupAddress to be set");
   }
@@ -688,7 +789,7 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, pr
   await client.SetPermission({
     objectId: id,
     writeToken: write_token,
-    permission: "editable"
+    permission: permission
   });
 
   await client.FinalizeContentObject({
@@ -698,7 +799,6 @@ const CreateFabricObject = async ({client, libraryId, typeId, publicMetadata, pr
   });
 
   await SetObjectPermissions(client, id, t);
-
   return id;
 };
 
@@ -887,6 +987,65 @@ let readJsonFile = (filepath) => {
   return JSON.parse(data);
 };
 
+const createMLSettingsObject = async({client, t}) => {
+  if (!t.base.ml.settingsId){
+    if (isEmptyParams(t.base.tenantTypes.titleTypeId)) {
+      throw Error("require t.base.tenantTypes.titleTypeId to be set");
+    }
+
+    if (isEmptyParams(t.base.opsKey.contentOps.key)) {
+      throw Error("require t.base.opsKey.contentOps.key set");
+    }
+
+    if (isEmptyParams(t.base.groups.contentAdminGroupAddress)) {
+      throw Error("require t.base.groups.contentAdminGroupAddress set");
+    }
+
+    if (isEmptyParams(t.base.libraries.propertiesLibraryId)) {
+      throw Error("require t.base.libraries.propertiesLibraryId to be set");
+    }
+
+    if (isEmptyParams(t.mediaWallet.objects.tenantObjectId)) {
+      throw Error("require t.mediaWallet.objects.tenantObjectId to be set");
+    }
+
+    let wallet = client.GenerateWallet();
+    let contentOpsSigner = wallet.AddAccount({privateKey: t.base.opsKey.contentOps.key});
+
+    // object created by content ops key
+    client.SetSigner({signer: contentOpsSigner});
+
+    const publicMetadata = {
+      name: "ML Settings",
+      tagging : {
+        ground_truth: {
+          domains: {
+            celebrity_detection: "Celebrity Detection"
+          },
+          pools: [],
+        }
+      },
+    };
+
+    t.base.ml.settingsId = await CreateFabricObject({
+      client,
+      libraryId: t.base.libraries.propertiesLibraryId,
+      typeId: t.base.tenantTypes.titleTypeId,
+      publicMetadata,
+      permission: "public",
+      t
+    });
+    console.log(`\nMLSettingsObject:${t.mediaWallet.objects.mlSettingsId}`);
+
+    // change back to tenant root key signer
+    wallet = client.GenerateWallet();
+    let tenantRootKeySigner = wallet.AddAccount({privateKey: process.env.PRIVATE_KEY});
+    client.SetSigner({signer: tenantRootKeySigner});
+
+    writeConfigToFile(t);
+  }
+};
+
 // ===============================================================================================
 
 const InitializeTenant = async ({
@@ -933,7 +1092,11 @@ const InitializeTenant = async ({
           "masterTypeId": null,
           "permissionsTypeId": null,
           "channelTypeId": null,
-          "streamTypeId": null
+          "streamTypeId": null,
+          "indexTypeId": null,
+        },
+        ml: {
+          settingsId: null,
         },
         publish: {
           "env": null,
@@ -1032,15 +1195,17 @@ const InitializeTenant = async ({
   await ProvisionLiveStreaming({client, tenantId, t});
   await ProvisionOps({client, tenantId, t, debug});
   await ProvisionMediaWallet({client, tenantId, t});
-  await ProvisionFaucet({tenantId, asUrl, t, debug});
-  await ProvisionShareSigner({tenantId, asUrl, t, debug});
+  await ProvisionMLSettings({client, t});
 
   /* Add ids of services to tenant fabric metadata */
   console.log("Tenant content object - set types and sites");
-  res = await SetTenantEluvioLiveId({client, t});
+  const res = await SetTenantEluvioLiveId({client, t});
   if (res) {
     console.log(`\tTenantEluvioLiveId: ${JSON.stringify(res, null, 2)}`);
   }
+
+  await ProvisionFaucet({tenantId, asUrl, t, debug});
+  await ProvisionShareSigner({tenantId, asUrl, t, debug});
 
   console.log(`JSON OUTPUT AT: ${OUTPUT_FILE}\n`);
 
@@ -1136,6 +1301,10 @@ const ProvisionShareSigner = async ({tenantId, asUrl, t, debug = false}) => {
   if (t.base.shareSigner.enable) {
     await handleTenantShareSigner({tenantId, asUrl, t, debug});
   }
+};
+
+const ProvisionMLSettings = async ({client,t}) => {
+  await createMLSettingsObject({client, t});
 };
 
 // ===============================================================
