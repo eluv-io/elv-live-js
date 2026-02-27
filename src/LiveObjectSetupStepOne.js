@@ -252,16 +252,16 @@ const GenerateOffering = async ({
   }
 
   let versionHash = createResponse.hash;
-  console.log(`2 New version hash: ${versionHash}`);
+  console.log(`New version hash: ${versionHash}`);
 
   // get new metadata
-  console.log("2 Retrieving revised metadata with offering...");
+  console.log("Retrieving revised metadata with offering...");
   metadata = await client.ContentObjectMetadata({
     libraryId,
     versionHash
   });
 
-  console.log("2 Moving /abr_mezzanine/offerings to /offerings and removing /abr_mezzanine...");
+  console.log("Moving /abr_mezzanine/offerings to /offerings and removing /abr_mezzanine...");
   metadata.offerings = metadata.abr_mezzanine.offerings;
   delete metadata.abr_mezzanine;
 
@@ -269,7 +269,7 @@ const GenerateOffering = async ({
   metadata.offerings.default.media_struct.duration_rat = `${DUMMY_DURATION}`;
 
   // write back to object
-  console.log("2 Getting write token...");
+  console.log("Getting write token...");
   editResponse = await client.EditContentObject({
     libraryId,
     objectId,
@@ -278,9 +278,9 @@ const GenerateOffering = async ({
     }
   });
   writeToken = editResponse.write_token;
-  console.log(`2 New write token: ${writeToken}`);
+  console.log(`New write token: ${writeToken}`);
 
-  console.log("2 Writing back metadata with /offerings...");
+  console.log("Writing back metadata with /offerings...");
   await client.ReplaceMetadata({
     libraryId,
     metadata,

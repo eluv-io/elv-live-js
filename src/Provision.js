@@ -44,10 +44,10 @@ const typeMetadata = {
 const TENANT_OPS_KEY = "tenant-ops";
 const CONTENT_OPS_KEY = "content-ops";
 
-const EXPECTED_SENDER_BALANCE = 3;
+const EXPECTED_SENDER_BALANCE = 10.5;
 // This value must be greater than 0.1 Elv for tx fee
 // (checked by elv-client-js when adding as an access group member)
-const OPS_AMOUNT = 1;
+const OPS_AMOUNT = 10;
 
 // ===================================================================
 
@@ -1152,13 +1152,13 @@ const InitializeTenant = async ({
   t.base.tenantName = tenantName;
 
   // minimum signer balance required
-  let expectedSignerBalance = 1;
+  let expectedSignerBalance = 10;
   // fund content ops key
   if (t.base.opsKey.contentOps.key === "") {
     if (!isEmptyParams(t.base.opsKey.contentOps.amount)) {
       expectedSignerBalance += t.base.opsKey.contentOps.amount;
     } else {
-      expectedSignerBalance += 0.5;
+      expectedSignerBalance += 10;
     }
   }
   // fund tenant ops key
@@ -1166,7 +1166,7 @@ const InitializeTenant = async ({
     if (!isEmptyParams(t.base.opsKey.tenantOps.amount)) {
       expectedSignerBalance += t.base.opsKey.tenantOps.amount;
     } else {
-      expectedSignerBalance += 0.5;
+      expectedSignerBalance += 10;
     }
   }
 
@@ -1175,7 +1175,7 @@ const InitializeTenant = async ({
     if (!isEmptyParams(t.base.faucet.amount)) {
       expectedSignerBalance += t.base.faucet.amount;
     } else {
-      expectedSignerBalance += 0.5;
+      expectedSignerBalance += 20;
     }
   }
 

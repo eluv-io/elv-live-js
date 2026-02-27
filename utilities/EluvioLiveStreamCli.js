@@ -90,7 +90,7 @@ const CmdStreamStatus = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params});
+    let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params, saveMeta: argv.save_meta});
 
     // Optional latency calculator
     if (argv.latency) {
@@ -211,7 +211,7 @@ const CmdStreamConfig = async ({ argv }) => {
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
 
-    let status = await elvStream.StreamConfig({name: argv.stream, profileName: argv.playout_profile, space});
+    let status = await elvStream.StreamConfig({name: argv.stream, space});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -252,12 +252,15 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       library: argv.library,
       name: argv.name,
       title: argv.title,
+      drm: argv.drm,
+      includeTags: argv.include_tags,
+      defaultDash: argv.default_dash,
+      keepExistingStreams: argv.keep_existing_streams,
       eventId: argv.event_id,
       startTime: argv.start_time,
       endTime: argv.end_time,
       recordingPeriod: argv.recording_period,
       streams: argv.streams,
-      drm: argv.drm
     });
     console.log(yaml.dump(status));
   } catch (e) {
@@ -353,10 +356,6 @@ yargs(hideBin(process.argv))
           describe:
             "Stream name or QID (content ID). Stream must be stopped.",
           type: "string",
-        })
-        .option("playout_profile", {
-          describe:
-            "Custom playout profile name"
         })
     },
     (argv) => {
@@ -465,6 +464,12 @@ yargs(hideBin(process.argv))
           describe:
             "Calculate stream latency (may take a few minutes)",
           type: "bool",
+        })
+        .option("save-meta", {
+          describe:
+            "Save edge write token metadata to a local JSON file",
+          type: "boolean",
+          default: false,
         })
     },
     (argv) => {
@@ -615,6 +620,24 @@ yargs(hideBin(process.argv))
             "Use DRM or clear (default 'true')",
           type: "bool",
           default: true,
+        })
+        .option("include-tags", {
+          describe:
+            "Copy video tags from the live stream",
+          type: "boolean",
+          default: false,
+        })
+        .option("default-dash", {
+          describe:
+            "Add a default_dash offering for chromecasting (clear DASH)",
+          type: "boolean",
+          default: false,
+        })
+        .option("keep-existing-streams", {
+          describe:
+            "Keep existing stream info including thumbnails",
+          type: "boolean",
+          default: false,
         })
         .option("event_id", {
           describe:

@@ -87,12 +87,11 @@ class EluvioLiveStream {
    * running         - stream is running and producing output
    * stalled         - LRO running but no source data (so not producing output)
    */
-  async Status({name, stopLro = false, showParams = false}) {
+  async Status({name, stopLro = false, showParams = false, saveMeta = false}) {
 
     let status = await this.client.StreamStatus({name, stopLro, showParams});
 
-    const saveEdgeMeta = true;
-    if (saveEdgeMeta) {
+    if (saveMeta) {
       let edgeMeta = await this.client.ContentObjectMetadata({
         libraryId: status.library_id,
         objectId: status.object_id,
@@ -257,11 +256,6 @@ class EluvioLiveStream {
       let dpath = "DOWNLOAD/" + edgeWriteToken + "." + period;
       !fs.existsSync(dpath) && fs.mkdirSync(dpath, {recursive: true});
 
-
-      // SS temp mi1-003 for televisa parts
-      this.client.SetNodes({fabricURIs: ["https://host-76-74-29-66.contentfabric.io"]});
-
-
       // Reorder streams list so it starts with video
       let mts = [];
       if (mpegtsCopy) {
@@ -295,7 +289,6 @@ class EluvioLiveStream {
         let partsfile = dpath + "/parts_" + mt + ".txt";
         !fs.existsSync(mtpath) && fs.mkdirSync(mtpath);
 
-        console.log(JSON.stringify(recording, null, 2));
         var sources = recording.sources[mt].parts;
         for (let i = 0; i < sources.length - 1; i++) {
 
@@ -418,7 +411,7 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({stream, object, library, name, title, drm = true, eventId, startTime, endTime, recordingPeriod, streams}) {
+  async StreamCopyToVod({stream, object, library, name, title, drm = true, includeTags = false, defaultDash = false, keepExistingStreams = false, eventId, startTime, endTime, recordingPeriod, streams}) {
 
     const objectId = stream;
     let abrProfileLiveToVod;
@@ -536,10 +529,7 @@ class EluvioLiveStream {
           "streams": streams,
           "recording_period": recordingPeriod,
           "variant_key": "default",
-
-          "include_tags": true      // true to copy video tags from live stream
-          //"progressive": true // SSDBG add the progressive flag here
-
+          "include_tags": includeTags   // true to copy video tags from live stream
         },
         constant: false,
         format: "text"
@@ -551,25 +541,27 @@ class EluvioLiveStream {
         "offering_key": "default",
         "prod_master_hash": targetWriteToken,
         "variant_key": "default",
-        "keep_other_streams": false, // true to preserve thumbnails
+        "keep_other_streams": keepExistingStreams, // true to keep existing stream info including thumbnails
 
-        "additional_offering_specs": {
-          "default_dash": [       // creates an offering for chromecasting
-            {
-              "op": "replace",
-              "path": "/playout/playout_formats",
-              "value": {
-                "dash-clear": {
-                  "drm": null,
-                  "protocol": {
-                    "min_buffer_length": 2,
-                    "type": "ProtoDash"
+        ...(defaultDash && {
+          "additional_offering_specs": {
+            "default_dash": [       // creates an offering for chromecasting
+              {
+                "op": "replace",
+                "path": "/playout/playout_formats",
+                "value": {
+                  "dash-clear": {
+                    "drm": null,
+                    "protocol": {
+                      "min_buffer_length": 2,
+                      "type": "ProtoDash"
+                    }
                   }
                 }
               }
-            }
-          ]
-        }
+            ]
+          }
+        })
       };
 
       await this.client.CallBitcodeMethod({
@@ -695,57 +687,18 @@ class EluvioLiveStream {
     return res;
   }
 
-  async StreamConfig({name, profileName}) {
+  async StreamConfig({name}) {
 
     const objectId = name;
-
-    if (false) {
-      let profile;
-      if (profileName) {
-        const list = await this.client.StreamListUrls();
-        const customProfiles = list.profiles.custom;
-        for (const p of customProfiles) {
-          if (p.name == profileName) {
-            profile = p;
-          }
-        }
-      }
-
-      // Read user config (meta /live_recording_config)
-      const libraryId = await this.client.ContentObjectLibraryId({objectId});
-      let userConfig = await this.client.ContentObjectMetadata({
-        libraryId,
-        objectId,
-        metadataSubtree: "live_recording_config",
-        resolveLinks: false
-      });
-
-      if (profile) {
-        userConfig.ladder_profile = profile.ladder_specs;
-      }
-
-      // Store profile name in app config
-      userConfig.playout_ladder_profile = profileName || "";
-
-      let edt = await this.client.EditContentObject({libraryId, objectId});
-      await this.client.ReplaceMetadata({
-        libraryId,
-        objectId,
-        writeToken: edt.writeToken,
-        metadataSubtree: "live_recording_config",
-        metadata: userConfig
-      });
-
-      await this.client.FinalizeContentObject({
-        libraryId,
-        objectId,
-        writeToken: edt.writeToken,
-        commitMessage: "Update live recording config - profile name"
-      });
-    }
-
-    const config = this.client.StreamConfig({name, /*customSettings: userConfig*/});
-    return config;
+    // Read user config (meta /live_recording_config)
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    let userConfig = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      metadataSubtree: "live_recording_config",
+      resolveLinks: false
+    });
+    return this.client.StreamConfig({name, customSettings: userConfig});
   }
 
   async StreamListUrls({siteId}) {
