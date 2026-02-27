@@ -87,7 +87,7 @@ class EluvioLiveStream {
    * running         - stream is running and producing output
    * stalled         - LRO running but no source data (so not producing output)
    */
-  async Status({name, stopLro = false, showParams = false, saveMeta = false}) {
+  async Status({name, stopLro = false, showParams = false, saveMeta = true}) {
 
     let status = await this.client.StreamStatus({name, stopLro, showParams});
 
@@ -100,7 +100,7 @@ class EluvioLiveStream {
       fs.writeFileSync("meta-" + status.name + ".json", JSON.stringify(edgeMeta, null, 2));
     }
 
-    return status
+    return status;
 
   }
 

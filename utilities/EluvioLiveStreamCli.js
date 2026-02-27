@@ -469,7 +469,7 @@ yargs(hideBin(process.argv))
           describe:
             "Save edge write token metadata to a local JSON file",
           type: "boolean",
-          default: false,
+          default: true,
         })
     },
     (argv) => {
