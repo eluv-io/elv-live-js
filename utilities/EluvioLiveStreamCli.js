@@ -90,7 +90,7 @@ const CmdStreamStatus = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params, saveMeta: argv.save_meta});
+    let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params, saveMeta: argv.saveMeta});
 
     // Optional latency calculator
     if (argv.latency) {
@@ -253,9 +253,9 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       name: argv.name,
       title: argv.title,
       drm: argv.drm,
-      includeTags: argv.include_tags,
-      defaultDash: argv.default_dash,
-      keepExistingStreams: argv.keep_existing_streams,
+      includeTags: argv.includeTags,
+      defaultDash: argv.defaultDash,
+      keepExistingStreams: argv.keepExistingStreams,
       eventId: argv.event_id,
       startTime: argv.start_time,
       endTime: argv.end_time,
