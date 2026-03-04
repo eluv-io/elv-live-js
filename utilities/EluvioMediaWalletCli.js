@@ -1,6 +1,7 @@
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const CatalogCommand = require("./elv_media_wallet/commands/Catalog");
+const PropertyCommand = require("./elv_media_wallet/commands/Property");
 
 const yargsInstance = yargs(hideBin(process.argv))
   .option("verbose", {
@@ -9,7 +10,8 @@ const yargsInstance = yargs(hideBin(process.argv))
     type: "boolean",
     default: false,
   })
-  .command(CatalogCommand);
+  .command(CatalogCommand)
+  .command(PropertyCommand);
 
 
 yargsInstance

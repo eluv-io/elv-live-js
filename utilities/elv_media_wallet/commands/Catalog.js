@@ -17,7 +17,7 @@ module.exports = {
         },
         (argv) => {
           CatalogCommand.CmdCatalogList({argv});
-        }        
+        }
       )
       .command(
         "item <command>",
@@ -40,7 +40,7 @@ module.exports = {
               },
               (argv) => {
                 CatalogCommand.CmdCatalogItemGet({argv});
-              }        
+              }
             )
             .command(
               "delete <object_id> <item_id>",
@@ -58,7 +58,7 @@ module.exports = {
               },
               (argv) => {
                 CatalogCommand.CmdCatalogItemDelete({argv});
-              }        
+              }
             )
             .command(
               "set <object_id> <item_id> [options]",
@@ -74,27 +74,27 @@ module.exports = {
                     type: "string",
                   })
                   .option("item_label", {
-                    alias: "l", 
+                    alias: "l",
                     describe: "New Media Item Label",
                     type: "string"
                   })
                   .option("catalog_title", {
-                    alias: "ct", 
+                    alias: "ct",
                     describe: "New Media Item Catalog Title",
                     type: "string"
                   })
                   .option("display_title", {
-                    alias: "dt", 
+                    alias: "dt",
                     describe: "New Media Item Display Title",
                     type: "string"
                   })
                   .option("subtitle", {
-                    alias: "st", 
+                    alias: "st",
                     describe: "New Media Item Subtitle",
                     type: "string"
                   })
                   .option("description", {
-                    alias: "d", 
+                    alias: "d",
                     describe: "New Media Item Description",
                     type: "string"
                   })
@@ -112,7 +112,6 @@ module.exports = {
                     alias: "p",
                     describe: "Set Item to Public",
                     type: "boolean",
-                    default: false
                   })
                   .option("composition_key", {
                     describe: "Name of Composition Key",
@@ -137,7 +136,7 @@ module.exports = {
               },
               (argv) => {
                 CatalogCommand.CmdCatalogItemSet({argv});
-              }        
+              }
             )
             .command(
               "add <object_id> [options]",
@@ -149,27 +148,27 @@ module.exports = {
                     type: "string",
                   })
                   .option("item_label", {
-                    alias: "l", 
+                    alias: "l",
                     describe: "New Media Item Label",
                     type: "string"
                   })
                   .option("catalog_title", {
-                    alias: "ct", 
+                    alias: "ct",
                     describe: "New Media Item Catalog Title",
                     type: "string"
                   })
                   .option("display_title", {
-                    alias: "dt", 
+                    alias: "dt",
                     describe: "New Media Item Display Title",
                     type: "string"
                   })
                   .option("subtitle", {
-                    alias: "st", 
+                    alias: "st",
                     describe: "New Media Item Subtitle",
                     type: "string"
                   })
                   .option("description", {
-                    alias: "d", 
+                    alias: "d",
                     describe: "New Media Item Description",
                     type: "string"
                   })
@@ -212,9 +211,51 @@ module.exports = {
               },
               (argv) => {
                 CatalogCommand.CmdCatalogItemAdd({argv});
-              }        
+              }
+            )
+            .command(
+              "copy <source_object_id> <item_id> <dest_object_id>",
+              "Copy a catalog item to another catalog",
+              (yargs) => {
+                yargs
+                  .positional("source_object_id", {
+                    describe: "Source Catalog Object ID",
+                    type: "string",
+                  })
+                  .positional("item_id", {
+                    describe: "Media Item ID to copy",
+                    type: "string",
+                  })
+                  .positional("dest_object_id", {
+                    describe: "Destination Catalog Object ID",
+                    type: "string",
+                  });
+              },
+              (argv) => {
+                CatalogCommand.CmdCatalogItemCopy({argv});
+              }
+            )
+            .command(
+              "bulk-add <object_id>",
+              "Add multiple catalog items from a JSON or YAML file",
+              (yargs) => {
+                yargs
+                  .positional("object_id", {
+                    describe: "Catalog Object ID",
+                    type: "string",
+                  })
+                  .option("file", {
+                    alias: "f",
+                    describe: "Path to JSON or YAML file containing an array of media item definitions",
+                    type: "string",
+                    demandOption: true
+                  });
+              },
+              (argv) => {
+                CatalogCommand.CmdCatalogItemBulkAdd({argv});
+              }
             );
-        }        
+        }
       );
   },
 };

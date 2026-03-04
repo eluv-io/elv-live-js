@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const mime = require("mime-types");
+const yaml = require("js-yaml");
 
 class ElvMediaWallet {
   constructor({ configUrl, debugLogging = false }) {
@@ -479,13 +480,25 @@ class ElvMediaWallet {
       objectId
     });
 
-    // Thumbnails: if file includes thumbnail_image_* objects, keep and skip applyThumbnailLink
+    // CLI flags always win. Only fall back to metadata-file Fabric links when no CLI flags given.
+    const hasCliThumbs = thumbnail_landscape || thumbnail_portrait || thumbnail_square;
     const hasDirectThumbs =
       metadata.thumbnail_image_landscape !== undefined ||
       metadata.thumbnail_image_portrait !== undefined ||
       metadata.thumbnail_image_square !== undefined;
 
-    if (!hasDirectThumbs && (resolvedThumbnails.landscape || resolvedThumbnails.portrait || resolvedThumbnails.square)) {
+    if (hasCliThumbs) {
+      await this.applyThumbnailLink({
+        libraryId: catalogLib,
+        objectId,
+        writeToken: edit.write_token,
+        target: newItem,
+        catalogHash,
+        thumbnail_landscape,
+        thumbnail_portrait,
+        thumbnail_square
+      });
+    } else if (!hasDirectThumbs && (resolvedThumbnails.landscape || resolvedThumbnails.portrait || resolvedThumbnails.square)) {
       await this.applyThumbnailLink({
         libraryId: catalogLib,
         objectId,
@@ -520,11 +533,11 @@ class ElvMediaWallet {
     objectId,
     itemId,
 
-    itemLabel = "New Media Item",
+    itemLabel,
 
     contentId,
     contentIdType,
-    isPublic = false,
+    isPublic,
     compositionKey,
     thumbnail_landscape,
     thumbnail_portrait,
@@ -628,14 +641,14 @@ class ElvMediaWallet {
      * Thumbnails
      * -------------------------------------------- */
 
+    // CLI flags always win. Only fall back to metadata-file Fabric links when no CLI flags given.
+    const hasCliThumbs = thumbnail_landscape || thumbnail_portrait || thumbnail_square;
     const hasDirectThumbs =
       metadata.thumbnail_image_landscape !== undefined ||
       metadata.thumbnail_image_portrait !== undefined ||
       metadata.thumbnail_image_square !== undefined;
 
-    if (!hasDirectThumbs &&
-      (thumbnail_landscape || thumbnail_portrait || thumbnail_square)) {
-
+    if (hasCliThumbs) {
       await this.applyThumbnailLink({
         libraryId: catalogLib,
         objectId,
@@ -645,6 +658,17 @@ class ElvMediaWallet {
         thumbnail_landscape,
         thumbnail_portrait,
         thumbnail_square
+      });
+    } else if (!hasDirectThumbs && (resolvedThumbnails?.landscape || resolvedThumbnails?.portrait || resolvedThumbnails?.square)) {
+      await this.applyThumbnailLink({
+        libraryId: catalogLib,
+        objectId,
+        writeToken: edit.write_token,
+        target: merged,
+        catalogHash,
+        thumbnail_landscape: resolvedThumbnails.landscape,
+        thumbnail_portrait: resolvedThumbnails.portrait,
+        thumbnail_square: resolvedThumbnails.square
       });
     }
 
@@ -668,6 +692,307 @@ class ElvMediaWallet {
     });
 
     return merged;
+  }
+
+  async CatalogItemCopy({ sourceObjectId, sourceItemId, destObjectId }) {
+    console.log("Source Object ID:", sourceObjectId);
+    console.log("Item ID:", sourceItemId);
+    console.log("Dest Object ID:", destObjectId);
+
+    const sourceItem = await this.CatalogItemGet({
+      objectId: sourceObjectId,
+      itemId: sourceItemId
+    });
+
+    const { libraryId: destLib } = await this.getLibraryAndHash(destObjectId);
+
+    const newMediaId =
+      "mvid" +
+      crypto
+        .randomBytes(18)
+        .toString("base64")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .slice(0, 24);
+
+    const newItem = JSON.parse(JSON.stringify(sourceItem));
+    newItem.id = newMediaId;
+    newItem.media_catalog_id = destObjectId;
+
+    const destCatalogMedia =
+      (await this.client.ContentObjectMetadata({
+        libraryId: destLib,
+        objectId: destObjectId,
+        metadataSubtree: "/public/asset_metadata/info/media",
+        resolveLinks: false
+      })) || {};
+
+    destCatalogMedia[newMediaId] = newItem;
+
+    const edit = await this.client.EditContentObject({
+      libraryId: destLib,
+      objectId: destObjectId
+    });
+
+    await this.client.ReplaceMetadata({
+      libraryId: destLib,
+      objectId: destObjectId,
+      writeToken: edit.write_token,
+      metadata: destCatalogMedia,
+      metadataSubtree: "/public/asset_metadata/info/media"
+    });
+
+    await this.client.FinalizeContentObject({
+      libraryId: destLib,
+      objectId: destObjectId,
+      writeToken: edit.write_token,
+      commitMessage: `Copied Media Item ${sourceItemId} as ${newMediaId}`
+    });
+
+    return newItem;
+  }
+
+  async CatalogItemBulkAdd({ objectId, filePath }) {
+    console.log("Object ID:", objectId);
+    console.log("File:", filePath);
+
+    const { libraryId: catalogLib, versionHash: catalogHash } =
+      await this.getLibraryAndHash(objectId);
+
+    const ext = path.extname(filePath).toLowerCase();
+    const raw = fs.readFileSync(filePath, "utf-8");
+    let definitions;
+    if (ext === ".json") {
+      definitions = JSON.parse(raw);
+    } else if (ext === ".yaml" || ext === ".yml") {
+      definitions = yaml.load(raw);
+    } else {
+      throw new Error(`Unsupported file type: ${ext} (use .json, .yaml, .yml)`);
+    }
+
+    if (!Array.isArray(definitions)) {
+      throw new Error("Bulk-add file must contain a top-level array of media item definitions");
+    }
+
+    const catalogMedia =
+      (await this.client.ContentObjectMetadata({
+        libraryId: catalogLib,
+        objectId,
+        metadataSubtree: "/public/asset_metadata/info/media",
+        resolveLinks: false
+      })) || {};
+
+    const edit = await this.client.EditContentObject({
+      libraryId: catalogLib,
+      objectId
+    });
+
+    const createdItems = [];
+
+    for (const definition of definitions) {
+      let metadata = this.normalizeMediaMetadata(definition);
+
+      const resolvedItemLabel = metadata.label ?? "New Media Item";
+      const resolvedContentId = metadata.contentId;
+      const resolvedContentIdType = metadata.contentIdType;
+      const resolvedPublic = metadata.public ?? false;
+      const resolvedCompositionKey = metadata.compositionKey;
+
+      const newMediaId =
+        "mvid" +
+        crypto
+          .randomBytes(18)
+          .toString("base64")
+          .replace(/[^a-zA-Z0-9]/g, "")
+          .slice(0, 24);
+
+      const newItem = {
+        id: newMediaId,
+        label: resolvedItemLabel,
+        media_catalog_id: objectId,
+        media_type: metadata.media_type ?? "Video",
+        live_video: metadata.live_video ?? resolvedContentIdType === "live",
+        public: !!resolvedPublic,
+
+        ...(metadata.catalog_title && { catalog_title: metadata.catalog_title }),
+        ...(metadata.display_title && { title: metadata.display_title }),
+        ...(metadata.subtitle && { subtitle: metadata.subtitle }),
+        ...(metadata.description && { description: metadata.description })
+      };
+
+      this.applyMediaMetadataFields(newItem, metadata);
+
+      const hasDirectMediaLink = metadata.media_link !== undefined;
+
+      if (!hasDirectMediaLink && resolvedContentId) {
+        const contentMeta = await this.getContentMeta(resolvedContentId);
+        const { versionHash: contentHash } =
+          await this.getLibraryAndHash(resolvedContentId);
+
+        this.applyMediaLink({
+          target: newItem,
+          contentMeta,
+          catalogHash,
+          contentHash,
+          contentIdType: resolvedContentIdType,
+          compositionKey: resolvedCompositionKey
+        });
+      }
+
+      const hasDirectThumbs =
+        metadata.thumbnail_image_landscape !== undefined ||
+        metadata.thumbnail_image_portrait !== undefined ||
+        metadata.thumbnail_image_square !== undefined;
+
+      const resolvedThumbnails = {
+        landscape: metadata.thumbnails?.landscape,
+        portrait: metadata.thumbnails?.portrait,
+        square: metadata.thumbnails?.square
+      };
+
+      if (!hasDirectThumbs &&
+        (resolvedThumbnails.landscape || resolvedThumbnails.portrait || resolvedThumbnails.square)) {
+        await this.applyThumbnailLink({
+          libraryId: catalogLib,
+          objectId,
+          writeToken: edit.write_token,
+          target: newItem,
+          catalogHash,
+          thumbnail_landscape: resolvedThumbnails.landscape,
+          thumbnail_portrait: resolvedThumbnails.portrait,
+          thumbnail_square: resolvedThumbnails.square
+        });
+      }
+
+      catalogMedia[newMediaId] = newItem;
+      createdItems.push(newItem);
+    }
+
+    await this.client.ReplaceMetadata({
+      libraryId: catalogLib,
+      objectId,
+      writeToken: edit.write_token,
+      metadata: catalogMedia,
+      metadataSubtree: "/public/asset_metadata/info/media"
+    });
+
+    await this.client.FinalizeContentObject({
+      libraryId: catalogLib,
+      objectId,
+      writeToken: edit.write_token,
+      commitMessage: `Bulk-added ${createdItems.length} media item(s)`
+    });
+
+    return createdItems;
+  }
+
+  async PropertySectionItemAdd({ propertyObjectId, sectionId, mediaItemId }) {
+    console.log("Property Object ID:", propertyObjectId);
+    console.log("Section ID:", sectionId);
+    console.log("Media Item ID:", mediaItemId);
+
+    const { libraryId } = await this.getLibraryAndHash(propertyObjectId);
+
+    const section = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId: propertyObjectId,
+      metadataSubtree: `/public/asset_metadata/info/sections/${sectionId}`,
+      resolveLinks: false
+    });
+
+    if (!section) {
+      throw new Error(`Section ${sectionId} does not exist on property ${propertyObjectId}`);
+    }
+
+    if (section.type !== "manual") {
+      throw new Error(`Section ${sectionId} is type "${section.type}" — only "manual" sections support content items`);
+    }
+
+    const slugMapEntry = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId: propertyObjectId,
+      metadataSubtree: `/public/asset_metadata/info/slug_map/sections/${sectionId}`,
+      resolveLinks: false
+    }) || { section_id: sectionId, label: section.label || "", slug: sectionId, section_items: {} };
+
+    const newItemId =
+      "psci" +
+      crypto
+        .randomBytes(18)
+        .toString("base64")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .slice(0, 22);
+
+    const content = Array.isArray(section.content) ? section.content : [];
+
+    const newContentItem = {
+      id: newItemId,
+      label: "",
+      media_id: mediaItemId,
+      media_type: "media",
+      type: "media",
+      use_media_settings: true,
+      disabled: false,
+      expand: false,
+      description: "",
+      display: {
+        attributes: {},
+        catalog_title: "",
+        description: "",
+        description_rich_text: "",
+        headers: [],
+        permissions: [],
+        public: false,
+        subtitle: "",
+        tags: [],
+        title: ""
+      },
+      permissions: {
+        behavior: "",
+        permission_item_ids: [],
+        secondary_market_purchase_option: ""
+      }
+    };
+
+    content.push(newContentItem);
+    section.content = content;
+
+    slugMapEntry.section_items = slugMapEntry.section_items || {};
+    slugMapEntry.section_items[newItemId] = {
+      index: content.length - 1,
+      label: "",
+      section_item_id: newItemId,
+      slug: newItemId
+    };
+
+    const edit = await this.client.EditContentObject({
+      libraryId,
+      objectId: propertyObjectId
+    });
+
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId: propertyObjectId,
+      writeToken: edit.write_token,
+      metadata: section,
+      metadataSubtree: `/public/asset_metadata/info/sections/${sectionId}`
+    });
+
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId: propertyObjectId,
+      writeToken: edit.write_token,
+      metadata: slugMapEntry,
+      metadataSubtree: `/public/asset_metadata/info/slug_map/sections/${sectionId}`
+    });
+
+    await this.client.FinalizeContentObject({
+      libraryId,
+      objectId: propertyObjectId,
+      writeToken: edit.write_token,
+      commitMessage: `Added media item ${mediaItemId} to section ${sectionId}`
+    });
+
+    return { sectionItemId: newItemId, mediaItemId, sectionId };
   }
 }
 
