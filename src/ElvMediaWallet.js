@@ -1,5 +1,6 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const crypto = require("crypto");
+const { v4: uuidv4 } = require("uuid");
 const fs = require("fs");
 const path = require("path");
 const mime = require("mime-types");
@@ -99,7 +100,7 @@ class ElvMediaWallet {
       const fileName = path.basename(filePath);
       const mimeType = mime.lookup(filePath) || "application/octet-stream";
       const fileBuffer = fs.readFileSync(filePath);
-      const hashBuffer = crypto.randomBytes(32); // random 256-bit hash
+      const hashBuffer = crypto.createHash("sha256").update(fileBuffer).digest();
 
       // Upload the file to the catalog object
       await this.client.UploadFiles({
@@ -342,8 +343,8 @@ class ElvMediaWallet {
         metadataSubtree: `/public/asset_metadata/info/media/${itemId}`,
         resolveLinks: false
       });
-    } catch {
-      throw new Error(`Item ${itemId} does not exist in Catalog ${objectId}`);
+    } catch (err) {
+      throw new Error(`Item ${itemId} does not exist in Catalog ${objectId}: ${err.message}`);
     }
   }
 
@@ -430,13 +431,7 @@ class ElvMediaWallet {
         resolveLinks: false
       })) || {};
 
-    const newMediaId =
-      "mvid" +
-      crypto
-        .randomBytes(18)
-        .toString("base64")
-        .replace(/[^a-zA-Z0-9]/g, "")
-        .slice(0, 24);
+    const newMediaId = "mvid" + uuidv4().replace(/-/g, "");
 
     const newItem = {
       id: newMediaId,
@@ -611,6 +606,12 @@ class ElvMediaWallet {
     const resolvedContentIdType = metadata.contentIdType ?? contentIdType;
     const resolvedCompositionKey = metadata.compositionKey ?? compositionKey;
 
+    const resolvedThumbnails = {
+      landscape: metadata.thumbnails?.landscape ?? thumbnail_landscape,
+      portrait: metadata.thumbnails?.portrait ?? thumbnail_portrait,
+      square: metadata.thumbnails?.square ?? thumbnail_square
+    };
+
     const hasDirectMediaLink = metadata.media_link !== undefined;
 
     if (!hasDirectMediaLink && resolvedContentId) {
@@ -706,13 +707,7 @@ class ElvMediaWallet {
 
     const { libraryId: destLib } = await this.getLibraryAndHash(destObjectId);
 
-    const newMediaId =
-      "mvid" +
-      crypto
-        .randomBytes(18)
-        .toString("base64")
-        .replace(/[^a-zA-Z0-9]/g, "")
-        .slice(0, 24);
+    const newMediaId = "mvid" + uuidv4().replace(/-/g, "");
 
     const newItem = JSON.parse(JSON.stringify(sourceItem));
     newItem.id = newMediaId;
@@ -797,13 +792,7 @@ class ElvMediaWallet {
       const resolvedPublic = metadata.public ?? false;
       const resolvedCompositionKey = metadata.compositionKey;
 
-      const newMediaId =
-        "mvid" +
-        crypto
-          .randomBytes(18)
-          .toString("base64")
-          .replace(/[^a-zA-Z0-9]/g, "")
-          .slice(0, 24);
+      const newMediaId = "mvid" + uuidv4().replace(/-/g, "");
 
       const newItem = {
         id: newMediaId,
@@ -914,13 +903,7 @@ class ElvMediaWallet {
       resolveLinks: false
     }) || { section_id: sectionId, label: section.label || "", slug: sectionId, section_items: {} };
 
-    const newItemId =
-      "psci" +
-      crypto
-        .randomBytes(18)
-        .toString("base64")
-        .replace(/[^a-zA-Z0-9]/g, "")
-        .slice(0, 22);
+    const newItemId = "psci" + uuidv4().replace(/-/g, "");
 
     const content = Array.isArray(section.content) ? section.content : [];
 
@@ -1045,13 +1028,7 @@ class ElvMediaWallet {
     const createdItems = [];
 
     for (const mediaItemId of mediaItemIds) {
-      const newItemId =
-        "psci" +
-        crypto
-          .randomBytes(18)
-          .toString("base64")
-          .replace(/[^a-zA-Z0-9]/g, "")
-          .slice(0, 22);
+      const newItemId = "psci" + uuidv4().replace(/-/g, "");
 
       content.push({
         id: newItemId,
