@@ -1,0 +1,323 @@
+[
+  {
+    "label": "Summer Festival Live Stream",
+    "media_catalog_id": "iq__REPLACE_WITH_CATALOG_OBJECT_ID",
+    "contentId": "iq__REPLACE_WITH_CONTENT_OBJECT_ID",
+    "contentIdType": "live",
+    "type": "media",
+    "media_type": "Video",
+    "live_video": true,
+    "public": true,
+    "catalog_title": "Summer Festival 2024",
+    "title": "Summer Festival Live Stream",
+    "subtitle": "Main Stage",
+    "description": "Full live broadcast of the annual summer festival featuring headlining acts and special guests.",
+    "description_rich_text": "",
+    "tags": ["live", "festival", "music"],
+    "headers": [],
+    "attributes": {},
+    "date": "2024-07-15T00:00:00.000Z",
+    "start_time": "2024-07-15T18:00:00.000Z",
+    "end_time": "2024-07-15T23:00:00.000Z",
+    "stream_start_time": "2024-07-15T17:45:00.000Z",
+    "enable_dvr": true,
+    "allow_download": false,
+    "override_settings_when_viewed": false,
+    "player_controls": "",
+    "player_loop": false,
+    "player_muted": false,
+    "player_profile": "",
+    "primary_view_label": "",
+    "additional_views": [],
+    "additional_views_label": "All Views",
+    "associated_media": [],
+    "offerings": [],
+    "permissions": [],
+    "media_link": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "/qfab/hq__REPLACE_WITH_CONTENT_VERSION_HASH/meta/public/asset_metadata"
+    },
+    "media_link_info": {
+      "name": "Summer Festival Live Stream",
+      "type": "main"
+    },
+    "thumbnail_image_landscape": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/summer-festival-landscape.jpg"
+    },
+    "thumbnail_image_portrait": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/summer-festival-portrait.jpg"
+    },
+    "thumbnail_image_square": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/summer-festival-square.jpg"
+    },
+    "viewed_settings": {
+      "title": "",
+      "subtitle": "",
+      "description": "",
+      "description_rich_text": "",
+      "headers": []
+    }
+  },
+  {
+    "label": "Documentary: Ocean Depths",
+    "media_catalog_id": "iq__REPLACE_WITH_CATALOG_OBJECT_ID",
+    "contentId": "iq__REPLACE_WITH_CONTENT_OBJECT_ID",
+    "contentIdType": "vod",
+    "type": "media",
+    "media_type": "Video",
+    "live_video": false,
+    "public": true,
+    "catalog_title": "Ocean Depths",
+    "title": "Ocean Depths: A Deep Dive",
+    "subtitle": "Exploring the unexplored",
+    "description": "An award-winning documentary following marine biologists as they explore uncharted regions of the deep ocean.",
+    "description_rich_text": "",
+    "tags": ["documentary", "nature", "ocean"],
+    "headers": [],
+    "attributes": {},
+    "date": "2023-11-03T00:00:00.000Z",
+    "start_time": "",
+    "end_time": "",
+    "stream_start_time": "",
+    "enable_dvr": false,
+    "allow_download": false,
+    "override_settings_when_viewed": false,
+    "player_controls": "",
+    "player_loop": false,
+    "player_muted": false,
+    "player_profile": "",
+    "primary_view_label": "",
+    "additional_views": [],
+    "additional_views_label": "All Views",
+    "associated_media": [],
+    "offerings": [],
+    "permissions": [],
+    "media_link": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "/qfab/hq__REPLACE_WITH_CONTENT_VERSION_HASH/meta/public/asset_metadata"
+    },
+    "media_link_info": {
+      "name": "Ocean Depths: A Deep Dive",
+      "type": "main"
+    },
+    "thumbnail_image_landscape": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/ocean-depths-landscape.jpg"
+    },
+    "thumbnail_image_portrait": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/ocean-depths-portrait.jpg"
+    },
+    "thumbnail_image_square": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/ocean-depths-square.jpg"
+    },
+    "viewed_settings": {
+      "title": "",
+      "subtitle": "",
+      "description": "",
+      "description_rich_text": "",
+      "headers": []
+    }
+  },
+  {
+    "label": "Tech Conference Keynote",
+    "media_catalog_id": "iq__REPLACE_WITH_CATALOG_OBJECT_ID",
+    "contentId": "iq__REPLACE_WITH_CONTENT_OBJECT_ID",
+    "contentIdType": "vod",
+    "type": "media",
+    "media_type": "Video",
+    "live_video": false,
+    "public": false,
+    "catalog_title": "DevSummit 2024 Keynote",
+    "title": "DevSummit 2024 Opening Keynote",
+    "subtitle": "The future of decentralized media",
+    "description": "Opening keynote from DevSummit 2024, covering the latest advances in decentralized content delivery and Web3 infrastructure.",
+    "description_rich_text": "",
+    "tags": ["tech", "conference", "keynote", "web3"],
+    "headers": [],
+    "attributes": {
+      "speaker": "Jane Doe",
+      "event": "DevSummit 2024",
+      "duration_minutes": 90
+    },
+    "date": "2024-03-22T00:00:00.000Z",
+    "start_time": "",
+    "end_time": "",
+    "stream_start_time": "",
+    "enable_dvr": false,
+    "allow_download": false,
+    "override_settings_when_viewed": false,
+    "player_controls": "",
+    "player_loop": false,
+    "player_muted": false,
+    "player_profile": "",
+    "primary_view_label": "",
+    "additional_views": [],
+    "additional_views_label": "All Views",
+    "associated_media": [],
+    "offerings": [],
+    "permissions": [],
+    "media_link": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "/qfab/hq__REPLACE_WITH_CONTENT_VERSION_HASH/meta/public/asset_metadata"
+    },
+    "media_link_info": {
+      "name": "DevSummit 2024 Opening Keynote",
+      "type": "main"
+    },
+    "thumbnail_image_landscape": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/devsummit-keynote-landscape.jpg"
+    },
+    "thumbnail_image_portrait": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/devsummit-keynote-portrait.jpg"
+    },
+    "thumbnail_image_square": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/devsummit-keynote-square.jpg"
+    },
+    "viewed_settings": {
+      "title": "",
+      "subtitle": "",
+      "description": "",
+      "description_rich_text": "",
+      "headers": []
+    }
+  },
+  {
+    "label": "Short Film: The Last Signal",
+    "media_catalog_id": "iq__REPLACE_WITH_CATALOG_OBJECT_ID",
+    "contentId": "iq__REPLACE_WITH_CONTENT_OBJECT_ID",
+    "contentIdType": "composition",
+    "compositionKey": "default",
+    "type": "media",
+    "media_type": "Video",
+    "live_video": false,
+    "public": true,
+    "catalog_title": "The Last Signal",
+    "title": "The Last Signal",
+    "subtitle": "A sci-fi short film",
+    "description": "A lone astronaut receives a mysterious transmission from a distant planet in this award-winning short film.",
+    "description_rich_text": "",
+    "tags": ["short-film", "sci-fi", "fiction"],
+    "headers": [],
+    "attributes": {},
+    "date": "2024-01-10T00:00:00.000Z",
+    "start_time": "",
+    "end_time": "",
+    "stream_start_time": "",
+    "enable_dvr": false,
+    "allow_download": true,
+    "override_settings_when_viewed": false,
+    "player_controls": "",
+    "player_loop": false,
+    "player_muted": false,
+    "player_profile": "",
+    "primary_view_label": "Additional Cuts",
+    "additional_views": [],
+    "additional_views_label": "All Views",
+    "associated_media": [],
+    "offerings": [],
+    "permissions": [],
+    "media_link": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "/qfab/hq__REPLACE_WITH_CONTENT_VERSION_HASH/meta/public/asset_metadata"
+    },
+    "media_link_info": {
+      "name": "The Last Signal",
+      "type": "composition",
+      "composition_key": "default"
+    },
+    "thumbnail_image_landscape": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/last-signal-landscape.jpg"
+    },
+    "thumbnail_image_portrait": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/last-signal-portrait.jpg"
+    },
+    "thumbnail_image_square": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/last-signal-square.jpg"
+    },
+    "viewed_settings": {
+      "title": "",
+      "subtitle": "",
+      "description": "",
+      "description_rich_text": "",
+      "headers": []
+    }
+  },
+  {
+    "label": "Workout Series: HIIT Basics — Episode 1",
+    "media_catalog_id": "iq__REPLACE_WITH_CATALOG_OBJECT_ID",
+    "contentId": "iq__REPLACE_WITH_CONTENT_OBJECT_ID",
+    "contentIdType": "vod",
+    "type": "media",
+    "media_type": "Video",
+    "live_video": false,
+    "public": true,
+    "catalog_title": "HIIT Basics — Episode 1",
+    "title": "HIIT Basics: Getting Started",
+    "subtitle": "Episode 1 of 8",
+    "description": "Beginner-friendly high-intensity interval training session. No equipment required. 30 minutes.",
+    "description_rich_text": "",
+    "tags": ["fitness", "workout", "hiit", "series"],
+    "headers": [],
+    "attributes": {
+      "series": "HIIT Basics",
+      "episode": 1,
+      "duration_minutes": 30,
+      "difficulty": "beginner"
+    },
+    "date": "2024-05-01T00:00:00.000Z",
+    "start_time": "",
+    "end_time": "",
+    "stream_start_time": "",
+    "enable_dvr": false,
+    "allow_download": true,
+    "override_settings_when_viewed": false,
+    "player_controls": "",
+    "player_loop": false,
+    "player_muted": false,
+    "player_profile": "",
+    "primary_view_label": "",
+    "additional_views": [],
+    "additional_views_label": "All Views",
+    "associated_media": [],
+    "offerings": [],
+    "permissions": [],
+    "media_link": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "/qfab/hq__REPLACE_WITH_CONTENT_VERSION_HASH/meta/public/asset_metadata"
+    },
+    "media_link_info": {
+      "name": "HIIT Basics: Getting Started",
+      "type": "main"
+    },
+    "thumbnail_image_landscape": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/hiit-basics-ep1-landscape.jpg"
+    },
+    "thumbnail_image_portrait": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/hiit-basics-ep1-portrait.jpg"
+    },
+    "thumbnail_image_square": {
+      ".": { "container": "hq__REPLACE_WITH_CATALOG_VERSION_HASH" },
+      "/": "./files/hiit-basics-ep1-square.jpg"
+    },
+    "viewed_settings": {
+      "title": "",
+      "subtitle": "",
+      "description": "",
+      "description_rich_text": "",
+      "headers": []
+    }
+  }
+]
