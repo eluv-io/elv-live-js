@@ -53,7 +53,11 @@ const CmdStreamCreate = async ({ argv }) => {
 
     let liveRecordingConfig;
     if (argv.live_recording_config) {
-      liveRecordingConfig = JSON.parse(fs.readFileSync(argv.live_recording_config, "utf8"));
+      if (fs.existsSync(argv.live_recording_config)) {
+        liveRecordingConfig = JSON.parse(fs.readFileSync(argv.live_recording_config, "utf8"));
+      } else {
+        liveRecordingConfig = await elvStream.client.StreamLiveRecordingConfigProfile({profileName: argv.live_recording_config});
+      }
     }
 
     const options = {};
@@ -384,7 +388,7 @@ yargs(hideBin(process.argv))
           type: "string"
         })
         .option("live_recording_config", {
-          describe: "Path to a JSON file containing the live recording configuration",
+          describe: "Live recording configuration: path to a JSON file, or the name of a profile to look up from the site",
           type: "string"
         })
         .option("finalize", {
