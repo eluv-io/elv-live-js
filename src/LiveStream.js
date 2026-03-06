@@ -162,7 +162,7 @@ class EluvioLiveStream {
    * Not implemented fully
    */
   async StopSession({name}) {
-    return this.client.StreamStopSession({name});
+    return this.client.StreamStopRecording({name});
   }
 
   async Initialize({name, drm=false, format}) {
