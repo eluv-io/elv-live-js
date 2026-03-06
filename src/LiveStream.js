@@ -86,10 +86,17 @@ class EluvioLiveStream {
   }
 
   /*
-  * StreamCreate creates a new edge write token
+  * Create a live stream
+   */
+  async StreamCreate({libraryId, objectId, url, finalize=true, liveRecordingConfig, options={}}) {
+    return this.client.StreamCreate({libraryId, objectId, url, finalize, liveRecordingConfig, options});
+  }
+
+  /*
+  * StreamStartRecording creates a new edge write token
   */
-  async StreamCreate ({name, start = false, show_curl = false}) {
-    const status = await this.client.StreamCreate({name, start});
+  async StreamStartRecording ({name, start = false, show_curl = false}) {
+    const status = await this.client.StreamStartRecording({name, start});
 
     if (show_curl) {
       const objectId = status.object_id;
