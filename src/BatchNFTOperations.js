@@ -2,14 +2,13 @@ const { ethers } = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const { parse } = require("csv-parse");
-const { ElvClient } = require("@eluvio/elv-client-js");
 const pLimit = require("p-limit");
 
 
 class BatchNFTOperations {
 
   constructor({configUrl}) {
-    this.configUrl = configUrl || ElvClient.main;
+    this.configUrl = `${configUrl}/config`;
     this.nftAbi = JSON.parse(fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
     ));
@@ -37,7 +36,7 @@ class BatchNFTOperations {
 
     this.debug = debugLogging;
 
-    this.provider = new ethers.JsonRpcProvider(ethUrl);
+    this.provider = new ethers.providers.JsonRpcProvider(ethUrl);
     this.signer = new ethers.Wallet(this.privKey, this.provider);
   }
 
