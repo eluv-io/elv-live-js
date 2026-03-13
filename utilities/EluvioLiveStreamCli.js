@@ -90,7 +90,7 @@ const CmdStreamStatus = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params});
+    let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params, saveMeta: argv.saveMeta});
 
     // Optional latency calculator
     if (argv.latency) {
@@ -126,6 +126,7 @@ const CmdStreamInsertion = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
       url: argv.url,
+      token: argv.token,
       debugLogging: argv.verbose
     });
 
@@ -140,6 +141,7 @@ const CmdStreamInsertion = async ({ argv }) => {
       // Time specified as an ISO string
       t = new Date(argv.time).getTime();
       if (t == undefined || isNaN(t)) {
+
         console.log("Bad time specification", argv.time);
         return;
       }
@@ -183,7 +185,7 @@ const CmdStreamDownload = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset, makeFrame: argv.frames});
+    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset, makeFrame: argv.frames, mpegtsCopy: argv.mpegts});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -245,14 +247,20 @@ const CmdStreamCopyToVod = async ({ argv }) => {
     }
 
     let status = await elvStream.StreamCopyToVod({
-      name: argv.stream,
+      stream: argv.stream,
       object: argv.object,
       library: argv.library,
+      name: argv.name,
+      title: argv.title,
+      drm: argv.drm,
+      includeTags: argv.includeTags,
+      defaultDash: argv.defaultDash,
+      keepExistingStreams: argv.keepExistingStreams,
       eventId: argv.event_id,
       startTime: argv.start_time,
       endTime: argv.end_time,
       recordingPeriod: argv.recording_period,
-      streams: argv.streams
+      streams: argv.streams,
     });
     console.log(yaml.dump(status));
   } catch (e) {
@@ -332,6 +340,10 @@ yargs(hideBin(process.argv))
   })
   .option("url", {
     describe: "Optional node endpoint (eg. https://host-x-x-x-x.contentfabric.io)",
+    type: "string",
+  })
+  .option("token", {
+    describe: "Externally provided access token",
     type: "string",
   })
 
@@ -453,6 +465,12 @@ yargs(hideBin(process.argv))
             "Calculate stream latency (may take a few minutes)",
           type: "bool",
         })
+        .option("save-meta", {
+          describe:
+            "Save edge write token metadata to a local JSON file",
+          type: "boolean",
+          default: true,
+        })
     },
     (argv) => {
       CmdStreamStatus({ argv });
@@ -555,6 +573,11 @@ yargs(hideBin(process.argv))
             "Create a frame JPG for each video part",
           type: "bool",
         })
+        .option("mpegts", {
+          describe:
+            "Download the MPEGTS copy instead of the MP4 mezzanine",
+          type: "bool",
+        })
 
       },
     (argv) => {
@@ -581,6 +604,40 @@ yargs(hideBin(process.argv))
           describe:
             "Copy to a new object in this library",
           type: "string",
+        })
+        .option("name", {
+          describe:
+            "Object name (used for management)",
+          type: "string",
+        })
+        .option("title", {
+          describe:
+            "Object title (used for playout)",
+          type: "string",
+        })
+        .option("drm", {
+          describe:
+            "Use DRM or clear (default 'true')",
+          type: "bool",
+          default: true,
+        })
+        .option("include-tags", {
+          describe:
+            "Copy video tags from the live stream",
+          type: "boolean",
+          default: false,
+        })
+        .option("default-dash", {
+          describe:
+            "Add a default_dash offering for chromecasting (clear DASH)",
+          type: "boolean",
+          default: false,
+        })
+        .option("keep-existing-streams", {
+          describe:
+            "Keep existing stream info including thumbnails",
+          type: "boolean",
+          default: false,
         })
         .option("event_id", {
           describe:

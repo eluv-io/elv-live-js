@@ -28,7 +28,7 @@ class EluvioLiveStream {
    * @param {bool} debugLogging - Optional debug logging flag
    * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
    */
-  constructor({ url, debugLogging = false }) {
+  constructor({ url, debugLogging = false, token }) {
 
     if (url) {
       this.configUrl = url+"/config?self&qspace="+Config.net;
@@ -36,6 +36,7 @@ class EluvioLiveStream {
       this.configUrl = Config.networks[Config.net];
     }
     this.debug = debugLogging;
+    this.staticToken = token;
   }
 
   async Init() {
@@ -49,6 +50,11 @@ class EluvioLiveStream {
     });
     this.client.SetSigner({ signer });
     this.client.ToggleLogging(this.debug);
+
+    if (this.staticToken) {
+      console.log("Use static token");
+      this.client.SetStaticToken({token: this.staticToken});
+    }
   }
 
   async StatusPrep({name}) {
@@ -81,8 +87,21 @@ class EluvioLiveStream {
    * running         - stream is running and producing output
    * stalled         - LRO running but no source data (so not producing output)
    */
-  async Status({name, stopLro = false, showParams = false}) {
-    return this.client.StreamStatus({name, stopLro, showParams});
+  async Status({name, stopLro = false, showParams = false, saveMeta = true}) {
+
+    let status = await this.client.StreamStatus({name, stopLro, showParams});
+
+    if (saveMeta) {
+      let edgeMeta = await this.client.ContentObjectMetadata({
+        libraryId: status.library_id,
+        objectId: status.object_id,
+        writeToken: status.edge_write_token
+      });
+      fs.writeFileSync("meta-" + status.name + ".json", JSON.stringify(edgeMeta, null, 2));
+    }
+
+    return status;
+
   }
 
   /*
@@ -173,7 +192,7 @@ class EluvioLiveStream {
     return this.client.StreamInsertion({name, insertionTime, sinceStart, duration, targetHash, remove});
   }
 
-  async StreamDownload({name, period, offset, makeFrame}) {
+  async StreamDownload({name, period, offset, makeFrame, mpegtsCopy}) {
 
     let objectId = name;
     let status = {name};
@@ -238,11 +257,16 @@ class EluvioLiveStream {
       !fs.existsSync(dpath) && fs.mkdirSync(dpath, {recursive: true});
 
       // Reorder streams list so it starts with video
-      let mts = ["video"];
-      for (let mi = 0; mi < streams.length; mi ++) {
-        if (streams[mi].includes("video"))
-          continue;
-        mts.push(streams[mi]);
+      let mts = [];
+      if (mpegtsCopy) {
+        mts.push("mpegts");
+      } else {
+        mts.push("video");
+        for (let mi = 0; mi < streams.length; mi ++) {
+          if (streams[mi].includes("video"))
+            continue;
+          mts.push(streams[mi]);
+        }
       }
 
       let inputs = "";
@@ -251,16 +275,20 @@ class EluvioLiveStream {
 
       for (let mi = 0; mi < mts.length; mi ++) {
         let mt = mts[mi];
-        inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
+
         if (mt.includes("video")) {
+          inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
           inputs_map = inputs_map + ` -map ${mi}:v:0`;
-        } else {
+        } else if (mt.includes("audio")) {
+          inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
           inputs_map = inputs_map + ` -map ${mi}:a:0`;
         }
+
         console.log("Downloading ", mt);
         let mtpath = dpath + "/" + mt;
         let partsfile = dpath + "/parts_" + mt + ".txt";
         !fs.existsSync(mtpath) && fs.mkdirSync(mtpath);
+
         var sources = recording.sources[mt].parts;
         for (let i = 0; i < sources.length - 1; i++) {
 
@@ -305,6 +333,16 @@ class EluvioLiveStream {
             console.log("Frame cmd", makeFrameCmds[i]);
             execSync(makeFrameCmds[i]);
           }
+        }
+
+        if (mpegtsCopy) {
+          // Concatenate parts into one ts file
+          status.file = dpath + "/" + mt + ".ts";
+          let cmd = "ffmpeg -f concat -safe 0 -i " + partsfile + " -map 0 -c copy " + status.file;
+          console.log("Running", cmd);
+          execSync(cmd);
+          status.state = "completed";
+          return status;
         }
 
         // Concatenate parts into one mp4
@@ -373,12 +411,20 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({name, object, library, eventId, startTime, endTime, recordingPeriod, streams}) {
+  async StreamCopyToVod({stream, object, library, name, title, drm = true, includeTags = false, defaultDash = false, keepExistingStreams = false, eventId, startTime, endTime, recordingPeriod, streams}) {
 
-    const objectId = name;
-    const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
+    const objectId = stream;
+    let abrProfileLiveToVod;
 
-    let status = await this.Status({name});
+    if (drm) {
+      console.log("DRM");
+      abrProfileLiveToVod = require("./abr_profile_live_to_vod_drm.json");
+    } else {
+      console.log("NO DRM");
+      abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
+    }
+
+    let status = await this.Status({name: stream});
     let libraryId = status.libraryId;
 
     let targetLibraryId;
@@ -394,11 +440,21 @@ class EluvioLiveStream {
         throw "content type not found: title";
       }
       console.log("Creating new object in library " + library);
+
+      if (!name) {
+        name = "VOD - Live Stream " + stream + " - " + new Date().toISOString();
+      }
+      if (!title) {
+        title = "Live Stream " + stream + " - " + new Date().toISOString();
+      }
       const newObject = await this.client.CreateContentObject({libraryId: library, options: {
         type: typeId,
         meta: {
           public: {
-            name: "VOD - Live Stream " + name + " - " + new Date().toISOString()
+            name: name,
+            asset_metadata: {
+              title: title
+            }
           }
         }
       }});
@@ -411,7 +467,7 @@ class EluvioLiveStream {
       targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
     }
 
-    console.log("Copying stream", name, "object", object);
+    console.log("Copying stream", stream, "object", object, "drm", drm);
 
     // Validation - require target object
     if (!object) {
@@ -460,7 +516,7 @@ class EluvioLiveStream {
       status.target_library_id = targetLibraryId;
       status.target_write_token = targetWriteToken;
 
-      console.log("Process live source (takes around 20 sec per hour of content)");
+      console.log("Process live source (takes around 30 sec per hour of content)");
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
@@ -472,7 +528,8 @@ class EluvioLiveStream {
           "end_time": endTime, // eg. "2023-10-03T02:15:00.00Z",
           "streams": streams,
           "recording_period": recordingPeriod,
-          "variant_key": "default"
+          "variant_key": "default",
+          "include_tags": includeTags   // true to copy video tags from live stream
         },
         constant: false,
         format: "text"
@@ -484,8 +541,29 @@ class EluvioLiveStream {
         "offering_key": "default",
         "prod_master_hash": targetWriteToken,
         "variant_key": "default",
-        "keep_other_streams": false
+        "keep_other_streams": keepExistingStreams, // true to keep existing stream info including thumbnails
+
+        ...(defaultDash && {
+          "additional_offering_specs": {
+            "default_dash": [       // creates an offering for chromecasting
+              {
+                "op": "replace",
+                "path": "/playout/playout_formats",
+                "value": {
+                  "dash-clear": {
+                    "drm": null,
+                    "protocol": {
+                      "min_buffer_length": 2,
+                      "type": "ProtoDash"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        })
       };
+
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
@@ -501,7 +579,7 @@ class EluvioLiveStream {
         libraryId: targetLibraryId,
         objectId: object,
         writeToken: targetWriteToken,
-        method: "/media/live_to_vod/copy",
+        method: "/media/live_to_vod/copy",   // Takes about 20 sec per "hour" of live
         body: {
           "variant_key": "default",
           "offering_key": "default",
@@ -511,6 +589,7 @@ class EluvioLiveStream {
       });
 
       console.log("Finalize VoD mezzanine");
+
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
