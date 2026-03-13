@@ -14,6 +14,7 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
+const { BatchNFTOperations } = require("../src/BatchNFTOperations");
 const prompt = require("prompt-sync")({ sigint: true });
 const exec = require("child_process").exec;
 
@@ -331,6 +332,30 @@ const CmdNftPackSetDist = async ({ argv }) => {
 
     console.log(yaml.dump(res));
   } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftProxyTransferBatch = async ({ argv }) => {
+  console.log(
+    "NFT - transfer as proxy owner in batches",
+    argv.input_file,
+    argv.verbose,
+    argv.concurrency,
+  );
+  try {
+    const configUrl = Config.networks[Config.net];
+
+    batchOps = new BatchNFTOperations({configUrl});
+    await batchOps.Init({debugLogging:argv.debug});
+
+    let res = await batchOps.BatchNftTransfer({
+      inputFile: argv.input_file,
+      concurrency: argv.concurrency,
+    });
+
+    console.log(yaml.dump(res));
+  } catch(e) {
     console.error("ERROR:", e);
   }
 };
@@ -2064,6 +2089,28 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "nft_proxy_transfer_batch <input_file>",
+    "Tranfer NFT as a proxy owner in batches",
+    (yargs) => {
+      yargs
+        .positional("input_file", {
+          describe: "CSV file with values: addr, tokenId, fromAddr, toAddr",
+          type: "string",
+        })
+        .option("concurrency", {
+          describe: "number of concurrent operations",
+        })
+        .option("verbose", {
+          describe: "enable debug",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdNftProxyTransferBatch({ argv });
+    }
+  )
+
+  .command(
     "nft_build <library> <object> [options]",
     "Build the public/nft section based on asset metadata. If --nft_dir is specified, will build a generative nft based on *.json files inside the dir. See README.md for more details.",
     (yargs) => {
@@ -3133,7 +3180,7 @@ yargs(hideBin(process.argv))
       yargs.option("name", {
         describe: "Tenant name",
         type: "string"
-      })
+      });
       yargs.option("status",{
         describe: "Path to the JSON File for existing tenant provision config",
         type: "string",
