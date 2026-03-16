@@ -122,7 +122,7 @@ class BatchNFTOperations {
 
     const proxyOwner = await this.NftProxyOwner({proxyAddr});
     if (proxyOwner.toLowerCase() !== this.signer.address.toLowerCase()) {
-      throw new Error(`Bad key - not proxy owner (should be: ${proxyOwner}`);
+      throw new Error(`Bad key - not proxy owner (should be: ${proxyOwner})`);
     }
     return proxyAddr;
   }
