@@ -41,7 +41,7 @@ class BatchNFTOperations {
   }
 
 
-  async BatchNftTransfer({inputFile, concurrency = 5}) {
+  async BatchNftTransfer({inputFile, concurrency = 5, batchSize = 20}) {
     // --- read data from csv file ---
     const inputData = [];
     await new Promise((resolve, reject) => {
@@ -50,7 +50,7 @@ class BatchNFTOperations {
         .on("data", (row)=>{
           inputData.push({
             addr: row.addr,
-            tokenId: ethers.BigNumber.from(row.tokenId),
+            tokenId: row.tokenId,
             fromAddr: row.fromAddr,
             toAddr: row.toAddr
           });
@@ -72,7 +72,7 @@ class BatchNFTOperations {
         tokenId: item.tokenId,
         nonce: getNonce(),
       });
-    }, { concurrency });
+    }, { concurrency, batchSize });
 
     const submittedTxs = [];
     const failed = [];
@@ -131,9 +131,10 @@ class BatchNFTOperations {
   async NftProxyTransferFrom({addr, tokenId, fromAddr, toAddr, nonce}){
 
     const nftContract = new ethers.Contract(addr, this.nftAbi, this.signer);
+    const tknId = ethers.BigNumber.from(tokenId);
 
     // check if owner of the tokenId matches 'from' address
-    const ownerOf = await nftContract.ownerOf(tokenId);
+    const ownerOf = await nftContract.ownerOf(tknId);
     if (ownerOf.toLowerCase() !==  fromAddr.toLowerCase()){
       if (this.debug) {
         console.log(`Not owner of token ${tokenId} (owner: ${ownerOf})`);
@@ -150,7 +151,7 @@ class BatchNFTOperations {
     const proxyContract = new ethers.Contract(proxyAddr, this.proxyAbi, this.signer);
     try {
       const tx = await proxyContract.proxyTransferFrom(
-        addr, fromAddr, toAddr, tokenId,
+        addr, fromAddr, toAddr, tknId,
         { nonce }
       );
       return { status: "submitted", tx, tokenId };

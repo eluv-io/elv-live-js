@@ -339,9 +339,10 @@ const CmdNftPackSetDist = async ({ argv }) => {
 const CmdNftProxyTransferBatch = async ({ argv }) => {
   console.log(
     "NFT - transfer as proxy owner in batches",
-    argv.input_file,
-    argv.verbose,
-    argv.concurrency,
+    "input-file", argv.input_file,
+    "verbose", argv.verbose,
+    "concurrency", argv.concurrency,
+    "batch_size", argv.batch_size,
   );
   try {
     const configUrl = Config.networks[Config.net];
@@ -352,9 +353,36 @@ const CmdNftProxyTransferBatch = async ({ argv }) => {
     let res = await batchOps.BatchNftTransfer({
       inputFile: argv.input_file,
       concurrency: argv.concurrency,
+      batchSize: argv.batch_size,
     });
 
-    console.log(yaml.dump(res));
+    console.log("All NFT proxy transfers have been processed!");
+
+    if (res.failed && res.failed.length > 0) {
+      const file = "batchNftTransfer_failed.csv";
+      const header =  "status,tokenId,addr,fromAddr,toAddr,error\n";
+
+      const rows = res.failed.map(({ tokenId, addr, fromAddr, toAddr, e }) => {
+        const errorMsg = e?.message || e || "";
+        const safeError = `"${String(errorMsg).replace(/"/g, '""')}"`;
+        return `failed,${tokenId},${addr},${fromAddr},${toAddr},${safeError}`;
+      }).join("\n");
+
+      fs.writeFileSync(file, header + rows + "\n", "utf8");
+      console.log(`Written ${res.failed.length} failed records to ${file}`);
+    }
+
+    if (res.ownerMismatch && res.ownerMismatch.length > 0) {
+      const file = "batchNftTransfer_ownerMismatch.csv";
+      const header =  "status,tokenId,addr,fromAddr,toAddr,actualOwner\n";
+
+      const rows = res.ownerMismatch.map(({ tokenId, addr, fromAddr, toAddr, actualOwner }) => {
+        return `owner_mismatch,${tokenId},${addr},${fromAddr},${toAddr},${actualOwner}`;
+      }).join("\n");
+
+      fs.writeFileSync(file, header + rows + "\n", "utf8");
+      console.log(`Written ${res.ownerMismatch.length} owner_mismatch records to ${file}`);
+    }
   } catch(e) {
     console.error("ERROR:", e);
   }
@@ -2098,7 +2126,10 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("concurrency", {
-          describe: "number of concurrent operations",
+          describe: "number of concurrent operations (default: 5)",
+        })
+        .option("batch_size", {
+          describe: "size of each batch (default:20)",
         })
         .option("verbose", {
           describe: "enable debug",
