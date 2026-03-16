@@ -14,6 +14,7 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
+const { BatchNFTOperations } = require("../src/BatchNFTOperations");
 const prompt = require("prompt-sync")({ sigint: true });
 const exec = require("child_process").exec;
 
@@ -331,6 +332,58 @@ const CmdNftPackSetDist = async ({ argv }) => {
 
     console.log(yaml.dump(res));
   } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftProxyTransferBatch = async ({ argv }) => {
+  console.log(
+    "NFT - transfer as proxy owner in batches",
+    "input-file", argv.input_file,
+    "verbose", argv.verbose,
+    "concurrency", argv.concurrency,
+    "batch_size", argv.batch_size,
+  );
+  try {
+    const configUrl = Config.networks[Config.net];
+
+    batchOps = new BatchNFTOperations({configUrl});
+    await batchOps.Init({debugLogging:argv.debug});
+
+    let res = await batchOps.BatchNftTransfer({
+      inputFile: argv.input_file,
+      concurrency: argv.concurrency,
+      batchSize: argv.batch_size,
+    });
+
+    console.log("All NFT proxy transfers have been processed!");
+
+    if (res.failed && res.failed.length > 0) {
+      const file = "batchNftTransfer_failed.csv";
+      const header =  "status,tokenId,addr,fromAddr,toAddr,error\n";
+
+      const rows = res.failed.map(({ tokenId, addr, fromAddr, toAddr, e }) => {
+        const errorMsg = e?.message || e || "";
+        const safeError = `"${String(errorMsg).replace(/"/g, '""')}"`;
+        return `failed,${tokenId},${addr},${fromAddr},${toAddr},${safeError}`;
+      }).join("\n");
+
+      fs.writeFileSync(file, header + rows + "\n", "utf8");
+      console.log(`Written ${res.failed.length} failed records to ${file}`);
+    }
+
+    if (res.ownerMismatch && res.ownerMismatch.length > 0) {
+      const file = "batchNftTransfer_ownerMismatch.csv";
+      const header =  "status,tokenId,addr,fromAddr,toAddr,actualOwner\n";
+
+      const rows = res.ownerMismatch.map(({ tokenId, addr, fromAddr, toAddr, actualOwner }) => {
+        return `owner_mismatch,${tokenId},${addr},${fromAddr},${toAddr},${actualOwner}`;
+      }).join("\n");
+
+      fs.writeFileSync(file, header + rows + "\n", "utf8");
+      console.log(`Written ${res.ownerMismatch.length} owner_mismatch records to ${file}`);
+    }
+  } catch(e) {
     console.error("ERROR:", e);
   }
 };
@@ -2064,6 +2117,31 @@ yargs(hideBin(process.argv))
   )
 
   .command(
+    "nft_proxy_transfer_batch <input_file>",
+    "Tranfer NFT as a proxy owner in batches",
+    (yargs) => {
+      yargs
+        .positional("input_file", {
+          describe: "CSV file with values: addr, tokenId, fromAddr, toAddr",
+          type: "string",
+        })
+        .option("concurrency", {
+          describe: "number of concurrent operations (default: 5)",
+        })
+        .option("batch_size", {
+          describe: "size of each batch (default:20)",
+        })
+        .option("verbose", {
+          describe: "enable debug",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdNftProxyTransferBatch({ argv });
+    }
+  )
+
+  .command(
     "nft_build <library> <object> [options]",
     "Build the public/nft section based on asset metadata. If --nft_dir is specified, will build a generative nft based on *.json files inside the dir. See README.md for more details.",
     (yargs) => {
@@ -3133,7 +3211,7 @@ yargs(hideBin(process.argv))
       yargs.option("name", {
         describe: "Tenant name",
         type: "string"
-      })
+      });
       yargs.option("status",{
         describe: "Path to the JSON File for existing tenant provision config",
         type: "string",
