@@ -904,7 +904,7 @@ class EluvioLiveStream {
 
     try {
       const fileContents = fs.readFileSync(batch_file, "utf8");
-      // Although its yaml.load it still works with JSON sources! 
+      // Although its yaml.load it still works with JSON sources!
       streamsConfig = yaml.load(fileContents);
     } catch (e) {
       console.error(`Error: Could not read or parse file. ${e.message}`);
@@ -944,18 +944,18 @@ class EluvioLiveStream {
   }
 
   async NewStreamObject({
-    name, 
-    description, 
-    library, 
-    ingest_url, 
-    add_to_manager, 
-    display_title, 
-    drm, 
-    permission, 
-    retention, 
-    playout_ladder, 
-    connection_timeout, 
-    reconection_timeout, 
+    name,
+    description,
+    library,
+    ingest_url,
+    add_to_manager,
+    display_title,
+    drm,
+    permission,
+    retention,
+    playout_ladder,
+    connection_timeout,
+    reconection_timeout,
     record_ts
   }) {
     const accessGroups = [];
