@@ -2,6 +2,7 @@ const { EluvioLiveStream } = require("../src/LiveStream.js");
 const { ElvSpace } = require("../src/ElvSpace.js");
 const { Config } = require("../src/Config.js");
 
+const fs = require("fs");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
@@ -53,7 +54,45 @@ const CmdStreamCreate = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
+    let liveRecordingConfig;
+    if (argv.live_recording_config) {
+      if (fs.existsSync(argv.live_recording_config)) {
+        liveRecordingConfig = JSON.parse(fs.readFileSync(argv.live_recording_config, "utf8"));
+      } else {
+        liveRecordingConfig = await elvStream.client.StreamLiveRecordingConfigProfile({profileName: argv.live_recording_config});
+      }
+    }
+
+    const options = {};
+    if(argv.name !== undefined) options.name = argv.name;
+    if(argv.permission !== undefined) options.permission = argv.permission;
+    if(argv.link_to_site !== undefined) options.linkToSite = argv.link_to_site;
+
     let status = await elvStream.StreamCreate({
+      libraryId: argv.library,
+      url: argv.stream_url,
+      finalize: argv.finalize,
+      options,
+      liveRecordingConfig
+    });
+    console.log(yaml.dump(status));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdStreamStartRecording = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let status = await elvStream.StreamStartRecording({
       name: argv.stream,
       start: argv.start,
       show_curl: argv.show_curl
@@ -512,6 +551,47 @@ yargs(hideBin(process.argv))
   })
 
   .command(
+    "create",
+    "Create a new live stream object",
+    (yargs) => {
+      yargs
+        .option("library", {
+          describe: "Library ID containing the stream object",
+          type: "string"
+        })
+        .option("stream_url", {
+          describe: "Ingest URL for the live stream",
+          type: "string"
+        })
+        .option("live_recording_config", {
+          describe: "Live recording configuration: path to a JSON file, or the name of a profile to look up from the site",
+          type: "string"
+        })
+        .option("finalize", {
+          describe: "Finalize the object after creation",
+          type: "boolean",
+          default: true
+        })
+        .option("name", {
+          describe: "Name for the new stream object",
+          type: "string"
+        })
+        .option("permission", {
+          describe: "Access permission level for the stream object",
+          type: "string",
+          choices: ["owner", "editable", "viewable", "listable", "public"]
+        })
+        .option("link_to_site", {
+          describe: "Automatically link the new stream to the site object after creation",
+          type: "boolean",
+          default: true
+        })
+        .demandOption(["library", "stream_url"])
+    },
+    (argv) => CmdStreamCreate({ argv })
+  )
+
+  .command(
     "config <stream>",
     "Apply user configuration based on stream info",
     (yargs) => {
@@ -555,8 +635,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "create <stream>",
-    "Create a new live stream for this stream object.",
+    "start_recording <stream>",
+    "Create a new edge write token for this stream object.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -576,7 +656,7 @@ yargs(hideBin(process.argv))
         })
     },
     (argv) => {
-      CmdStreamCreate({ argv });
+      CmdStreamStartRecording({ argv });
     }
   )
   .command(
