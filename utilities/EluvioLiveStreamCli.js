@@ -56,7 +56,7 @@ const CmdStreamCreate = async ({ argv }) => {
       if (fs.existsSync(argv.live_recording_config)) {
         liveRecordingConfig = JSON.parse(fs.readFileSync(argv.live_recording_config, "utf8"));
       } else {
-        liveRecordingConfig = await elvStream.client.StreamLiveRecordingConfigProfile({profileName: argv.live_recording_config});
+        liveRecordingConfig = await elvStream.client.StreamConfigProfile({profileName: argv.live_recording_config});
       }
     }
 
