@@ -68,6 +68,7 @@ const CmdCatalogItemSet = async ({ argv }) => {
       catalogTitle: argv.catalog_title,
       displayTitle: argv.display_title,
       subtitle: argv.subtitle,
+      sidebarTitle: argv.sidebar_title,
       description: argv.description,
       contentId: argv.content_id,
       contentIdType: argv.content_id_type,
@@ -96,6 +97,7 @@ const CmdCatalogItemAdd = async ({ argv }) => {
       catalogTitle: argv.catalog_title,
       displayTitle: argv.display_title,
       subtitle: argv.subtitle,
+      sidebarTitle: argv.sidebar_title,
       description: argv.description,
       contentId: argv.content_id,
       contentIdType: argv.content_id_type,
@@ -257,6 +259,7 @@ const yargsInstance = yargs(hideBin(process.argv))
                     .option("catalog_title", { alias: "ct", describe: "New Media Item Catalog Title", type: "string" })
                     .option("display_title", { alias: "dt", describe: "New Media Item Display Title", type: "string" })
                     .option("subtitle", { alias: "st", describe: "New Media Item Subtitle", type: "string" })
+                    .option("sidebar_title", { describe: "New Media Item Sidebar Title", type: "string" })
                     .option("description", { alias: "d", describe: "New Media Item Description", type: "string" })
                     .option("content_id", { alias: "c", describe: "Content ID to add as catalog item", type: "string" })
                     .option("content_id_type", { alias: "t", describe: "Type of Content ID", type: "string" })
@@ -279,6 +282,7 @@ const yargsInstance = yargs(hideBin(process.argv))
                     .option("catalog_title", { alias: "ct", describe: "New Media Item Catalog Title", type: "string" })
                     .option("display_title", { alias: "dt", describe: "New Media Item Display Title", type: "string" })
                     .option("subtitle", { alias: "st", describe: "New Media Item Subtitle", type: "string" })
+                    .option("sidebar_title", { describe: "New Media Item Sidebar Title", type: "string" })
                     .option("description", { alias: "d", describe: "New Media Item Description", type: "string" })
                     .option("content_id", { alias: "c", describe: "Content ID to add as catalog item", type: "string" })
                     .option("content_id_type", { alias: "t", describe: "Type of Content ID", type: "string" })

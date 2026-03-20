@@ -85,6 +85,7 @@ class CatalogService {
     catalogTitle,
     displayTitle,
     subtitle,
+    sidebarTitle,
     description,
 
     mediaMetadata
@@ -107,6 +108,7 @@ class CatalogService {
       catalog_title: metadata.catalog_title ?? catalogTitle,
       title: metadata.display_title ?? displayTitle,
       subtitle: metadata.subtitle ?? subtitle,
+      sidebar_title: metadata.sidebar_title ?? sidebarTitle,
       description: metadata.description ?? description
     };
 
@@ -137,6 +139,7 @@ class CatalogService {
       ...(resolvedTitles.catalog_title && { catalog_title: resolvedTitles.catalog_title }),
       ...(resolvedTitles.title && { title: resolvedTitles.title }),
       ...(resolvedTitles.subtitle && { subtitle: resolvedTitles.subtitle }),
+      ...(resolvedTitles.sidebar_title && { sidebar_title: resolvedTitles.sidebar_title }),
       ...(resolvedTitles.description && { description: resolvedTitles.description })
     };
 
@@ -234,6 +237,7 @@ class CatalogService {
     catalogTitle,
     displayTitle,
     subtitle,
+    sidebarTitle,
     description,
 
     mediaMetadata
@@ -263,6 +267,7 @@ class CatalogService {
     if (catalogTitle !== undefined) merged.catalog_title = catalogTitle;
     if (displayTitle !== undefined) merged.title = displayTitle;
     if (subtitle !== undefined) merged.subtitle = subtitle;
+    if (sidebarTitle !== undefined) merged.sidebar_title = sidebarTitle;
     if (description !== undefined) merged.description = description;
     if (isPublic !== undefined) merged.public = !!isPublic;
 
