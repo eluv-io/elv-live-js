@@ -142,7 +142,7 @@ class BatchNFTOperations {
 
       const rows = failed.map(({ tokenId, addr, fromAddr, toAddr, e }) => {
         const errorMsg = e?.message || e || "";
-        const safeError = `"${String(errorMsg).replace(/"/g, '""')}"`;
+        const safeError = `"${String(errorMsg).replace(/"/g, "\"\"")}"`;
 
         return `failed,${tokenId},${addr},${fromAddr},${toAddr},${safeError}`;
       }).join("\n");
