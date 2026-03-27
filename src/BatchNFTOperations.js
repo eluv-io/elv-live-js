@@ -29,6 +29,7 @@ class BatchNFTOperations {
     if (!ethUrl) {
       throw new Error("No eth url found");
     }
+    console.log("ETH URL", ethUrl);
 
     if (!process.env.PRIVATE_KEY) {
       throw new Error("require env PRIVATE_KEY to be set");
@@ -226,13 +227,30 @@ class BatchNFTOperations {
 
     const executeTx = async() => {
       const nonce = await this.getNextNonce();
-      const tx = await proxyContract.proxyTransferFrom(addr, fromAddr, toAddr, tknId, nonce);
-      const receipt = await Promise.race([
-        tx.wait(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("tx.wait() timed out")), 60000)
-        )
-      ]);
+      const tx = await proxyContract.proxyTransferFrom(
+        addr,
+        fromAddr,
+        toAddr,
+        tknId,
+        {
+          nonce,
+          gasLimit: 200000,
+          maxFeePerGas: ethers.utils.parseUnits("80", "gwei"),
+          maxPriorityFeePerGas: ethers.utils.parseUnits("5", "gwei"),
+        }
+      );
+
+      let cancel;
+      const timeout = new Promise((_, reject) => {
+        const id = setTimeout(() => {
+          reject(new Error("tx.wait() timed out"));
+        }, 60000);
+
+        cancel = () => clearTimeout(id);
+      });
+
+      const receipt = await Promise.race([tx.wait(), timeout])
+        .finally(() => cancel && cancel());
       return receipt.transactionHash;
     };
 
