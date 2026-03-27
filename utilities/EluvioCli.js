@@ -2,11 +2,10 @@ const { ElvSpace } = require("../src/ElvSpace.js");
 const { ElvTenant } = require("../src/ElvTenant.js");
 const { ElvAccount } = require("../src/ElvAccount.js");
 const { ElvContracts } = require("../src/ElvContracts.js");
-const { EluvioLive } = require("../src/EluvioLive.js");
 const { BatchHelper } = require("../src/BatchHelper");
 const { Config } = require("../src/Config.js");
-const Ethers = require("ethers");
 const constants = require("../src/Constants");
+const { ElvBlockchain } = require("../src/ElvBlockchain");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -1770,6 +1769,21 @@ const CmdDeleteContentsBatch = async ({ argv }) => {
   }
 };
 
+const CmdFixEthNonceStuck = async ({ argv }) => {
+  try {
+    const elvBlkChain = new ElvBlockchain({
+      ethUrl: argv.eth_url,
+      privateKey: process.env.PRIVATE_KEY,
+    });
+    await elvBlkChain.Init();
+    const targetNonce = argv.target_nonce? argv.target_nonce : 0;
+
+    await elvBlkChain.fixEthNonceGap({ targetNonce });
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -2772,6 +2786,25 @@ yargs(hideBin(process.argv))
             CmdDeleteContentsBatch({ argv });
           }
         );
+    }
+
+  )
+  .command(
+    "fix_nonce_stuck",
+    "Resolve stuck transactions by clearing pending/queued entries in the txpool for a given address",
+    (yargs) => {
+      yargs
+        .option("eth_url", {
+          describe: "Ethererum URL to connect to",
+          type: "string",
+        })
+        .option("target_nonce", {
+          describe: "Target nonce up to which transactions should be processed (defaults to current pending nonce)",
+          type: "number",
+        });
+    },
+    (argv) => {
+      CmdFixEthNonceStuck({ argv });
     }
   )
 
