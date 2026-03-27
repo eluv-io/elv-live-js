@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { parse } = require("csv-parse");
 const pLimit = require("p-limit");
+const { Mutex } = require("async-mutex");
 
 
 class BatchNFTOperations {
@@ -15,10 +16,11 @@ class BatchNFTOperations {
     this.proxyAbi = JSON.parse(fs.readFileSync(
       path.resolve(__dirname, "../contracts/v3/TransferProxyRegistry.abi")
     ));
-
+    this.nonce = null;
+    this.nonceMutex = new Mutex();
   }
 
-  async Init({debugLogging = false}={}){
+  async Init({debugLogging = false}={}) {
     const res = await fetch(this.configUrl);
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const cfgOut = await res.json();
@@ -27,7 +29,7 @@ class BatchNFTOperations {
     if (!ethUrl) {
       throw new Error("No eth url found");
     }
-    this.ethUrl = ethUrl;
+    console.log("ETH URL", ethUrl);
 
     if (!process.env.PRIVATE_KEY) {
       throw new Error("require env PRIVATE_KEY to be set");
@@ -38,10 +40,40 @@ class BatchNFTOperations {
 
     this.provider = new ethers.providers.JsonRpcProvider(ethUrl);
     this.signer = new ethers.Wallet(this.privKey, this.provider);
+
+    this.nonce = await this.provider.getTransactionCount(
+      this.signer.address,
+      "pending"
+    );
+  }
+
+  async getNextNonce() {
+    return this.nonceMutex.runExclusive(() => {
+      const n = this.nonce;
+      this.nonce++;
+      return n;
+    });
+  }
+
+  async SyncNonce() {
+    const newNonce = await this.provider.getTransactionCount(
+      this.signer.address,
+      "pending"
+    );
+
+    await this.nonceMutex.runExclusive(() => {
+      if (this.debug) {
+        console.log(`Resyncing nonce: local=${this.nonce}, chain=${newNonce}`);
+      }
+
+      if (newNonce > this.nonce) {
+        this.nonce = newNonce;
+      }
+    });
   }
 
 
-  async BatchNftTransfer({inputFile, concurrency = 5, batchSize = 20}) {
+  async BatchNftTransfer({inputFile, concurrency = 5, batchSize = 20, outputFolder = ""}) {
     // --- read data from csv file ---
     const inputData = [];
     await new Promise((resolve, reject) => {
@@ -60,9 +92,6 @@ class BatchNFTOperations {
     });
     console.log(`Loaded ${inputData.length} data from CSV file`);
 
-    let nonce = await this.provider.getTransactionCount(this.signer.address);
-    const getNonce = () => nonce++;
-
     // perform nft proxy transfer in batch
     const results = await this.batchProcessor(inputData, async (item) => {
       return await this.NftProxyTransferFrom({
@@ -70,39 +99,85 @@ class BatchNFTOperations {
         toAddr: item.toAddr,
         fromAddr: item.fromAddr,
         tokenId: item.tokenId,
-        nonce: getNonce(),
       });
     }, { concurrency, batchSize });
 
-    const submittedTxs = [];
+    const successTxs = [];
     const failed = [];
     const ownerMismatch = [];
 
     // Separate results
     results.forEach(res => {
       if (!res) return;
-      if (res.status === "submitted") submittedTxs.push(res);
+      if (res.status === "success") successTxs.push(res);
       else if (res.status === "failed") failed.push(res);
       else if (res.status === "owner_mismatch") ownerMismatch.push(res);
     });
 
-    // Wait for all submitted TXs to be mined
-    await Promise.all(submittedTxs.map(async ({ tx, tokenId }) => {
-      const receipt = await tx.wait();
-      console.log(`Token ${tokenId} mined!`);
-      if (this.debug) {
-        console.log("Receipt:", {
-          hash: receipt.transactionHash,
-          blockNumber: receipt.blockNumber,
-          gasUsed: receipt.gasUsed.toString(),
-          status: receipt.status,
-        });
-        console.log("=========================");
-      }
-    }));
+
+    // --- output files ---
+
+    const outputDir = path.resolve(outputFolder || process.cwd());
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+    const successFilePath = path.join(outputDir, "output_success_list.csv");
+    const failedFilePath = path.join(outputDir, "output_failed_list.csv");
+    const ownerMismatchFilePath = path.join(outputDir, "output_owner_mismatch_list.csv");
+
+    if (successTxs.length > 0) {
+      const header = "status,tokenId,addr,fromAddr,toAddr,tx\n";
+
+      const rows = successTxs.map(({ tokenId, addr, fromAddr, toAddr, tx }) => {
+        return `success,${tokenId},${addr},${fromAddr},${toAddr},${tx}`;
+      }).join("\n");
+
+      fs.writeFileSync(successFilePath, header + rows + "\n", "utf8");
+      console.log(`Written ${successTxs.length} records to ${successFilePath}`);
+
+    }
+
+
+    if (failed.length > 0) {
+      const header = "status,tokenId,addr,fromAddr,toAddr,error\n";
+
+      const rows = failed.map(({ tokenId, addr, fromAddr, toAddr, e }) => {
+        const errorMsg = e?.message || e || "";
+        const safeError = `"${String(errorMsg).replace(/"/g, "\"\"")}"`;
+
+        return `failed,${tokenId},${addr},${fromAddr},${toAddr},${safeError}`;
+      }).join("\n");
+
+      fs.writeFileSync(failedFilePath, header + rows + "\n", "utf8");
+      console.log(`Written ${failed.length} failed records to ${failedFilePath}`);
+    }
+
+    if (ownerMismatch.length > 0) {
+      const header = "status,tokenId,addr,fromAddr,toAddr,actualOwner\n";
+
+      const rows = ownerMismatch.map(({ tokenId, addr, fromAddr, toAddr, actualOwner }) => {
+        return `owner_mismatch,${tokenId},${addr},${fromAddr},${toAddr},${actualOwner}`;
+      }).join("\n");
+
+      fs.writeFileSync(ownerMismatchFilePath, header + rows + "\n", "utf8");
+      console.log(`Written ${ownerMismatch.length}  records to ${ownerMismatchFilePath}`);
+    }
 
     console.log("All Txs processed!");
-    return { failed, ownerMismatch};
+    return {
+      success: {
+        count: successTxs.length,
+        filepath: successTxs.length>0? successFilePath: "",
+      },
+      failed: {
+        count: failed.length,
+        filepath: failed.length>0? failedFilePath: "",
+      },
+      owner_mismatch: {
+        count: ownerMismatch.length,
+        filepath: ownerMismatch.length>0? ownerMismatchFilePath: "",
+      },
+    };
   }
 
   // Get nft proxy owner address
@@ -128,7 +203,7 @@ class BatchNFTOperations {
   }
 
   // Transfer an NFT as a proxy owner
-  async NftProxyTransferFrom({addr, tokenId, fromAddr, toAddr, nonce}){
+  async NftProxyTransferFrom({addr, tokenId, fromAddr, toAddr}){
 
     const nftContract = new ethers.Contract(addr, this.nftAbi, this.signer);
     const tknId = ethers.BigNumber.from(tokenId);
@@ -144,31 +219,72 @@ class BatchNFTOperations {
 
     // get proxy addr
     const proxyAddr = await this.CheckNftProxy({ addr });
+    const proxyContract = new ethers.Contract(proxyAddr, this.proxyAbi, this.signer);
 
     if (this.debug) {
       console.log("Executing proxyTransferFrom");
     }
-    const proxyContract = new ethers.Contract(proxyAddr, this.proxyAbi, this.signer);
-    try {
+
+    const executeTx = async() => {
+      const nonce = await this.getNextNonce();
       const tx = await proxyContract.proxyTransferFrom(
-        addr, fromAddr, toAddr, tknId,
-        { nonce }
+        addr,
+        fromAddr,
+        toAddr,
+        tknId,
+        {
+          nonce,
+          gasLimit: 200000,
+          maxFeePerGas: ethers.utils.parseUnits("80", "gwei"),
+          maxPriorityFeePerGas: ethers.utils.parseUnits("5", "gwei"),
+        }
       );
-      return { status: "submitted", tx, tokenId };
-    } catch (e) {
-      return { status: "failed", tokenId, addr, fromAddr, toAddr, e };
+
+      let cancel;
+      const timeout = new Promise((_, reject) => {
+        const id = setTimeout(() => {
+          reject(new Error("tx.wait() timed out"));
+        }, 60000);
+
+        cancel = () => clearTimeout(id);
+      });
+
+      const receipt = await Promise.race([tx.wait(), timeout])
+        .finally(() => cancel && cancel());
+      return receipt.transactionHash;
+    };
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        if (this.debug) {
+          console.log(`Attempt ${attempt}: Sending tx for token ${tokenId}`);
+        }
+        const txHash = await executeTx();
+        return { status: "success", tx: txHash, tokenId, addr, fromAddr, toAddr };
+      } catch (e) {
+        if (["NONCE_EXPIRED", "REPLACEMENT_UNDERPRICED", "TRANSACTION_REPLACED"].includes(e.code)) {
+          if (attempt === 1) {
+            if (this.debug) {
+              console.log("Nonce collision detected, resyncing nonce...");
+            }
+            await this.SyncNonce();
+            // Short delay before retrying
+            await new Promise(resolve => setTimeout(resolve, 200));
+            continue; // Retry once
+          }
+        }
+        // Any other error or second failure
+        return { status: "failed", tokenId, addr, fromAddr, toAddr, e };
+      }
     }
   }
 
   // The batchProcessor expects each jobFn to return an object with a `status` field.
-  // Items with `status: "failed"` will be retried up to the retry limit using exponential backoff.
   // Items are processed in batches based on the configured batchSize.
   async batchProcessor(items, jobFn, {
     batchSize = 20,
     batchDelayMs = 2000,
     concurrency = 5,
-    retries = 3,
-    retryDelayMs = 1000
   } = {}) {
     const limit = pLimit(concurrency);
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -180,35 +296,27 @@ class BatchNFTOperations {
       console.log(`Processing batch ${Math.floor(i / batchSize) + 1} (${batch.length} items)...`);
 
       // Map each item to a retried job
-      const batchResults = await Promise.all(batch.map(item => limit(async () => {
-        let attempt = 0;
-        while (attempt <= retries) {
-          const res = await jobFn(item);
-
-          if (res.status !== "failed") {
-            // Success or owner_mismatch - no retry
-            return res;
-          }
-
-          attempt++;
-          if (attempt > retries) {
-            if (this.debug) {
-              console.log(`Failed item after ${retries} retries: ${JSON.stringify(item)}`);
+      const batchResults = await Promise.all(
+        batch.map(item =>
+          limit(async () => {
+            try {
+              return await jobFn(item);
+            } catch (e) {
+              return {
+                status: "failed",
+                tokenId: item.tokenId,
+                addr: item.addr,
+                fromAddr: item.fromAddr,
+                toAddr: item.toAddr,
+                e
+              };
             }
-            return res;
-          }
-
-          const wait = retryDelayMs * 2 ** (attempt - 1); // exponential backoff
-          if (this.debug) {
-            console.log(`Retry ${attempt} for failed item: ${JSON.stringify(item)}. Waiting ${wait}ms`);
-          }
-          await sleep(wait);
-        }
-      })));
-
+          })
+        )
+      );
       results.push(...batchResults);
 
-      if (i + batchSize < items.length) {
+      if (i + batchSize < items.length && batchDelayMs > 0) {
         if (this.debug) {
           console.log(`Waiting ${batchDelayMs}ms before next batch...`);
         }

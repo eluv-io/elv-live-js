@@ -343,49 +343,27 @@ const CmdNftProxyTransferBatch = async ({ argv }) => {
     "verbose", argv.verbose,
     "concurrency", argv.concurrency,
     "batch_size", argv.batch_size,
+    "output_folder", argv.output_folder,
   );
   try {
     const configUrl = Config.networks[Config.net];
 
-    batchOps = new BatchNFTOperations({configUrl});
-    await batchOps.Init({debugLogging:argv.debug});
+    batchOps = new BatchNFTOperations({ configUrl });
+    await batchOps.Init({ debugLogging: argv.debug });
 
     let res = await batchOps.BatchNftTransfer({
       inputFile: argv.input_file,
       concurrency: argv.concurrency,
       batchSize: argv.batch_size,
+      outputFolder: argv.output_folder
     });
 
     console.log("All NFT proxy transfers have been processed!");
-
-    if (res.failed && res.failed.length > 0) {
-      const file = "batchNftTransfer_failed.csv";
-      const header =  "status,tokenId,addr,fromAddr,toAddr,error\n";
-
-      const rows = res.failed.map(({ tokenId, addr, fromAddr, toAddr, e }) => {
-        const errorMsg = e?.message || e || "";
-        const safeError = `"${String(errorMsg).replace(/"/g, '""')}"`;
-        return `failed,${tokenId},${addr},${fromAddr},${toAddr},${safeError}`;
-      }).join("\n");
-
-      fs.writeFileSync(file, header + rows + "\n", "utf8");
-      console.log(`Written ${res.failed.length} failed records to ${file}`);
-    }
-
-    if (res.ownerMismatch && res.ownerMismatch.length > 0) {
-      const file = "batchNftTransfer_ownerMismatch.csv";
-      const header =  "status,tokenId,addr,fromAddr,toAddr,actualOwner\n";
-
-      const rows = res.ownerMismatch.map(({ tokenId, addr, fromAddr, toAddr, actualOwner }) => {
-        return `owner_mismatch,${tokenId},${addr},${fromAddr},${toAddr},${actualOwner}`;
-      }).join("\n");
-
-      fs.writeFileSync(file, header + rows + "\n", "utf8");
-      console.log(`Written ${res.ownerMismatch.length} owner_mismatch records to ${file}`);
-    }
+    console.log(yaml.dump(res));
   } catch(e) {
     console.error("ERROR:", e);
   }
+
 };
 
 const CmdNftProxyTransfer = async ({ argv }) => {
@@ -2134,6 +2112,10 @@ yargs(hideBin(process.argv))
         .option("verbose", {
           describe: "enable debug",
           type: "boolean",
+        })
+        .option("output_folder", {
+          describe: "output folder",
+          type: "string"
         });
     },
     (argv) => {
