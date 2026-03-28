@@ -1,6 +1,7 @@
 process.argv = ["make", "yargs", "happy"];
 
-const elc = require("./EluvioLiveCli");
+//const elc = require("./EluvioLiveCli");
+const elc = require("./elv_live_commands/lib/other");
 const th = require("../test/TestHelpers");
 const { Shuffler } = require("../src/Shuffler");
 
