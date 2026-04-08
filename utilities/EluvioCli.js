@@ -1780,7 +1780,7 @@ const CmdGroupDecryptCap = async ({argv}) => {
     await elvFabric.Init({privateKey: process.env.PRIVATE_KEY});
 
     const res = await elvFabric.GroupDecryptCap({
-      group: argv.group_id,
+      group: argv.group,
       spaceAddr: Config.consts[Config.net].spaceAddress,
     });
     console.log(yaml.dump(res));
@@ -2795,11 +2795,11 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "group_decrypt_cap <group_id>",
+    "group_decrypt_cap <group>",
     "Decrypt the cap stored in eluv.jwt metadata",
     (yargs) => {
-      yargs.positional("group_id",{
-        describe: "group id",
+      yargs.positional("group",{
+        describe: "group id or address",
         type: "string"
       });
     },

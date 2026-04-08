@@ -497,7 +497,7 @@ class ElvFabric {
     }
 
     const contentSpaceLibraryId = ElvUtils.AddressToId({prefix: "ilib", address: spaceAddr});
-    const groupId = ElvUtils.AddressToId({prefix: "iq__", address: group})
+    const groupId = ElvUtils.AddressToId({prefix: "iq__", address: group});
     const userIdKey = "/eluv.jwtv." + ElvUtils.AddressToId({prefix: "iusr", address: this.client.signer.address});
     const kmsIdKey = "/eluv.jwtv." + ElvUtils.AddressToId({prefix: "ikms", address: this.client.signer.address});
     let cap = await this.client.ContentObjectMetadata({
