@@ -1770,6 +1770,25 @@ const CmdDeleteContentsBatch = async ({ argv }) => {
   }
 };
 
+const CmdGroupDecryptCap = async ({argv}) => {
+  try {
+    const elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+
+    await elvFabric.Init({privateKey: process.env.PRIVATE_KEY});
+
+    const res = await elvFabric.GroupDecryptCap({
+      group: argv.group_id,
+      spaceAddr: Config.consts[Config.net].spaceAddress,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -2772,6 +2791,20 @@ yargs(hideBin(process.argv))
             CmdDeleteContentsBatch({ argv });
           }
         );
+    }
+  )
+
+  .command(
+    "group_decrypt_cap <group_id>",
+    "Decrypt the cap stored in eluv.jwt metadata",
+    (yargs) => {
+      yargs.positional("group_id",{
+        describe: "group id",
+        type: "string"
+      });
+    },
+    (argv) => {
+      CmdGroupDecryptCap({argv});
     }
   )
 

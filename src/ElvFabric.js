@@ -482,6 +482,43 @@ class ElvFabric {
   }
 
 
+  async GroupDecryptCap({group, spaceAddr}) {
+    if (!group || !spaceAddr) {
+      throw new Error("group and spaceAddr are required");
+    }
+
+    if (group.startsWith("igrp")){
+      group = this.client.utils.HashToAddress(group);
+    }
+
+    if (this.debug) {
+      console.log("Group", group);
+      console.log("SpaceAddr", spaceAddr);
+    }
+
+    const contentSpaceLibraryId = ElvUtils.AddressToId({prefix: "ilib", address: spaceAddr});
+    const groupId = ElvUtils.AddressToId({prefix: "iq__", address: group})
+    const userIdKey = "/eluv.jwtv." + ElvUtils.AddressToId({prefix: "iusr", address: this.client.signer.address});
+    const kmsIdKey = "/eluv.jwtv." + ElvUtils.AddressToId({prefix: "ikms", address: this.client.signer.address});
+    let cap = await this.client.ContentObjectMetadata({
+      libraryId: contentSpaceLibraryId,
+      objectId: groupId,
+      metadataSubtree: userIdKey,
+    });
+    if (!cap) {
+      cap = await this.client.ContentObjectMetadata({
+        libraryId: contentSpaceLibraryId,
+        objectId: groupId,
+        metadataSubtree: kmsIdKey,
+      });
+
+      if (!cap) {
+        throw new Error(`Cap not found for group ${group} for signer ${this.client.signer.address}`);
+      }
+    }
+
+    return await this.client.Crypto.DecryptCap(cap, this.client.signer._signingKey().privateKey);
+  }
 }
 
 
