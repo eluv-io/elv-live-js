@@ -1770,7 +1770,7 @@ const CmdDeleteContentsBatch = async ({ argv }) => {
   }
 };
 
-const CmdGroupDecryptCap = async ({argv}) => {
+const CmdGroupDecryptOauth = async ({argv}) => {
   try {
     const elvFabric = new ElvFabric({
       configUrl: Config.networks[Config.net],
@@ -1779,9 +1779,30 @@ const CmdGroupDecryptCap = async ({argv}) => {
 
     await elvFabric.Init({privateKey: process.env.PRIVATE_KEY});
 
-    const res = await elvFabric.GroupDecryptCap({
+    const res = await elvFabric.GroupDecryptOauth({
       group: argv.group,
       spaceAddr: Config.consts[Config.net].spaceAddress,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
+const CmdGroupEncryptOauth = async ({argv}) => {
+  try {
+    const elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+
+    await elvFabric.Init({privateKey: process.env.PRIVATE_KEY});
+
+    const res = await elvFabric.GroupEncryptOauth({
+      group: argv.group,
+      spaceAddr: Config.consts[Config.net].spaceAddress,
+      kmsAddr: Config.consts[Config.net].kmsAddress,
+      oauthConfig: argv.oauth_config,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -2795,7 +2816,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "group_decrypt_cap <group>",
+    "group_decrypt_oauth <group>",
     "Decrypt the cap stored in eluv.jwt metadata",
     (yargs) => {
       yargs.positional("group",{
@@ -2804,7 +2825,26 @@ yargs(hideBin(process.argv))
       });
     },
     (argv) => {
-      CmdGroupDecryptCap({argv});
+      CmdGroupDecryptOauth({argv});
+    }
+  )
+
+  .command(
+    "group_encrypt_oauth <group> <oauth_config>",
+    "Decrypt the cap stored in eluv.jwt metadata",
+    (yargs) => {
+      yargs
+        .positional("group",{
+          describe: "group id or address",
+          type: "string"
+        })
+        .positional("oauth_config",{
+          describe: "oauth config json",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdGroupEncryptOauth({argv});
     }
   )
 
