@@ -2817,7 +2817,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "group_decrypt_oauth <group>",
-    "Decrypt the cap stored in eluv.jwt metadata",
+    "Decrypt the oauth info: issuer, claims.aud, claims.groups[] from group metadata",
     (yargs) => {
       yargs.positional("group",{
         describe: "group id or address",
@@ -2831,7 +2831,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "group_encrypt_oauth <group> <oauth_config>",
-    "Decrypt the cap stored in eluv.jwt metadata",
+    "Encrypt oauth info: issuer, claims.aud, claims.groups[] and store in group metadata",
     (yargs) => {
       yargs
         .positional("group",{
