@@ -90,13 +90,13 @@ class ElvIssuer {
       }
     });
 
-    const users = await this.fetchAllOktaUsersAndGroups({client, url:"/api/v1/users"});
-    const formattedUsers = this.formatUsers(users);
+    const oktaUsers = await this.fetchAllOktaUsersAndGroups({client, url:"/api/v1/users"});
+    const users = this.formatUsers(oktaUsers);
 
-    const groups = await this.fetchAllOktaUsersAndGroups({client, url:"/api/v1/groups"});
-    const formattedGroups = this.formatGroups(groups);
+    const oktaGroups = await this.fetchAllOktaUsersAndGroups({client, url:"/api/v1/groups"});
+    const groups = this.formatGroups(oktaGroups);
 
-    const res = {formattedUsers, formattedGroups};
+    const res = {users, groups};
     if (filePath) {
       fs.writeFileSync(filePath, JSON.stringify(res, null, 2), "utf-8");
       return `JSON written to: ${filePath}`;
@@ -105,7 +105,7 @@ class ElvIssuer {
   }
 
 
-  async SyncOktaIssuer({policyId, oktaDomain, adminToken, privateKey, keepExisting}) {
+  async SyncOktaIssuer({policyId, oktaDomain, adminToken, privateKey, keepExistingPart, userGroupList}) {
 
     if (!privateKey) {
       throw new Error("require env PRIVATE_KEY to be set");
@@ -118,7 +118,23 @@ class ElvIssuer {
     let signer = wallet.AddAccount({privateKey: privateKey});
     this.client.SetSigner({signer});
 
-    const oauthInfo = this.GetOktaGroupsAndUsers({oktaDomain, adminToken});
+    let oauthInfo;
+    if (!userGroupList) {
+      oauthInfo = this.GetOktaGroupsAndUsers({oktaDomain, adminToken});
+    } else {
+      const raw = fs.readFileSync(userGroupList, "utf-8");
+      oauthInfo = JSON.parse(raw);
+
+      const userCount = Object.keys(oauthInfo.users || {}).length;
+      const groupCount = Object.keys(oauthInfo.groups || {}).length;
+
+      console.log("total users:", userCount);
+      console.log("total groups:", groupCount);
+
+      if (userCount === 0 || groupCount === 0) {
+        throw new Error("require users and groups to be set in user_group_list file");
+      }
+    }
 
     const libraryId = await this.client.ContentObjectLibraryId({objectId: policyId});
 
@@ -156,7 +172,7 @@ class ElvIssuer {
       metadata: partHash
     });
 
-    if (existingPart && !keepExisting) {
+    if (existingPart && !keepExistingPart) {
       console.log("Deleting existing OAuth part hash...");
       try {
         await this.client.DeletePart({

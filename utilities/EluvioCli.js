@@ -1846,7 +1846,8 @@ const CmdIssuerOktaSync = async ({argv}) => {
       oktaDomain: argv.okta_domain,
       adminToken,
       privateKey,
-      keepExisting: argv.keep_existing
+      keepExistingPart: argv.keep_existing_part,
+      userGroupList: argv.user_group_list
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -2924,10 +2925,14 @@ yargs(hideBin(process.argv))
           describe: "okta domain url",
           type: "string"
         })
-        .option("keep_existing", {
-          describe: "do not delete oauth_settings part hash",
+        .option("keep_existing_part", {
+          describe: "do not delete existing oauth_settings part hash",
           type: "boolean",
           default: false,
+        })
+        .option("user_group_list", {
+          describe: "users and groups list to store in part",
+          type: "string",
         });
     },
     (argv) => {
