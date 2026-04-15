@@ -132,7 +132,7 @@ class ElvIssuer {
       console.log("total groups:", groupCount);
 
       if (userCount === 0 || groupCount === 0) {
-        throw new Error("require users and groups to be set in user_group_list file");
+        throw new Error(`Invalid oauthInfo: users=${userCount}, groups=${groupCount}. Ensure user_group_list file is populated.`);
       }
     }
 
