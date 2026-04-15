@@ -2913,7 +2913,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "issuer_okta_sync <policy_id> <okta_domain>",
+    "issuer_okta_sync <policy_id>",
     "Retrieve all Okta users and groups for given issuer and update the policy object metadata",
     (yargs) => {
       yargs
@@ -2921,7 +2921,7 @@ yargs(hideBin(process.argv))
           describe: "policy id",
           type: "string"
         })
-        .positional("okta_domain", {
+        .option("okta_domain", {
           describe: "okta domain url",
           type: "string"
         })
