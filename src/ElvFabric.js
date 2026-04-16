@@ -482,6 +482,129 @@ class ElvFabric {
   }
 
 
+  async GroupDecryptOauth({group, spaceAddr}) {
+    if (!group || !spaceAddr) {
+      throw new Error("group and spaceAddr are required");
+    }
+
+    if (group.startsWith("igrp")){
+      group = this.client.utils.HashToAddress(group);
+    }
+
+    if (this.debug) {
+      console.log("Group", group);
+      console.log("SpaceAddr", spaceAddr);
+    }
+
+    const contentSpaceLibraryId = ElvUtils.AddressToId({prefix: "ilib", address: spaceAddr});
+    const groupId = ElvUtils.AddressToId({prefix: "iq__", address: group});
+    const userIdKey = "/eluv.jwtv." + ElvUtils.AddressToId({prefix: "iusr", address: this.client.signer.address});
+    const kmsIdKey = "/eluv.jwtv." + ElvUtils.AddressToId({prefix: "ikms", address: this.client.signer.address});
+    let cap = await this.client.ContentObjectMetadata({
+      libraryId: contentSpaceLibraryId,
+      objectId: groupId,
+      metadataSubtree: userIdKey,
+    });
+    if (!cap) {
+      cap = await this.client.ContentObjectMetadata({
+        libraryId: contentSpaceLibraryId,
+        objectId: groupId,
+        metadataSubtree: kmsIdKey,
+      });
+
+      if (!cap) {
+        throw new Error(`Cap not found for group ${group} for signer ${this.client.signer.address}`);
+      }
+    }
+
+    return await this.client.Crypto.DecryptCap(cap, this.client.signer._signingKey().privateKey);
+  }
+
+  async GroupEncryptOauth({group, spaceAddr, kmsAddr, oauthConfig}) {
+
+    if (this.debug) {
+      console.log("Group", group);
+      console.log("SpaceAddr", spaceAddr);
+      console.log("KmsAddr", kmsAddr);
+      console.log("OauthConfig", oauthConfig);
+    }
+
+
+    if (!group || !spaceAddr) {
+      throw new Error("group and spaceAddr are required");
+    }
+    if (!kmsAddr) {
+      throw new Error("kmsAddr is required");
+    }
+
+    if (!oauthConfig ) {
+      throw new Error(`
+        oauthConfig is required:
+        {
+          issuer: 'https://xxx/oauth2/default',
+          claims: {
+              aud: '0oaxxx',
+              groups: [ 'group-name' ]
+          }
+        }`);
+    }
+
+    let parsedOauthConfig;
+    try {
+      parsedOauthConfig =
+        typeof oauthConfig === "string"
+          ? JSON.parse(oauthConfig)
+          : oauthConfig;
+    } catch (e) {
+      throw new Error("oauthConfig must be valid JSON");
+    }
+
+    const {issuer, claims} = parsedOauthConfig;
+    if (!issuer || typeof issuer !== "string") {
+      throw new Error("oauthConfig.issuer must be set");
+    }
+    if (!claims || typeof claims !== "object") {
+      throw new Error("oauthConfig.claims must be an object");
+    }
+    if (!claims.aud || typeof claims.aud !== "string") {
+      throw new Error("oauthConfig.claims.aud must be set");
+    }
+    if (!claims.groups || !Array.isArray(claims.groups) || claims.groups.length === 0){
+      throw new Error("oauthConfig.claims.groups must be set with array of groups");
+    }
+
+    if (group.startsWith("igrp")){
+      group = this.client.utils.HashToAddress(group);
+    }
+
+    const kmsId = ElvUtils.AddressToId({prefix: "ikms", address: kmsAddr});
+
+
+    await this.client.LinkAccessGroupToOauth({
+      groupAddress: group,
+      kmsId,
+      oauthConfig: parsedOauthConfig
+    });
+
+    const contentSpaceLibraryId = ElvUtils.AddressToId({prefix: "ilib", address: spaceAddr});
+    const groupId = ElvUtils.AddressToId({prefix: "iq__", address: group});
+    const metadata = await this.client.ContentObjectMetadata({
+      libraryId: contentSpaceLibraryId,
+      objectId: groupId,
+    });
+
+    const kmsIdKey = "eluv.jwtv." + kmsId;
+    const userIdKey = "eluv.jwtv." + ElvUtils.AddressToId({prefix: "iusr", address: this.client.signer.address});
+    const hasKmsCap = metadata && metadata[kmsIdKey] !== undefined;
+    const hasUserCap = metadata && metadata[userIdKey] !== undefined;
+    if (!hasKmsCap) {
+      throw Error(`KMS ${kmsIdKey} not set in metadata`);
+    }
+    if (!hasUserCap) {
+      throw Error(`USER ${userIdKey} not set in metadata`);
+    }
+    return `Successfully set oauthConfig on ${group}.`;
+  }
 }
 
 
