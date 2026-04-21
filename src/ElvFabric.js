@@ -546,7 +546,7 @@ class ElvFabric {
               aud: '0oaxxx',
               groups: [ 'group-name' ]
           }
-        }`);
+        } or [{issuer,claims}, {issuer,claims}]`);
     }
 
     let parsedOauthConfig;
@@ -559,19 +559,25 @@ class ElvFabric {
       throw new Error("oauthConfig must be valid JSON");
     }
 
-    const {issuer, claims} = parsedOauthConfig;
-    if (!issuer || typeof issuer !== "string") {
-      throw new Error("oauthConfig.issuer must be set");
-    }
-    if (!claims || typeof claims !== "object") {
-      throw new Error("oauthConfig.claims must be an object");
-    }
-    if (!claims.aud || typeof claims.aud !== "string") {
-      throw new Error("oauthConfig.claims.aud must be set");
-    }
-    if (!claims.groups || !Array.isArray(claims.groups) || claims.groups.length === 0){
-      throw new Error("oauthConfig.claims.groups must be set with array of groups");
-    }
+    let configs = Array.isArray(parsedOauthConfig)? parsedOauthConfig:[parsedOauthConfig];
+
+    configs.forEach((config, index) => {
+      const {issuer, claims} = config;
+      if (!issuer || typeof issuer !== "string") {
+        throw new Error(`oauthConfig[${index}].issuer must be set`);
+      }
+      if (!claims || typeof claims !== "object") {
+        throw new Error(`oauthConfig[${index}].claims must be an object`);
+      }
+      if (!claims.aud || typeof claims.aud !== "string") {
+        throw new Error(`oauthConfig[${index}].claims.aud must be set`);
+      }
+      if (!claims.groups || !Array.isArray(claims.groups) || claims.groups.length === 0){
+        throw new Error(`oauthConfig[${index}].claims.groups must be set with array of groups`);
+      }
+
+    });
+
 
     if (group.startsWith("igrp")){
       group = this.client.utils.HashToAddress(group);
