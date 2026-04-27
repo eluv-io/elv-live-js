@@ -2,7 +2,7 @@
   "name": "@eluvio/elv-live-js",
   "version": "1.6.0",
   "description": "Eluvio Live SDK and Tools",
-  "main": "EluvioLive.js",
+  "main": "src/EluvioLive.js",
   "bin": {
     "elv-live": "elv-live",
     "elv-stream": "elv-stream",
@@ -36,7 +36,9 @@
     "/contracts",
     "/src",
     "/utilities",
+    "elv-admin",
     "elv-live",
+    "elv-stream",
     "package.json",
     "LICENSE",
     "README.md"
