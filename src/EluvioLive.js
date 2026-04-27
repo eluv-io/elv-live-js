@@ -2484,7 +2484,7 @@ class EluvioLive {
     });
 
     if (nftDir && nftDir.length > 0) {
-      // Merge the nft array
+      // Replace the nft array
       await this.client.ReplaceMetadata({
         libraryId,
         objectId,
@@ -2494,7 +2494,7 @@ class EluvioLive {
       });
     } else {
       // Merge the single nft object
-      await this.client.ReplaceMetadata({
+      await this.client.MergeMetadata({
         libraryId,
         objectId,
         writeToken: e.write_token,
