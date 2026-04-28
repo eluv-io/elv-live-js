@@ -2142,14 +2142,10 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_build <library> <object> [options]",
+    "nft_build <object> [options]",
     "Build the public/nft section based on asset metadata. If --nft_dir is specified, will build a generative nft based on *.json files inside the dir. See README.md for more details.",
     (yargs) => {
       yargs
-        .positional("library", {
-          describe: "Content library",
-          type: "string",
-        })
         .positional("object", {
           describe: "Content object hash (hq__) or id (iq__)",
           type: "string",

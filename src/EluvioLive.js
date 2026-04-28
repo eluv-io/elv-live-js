@@ -2442,11 +2442,13 @@ class EluvioLive {
    * @param {string} nftDir - Directory containing nft json file(s) for building nfts
    * @return {Promise<Object>} - The public/nft or public/nfts JSON
    */
-  async NftBuild({ libraryId, objectId, nftDir }) {
+  async NftBuild({ objectId, nftDir }) {
     var hash = await this.client.LatestVersionHash({
       objectId,
     });
-
+    
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    
     var m = await this.client.ContentObjectMetadata({
       libraryId,
       objectId,
