@@ -2442,11 +2442,13 @@ class EluvioLive {
    * @param {string} nftDir - Directory containing nft json file(s) for building nfts
    * @return {Promise<Object>} - The public/nft or public/nfts JSON
    */
-  async NftBuild({ libraryId, objectId, nftDir }) {
+  async NftBuild({ objectId, nftDir }) {
     var hash = await this.client.LatestVersionHash({
       objectId,
     });
-
+    
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    
     var m = await this.client.ContentObjectMetadata({
       libraryId,
       objectId,
@@ -2484,7 +2486,7 @@ class EluvioLive {
     });
 
     if (nftDir && nftDir.length > 0) {
-      // Merge the nft array
+      // Replace the nft array
       await this.client.ReplaceMetadata({
         libraryId,
         objectId,
@@ -2494,7 +2496,7 @@ class EluvioLive {
       });
     } else {
       // Merge the single nft object
-      await this.client.ReplaceMetadata({
+      await this.client.MergeMetadata({
         libraryId,
         objectId,
         writeToken: e.write_token,
