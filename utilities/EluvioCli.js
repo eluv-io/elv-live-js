@@ -2929,7 +2929,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "group_update_oauth <group> <new_issuer> <new_audience>",
-    "Update oauth info: add new issuer, new audience with groups (space replaced with underscore)",
+    "Update oauth info: add new issuer, new audience with groups from okta issuer (space replaced with underscore)",
     (yargs) => {
       yargs
         .positional("group",{
