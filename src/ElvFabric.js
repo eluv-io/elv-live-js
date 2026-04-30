@@ -27,6 +27,9 @@ class ElvFabric {
       configUrl: this.configUrl,
       noAuth: update ? false : true
     });
+    // this.client.SetNodes({
+    //   ethereumURIs: ["https://host-76-74-29-36.contentfabric.io/eth"]
+    // });
     let wallet = this.client.GenerateWallet();
     let signer = wallet.AddAccount({
       privateKey,
@@ -610,6 +613,108 @@ class ElvFabric {
       throw Error(`USER ${userIdKey} not set in metadata`);
     }
     return `Successfully set oauthConfig on ${group}.`;
+  }
+
+  async GroupUpdateOauth({group, spaceAddr, kmsAddr, newIssuer, newAud }) {
+
+    if (!group || !spaceAddr || !newIssuer || !newAud) {
+      throw new Error("group, spaceAddr, newIssuer and newAudience are required");
+    }
+
+    const groups = Array.isArray(group)? group : [group];
+    const results = [];
+
+    for (const grp of groups) {
+      let res = {"group": grp};
+      try {
+        res.result = await this._groupUpdateOauth({
+          group: grp,
+          spaceAddr,
+          kmsAddr,
+          newIssuer,
+          newAud,
+        });
+      } catch (e) {
+        res.error = e.message || String(e);
+      }
+      results.push(res);
+    }
+
+    return results;
+  }
+
+  async _groupUpdateOauth({group, spaceAddr, kmsAddr, newIssuer, newAud}) {
+    // decrypt existing oauth config
+    let existingConfig = await this.GroupDecryptOauth({ group, spaceAddr });
+    if (!existingConfig) {
+      throw new Error(`No existing oauth config found for group ${group}`);
+    }
+
+    // normalize to array
+    let configs = Array.isArray(existingConfig)
+      ? existingConfig
+      : [existingConfig];
+
+    if (this.debug) {
+      console.log("group", group);
+      console.log("Existing configs:", configs);
+      console.log("New issuer:", newIssuer);
+    }
+
+    // check if newIssuer already exists
+    const alreadyExists = configs.some(c => c.issuer === newIssuer && c.claims?.aud === newAud);
+    if (alreadyExists) {
+      return `Issuer ${newIssuer} with aud ${newAud} already exists for the group ${group}`;
+    }
+
+    // find Okta issuer
+    const oktaConfig = configs.find(c =>
+      typeof c.issuer === "string" && (c.issuer.includes("okta"))
+    );
+
+    // copy claims if okta exists
+    let baseClaims = oktaConfig ? { ...oktaConfig.claims } : null;
+    if (!baseClaims) {
+      throw new Error("No Okta/base issuer found to copy claims from");
+    }
+    if (!baseClaims.groups || baseClaims.groups.length === 0) {
+      throw new Error(`No groups found in base issuer for group ${group}`);
+    }
+
+    // replace space with underscore for existing groups
+    const sanitizedGroups = Array.isArray(baseClaims.groups)
+      ? baseClaims.groups.map(g =>
+        typeof g === "string" ? g.replace(/\s+/g, "_") : g
+      )
+      : baseClaims.groups;
+
+    // build new claims with new audience and groups
+    const newClaims = {
+      ...baseClaims,
+      aud: newAud,
+      groups: sanitizedGroups
+    };
+
+    // create new issuer config
+    const newConfig = {
+      issuer: newIssuer,
+      claims: newClaims
+    };
+
+    configs.push(newConfig);
+    console.log("Group:", group);
+    console.log("Updated configs:\n", configs);
+
+    if (!kmsAddr) {
+      throw new Error("kmsAddr is required for re-encryption");
+    }
+
+    return await this.GroupEncryptOauth({
+      group,
+      spaceAddr,
+      kmsAddr,
+      oauthConfig: configs
+    });
   }
 }
 

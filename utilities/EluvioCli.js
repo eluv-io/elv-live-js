@@ -1792,12 +1792,18 @@ const CmdGroupDecryptOauth = async ({argv}) => {
 
 const CmdGroupEncryptOauth = async ({argv}) => {
   try {
+
+    let privateKey = process.env.PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error("PRIVATE_KEY is not set");
+    }
+
     const elvFabric = new ElvFabric({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose,
     });
 
-    await elvFabric.Init({privateKey: process.env.PRIVATE_KEY});
+    await elvFabric.Init({privateKey});
 
     const res = await elvFabric.GroupEncryptOauth({
       group: argv.group,
@@ -1810,6 +1816,34 @@ const CmdGroupEncryptOauth = async ({argv}) => {
     console.error("ERROR:", argv.verbose? e: e.message);
   }
 };
+
+const CmdGroupUpdateOauth = async ({argv}) => {
+  try {
+    let privateKey = process.env.PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error("PRIVATE_KEY is not set");
+    }
+
+    const elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+
+    await elvFabric.Init({privateKey});
+
+    const res = await elvFabric.GroupUpdateOauth({
+      group: argv.group,
+      spaceAddr: Config.consts[Config.net].spaceAddress,
+      kmsAddr: Config.consts[Config.net].kmsAddress,
+      newIssuer: argv.new_issuer,
+      newAud: argv.new_audience
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
 
 const CmdIssuerOktaGet = async ({argv}) => {
   try {
@@ -2890,6 +2924,33 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdGroupEncryptOauth({argv});
+    }
+  )
+
+  .command(
+    "group_update_oauth <group> <new_issuer> <new_audience>",
+    "Update oauth info: add new issuer, new audience with groups (space replaced with underscore)",
+    (yargs) => {
+      yargs
+        .positional("group",{
+          describe: "group id(s) or address(s), comma-separated",
+          type: "string",
+          coerce: (arg) => {
+            if (!arg) return [];
+            return String(arg).split(",").map(s => s.trim()).filter(Boolean); // to rm empty values
+          }
+        })
+        .positional("new_issuer",{
+          describe: "oauth issuer",
+          type: "string"
+        })
+        .positional("new_audience",{
+          describe: "oauth audience",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdGroupUpdateOauth({argv});
     }
   )
 
