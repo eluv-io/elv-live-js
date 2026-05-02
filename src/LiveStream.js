@@ -467,6 +467,28 @@ class EluvioLiveStream {
       targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
     }
 
+    // If updating an existing object, capture entry/exit rat from existing
+    // offerings so we can restore them after live-to-vod overwrites them.
+    let preservedOfferingPoints = {};
+    if (object && targetWriteToken == undefined) {
+      for (const offeringKey of ["default", "default_dash"]) {
+        const existing = await this.client.ContentObjectMetadata({
+          libraryId: targetLibraryId,
+          objectId: object,
+          metadataSubtree: `offerings/${offeringKey}`
+        });
+        if (existing && (existing.entry_point_rat || existing.exit_point_rat)) {
+          preservedOfferingPoints[offeringKey] = {
+            entry_point_rat: existing.entry_point_rat,
+            exit_point_rat: existing.exit_point_rat
+          };
+          console.log(
+            `Preserving offerings/${offeringKey} entry_point_rat=${existing.entry_point_rat} exit_point_rat=${existing.exit_point_rat}`
+          );
+        }
+      }
+    }
+
     console.log("Copying stream", stream, "object", object, "drm", drm);
 
     // Validation - require target object
@@ -599,6 +621,36 @@ class EluvioLiveStream {
         constant: false,
         format: "text"
       });
+
+      // Restore previously captured entry/exit rat values onto the offerings
+      for (const [offeringKey, points] of Object.entries(preservedOfferingPoints)) {
+        const offering = await this.client.ContentObjectMetadata({
+          libraryId: targetLibraryId,
+          objectId: object,
+          writeToken: targetWriteToken,
+          metadataSubtree: `offerings/${offeringKey}`
+        });
+        if (!offering) {
+          console.log(`Skipping restore for offerings/${offeringKey} (not present after copy)`);
+          continue;
+        }
+        if (points.entry_point_rat !== undefined) {
+          offering.entry_point_rat = points.entry_point_rat;
+        }
+        if (points.exit_point_rat !== undefined) {
+          offering.exit_point_rat = points.exit_point_rat;
+        }
+        await this.client.ReplaceMetadata({
+          libraryId: targetLibraryId,
+          objectId: object,
+          writeToken: targetWriteToken,
+          metadataSubtree: `offerings/${offeringKey}`,
+          metadata: offering
+        });
+        console.log(
+          `Restored offerings/${offeringKey} entry_point_rat=${points.entry_point_rat} exit_point_rat=${points.exit_point_rat}`
+        );
+      }
 
       let finalize = true;
       if (finalize) {
