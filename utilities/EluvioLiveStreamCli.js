@@ -1,6 +1,7 @@
 const { EluvioLiveStream } = require("../src/LiveStream.js");
 const { ElvSpace } = require("../src/ElvSpace.js");
 const { Config } = require("../src/Config.js");
+const { ElvSegments } = require("../src/ElvSegments");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -329,7 +330,31 @@ const CmdStreamSwitch = async ({ argv }) => {
   } catch (e) {
     console.error("ERROR:", e);
   }
-}
+};
+
+const CmdHlsClearSegmentsDownload = async ({argv}) => {
+
+  try {
+    const elvSegments = new ElvSegments({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvSegments.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvSegments.DownloadHlsClearSegments({
+      objectId: argv.objectId,
+      url: argv.url,
+      outputDir: argv.output_dir
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+};
 
 
 yargs(hideBin(process.argv))
@@ -382,9 +407,8 @@ yargs(hideBin(process.argv))
           describe:
             "Specify the list of playout formats and DRM to support, comma-separated (hls-clear, hls-aes128, hls-sample-aes, hls-fairplay)",
           type: "string",
-        })
-
-      },
+        });
+    },
     (argv) => {
       CmdInit({ argv });
     }
@@ -577,9 +601,8 @@ yargs(hideBin(process.argv))
           describe:
             "Download the MPEGTS copy instead of the MP4 mezzanine",
           type: "bool",
-        })
-
-      },
+        });
+    },
     (argv) => {
       CmdStreamDownload({ argv });
     }
@@ -676,16 +699,16 @@ yargs(hideBin(process.argv))
     "Set watermark for this stream.",
     (yargs) => {
       yargs
-      .positional("stream", {
-        describe:
-          "Stream name or QID (content ID)",
-        type: "string",
-      })
-      .positional("file", {
+        .positional("stream", {
+          describe:
+            "Stream name or QID (content ID)",
+          type: "string",
+        })
+        .positional("file", {
           describe:
             "File containing JSON watermark spec",
           type: "string",
-        })
+        });
     },
     (argv) => {
       CmdWatermark({ op: "set", argv });
@@ -697,12 +720,12 @@ yargs(hideBin(process.argv))
     "Remove watermark from the stream.",
     (yargs) => {
       yargs
-      .positional("stream", {
-        describe:
-          "Stream name or QID (content ID)",
-        type: "string",
-      })
-  },
+        .positional("stream", {
+          describe:
+            "Stream name or QID (content ID)",
+          type: "string",
+        })
+    },
     (argv) => {
       CmdWatermark({ op: "rm", argv });
     }
@@ -747,6 +770,29 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdStreamSwitch({argv});
+    }
+  )
+
+  .command(
+    "hls_clear_segments_download <objectId> <url>",
+    "Download hls-clear init and first 2 segments",
+    (yargs) => {
+      yargs
+        .positional("objectId", {
+          describe: "object Id",
+          type: "string",
+        })
+        .positional("url", {
+          describe: "fabric url",
+          type: "string",
+        })
+        .option("output_dir", {
+          describe: "output directory",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdHlsClearSegmentsDownload({argv});
     }
   )
 
