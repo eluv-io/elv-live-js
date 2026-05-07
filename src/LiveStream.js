@@ -10,6 +10,7 @@ const { Config } = require("./Config.js");
 const fs = require("fs");
 const got = require("got");
 const https = require("https");
+const yaml = require("js-yaml");
 
 const MakeTxLessToken = async({client, libraryId, objectId, versionHash}) => {
   const tok = await client.authClient.AuthorizationToken({libraryId, objectId,
@@ -105,10 +106,89 @@ class EluvioLiveStream {
   }
 
   /*
-  * StreamCreate creates a new edge write token
+  * Create a live stream
   */
-  async StreamCreate ({name, start = false, show_curl = false}) {
-    const status = await this.client.StreamCreate({name, start});
+  async streamCreate({ objectId, libraryId, url, finalize, liveRecordingConfigArg, name, permission, linkToSite }) {
+    let liveRecordingConfig;
+    if (fs.existsSync(liveRecordingConfigArg)) {
+      // Although its yaml.load it still works with JSON sources!
+      liveRecordingConfig = yaml.load(fs.readFileSync(liveRecordingConfigArg, "utf8"));
+    } else {
+      liveRecordingConfig = await this.client.StreamConfigProfile({profileName: liveRecordingConfigArg});
+    }
+
+    const options = {};
+    if (name !== undefined) options.name = name;
+    if (permission !== undefined) options.permission = permission;
+    if (linkToSite !== undefined) options.linkToSite = linkToSite;
+
+    return await this.client.StreamCreate({
+      objectId,
+      libraryId,
+      url,
+      finalize,
+      options,
+      liveRecordingConfig
+    });
+  }
+
+  /*
+  * Create streams in bulk read from a yaml/yml/json file
+  */
+  async CreateStreamObjectBatch(batch_file){
+    let bulkFileContents = {};
+    try {
+      const fileContents = fs.readFileSync(batch_file, "utf8");
+      // Although its yaml.load it still works with JSON sources!
+      bulkFileContents = yaml.load(fileContents);
+    } catch (e) {
+      console.error(`Error: Could not read or parse file. ${e.message}`);
+      process.exit(1);
+    }
+
+    // check if we will use a saved profile or one defined in the file
+    let liveRecordingConfig;
+    if (bulkFileContents.profile_name !== undefined) {
+      liveRecordingConfig = await this.client.StreamConfigProfile({profileName: bulkFileContents.profile_name});
+    } else if (bulkFileContents.profile_data !== undefined) {
+      liveRecordingConfig = bulkFileContents.profile_data;
+    } else {
+      console.log("ERROR: profile_name or profile_data not defined in batch file");
+      process.exit(1);
+    }
+
+    // iterate through all the streams and create them
+    const libraryId = bulkFileContents.library;
+    const streams = bulkFileContents.streams;
+    for (const stream of streams) {
+      try {
+        console.log(`CREATING ${stream.name}`);
+        const url = stream.url;
+        const options = {
+          name: stream.name,
+          displayTitle: stream.name,
+          linkToSite: stream.link_to_site ?? true,
+          permission: stream.permission ?? "editable"
+        };
+        await this.client.StreamCreate({
+          libraryId,
+          url,
+          options,
+          liveRecordingConfig
+        });
+      } catch (e) {
+        console.error(`Error: Could not create stream: ${e.message}`);
+        process.exit(1);
+      }
+    }
+    return true;
+  }
+
+  /*
+  * StreamStartRecording creates a new edge write token
+  */
+  async StreamStartRecording ({name, start = false, show_curl = false}) {
+    const status = await this.client.StreamStartRecording({name, start});
 
     if (show_curl) {
       const objectId = status.object_id;
@@ -174,7 +254,7 @@ class EluvioLiveStream {
    * Not implemented fully
    */
   async StopSession({name}) {
-    return this.client.StreamStopSession({name});
+    return this.client.StreamStopRecording({name});
   }
 
   async Initialize({name, drm=false, format}) {
@@ -1093,5 +1173,7 @@ const ConfigStreamRebroadcast = async () => {
   }
 };
 */
+
+
 
 exports.EluvioLiveStream = EluvioLiveStream;
