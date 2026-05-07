@@ -69,7 +69,22 @@ const CmdStreamCreate = async ({ argv }) => {
 };
 
 const CmdCreateStreamObjectBatch = async ({ argv }) => {
+  if (argv.batch_file === undefined) {
+    const exampleFileContents = fs.readFileSync("src/live_stream_bulk_example.yaml", "utf8");
+    exampleFile = yaml.load(exampleFileContents);
+    argv.yaml_batch_file_example && console.log(yaml.dump(exampleFile));
+    argv.json_batch_file_example && console.log(JSON.stringify(exampleFile, null, 2));
+    process.exit(0);
+  }
   try {
+    const extension = path.extname(argv.batch_file).toLowerCase();
+    if (![".json", ".yaml", ".yml"].includes(extension)) {
+      throw new Error("Invalid file extension. Please use a .json, .yaml, or .yml file");
+    }
+    if (!fs.existsSync(argv.batch_file)) {
+      throw new Error("File not found.");
+    }
+    
     let elvStream = new EluvioLiveStream({
       url: argv.url,
       debugLogging: argv.verbose
@@ -439,15 +454,23 @@ yargs(hideBin(process.argv))
         .option("batch_file", {
           describe: "Path to .json, .yaml, or .yml file",
           type: "string",
-          demandOption: true
         })
+        .option("yaml_batch_file_example", {
+          describe: "Print out an example of a yaml/yml bulk file",
+          type: "boolean",
+        })
+        .option("json_batch_file_example", {
+          describe: "Print out an example of a json bulk file",
+          type: "boolean",
+        })
+        // Prevent more than one being used at once
+        .conflicts('batch_file', ['yaml_batch_file_example', 'json_batch_file_example'])
+        .conflicts('yaml_batch_file_example', ['batch_file', 'json_batch_file_example'])
+        .conflicts('json_batch_file_example', ['batch_file', 'yaml_batch_file_example'])
+        // Ensure at least one is provided
         .check((argv) => {
-          const extension = path.extname(argv.batch_file).toLowerCase();
-          if (![".json", ".yaml", ".yml"].includes(extension)) {
-            throw new Error("Invalid file extension.");
-          }
-          if (!fs.existsSync(argv.batch_file)) {
-            throw new Error("File not found.");
+          if (!argv.batch_file && !argv.yaml_batch_file_example && !argv.json_batch_file_example) {
+            throw new Error("Check failed: You must provide one of options: --batch_file, --yaml_batch_file_example, or --json_batch_file_example");
           }
           return true;
         })

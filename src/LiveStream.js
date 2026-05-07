@@ -92,7 +92,7 @@ class EluvioLiveStream {
   async streamCreate({ objectId, libraryId, url, finalize, liveRecordingConfigArg, name, permission, linkToSite }) {
     let liveRecordingConfig;
     if (fs.existsSync(liveRecordingConfigArg)) {
-       // Although its yaml.load it still works with JSON sources!
+      // Although its yaml.load it still works with JSON sources!
       liveRecordingConfig = yaml.load(fs.readFileSync(liveRecordingConfigArg, "utf8"));
     } else {
       liveRecordingConfig = await this.client.StreamConfigProfile({profileName: liveRecordingConfigArg});
@@ -129,7 +129,7 @@ class EluvioLiveStream {
 
     // check if we will use a saved profile or one defined in the file
     let liveRecordingConfig;
-    if (bulkFileContents.profile_name !== undefined ) {
+    if (bulkFileContents.profile_name !== undefined) {
       liveRecordingConfig = await this.client.StreamConfigProfile({profileName: bulkFileContents.profile_name});
     } else if (bulkFileContents.profile_data !== undefined) {
       liveRecordingConfig = bulkFileContents.profile_data;
