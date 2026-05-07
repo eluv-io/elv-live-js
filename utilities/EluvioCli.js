@@ -7,6 +7,7 @@ const { BatchHelper } = require("../src/BatchHelper");
 const { Config } = require("../src/Config.js");
 const Ethers = require("ethers");
 const constants = require("../src/Constants");
+const { ElvIssuer } = require("../src/ElvIssuer");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -1770,6 +1771,90 @@ const CmdDeleteContentsBatch = async ({ argv }) => {
   }
 };
 
+const CmdGroupDecryptOauth = async ({argv}) => {
+  try {
+    const elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+
+    await elvFabric.Init({privateKey: process.env.PRIVATE_KEY});
+
+    const res = await elvFabric.GroupDecryptOauth({
+      group: argv.group,
+      spaceAddr: Config.consts[Config.net].spaceAddress,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
+const CmdGroupEncryptOauth = async ({argv}) => {
+  try {
+    const elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+
+    await elvFabric.Init({privateKey: process.env.PRIVATE_KEY});
+
+    const res = await elvFabric.GroupEncryptOauth({
+      group: argv.group,
+      spaceAddr: Config.consts[Config.net].spaceAddress,
+      kmsAddr: Config.consts[Config.net].kmsAddress,
+      oauthConfig: argv.oauth_config,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
+const CmdIssuerOktaGet = async ({argv}) => {
+  try {
+    const adminToken = process.env.ADMIN_TOKEN;
+    const elvIssuer = new ElvIssuer({
+      configUrl: Config.networks[Config.net],
+      debug: argv.verbose,
+    });
+
+    await elvIssuer.Init();
+    const res = await elvIssuer.GetOktaGroupsAndUsers({
+      oktaDomain: argv.okta_domain,
+      adminToken: adminToken,
+      out: argv.out
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
+const CmdIssuerOktaSync = async ({argv}) => {
+  try {
+    const adminToken = process.env.ADMIN_TOKEN;
+    const privateKey = process.env.PRIVATE_KEY;
+    const elvIssuer = new ElvIssuer({
+      configUrl: Config.networks[Config.net],
+      debug: argv.verbose,
+    });
+
+    await elvIssuer.Init();
+    const res = await elvIssuer.SyncOktaIssuer({
+      policyId: argv.policy_id,
+      oktaDomain: argv.okta_domain,
+      adminToken,
+      privateKey,
+      keepExistingPart: argv.keep_existing_part,
+      userGroupList: argv.user_group_list
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -2772,6 +2857,86 @@ yargs(hideBin(process.argv))
             CmdDeleteContentsBatch({ argv });
           }
         );
+    }
+  )
+
+  .command(
+    "group_decrypt_oauth <group>",
+    "Decrypt the oauth info: issuer, claims.aud, claims.groups[] from group metadata",
+    (yargs) => {
+      yargs.positional("group",{
+        describe: "group id or address",
+        type: "string"
+      });
+    },
+    (argv) => {
+      CmdGroupDecryptOauth({argv});
+    }
+  )
+
+  .command(
+    "group_encrypt_oauth <group> <oauth_config>",
+    "Encrypt oauth info: issuer, claims.aud, claims.groups[] and store in group metadata",
+    (yargs) => {
+      yargs
+        .positional("group",{
+          describe: "group id or address",
+          type: "string"
+        })
+        .positional("oauth_config",{
+          describe: "oauth config json",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdGroupEncryptOauth({argv});
+    }
+  )
+
+  .command(
+    "issuer_okta_get <okta_domain>",
+    "Retrieve all Okta users and groups for given issuer",
+    (yargs) => {
+      yargs
+        .positional("okta_domain", {
+          describe: "okta domain url",
+          type: "string"
+        })
+        .option("out", {
+          describe: "output-file path",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdIssuerOktaGet({argv});
+    }
+  )
+
+  .command(
+    "issuer_okta_sync <policy_id>",
+    "Retrieve all Okta users and groups for given issuer and update the policy object metadata",
+    (yargs) => {
+      yargs
+        .positional("policy_id", {
+          describe: "policy id",
+          type: "string"
+        })
+        .option("okta_domain", {
+          describe: "okta domain url",
+          type: "string"
+        })
+        .option("keep_existing_part", {
+          describe: "do not delete existing oauth_settings part hash",
+          type: "boolean",
+          default: false,
+        })
+        .option("user_group_list", {
+          describe: "users and groups list to store in part",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdIssuerOktaSync({argv});
     }
   )
 

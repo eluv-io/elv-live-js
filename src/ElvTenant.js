@@ -152,7 +152,7 @@ class ElvTenant {
 
     const groups = await this.client.ListAccessGroups();
     for (const g of groups) {
-      tenant.groups.push({id: g.id, name: g.meta.public.name});
+      tenant.groups.push({id: g.id, name: g.meta.public?.name});
     }
 
     tenant.libs = await this.client.ContentLibraries();
