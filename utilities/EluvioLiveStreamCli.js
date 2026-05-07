@@ -7,7 +7,6 @@ const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const path = require('path');
-const console = require("console");
 
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
@@ -79,7 +78,7 @@ const CmdCreateStreamObjectBatch = async ({ argv }) => {
     await elvStream.Init({
       privateKey: process.env.PRIVATE_KEY,
     });
-    
+
     console.log("Creating a batch of streams!!!")
     await elvStream.CreateStreamObjectBatch(argv.batch_file);
   } catch (e) {

@@ -88,10 +88,11 @@ class EluvioLiveStream {
 
   /*
   * Create a live stream
-   */
+  */
   async streamCreate({ objectId, libraryId, url, finalize, liveRecordingConfigArg, name, permission, linkToSite }) {
     let liveRecordingConfig;
     if (fs.existsSync(liveRecordingConfigArg)) {
+       // Although its yaml.load it still works with JSON sources!
       liveRecordingConfig = yaml.load(fs.readFileSync(liveRecordingConfigArg, "utf8"));
     } else {
       liveRecordingConfig = await this.client.StreamConfigProfile({profileName: liveRecordingConfigArg});
@@ -136,8 +137,8 @@ class EluvioLiveStream {
       console.log("ERROR: profile_name or profile_data not defined in batch file");
       process.exit(1);
     }
-    
-    // config that applies to all streams
+
+    // iterate through all the streams and create them
     const libraryId = bulkFileContents.library;
     const streams = bulkFileContents.streams;
     for (const stream of streams) {
@@ -161,7 +162,6 @@ class EluvioLiveStream {
         process.exit(1);
       }
     }
-
     return true;
   }
 
@@ -975,60 +975,6 @@ class EluvioLiveStream {
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
     const m = await this.client.ContentObjectMetadata({objectId, libraryId, metadataSubtree: "/public/content_types"});
     return m[label];
-  }
-
-  async NewStreamObject({
-    name,
-    description,
-    library,
-    ingest_url,
-    add_to_manager,
-    display_title,
-    drm,
-    permission,
-    retention,
-    playout_ladder,
-    connection_timeout,
-    reconection_timeout,
-    record_ts
-  }) {
-    const accessGroups = [];
-    display_title = display_title ?? name;
-    if (ingest_url.toLowerCase().startsWith("rtmp://")) {
-      record_ts = false;
-    }
-    const options = {
-      name,
-      displayTitle: display_title,
-      description,
-      accessGroups,
-      linkToSite: add_to_manager,
-      permission
-    };
-    const liveRecordingConfig = {
-      profile: playout_ladder,
-      playout_ladder_profile: playout_ladder,
-      drm_type: drm,
-      recording_config: {
-        reconnect_timeout: reconection_timeout,
-        connection_timeout: connection_timeout,
-        copy_mpegts: record_ts,
-        part_ttl: retention,
-      }
-    };
-    try {
-      console.log(`CREATING ${name}`);
-      const result = await this.client.StreamCreate({
-        libraryId: library,
-        url: ingest_url,
-        options,
-        liveRecordingConfig
-      });
-      return result;
-    } catch (e) {
-      console.error(`Error: Could not create stream: ${e.message}`);
-      process.exit(1);
-    }
   }
 } // End class
 
