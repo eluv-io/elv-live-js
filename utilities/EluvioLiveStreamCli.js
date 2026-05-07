@@ -7,7 +7,6 @@ const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const path = require('path');
-const fs = require('fs');
 const console = require("console");
 
 // hack that quiets this msg:
@@ -54,28 +53,35 @@ const CmdStreamCreate = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let liveRecordingConfig;
-    if (argv.live_recording_config) {
-      if (fs.existsSync(argv.live_recording_config)) {
-        liveRecordingConfig = JSON.parse(fs.readFileSync(argv.live_recording_config, "utf8"));
-      } else {
-        liveRecordingConfig = await elvStream.client.StreamLiveRecordingConfigProfile({profileName: argv.live_recording_config});
-      }
-    }
-
-    const options = {};
-    if(argv.name !== undefined) options.name = argv.name;
-    if(argv.permission !== undefined) options.permission = argv.permission;
-    if(argv.link_to_site !== undefined) options.linkToSite = argv.link_to_site;
-
-    let status = await elvStream.StreamCreate({
+    const status = await elvStream.streamCreate({
+      objectId: argv.object_id,
       libraryId: argv.library,
       url: argv.stream_url,
       finalize: argv.finalize,
-      options,
-      liveRecordingConfig
+      liveRecordingConfigArg: argv.live_recording_config,
+      name: argv.name,
+      linkToSite:argv.link_to_site
     });
+
     console.log(yaml.dump(status));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdCreateStreamObjectBatch = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+    
+    console.log("Creating a batch of streams!!!")
+    await elvStream.CreateStreamObjectBatch(argv.batch_file);
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -366,178 +372,6 @@ const CmdStreamSwitch = async ({ argv }) => {
   }
 }
 
-const CmdNewStreamObject = async ({ argv }) => {
-  try {
-    let elvStream = new EluvioLiveStream({
-      url: argv.url,
-      debugLogging: argv.verbose
-    });
-
-    await elvStream.Init({
-      privateKey: process.env.PRIVATE_KEY,
-    });
-
-    await elvStream.NewStreamObject({
-      name: argv.name,
-      description: argv.description,
-      library: argv.library,
-      ingest_url: argv.ingest_url,
-      add_to_manager: argv.add_to_manager,
-      display_title: argv.display_title,
-      drm: argv.drm,
-      permission: argv.permission,
-      retention: argv.retention,
-      playout_ladder: argv.playout_ladder,
-      connection_timeout: argv.connection_timeout,
-      reconection_timeout: argv.reconection_timeout,
-      record_ts: argv.record_ts
-    });
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
-const CmdNewStreamObjectBatch = async ({ argv }) => {
-  try {
-    let elvStream = new EluvioLiveStream({
-      url: argv.url,
-      debugLogging: argv.verbose
-    });
-
-    await elvStream.Init({
-      privateKey: process.env.PRIVATE_KEY,
-    });
-
-    await elvStream.NewStreamObjectBatch(argv.batch_file);
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
-};
-
-// options for creating a stream
-const NEW_STREAM_OPTIONS = {
-  name: {
-    describe: "stream name",
-    type: "string",
-    demandOption: true
-  },
-  description: {
-    describe: "Description to provide more details and context of the stream object.",
-    type: "string",
-    default: ""
-  },
-  library: {
-    describe: "Library where your live stream object will be stored.",
-    type: "string",
-    demandOption: true
-  },
-  ingest_url: {
-    describe: "Ingest point (SRT, UDP, RTP, RTMP)",
-    type: "string",
-    demandOption: true
-  },
-  add_to_manager: {
-    describe: "Adds stream to the Stream Manager App",
-    type: "boolean",
-    default: true
-  },
-  display_title: {
-    describe: "stream name",
-    type: "string",
-    describe: "Title used for consumer facing applications. If none is specified name will be used."
-
-  },
-  drm: {
-    describe: "Enable Clear or Digital Rights Management (DRM) copy protection during playback.",
-    choices: ["clear", "drm-public", "drm-all", "drm-fairplay", "drm-widevine", "drm-playready"],
-    default: "clear"
-  },
-  permission: {
-    describe: "Stream permission level.",
-    choices: ["owner", "editable", "viewable", "listable", "public"],
-    default: "editable"
-  },
-  retention: {
-    type: "number",
-    default: 86_400,
-    description: "Period in seconds for how long stream parts will exist until they are removed from the fabric."
-  },
-  playout_ladder: {
-    type: "string",
-    default: "Default",
-    describe: "Sets the ladder to use for playback."
-  },
-  connection_timeout: {
-    type: "number",
-    default: 600,
-    describe: "The stream will remain active and wait for an input feed for this duration."
-  },
-  reconection_timeout: {
-    type: "number",
-    default: 600,
-    describe: "If the input feed is disconnected, the stream will remain active and wait for a reconnection for this duration."
-  },
-  record_ts: {
-    type: "boolean",
-    default: false,
-    describe: "Additionally record the steam as TS parts. Only supported for SRT, UDP, RTP streams."
-  }
-};
-
-
-// Sub command for a single stream from the command line
-const newStreamSubCommand = {
-  command: "stream",
-  describe: "Create a single stream object from the command line",
-  builder: (yargs) => {
-    return yargs
-      .resetOptions()
-      .help()
-      .wrap(125) 
-      .options(NEW_STREAM_OPTIONS)
-
-      // group options together so its easier to read the help command
-      .group(["name", "library", "ingest_url"], "Required Settings:")
-      .group(["connection_timeout", "reconection_timeout", "retention"], "Timeout & Retention:")
-      .group(["drm", "permission"], "Security:")
-      .group(["description", "add_to_manager", "playout_ladder", "record_ts"], "Other:")
-
-  },
-  handler: (argv) => {
-    CmdNewStreamObject({ argv });
-  }
-};
-
-// Sub command for creating a new stream object in batches
-const newStreamBatchSubCommand = {
-  command: "stream_batch",
-  describe: "Create multiple stream objects using a YAML or JSON file",
-  builder: (yargs) => {
-    return yargs
-      .resetOptions()
-      .help()
-      .option("batch_file", {
-        describe: "Path to .json, .yaml, or .yml file",
-        type: "string",
-        demandOption: true
-      })
-      .check((argv) => {
-        const extension = path.extname(argv.batch_file).toLowerCase();
-        if (![".json", ".yaml", ".yml"].includes(extension)) {
-          throw new Error("Invalid file extension.");
-        }
-        if (!fs.existsSync(argv.batch_file)) {
-          throw new Error("File not found.");
-        }
-        return true;
-      })
-      .usage("Usage: $0 new batch --batch_file [path]");
-  },
-  handler: (argv) => {
-    CmdNewStreamObjectBatch({ argv });
-  }
-};
-
 
 yargs(hideBin(process.argv))
   .option("verbose", {
@@ -552,9 +386,13 @@ yargs(hideBin(process.argv))
 
   .command(
     "create",
-    "Create a new live stream object",
+    "Create a single new live stream object",
     (yargs) => {
       yargs
+        .option("object_id", {
+          describe: "object ID for updating an existing stream object",
+          type: "string"
+        })
         .option("library", {
           describe: "Library ID containing the stream object",
           type: "string"
@@ -579,7 +417,8 @@ yargs(hideBin(process.argv))
         .option("permission", {
           describe: "Access permission level for the stream object",
           type: "string",
-          choices: ["owner", "editable", "viewable", "listable", "public"]
+          choices: ["owner", "editable", "viewable", "listable", "public"],
+          default: "editable"
         })
         .option("link_to_site", {
           describe: "Automatically link the new stream to the site object after creation",
@@ -589,6 +428,35 @@ yargs(hideBin(process.argv))
         .demandOption(["library", "stream_url"])
     },
     (argv) => CmdStreamCreate({ argv })
+  )
+
+  .command(
+    "create_batch",
+    "Create a batch of new live stream objects.",
+    (yargs) => {
+      return yargs
+        .resetOptions()
+        .help()
+        .option("batch_file", {
+          describe: "Path to .json, .yaml, or .yml file",
+          type: "string",
+          demandOption: true
+        })
+        .check((argv) => {
+          const extension = path.extname(argv.batch_file).toLowerCase();
+          if (![".json", ".yaml", ".yml"].includes(extension)) {
+            throw new Error("Invalid file extension.");
+          }
+          if (!fs.existsSync(argv.batch_file)) {
+            throw new Error("File not found.");
+          }
+          return true;
+        })
+        .usage("Usage: $0 create_batch --batch_file [path]");
+    },
+    (argv) => {
+       CmdCreateStreamObjectBatch({ argv });
+    }
   )
 
   .command(
@@ -946,24 +814,6 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdStreamSwitch({ argv });
-    }
-  )
-
-  .command(
-    "new",
-    "Create a new live stream object.",
-    (yargs) => {
-      return yargs
-        .command(newStreamSubCommand)
-        .command(newStreamBatchSubCommand)
-        .demandCommand(1, 'You must specify a creation method using the subcommand "stream" or "stream_batch"');
-    },
-    // parent command does nothing other than show help
-    // technically the user should not be able to reach this but gaurds are in place to be safe
-    (argv) => {
-      console.dir(argv);
-      console.log('\nError: Please specify "stream" or "stream_batch" to continue.');
-      process.exit(0);
     }
   )
 
