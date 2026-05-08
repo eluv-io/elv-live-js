@@ -1,6 +1,7 @@
 const { ElvClient } = require("@eluvio/elv-client-js");
 const fs = require("fs");
 const path = require("path");
+const { XMLParser } = require("fast-xml-parser");
 
 class ElvSegments {
   constructor({ configUrl, debugLogging = false }) {
@@ -107,6 +108,79 @@ class ElvSegments {
     return "Successfully downloaded HLS segments and generated MP4 files.";
   }
 
+  async DownloadDashWidevineSegments({
+    objectId,
+    url,
+    outputDir,
+    segmentIndexes = [1, 2]
+  }) {
+    if (!objectId) {
+      throw new Error("objectId is required");
+    }
+
+    if (!url) {
+      throw new Error("url is required");
+    }
+
+    const libraryId =
+      await this.client.ContentObjectLibraryId({ objectId });
+
+    const metadata = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+    });
+
+    // const hash =
+    //   await this.client.LatestVersionHash({ objectId });
+
+    const formatObjs =
+      metadata?.offerings?.default?.playout?.playout_formats;
+
+    if (!formatObjs || typeof formatObjs !== "object") {
+      throw new Error(
+        "metadata.offerings.default.playout.playout_formats not found"
+      );
+    }
+
+    const formats = ["dash-widevine"].filter(f => f in formatObjs);
+
+    if (formats.length === 0) {
+      throw new Error("dash-widevine is not found in metadata");
+    }
+
+    outputDir =
+      outputDir || path.join(process.cwd(), "output");
+
+    for (const format of formats) {
+      const dashWidewineUrl = `playout/default/${format}`;
+
+      const playlistUrl =
+        await this.client.FabricUrl({
+          libraryId,
+          objectId,
+          rep: `${dashWidewineUrl}/dash.mpd`,
+          channelAuth: true,
+        });
+
+      // const res = await fetch(playlistUrl);
+      //
+      // if (!res.ok) {
+      //   throw new Error(
+      //     `HTTP error! status: ${res.status} for ${playlistUrl}`
+      //   );
+      // }
+      //
+      // const playlistText = await res.text();
+      console.log(playlistUrl);
+
+      await this._downloadDashWidevineRepresentation({mpdUrl: playlistUrl, outputBaseDir: outputDir, segmentIndexes});
+    }
+
+    this._buildAllRenditions(outputDir);
+
+    return "Successfully downloaded Dash-widevine segments and generated MP4 files.";
+  }
+
   _parseM3U8(basePath, playlistText) {
     return playlistText
       .split("\n")
@@ -198,7 +272,6 @@ class ElvSegments {
     }
   }
 
-  // UPDATED
   async _downloadHlsClearRepresentation(
     playlistUrl,
     outputBaseDir,
@@ -324,6 +397,143 @@ class ElvSegments {
       this._buildMp4ForFolder(dir);
     }
   }
+
+  async _downloadDashWidevineRepresentation({
+    mpdUrl,
+    outputBaseDir,
+    segmentIndexes = [1, 2]
+  }) {
+    const res = await fetch(mpdUrl);
+
+    if (!res.ok) {
+      throw new Error(`Failed MPD fetch: ${res.status}`);
+    }
+
+    const mpdText = await res.text();
+
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: ""
+    });
+
+    const mpd = parser.parse(mpdText);
+
+    const adaptationSets =
+      mpd?.MPD?.Period?.AdaptationSet;
+
+    if (!adaptationSets) {
+      throw new Error("No AdaptationSet found");
+    }
+
+    const videoAdaptation =
+      Array.isArray(adaptationSets)
+        ? adaptationSets.find(a => a.contentType === "video")
+        : adaptationSets;
+
+    if (!videoAdaptation) {
+      throw new Error("No video AdaptationSet found");
+    }
+
+    const representations =
+      videoAdaptation.Representation;
+
+    const reps =
+      Array.isArray(representations)
+        ? representations
+        : [representations];
+
+    const mpdBase =
+      mpdUrl.substring(
+        0,
+        mpdUrl.lastIndexOf("/") + 1
+      );
+
+    for (const rep of reps) {
+      const repId = rep.id;
+
+      const segmentTemplate = rep.SegmentTemplate;
+
+      if (!segmentTemplate) {
+        console.log(`Skipping ${repId}, no SegmentTemplate`);
+        continue;
+      }
+
+      const dir =
+        path.join(outputBaseDir, repId);
+
+      this._dirExists(dir);
+
+      // init url
+      const initTemplate =
+        segmentTemplate.initialization;
+
+      const initUrl =
+        mpdBase +
+        initTemplate.replace(
+          "$RepresentationID$",
+          repId
+        );
+
+      // media template
+      const mediaTemplate =
+        segmentTemplate.media;
+
+      const allFiles = [];
+
+      allFiles.push({
+        url: initUrl,
+        name: "init.m4s"
+      });
+
+      for (const index of segmentIndexes) {
+        const segmentPath =
+          mediaTemplate
+            .replace("$RepresentationID$", repId)
+            .replace(
+              /\$Number%0(\d+)d\$/,
+              (_, width) =>
+                String(index).padStart(
+                  parseInt(width),
+                  "0"
+                )
+            );
+
+        const segmentUrl =
+          mpdBase + segmentPath;
+
+        allFiles.push({
+          url: segmentUrl,
+          name: `${String(index).padStart(5, "0")}.m4s`
+        });
+      }
+
+      // download files
+      for (const file of allFiles) {
+        const r = await fetch(file.url);
+
+        if (!r.ok) {
+          throw new Error(
+            `Failed download: ${file.url}`
+          );
+        }
+
+        const buffer =
+          Buffer.from(await r.arrayBuffer());
+
+        const filePath =
+          path.join(dir, file.name);
+
+        fs.writeFileSync(filePath, buffer);
+
+        console.log(
+          `[${repId}] Downloaded ${file.name}`
+        );
+      }
+    }
+
+    return "DASH Widevine download completed";
+  }
+
 }
 
 exports.ElvSegments = ElvSegments;

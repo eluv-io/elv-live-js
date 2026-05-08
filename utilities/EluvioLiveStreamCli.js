@@ -366,6 +366,40 @@ const CmdHlsClearSegmentsDownload = async ({argv}) => {
 
 };
 
+const CmdDashWidevineSegmentsDownload = async ({argv}) => {
+
+  try {
+    const segmentIndexes = argv.segment_indexes
+      ? argv.segment_indexes
+        .split(",")
+        .map(s => parseInt(s.trim(), 10))
+        .filter(n => !isNaN(n))
+      : [1, 2];
+
+    console.log("segment_indexes", segmentIndexes);
+
+    const elvSegments = new ElvSegments({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose
+    });
+
+    await elvSegments.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvSegments.DownloadDashWidevineSegments({
+      objectId: argv.objectId,
+      url: argv.url,
+      outputDir: argv.output_dir,
+      segmentIndexes: segmentIndexes,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+
+};
+
 
 yargs(hideBin(process.argv))
   .option("verbose", {
@@ -785,7 +819,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "hls_clear_segments_download <objectId> <url>",
-    "Download hls-clear init and first 2 segments",
+    "Download hls-clear init and selected segments (default: first 2) and build MP4 files",
     (yargs) => {
       yargs
         .positional("objectId", {
@@ -807,6 +841,33 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdHlsClearSegmentsDownload({argv});
+    }
+  )
+
+  .command(
+    "dash_widevine_segments_download <objectId> <url>",
+    "Download dash-widevine init and selected segments (default: first 2) and build MP4 files",
+    (yargs) => {
+      yargs
+        .positional("objectId", {
+          describe: "object Id",
+          type: "string",
+        })
+        .positional("url", {
+          describe: "fabric url",
+          type: "string",
+        })
+        .option("output_dir", {
+          describe: "output directory",
+          type: "string",
+        })
+        .option("segment_indexes", {
+          describe: "comma-separated segment indexes",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdDashWidevineSegmentsDownload({argv});
     }
   )
 
