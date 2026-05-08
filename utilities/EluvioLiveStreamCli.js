@@ -335,6 +335,15 @@ const CmdStreamSwitch = async ({ argv }) => {
 const CmdHlsClearSegmentsDownload = async ({argv}) => {
 
   try {
+    const segmentIndexes = argv.segment_indexes
+      ? argv.segment_indexes
+        .split(",")
+        .map(s => parseInt(s.trim(), 10))
+        .filter(n => !isNaN(n))
+      : [1, 2];
+
+    console.log("segment_indexes", segmentIndexes);
+
     const elvSegments = new ElvSegments({
       configUrl: Config.networks[Config.net],
       debugLogging: argv.verbose
@@ -347,7 +356,8 @@ const CmdHlsClearSegmentsDownload = async ({argv}) => {
     const res = await elvSegments.DownloadHlsClearSegments({
       objectId: argv.objectId,
       url: argv.url,
-      outputDir: argv.output_dir
+      outputDir: argv.output_dir,
+      segmentIndexes: segmentIndexes,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -788,6 +798,10 @@ yargs(hideBin(process.argv))
         })
         .option("output_dir", {
           describe: "output directory",
+          type: "string",
+        })
+        .option("segment_indexes", {
+          describe: "comma-separated segment indexes",
           type: "string",
         });
     },
