@@ -162,18 +162,13 @@ class ElvSegments {
           channelAuth: true,
         });
 
-      // const res = await fetch(playlistUrl);
-      //
-      // if (!res.ok) {
-      //   throw new Error(
-      //     `HTTP error! status: ${res.status} for ${playlistUrl}`
-      //   );
-      // }
-      //
-      // const playlistText = await res.text();
-      console.log(playlistUrl);
+      const updatedUrl = playlistUrl.replace(
+        new URL(playlistUrl).origin,
+        url,
+      );
+      console.log(updatedUrl);
 
-      await this._downloadDashWidevineRepresentation({mpdUrl: playlistUrl, outputBaseDir: outputDir, segmentIndexes});
+      await this._downloadDashWidevineRepresentation({mpdUrl: updatedUrl, outputBaseDir: outputDir, segmentIndexes});
     }
 
     this._buildAllRenditions(outputDir);
@@ -182,6 +177,8 @@ class ElvSegments {
   }
 
   _parseM3U8(basePath, playlistText) {
+    console.log("basePath:", basePath);
+
     return playlistText
       .split("\n")
       .map(line => line.trim())
