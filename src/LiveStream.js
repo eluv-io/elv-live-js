@@ -88,15 +88,15 @@ class EluvioLiveStream {
    * running         - stream is running and producing output
    * stalled         - LRO running but no source data (so not producing output)
    */
-  async Status({name, stopLro = false, showParams = false, saveMeta = true}) {
-
+  async Status({ name, stopLro = false, showParams = false, saveMeta = true }) {
     let status = await this.client.StreamStatus({name, stopLro, showParams});
+
 
     if (saveMeta) {
       let edgeMeta = await this.client.ContentObjectMetadata({
-        libraryId: status.library_id,
-        objectId: status.object_id,
-        writeToken: status.edge_write_token
+        libraryId: status.libraryId,
+        objectId: status.objectId,
+        writeToken: status.edgeWriteToken
       });
       fs.writeFileSync("meta-" + status.name + ".json", JSON.stringify(edgeMeta, null, 2));
     }
