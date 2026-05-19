@@ -91,7 +91,6 @@ class EluvioLiveStream {
   async Status({ name, stopLro = false, showParams = false, saveMeta = true }) {
     let status = await this.client.StreamStatus({name, stopLro, showParams});
 
-
     if (saveMeta) {
       let edgeMeta = await this.client.ContentObjectMetadata({
         libraryId: status.libraryId,
