@@ -392,6 +392,7 @@ const CmdDashWidevineSegmentsDownload = async ({argv}) => {
       url: argv.url,
       outputDir: argv.output_dir,
       segmentIndexes: segmentIndexes,
+      contentType: argv.content_type,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -864,6 +865,12 @@ yargs(hideBin(process.argv))
         .option("segment_indexes", {
           describe: "comma-separated segment indexes",
           type: "string",
+        })
+        .option("content_type", {
+          describe: "audio or video segments",
+          type: "string",
+          default: "video",
+          choices: ["audio", "video"],
         });
     },
     (argv) => {

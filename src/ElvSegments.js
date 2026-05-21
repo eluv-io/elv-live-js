@@ -112,7 +112,8 @@ class ElvSegments {
     objectId,
     url,
     outputDir,
-    segmentIndexes = [1, 2]
+    segmentIndexes = [1, 2],
+    contentType
   }) {
     if (!objectId) {
       throw new Error("objectId is required");
@@ -166,12 +167,16 @@ class ElvSegments {
         new URL(playlistUrl).origin,
         url,
       );
-      console.log(updatedUrl);
+      console.log("dash url:", updatedUrl);
 
-      await this._downloadDashWidevineRepresentation({mpdUrl: updatedUrl, outputBaseDir: outputDir, segmentIndexes});
+      await this._downloadDashWidevineAdaptation({mpdUrl: updatedUrl, outputBaseDir: outputDir, contentType, segmentIndexes});
     }
 
-    this._buildAllRenditions(outputDir);
+    if (contentType === "video") {
+      this._buildAllRenditions(outputDir + "/video");
+    } else {
+      this._buildAllRenditions(outputDir+ "/audio");
+    }
 
     return "Successfully downloaded Dash-widevine segments and generated MP4 files.";
   }
@@ -395,9 +400,10 @@ class ElvSegments {
     }
   }
 
-  async _downloadDashWidevineRepresentation({
+  async _downloadDashWidevineAdaptation({
     mpdUrl,
     outputBaseDir,
+    contentType = "video",
     segmentIndexes = [1, 2]
   }) {
     const res = await fetch(mpdUrl);
@@ -422,17 +428,21 @@ class ElvSegments {
       throw new Error("No AdaptationSet found");
     }
 
-    const videoAdaptation =
+    const adaptation =
       Array.isArray(adaptationSets)
-        ? adaptationSets.find(a => a.contentType === "video")
+        ? adaptationSets.find(
+          a => a.contentType === contentType
+        )
         : adaptationSets;
 
-    if (!videoAdaptation) {
-      throw new Error("No video AdaptationSet found");
+    if (!adaptation) {
+      throw new Error(
+        `No ${contentType} AdaptationSet found`
+      );
     }
 
     const representations =
-      videoAdaptation.Representation;
+      adaptation.Representation;
 
     const reps =
       Array.isArray(representations)
@@ -448,19 +458,26 @@ class ElvSegments {
     for (const rep of reps) {
       const repId = rep.id;
 
-      const segmentTemplate = rep.SegmentTemplate;
+      const segmentTemplate =
+        rep.SegmentTemplate ||
+        adaptation.SegmentTemplate;
 
       if (!segmentTemplate) {
-        console.log(`Skipping ${repId}, no SegmentTemplate`);
+        console.log(
+          `Skipping ${repId}, no SegmentTemplate`
+        );
         continue;
       }
 
       const dir =
-        path.join(outputBaseDir, repId);
+        path.join(
+          outputBaseDir,
+          contentType,
+          repId
+        );
 
-      this._dirExists(dir);
+      fs.mkdirSync(dir, { recursive: true });
 
-      // init url
       const initTemplate =
         segmentTemplate.initialization;
 
@@ -471,21 +488,25 @@ class ElvSegments {
           repId
         );
 
-      // media template
       const mediaTemplate =
         segmentTemplate.media;
 
       const allFiles = [];
 
+      // init segment
       allFiles.push({
         url: initUrl,
         name: "init.m4s"
       });
 
+      // media segments
       for (const index of segmentIndexes) {
         const segmentPath =
           mediaTemplate
-            .replace("$RepresentationID$", repId)
+            .replace(
+              "$RepresentationID$",
+              repId
+            )
             .replace(
               /\$Number%0(\d+)d\$/,
               (_, width) =>
@@ -493,6 +514,10 @@ class ElvSegments {
                   parseInt(width),
                   "0"
                 )
+            )
+            .replace(
+              "$Number$",
+              index
             );
 
         const segmentUrl =
@@ -504,8 +529,12 @@ class ElvSegments {
         });
       }
 
-      // download files
       for (const file of allFiles) {
+        console.log(
+          `[${contentType}] downloading`,
+          file.url
+        );
+
         const r = await fetch(file.url);
 
         if (!r.ok) {
@@ -528,7 +557,7 @@ class ElvSegments {
       }
     }
 
-    return "DASH Widevine download completed";
+    return `${contentType} download completed`;
   }
 
 }
