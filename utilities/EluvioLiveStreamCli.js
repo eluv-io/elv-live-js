@@ -393,6 +393,7 @@ const CmdDashWidevineSegmentsDownload = async ({argv}) => {
       outputDir: argv.output_dir,
       segmentIndexes: segmentIndexes,
       contentType: argv.content_type,
+      atmos: argv.atmos,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -871,6 +872,11 @@ yargs(hideBin(process.argv))
           type: "string",
           default: "video",
           choices: ["audio", "video"],
+        })
+        .option("atmos", {
+          describe: "enable atmos",
+          type: "boolean",
+          default: false,
         });
     },
     (argv) => {

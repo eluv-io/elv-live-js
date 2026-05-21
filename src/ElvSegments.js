@@ -113,7 +113,8 @@ class ElvSegments {
     url,
     outputDir,
     segmentIndexes = [1, 2],
-    contentType
+    contentType,
+    atmos
   }) {
     if (!objectId) {
       throw new Error("objectId is required");
@@ -169,7 +170,7 @@ class ElvSegments {
       );
       console.log("dash url:", updatedUrl);
 
-      await this._downloadDashWidevineAdaptation({mpdUrl: updatedUrl, outputBaseDir: outputDir, contentType, segmentIndexes});
+      await this._downloadDashWidevineAdaptation({mpdUrl: updatedUrl, outputBaseDir: outputDir, contentType, atmos, segmentIndexes});
     }
 
     if (contentType === "video") {
@@ -400,10 +401,12 @@ class ElvSegments {
     }
   }
 
+
   async _downloadDashWidevineAdaptation({
     mpdUrl,
     outputBaseDir,
     contentType = "video",
+    atmos = false,
     segmentIndexes = [1, 2]
   }) {
     const res = await fetch(mpdUrl);
@@ -420,146 +423,168 @@ class ElvSegments {
     });
 
     const mpd = parser.parse(mpdText);
-
-    const adaptationSets =
-      mpd?.MPD?.Period?.AdaptationSet;
+    const adaptationSets = mpd?.MPD?.Period?.AdaptationSet;
 
     if (!adaptationSets) {
       throw new Error("No AdaptationSet found");
     }
 
-    const adaptation =
-      Array.isArray(adaptationSets)
-        ? adaptationSets.find(
-          a => a.contentType === contentType
-        )
-        : adaptationSets;
+    const sets = Array.isArray(adaptationSets) ? adaptationSets : [adaptationSets];
 
-    if (!adaptation) {
-      throw new Error(
-        `No ${contentType} AdaptationSet found`
+    const isVideo = (a) =>
+      a.contentType === "video" || a.mimeType?.includes("video");
+
+    const isAudio = (a) =>
+      a.contentType === "audio" || a.mimeType?.includes("audio");
+
+    const isAtmosRep = (rep) => {
+      const codecs = (rep?.codecs || "").toLowerCase();
+      const id = (rep?.id || "").toLowerCase();
+
+      // Explicitly reject if codec says AAC, even if ID mentions Atmos
+      if (codecs.includes("mp4a") || codecs.includes("aac")) {
+        return false;
+      }
+
+      return (
+        codecs.includes("ec-3") ||
+        codecs.includes("eac3-joc") ||
+        codecs.includes("ac-4") ||
+        id.includes("ec-3") ||
+        id.includes("eac3")
+      );
+    };
+
+    const hasAtmos = (adaptation) => {
+      const reps = Array.isArray(adaptation.Representation)
+        ? adaptation.Representation
+        : [adaptation.Representation];
+
+      if (reps.some(isAtmosRep)) return true;
+
+      // Check parent properties for Dolby Atmos signaling flags
+      const props = [].concat(
+        adaptation.SupplementalProperty || [],
+        adaptation.EssentialProperty || []
+      );
+
+      return props.some((p) => {
+        const scheme = (p.schemeIdUri || "").toLowerCase();
+        const value = (p.value || "").toLowerCase();
+        return (
+          scheme.includes("dolby") ||
+          value.includes("joc") ||
+          value.includes("ec-3")
+        );
+      });
+    };
+
+    // Debug print
+    for (const a of sets) {
+      console.log("----");
+      console.log("contentType:", a.contentType);
+      console.log("label:", a.label || a.Name || a.name);
+    }
+
+    let adaptation;
+
+    if (contentType === "video") {
+      adaptation = sets.find(isVideo);
+    } else {
+      const audioSets = sets.filter(isAudio);
+      console.log("Audio sets found:", audioSets.length);
+
+      if (atmos) {
+        adaptation = audioSets.find(hasAtmos);
+      } else {
+        adaptation = audioSets.find((a) => !hasAtmos(a));
+      }
+
+      console.log(
+        "Selected adaptation:",
+        adaptation?.label || adaptation?.name || "Unknown"
       );
     }
 
-    const representations =
-      adaptation.Representation;
-
-    const reps =
-      Array.isArray(representations)
-        ? representations
-        : [representations];
-
-    const mpdBase =
-      mpdUrl.substring(
-        0,
-        mpdUrl.lastIndexOf("/") + 1
+    if (!adaptation) {
+      throw new Error(
+        `No ${contentType}${atmos ? " (Atmos)" : ""} AdaptationSet found`
       );
+    }
+
+    const representations = adaptation.Representation;
+    let reps = Array.isArray(representations) ? representations : [representations];
+    reps = reps.filter(Boolean);
+
+    if (contentType === "audio" && atmos) {
+      const atmosReps = reps.filter(isAtmosRep);
+
+      console.log("Available reps:", reps.map((r) => r.codecs || r.id));
+      console.log("Atmos filtered reps:", atmosReps.map((r) => r.codecs || r.id));
+
+      if (atmosReps.length === 0) {
+        throw new Error("No Atmos track found inside selected AdaptationSet");
+      }
+
+      reps = atmosReps;
+    }
+
+    const mpdBase = mpdUrl.substring(0, mpdUrl.lastIndexOf("/") + 1);
 
     for (const rep of reps) {
       const repId = rep.id;
-
-      const segmentTemplate =
-        rep.SegmentTemplate ||
-        adaptation.SegmentTemplate;
+      const segmentTemplate = rep.SegmentTemplate || adaptation.SegmentTemplate;
 
       if (!segmentTemplate) {
-        console.log(
-          `Skipping ${repId}, no SegmentTemplate`
-        );
+        console.log(`Skipping ${repId}, no SegmentTemplate`);
         continue;
       }
 
-      const dir =
-        path.join(
-          outputBaseDir,
-          contentType,
-          repId
-        );
-
+      const flatFolderName = repId.split("/").pop().replace(/[^a-zA-Z0-9_@.-]/g, "_");
+      const dir = path.join(outputBaseDir, contentType, flatFolderName);
       fs.mkdirSync(dir, { recursive: true });
 
-      const initTemplate =
-        segmentTemplate.initialization;
+      const initTemplate = segmentTemplate.initialization;
 
-      const initUrl =
-        mpdBase +
-        initTemplate.replace(
-          "$RepresentationID$",
-          repId
-        );
+      const initUrl = mpdBase + initTemplate.replace("$RepresentationID$", repId);
+      const mediaTemplate = segmentTemplate.media;
 
-      const mediaTemplate =
-        segmentTemplate.media;
+      const allFiles = [{ url: initUrl, name: "init.m4s" }];
 
-      const allFiles = [];
-
-      // init segment
-      allFiles.push({
-        url: initUrl,
-        name: "init.m4s"
-      });
-
-      // media segments
       for (const index of segmentIndexes) {
-        const segmentPath =
-          mediaTemplate
-            .replace(
-              "$RepresentationID$",
-              repId
-            )
-            .replace(
-              /\$Number%0(\d+)d\$/,
-              (_, width) =>
-                String(index).padStart(
-                  parseInt(width),
-                  "0"
-                )
-            )
-            .replace(
-              "$Number$",
-              index
-            );
-
-        const segmentUrl =
-          mpdBase + segmentPath;
+        const segmentPath = mediaTemplate
+          .replace("$RepresentationID$", repId)
+          .replace(/\$Number%0(\d+)d\$/, (_, w) =>
+            String(index).padStart(parseInt(w), "0")
+          )
+          .replace("$Number$", index);
 
         allFiles.push({
-          url: segmentUrl,
+          url: mpdBase + segmentPath,
           name: `${String(index).padStart(5, "0")}.m4s`
         });
       }
 
       for (const file of allFiles) {
-        console.log(
-          `[${contentType}] downloading`,
-          file.url
-        );
+        console.log(`[${contentType}] downloading`, file.url);
 
         const r = await fetch(file.url);
 
         if (!r.ok) {
-          throw new Error(
-            `Failed download: ${file.url}`
-          );
+          throw new Error(`Failed download: ${file.url}`);
         }
 
-        const buffer =
-          Buffer.from(await r.arrayBuffer());
-
-        const filePath =
-          path.join(dir, file.name);
+        const buffer = Buffer.from(await r.arrayBuffer());
+        const filePath = path.join(dir, file.name);
 
         fs.writeFileSync(filePath, buffer);
-
-        console.log(
-          `[${repId}] Downloaded ${file.name}`
-        );
+        console.log(`[${repId}] Downloaded ${file.name}`);
       }
     }
 
     return `${contentType} download completed`;
   }
-
+  
 }
 
 exports.ElvSegments = ElvSegments;
