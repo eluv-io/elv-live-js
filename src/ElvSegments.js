@@ -108,13 +108,14 @@ class ElvSegments {
     return "Successfully downloaded HLS segments and generated MP4 files.";
   }
 
-  async DownloadDashWidevineSegments({
+  async DownloadDashSegments({
     objectId,
     url,
     outputDir,
     segmentIndexes = [1, 2],
     contentType,
-    atmos
+    atmos,
+    playoutFormat = "dash-widevine"
   }) {
     if (!objectId) {
       throw new Error("objectId is required");
@@ -144,10 +145,10 @@ class ElvSegments {
       );
     }
 
-    const formats = ["dash-widevine"].filter(f => f in formatObjs);
+    const formats = [playoutFormat].filter(f => f in formatObjs);
 
     if (formats.length === 0) {
-      throw new Error("dash-widevine is not found in metadata");
+      throw new Error(`${playoutFormat} is not found in metadata`);
     }
 
     outputDir =
@@ -170,7 +171,7 @@ class ElvSegments {
       );
       console.log("dash url:", updatedUrl);
 
-      await this._downloadDashWidevineAdaptation({mpdUrl: updatedUrl, outputBaseDir: outputDir, contentType, atmos, segmentIndexes});
+      await this._downloadDashAdaptation({mpdUrl: updatedUrl, outputBaseDir: outputDir, contentType, atmos, segmentIndexes});
     }
 
     if (contentType === "video") {
@@ -179,7 +180,7 @@ class ElvSegments {
       this._buildAllRenditions(outputDir+ "/audio");
     }
 
-    return "Successfully downloaded Dash-widevine segments and generated MP4 files.";
+    return `Successfully downloaded ${playoutFormat} segments and generated MP4 files.`;
   }
 
   _parseM3U8(basePath, playlistText) {
@@ -402,7 +403,7 @@ class ElvSegments {
   }
 
 
-  async _downloadDashWidevineAdaptation({
+  async _downloadDashAdaptation({
     mpdUrl,
     outputBaseDir,
     contentType = "video",

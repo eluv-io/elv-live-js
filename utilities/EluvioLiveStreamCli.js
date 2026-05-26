@@ -366,7 +366,7 @@ const CmdHlsClearSegmentsDownload = async ({argv}) => {
 
 };
 
-const CmdDashWidevineSegmentsDownload = async ({argv}) => {
+const CmdDashSegmentsDownload = async ({argv}) => {
 
   try {
     const segmentIndexes = argv.segment_indexes
@@ -387,13 +387,14 @@ const CmdDashWidevineSegmentsDownload = async ({argv}) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    const res = await elvSegments.DownloadDashWidevineSegments({
+    const res = await elvSegments.DownloadDashSegments({
       objectId: argv.objectId,
       url: argv.url,
       outputDir: argv.output_dir,
       segmentIndexes: segmentIndexes,
       contentType: argv.content_type,
       atmos: argv.atmos,
+      playoutFormat: argv.playout_format
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -847,8 +848,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "dash_widevine_segments_download <objectId> <url>",
-    "Download dash-widevine init and selected segments (default: first 2) and build MP4 files",
+    "dash_segments_download <objectId> <url>",
+    "Download dash-widevine/clear init and selected segments (default: first 2) and build MP4 files",
     (yargs) => {
       yargs
         .positional("objectId", {
@@ -877,10 +878,14 @@ yargs(hideBin(process.argv))
           describe: "enable atmos",
           type: "boolean",
           default: false,
+        })
+        .option("playout_format", {
+          describe: "provide playout_format: dash-clear/dash-widevine",
+          choices: ["dash-clear","dash-widevine"],
         });
     },
     (argv) => {
-      CmdDashWidevineSegmentsDownload({argv});
+      CmdDashSegmentsDownload({argv});
     }
   )
 
