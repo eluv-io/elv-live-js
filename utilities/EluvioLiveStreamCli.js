@@ -358,6 +358,8 @@ const CmdHlsClearSegmentsDownload = async ({argv}) => {
       url: argv.url,
       outputDir: argv.output_dir,
       segmentIndexes: segmentIndexes,
+      contentType: argv.content_type,
+      playoutFormat: argv.playout_format
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -840,6 +842,17 @@ yargs(hideBin(process.argv))
         .option("segment_indexes", {
           describe: "comma-separated segment indexes",
           type: "string",
+        })
+        .option("content_type", {
+          describe: "audio or video segments",
+          type: "string",
+          default: "video",
+          choices: ["audio", "video"],
+        })
+        .option("playout_format", {
+          describe: "provide playout_format: dash-clear/dash-widevine",
+          choices: ["hls-clear"],
+          default: "hls-clear",
         });
     },
     (argv) => {

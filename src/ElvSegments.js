@@ -28,7 +28,9 @@ class ElvSegments {
     objectId,
     url,
     outputDir,
-    segmentIndexes = [1, 2]
+    segmentIndexes = [1, 2],
+    playoutFormat = "hls-clear",
+    contentType
   }) {
     if (!objectId) {
       throw new Error("objectId is required");
@@ -58,23 +60,23 @@ class ElvSegments {
       );
     }
 
-    const formats = ["hls-clear"].filter(f => f in formatObjs);
+    const formats = [playoutFormat].filter(f => f in formatObjs);
 
     if (formats.length === 0) {
-      throw new Error("hls-clear is not found in metadata");
+      throw new Error(`${playoutFormat} is not found in metadata`);
     }
 
     outputDir =
       outputDir || path.join(process.cwd(), "output");
 
     for (const format of formats) {
-      const hlsClearUrl = `playout/default/${format}`;
+      const hlsUrl = `playout/default/${format}`;
 
       const playlistUrl =
         await this.client.FabricUrl({
           libraryId,
           objectId,
-          rep: `${hlsClearUrl}/playlist.m3u8`,
+          rep: `${hlsUrl}/playlist.m3u8`,
           channelAuth: true,
         });
 
@@ -90,22 +92,30 @@ class ElvSegments {
 
       const renditionPlaylists =
         this._parseM3U8(
-          `${url}/qlibs/${libraryId}/q/${hash}/rep/${hlsClearUrl}`,
+          `${url}/qlibs/${libraryId}/q/${hash}/rep/${hlsUrl}`,
           playlistText
         );
+
+      const targetDir = contentType
+        ? path.join(outputDir, contentType)
+        : outputDir;
 
       for (const renditionPlaylistUrl of renditionPlaylists) {
         await this._downloadHlsClearRepresentation(
           renditionPlaylistUrl,
-          outputDir,
+          targetDir,
           segmentIndexes
         );
       }
     }
 
-    this._buildAllRenditions(outputDir);
+    const buildDir = contentType
+      ? path.join(outputDir, contentType)
+      : outputDir;
 
-    return "Successfully downloaded HLS segments and generated MP4 files.";
+    this._buildAllRenditions(buildDir);
+
+    return `Successfully downloaded ${playoutFormat} segments and generated MP4 files.`;
   }
 
   async DownloadDashSegments({
@@ -193,7 +203,6 @@ class ElvSegments {
       .map(segment => `${basePath}/${segment}`);
   }
 
-  // UPDATED
   _parseHlsInitAndSegments(
     playlistUrl,
     playlistText,
