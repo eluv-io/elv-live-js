@@ -364,6 +364,7 @@ const CmdHlsClearSegmentsDownload = async ({argv}) => {
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
+    process.exit(1);
   }
 
 };
@@ -401,6 +402,7 @@ const CmdDashSegmentsDownload = async ({argv}) => {
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
+    process.exit(1);
   }
 
 };
@@ -850,7 +852,7 @@ yargs(hideBin(process.argv))
           choices: ["audio", "video"],
         })
         .option("playout_format", {
-          describe: "provide playout_format: dash-clear/dash-widevine",
+          describe: "provide playout_format: hls-clear",
           choices: ["hls-clear"],
           default: "hls-clear",
         });

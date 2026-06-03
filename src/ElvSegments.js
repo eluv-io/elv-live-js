@@ -276,7 +276,13 @@ class ElvSegments {
   }
 
   _getRepName(url) {
-    return url.split("/video/")[1].split("/")[0];
+    for (const segment of ["/video/", "/audio/"]) {
+      const parts = url.split(segment);
+      if (parts.length > 1) {
+        return parts[1].split("/")[0];
+      }
+    }
+    throw new Error(`Cannot extract rep name from URL: ${url}`);
   }
 
   _dirExists(dir) {
