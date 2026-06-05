@@ -241,7 +241,7 @@ class ElvFabric {
       throw Error("ElvAccount not intialized");
     }
 
-    if (!ids || ids.length == 0){
+    if (!ids || Object.keys(ids).length === 0){
       throw Error("No ids given.");
     }
 

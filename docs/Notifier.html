@@ -251,7 +251,7 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
     </a>
     <h4 class="name" id="Post">
-      <span class="type-signature">async </span>Post<span class="signature">(<span class="inline-param">param0</span>)</span><span class="type-signature"> &rarr;  Promise.&lt;Object></span>
+      <span class="type-signature">async </span>Post<span class="signature">({<div class="block-param">path,</div><div class="block-param">body<span class="signature-attributes">optional</span></div>})</span><span class="type-signature"> &rarr;  Promise.&lt;Object></span>
     </h4>
   </span>
 
@@ -293,6 +293,8 @@
       <th>Type</th>
 
       
+        <th>Attributes</th>
+      
 
       
 
@@ -304,14 +306,14 @@
     
       <tr>
         
-          <td class="name"><code>param0</code></td>
+          <td class="name"><code>path</code></td>
         
 
         <td class="type">
           
             
     <span class="param-type">
-      *
+      string
     </span>
 
     
@@ -321,11 +323,58 @@
         </td>
 
         
+          <td class="attributes">
+            
+
+            
+
+            
+          </td>
+        
 
         
 
         <td class="description last">
+          <p>Request path relative to the notification service URL</p>
           
+        </td>
+      </tr>
+
+    
+      <tr>
+        
+          <td class="name"><code>body</code></td>
+        
+
+        <td class="type">
+          
+            
+    <span class="param-type">
+      Object
+    </span>
+
+    
+
+
+          
+        </td>
+
+        
+          <td class="attributes">
+            
+              &lt;optional><br>
+            
+
+            
+
+            
+          </td>
+        
+
+        
+
+        <td class="description last">
+          <p>Request body; defaults to an empty object if omitted</p>
           
         </td>
       </tr>
@@ -381,7 +430,7 @@
     <dd class="tag-source">
       <ul class="dummy">
         <li>
-          <a href="Notifier.js.html">Notifier.js</a>, <a href="Notifier.js.html#line64">line 64</a>
+          <a href="Notifier.js.html">Notifier.js</a>, <a href="Notifier.js.html#line67">line 67</a>
         </li>
       </ul>
     </dd>

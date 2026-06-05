@@ -6582,7 +6582,7 @@ The spec and distribition are saved in JSON files.</p>
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
     </a>
     <h4 class="name" id="NftSetPolicyAndPermissions">
-      <span class="type-signature">async </span>NftSetPolicyAndPermissions<span class="signature">({<div class="block-param">objectId,</div><div class="block-param">policyPath,</div><div class="block-param">addresses,</div><div class="block-param">clearAddresses</div>})</span><span class="type-signature"></span>
+      <span class="type-signature">async </span>NftSetPolicyAndPermissions<span class="signature">({<div class="block-param">objectId,</div><div class="block-param">policyPath,</div><div class="block-param">addresses,</div><div class="block-param">clearAddresses<span class="signature-attributes">optional</span></div>})</span><span class="type-signature"></span>
     </h4>
   </span>
 
@@ -6618,7 +6618,11 @@ throws error if something goes wrong.</p>
       <th>Type</th>
 
       
+        <th>Attributes</th>
+      
 
+      
+        <th>Default</th>
       
 
       <th class="last">Description</th>
@@ -6646,7 +6650,19 @@ throws error if something goes wrong.</p>
         </td>
 
         
+          <td class="attributes">
+            
 
+            
+
+            
+          </td>
+        
+
+        
+          <td class="default">
+            
+          </td>
         
 
         <td class="description last">
@@ -6675,7 +6691,19 @@ throws error if something goes wrong.</p>
         </td>
 
         
+          <td class="attributes">
+            
 
+            
+
+            
+          </td>
+        
+
+        
+          <td class="default">
+            
+          </td>
         
 
         <td class="description last">
@@ -6704,7 +6732,19 @@ throws error if something goes wrong.</p>
         </td>
 
         
+          <td class="attributes">
+            
 
+            
+
+            
+          </td>
+        
+
+        
+          <td class="default">
+            
+          </td>
         
 
         <td class="description last">
@@ -6723,7 +6763,7 @@ throws error if something goes wrong.</p>
           
             
     <span class="param-type">
-      bool
+      boolean
     </span>
 
     
@@ -6733,11 +6773,27 @@ throws error if something goes wrong.</p>
         </td>
 
         
+          <td class="attributes">
+            
+              &lt;optional><br>
+            
 
+            
+
+            
+          </td>
+        
+
+        
+          <td class="default">
+            
+              false
+            
+          </td>
         
 
         <td class="description last">
-          <p>Clear</p>
+          <p>Clear existing permissions by writing an empty address list before applying the new ones</p>
           
         </td>
       </tr>
