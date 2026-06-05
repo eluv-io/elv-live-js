@@ -1842,7 +1842,7 @@ class EluvioLive {
    * @param {string} objectId - The NFT object ID
    * @param {string} policyPath - Path to the policy file (eg. nft_owner_minter.yaml). Note that the policy must contain the minter address
    * @param {string[]} addresses - Array of addresses to set the policy permissions
-   * @param {bool} clear - Clear
+   * @param {bool} clearAddresses - Clear
    */
   async NftSetPolicyAndPermissions({ objectId, policyPath, addresses=[], clearAddresses=false}) {
     let elvFabric = new ElvFabric({
@@ -2446,9 +2446,9 @@ class EluvioLive {
     var hash = await this.client.LatestVersionHash({
       objectId,
     });
-    
+
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
-    
+
     var m = await this.client.ContentObjectMetadata({
       libraryId,
       objectId,

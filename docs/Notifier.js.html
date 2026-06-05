@@ -73,7 +73,7 @@ class Notifier {
    *
    * @namedParams
    * @param {string} notifUrl - The notification service endpoint (optional)
-   * @return {EluvioLive} - New ElvNotif object connected to the specified endpoint
+   * @return {Notifier} - New Notifier object connected to the specified endpoint
    */
   constructor({ notifUrl }) {
     this.notifUrl = notifUrl || Config.consts[Config.net].notificationService;
