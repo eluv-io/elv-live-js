@@ -12,8 +12,9 @@ window.addEventListener("load", () => {
   const sourceLines = sourceContainer.children;
 
   // Find opening comment to scroll to instead of directly to the line
-
-  for(let i = lineNumber; i >= 0; i--) {
+  // lineNumber is 1-based; clamp to available lines before converting to 0-based index
+  const startIndex = Math.min(lineNumber - 1, sourceLines.length - 1);
+  for(let i = startIndex; i >= 0; i--) {
     const line = sourceLines[i];
     const comment = line.getElementsByClassName("com")[0];
     if(comment && comment.textContent.startsWith("/**")) {
@@ -27,17 +28,25 @@ window.addEventListener("load", () => {
 window.addEventListener("load", () => {
   Array.from(document.getElementsByClassName("class-link")).map(classLink => {
     const classContainer = classLink.parentElement;
-    const methodContainer = classLink.parentElement.nextSibling;
+    // nextElementSibling skips text/whitespace nodes that nextSibling can return
+    const methodContainer = classLink.parentElement.nextElementSibling;
 
     classLink.tabIndex = "0";
 
-    classLink.onclick = classLink.onkeypress = () => {
+    classLink.onclick = () => {
       if(methodContainer.style.display !== "block") {
         methodContainer.style.display = "block";
         classLink.className = classLink.className + " visible-class";
       } else {
         methodContainer.style.display = "none";
         classLink.className = classLink.className.replace("visible-class", "");
+      }
+    };
+
+    // Only toggle on Enter/Space to avoid triggering on every keypress
+    classLink.onkeypress = (event) => {
+      if(event.key === "Enter" || event.key === " ") {
+        classLink.onclick();
       }
     };
 
