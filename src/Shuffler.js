@@ -37,7 +37,7 @@ class Shuffler {
   /**
    * Read a file into an array of line strings
    * @param f - The file path
-   * @returns {Promise<*[]>} - An array of lines
+   * @returns {Promise<Array>} - An array of lines
    */
   static async readFileToArray(f) {
     const a = [];
@@ -80,7 +80,7 @@ class Shuffler {
    * @param sort - see shuffle()
    * @param seed - see shuffle()
    * @param check_dupes see shuffle()
-   * @returns {Promise<*[]>} - The shuffled lines in an array
+   * @returns {Promise<Array>} - The shuffled lines in an array
    */
   static async shuffleFile(f, sort, seed, check_dupes) {
     let a = await Shuffler.readFileToArray(f);

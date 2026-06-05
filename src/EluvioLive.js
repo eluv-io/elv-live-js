@@ -1841,7 +1841,7 @@ class EluvioLive {
    * @namedParams
    * @param {string} objectId - The NFT object ID
    * @param {string} policyPath - Path to the policy file (eg. nft_owner_minter.yaml). Note that the policy must contain the minter address
-   * @param {[string]} addresses - Array of addresses to set the policy permissions
+   * @param {string[]} addresses - Array of addresses to set the policy permissions
    * @param {bool} clear - Clear
    */
   async NftSetPolicyAndPermissions({ objectId, policyPath, addresses=[], clearAddresses=false}) {

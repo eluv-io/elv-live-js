@@ -59,7 +59,7 @@ class Notifier {
   /**
    * Post a notification
    * @param {*} param0
-   * @returns
+   * @returns {Promise<Object>} Response from the notification endpoint
    */
   async Post({ path, body }) {
     if (!body) {

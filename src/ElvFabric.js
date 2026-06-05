@@ -232,8 +232,8 @@ class ElvFabric {
 
   /**
    * GetMetaByIds
-   * @param {[string]} ids  object of id to metadata
-   * @param {[string]} fields  array of fields
+   * @param {string[]} ids  object of id to metadata
+   * @param {string[]} fields  array of fields
    */
   async GetMetaByIds({ids,fields}) {
 
