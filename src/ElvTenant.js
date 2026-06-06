@@ -13,19 +13,31 @@ const urljoin = require("url-join");
 const constants = require("./Constants");
 const {ElvFabric} = require("./ElvFabric");
 
+/**
+ * Provides tenant administration operations on the Eluvio Content Fabric:
+ * managing access groups (tenant admins, content admins, tenant users),
+ * configuring faucet funding and sharing keys, and setting tenant status.
+ */
 class ElvTenant {
   /**
    * Instantiate the ElvTenant object
    *
    * @namedParams
    * @param {string} configUrl - The Content Fabric configuration URL
-   * @return {ElvSpace} - New ElvSpace object connected to the specified content fabric and blockchain
+   * @param {boolean} [debugLogging=false] - Enable verbose debug logging
+   * @return {ElvTenant} - New ElvTenant object connected to the specified content fabric and blockchain
    */
   constructor({configUrl, debugLogging = false}) {
     this.configUrl = configUrl;
     this.debug = debugLogging;
   }
 
+  /**
+   * Initialize the ElvTenant SDK with the provided private key.
+   *
+   * @namedParams
+   * @param {string} privateKey - Hex-encoded private key for the signing account
+   */
   async Init({privateKey}) {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
@@ -620,6 +632,17 @@ class ElvTenant {
     return res;
   }
 
+  /**
+   * Verify that an access group is correctly associated with the given tenant.
+   * Checks ownership, contract type, and tenant ID via contract metadata,
+   * the `tenant` contract field, and fabric object metadata (in that order).
+   *
+   * @namedParams
+   * @param {string} tenantId - Tenant ID (iten***)
+   * @param {string} groupAddr - Address of the access group to verify
+   * @param {string} tenantOwner - Expected owner address of the tenant contract
+   * @returns {Promise<Object>} Object with `success` boolean, optional `message` and `need_format` fields
+   */
   async TenantCheckGroupConfig({tenantId, groupAddr, tenantOwner}) {
     let groupOwner = await this.client.CallContractMethod({
       contractAddress: groupAddr,
@@ -762,6 +785,14 @@ class ElvTenant {
     return res;
   }
 
+  /**
+   * Retrieve the faucet funding configuration for a tenant from the authority service.
+   *
+   * @namedParams
+   * @param {string} asUrl - Authority service base URL
+   * @param {string} tenantId - Tenant ID (iten***)
+   * @returns {Promise<Object>} Faucet configuration object from the authority service
+   */
   async TenantGetFaucet({asUrl, tenantId}) {
     const config = {
       configUrl: Config.networks[Config.net],
@@ -793,6 +824,17 @@ class ElvTenant {
     return res;
   }
 
+  /**
+   * Create (or retrieve) a faucet funding address for the tenant via the authority
+   * service, then optionally transfer ELV from the current account to fund it.
+   *
+   * @namedParams
+   * @param {string} asUrl - Authority service base URL
+   * @param {string} tenantId - Tenant ID (iten***)
+   * @param {number} [amount=20] - Amount of ELV to transfer to the faucet funding address
+   * @param {boolean} [noFunds=false] - Create the faucet address without transferring funds
+   * @returns {Promise<Object>} Result including `faucet` config and optional `amount_transferred` / `current_balance`
+   */
   async TenantCreateFaucetAndFund({asUrl, tenantId, amount = 20, noFunds = false}) {
     const config = {
       configUrl: Config.networks[Config.net],
@@ -882,6 +924,14 @@ class ElvTenant {
     return res;
   }
 
+  /**
+   * Delete the faucet funding configuration for a tenant via the authority service.
+   *
+   * @namedParams
+   * @param {string} asUrl - Authority service base URL
+   * @param {string} tenantId - Tenant ID (iten***)
+   * @returns {Promise<void>}
+   */
   async TenantDeleteFaucet({asUrl, tenantId}) {
     const config = {
       configUrl: Config.networks[Config.net],
@@ -906,6 +956,15 @@ class ElvTenant {
     }
   }
 
+  /**
+   * Retrieve the sharing key configuration for a tenant from the authority service.
+   * The request is signed with the tenant's multi-sig token.
+   *
+   * @namedParams
+   * @param {string} asUrl - Authority service base URL
+   * @param {string} tenantId - Tenant ID (iten***)
+   * @returns {Promise<Object>} Sharing key configuration from the authority service
+   */
   async TenantGetSharingKey({asUrl, tenantId}) {
     const config = {
       configUrl: Config.networks[Config.net],
@@ -954,6 +1013,15 @@ class ElvTenant {
     return res;
   }
 
+  /**
+   * Create a sharing key for the tenant via the authority service and add the
+   * resulting signing address to the tenant's content admins group.
+   *
+   * @namedParams
+   * @param {string} asUrl - Authority service base URL
+   * @param {string} tenantId - Tenant ID (iten***)
+   * @returns {Promise<Object>} Result including `sharing` key info from the authority service
+   */
   async TenantCreateSharingKey({asUrl, tenantId}) {
     const config = {
       configUrl: Config.networks[Config.net],
@@ -1020,6 +1088,13 @@ class ElvTenant {
     return res;
   }
 
+  /**
+   * Retrieve the address of the content admins group registered on the tenant contract.
+   *
+   * @namedParams
+   * @param {string} tenantId - Tenant ID (iten***)
+   * @returns {Promise<string>} Address of the content admins group
+   */
   async TenantContentAdminGroup({tenantId}) {
     let contractType = await this.client.authClient.AccessType(tenantId);
     if (contractType !== this.client.authClient.ACCESS_TYPES.TENANT) {
@@ -1094,6 +1169,17 @@ class ElvTenant {
     return tenantStatus;
   }
 
+  /**
+   * Fund a user wallet address via the tenant's faucet.  The user's balance must
+   * be below the faucet's configured `per_top_up_limit`, and the request is
+   * signed with the tenant's multi-sig token.
+   *
+   * @namedParams
+   * @param {string} asUrl - Authority service base URL
+   * @param {string} tenantId - Tenant ID (iten***)
+   * @param {string} userAddress - Ethereum address of the user to fund
+   * @returns {Promise<Object>} Faucet fund response from the authority service
+   */
   async TenantFundUser({asUrl, tenantId, userAddress}) {
 
     console.log("TenantFundUser");

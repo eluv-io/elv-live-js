@@ -10,6 +10,7 @@
   },
   "scripts": {
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
+    "build-docs": "./node_modules/.bin/jsdoc --configure ./.jsdoc.json --readme README.md",
     "test": "jest",
     "test-one": "jest -t \"shuffle directory\"",
     "lint": "./node_modules/.bin/eslint \"src/**/*.js\" \"test/**/*.js\" --fix",
@@ -64,11 +65,13 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
+    "@jsdoc/salty": "^0.2.12",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-html": "^5.0.5",
     "http-server": "^0.12.1",
     "jest": "^27.4.7",
+    "jsdoc": "^4.0.5",
     "pre-commit": "^1.2.2",
     "prettier": "2.5.1"
   }
