@@ -305,6 +305,33 @@ Ret: '{"CntIssued":1060,"CntRedeemed":2,"TotalRedemptions":8}'
 
 ---
 
+### `otp status`
+
+Check the status of a specific ticket code without redeeming it. Useful for verifying whether a code is valid or has hit its redemption limit.
+
+```bash
+elv-live otp status <tenant> <otp> <code> [options]
+```
+
+| Argument | Description |
+|---|---|
+| `tenant` | Tenant ID |
+| `otp` | NTP instance ID |
+| `code` | Ticket code to check |
+
+| Option | Description |
+|---|---|
+| `--email` | Email bound to this ticket (required if the ticket was issued with an email) |
+
+```bash
+elv-live otp status iten4TXq2en3qtu3JREnE5tSLRf9zLod QOTPGzYBjyWFMYa ABC123 \
+  --email viewer@example.com
+```
+
+> **Note:** A 403 response with `redemptions exceed configured maximum` means the code has been fully used up, not that the code is invalid.
+
+---
+
 ### `otp issue_code`
 
 Issue a single ticket code from an NTP instance.
