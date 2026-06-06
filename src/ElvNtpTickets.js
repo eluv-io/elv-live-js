@@ -132,7 +132,7 @@ class ElvNtpTickets {
     return res;
   }
 
-  async reportNTPInstance({ tenantId, ntpId }) {
+  async reportNTPInstance({ tenantId, ntpId, password, email }) {
     if (!tenantId) {
       throw new Error("Tenant ID is required to get NTP instance");
     }
@@ -142,9 +142,30 @@ class ElvNtpTickets {
 
     const res = await this.client.ReportNTPInstance({
       tenantId,
-      ntpId
+      ntpId, 
+      password,
+      email
     });
     return res;
+  }
+
+  async statusNTPInstance({ tenantId, ntpId, code, email }) {
+    if (!tenantId) {
+      throw new Error("Tenant ID is required to check NTP status");
+    }
+    if (!ntpId) {
+      throw new Error("NTP ID is required to check NTP status");
+    }
+    if (!code) {
+      throw new Error("Code is required to check NTP status");
+    }
+
+    return await this.client.NTPStatus({
+      tenantId,
+      ntpId,
+      code,
+      email
+    });
   }
 
   async issueNTPCode({ tenantId, ntpId, email, maxRedemptions }) {

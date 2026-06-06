@@ -2058,7 +2058,25 @@ const CmdOtpShow = async ({ argv }) => {
 const CmdOtpReport = async ({ argv }) => {
   try {
     await InitNtp({ debugLogging: argv.verbose });
-    const res = await elvNtp.reportNTPInstance({ tenantId: argv.tenant, ntpId: argv.otp });
+    const res = await elvNtp.reportNTPInstance({ 
+      tenantId: argv.tenant, 
+      ntpId: argv.otp , 
+      password: argv.password, 
+      email: argv.email });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpStatus = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.statusNTPInstance({ 
+      tenantId: argv.tenant, 
+      ntpId: argv.otp, 
+      code: argv.code,
+      email: argv.email });
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -4100,9 +4118,24 @@ yargs(hideBin(process.argv))
           (yargs) => {
             yargs
               .positional("tenant", { describe: "Tenant ID", type: "string" })
-              .positional("otp", { describe: "NTP instance ID", type: "string" });
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("password", { describe: "Password to encrypt the report with (optional)", type: "string" })
+              .option("email", { describe: "Email address to bind to this report", type: "string" });
           },
           (argv) => { CmdOtpReport({ argv }); }
+        )
+
+        .command(
+          "status <tenant> <otp> <code>",
+          "Check the status of an NTP ticket",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .positional("code", { describe: "Ticket code", type: "string" })
+              .option("email", { describe: "Email address bound to this ticket (if applicable)", type: "string" });
+          },
+          (argv) => { CmdOtpStatus({ argv }); }
         )
 
         .command(
