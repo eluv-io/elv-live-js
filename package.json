@@ -45,7 +45,7 @@
   ],
   "homepage": "https://github.com/eluv-io/elv-live-js#readme",
   "dependencies": {
-    "@eluvio/elv-client-js": "github:eluv-io/elv-client-js#ntp-update",
+    "@eluvio/elv-client-js": "github:eluv-io/elv-client-js#develop",
     "axios": "^1.16.0",
     "big-number": "^2.0.0",
     "cbor-x": "^1.5.4",

@@ -12,10 +12,10 @@ class ElvNtpTickets {
     let signer = wallet.AddAccount({ privateKey });
     this.client.SetSigner({ signer });
     this.client.ToggleLogging(this.debugLogging);
-    // this.client.SetNodes({
-    //     fabricURIs: ["https://xxx"],
-    //     ethereumURIs: ["https://xxx"]
-    // });
+    this.client.SetNodes({
+        fabricURIs: ["https://host-76-74-29-13.contentfabric.io"],
+        ethereumURIs: ["https://host-76-74-29-13.contentfabric.io/eth/"]
+    });
   }
 
   async createNTPInstance({ tenantId, objectId, groupAddresses, ntpClass = 4, maxTickets = 0, maxRedemptions=100, startTime, endTime, ticketLength = 6 }) {
