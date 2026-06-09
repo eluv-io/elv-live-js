@@ -2,7 +2,8 @@
 
 Eluvio Live JavaScript SDK and CLI
 
-A collection of libraries and utilities for managing live streams, NFT marketplaces, tenant administration, and content on [Eluvio Live](https://live.eluv.io).
+A collection of libraries and utilities for managing media, live streams, NFT marketplaces,
+tenant administration, and other content on the [Eluvio Content Fabric](https://contentfabric.io).
 
 Includes `elv-live`, `elv-stream`, and `elv-admin`.
 
