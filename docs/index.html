@@ -60,7 +60,8 @@
     <article>
       <h1>elv-live-js</h1>
 <p>Eluvio Live JavaScript SDK and CLI</p>
-<p>A collection of libraries and utilities for managing content, live performance and NFT marketplaces on <a href="https://live.eluv.io">Eluvio Live</a>.</p>
+<p>A collection of libraries and utilities for managing live streams, NFT marketplaces, tenant administration, and content on <a href="https://live.eluv.io">Eluvio Live</a>.</p>
+<p>Includes <code>elv-live</code>, <code>elv-stream</code>, and <code>elv-admin</code>.</p>
 <h2>Dependencies</h2>
 <p>You'll need the latest current Nodejs and NPM (Node 17.5.0+ or npm 8.5.1+): <a href="https:%5C/%5C/nodejs.org/en/download/current/">https://nodejs.org/en/download/current/</a></p>
 <h2>Build</h2>
@@ -71,6 +72,7 @@
 (eg, /opt/homebrew/bin/ on mac), use:</p>
 <pre class="prettyprint source"><code>npm install -g
 </code></pre>
+<hr>
 <h2>EluvioLive CLI</h2>
 <p>The EluvioLive CLI (<code>elv-live</code>) provides tenant, token, and marketplace management commands.</p>
 <pre class="prettyprint source"><code>EluvioLive CLI
@@ -187,29 +189,46 @@ NFT content object's value from /asset_metadata/nft if present.</p>
 <p>All:</p>
 <pre class="prettyprint source"><code>./elv-live tenant_set_token_uri all itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft
 </code></pre>
-<h1>EluvioStream CLI</h1>
-<p>The EluvioStream CLI <code>elv-stream</code> provides commands for managing live streams.</p>
+<hr>
+<h2>EluvioStream CLI</h2>
+<p>The EluvioStream CLI (<code>elv-stream</code>) provides commands for managing live streams.</p>
 <p>The general flow for managing a live stream is:</p>
 <ol>
-<li>Create and configure a live stream content object</li>
-</ol>
+<li>
+<p><strong>Create and configure a live stream content object</strong></p>
 <p>A live stream content object can be created in the Fabric Browser. Configuration can be performed with <code>elv-stream config</code>.</p>
-<ol start="2">
-<li>Create a 'stream'</li>
-</ol>
+</li>
+<li>
+<p><strong>Create a 'stream'</strong></p>
 <p>A live stream content object is only active once a 'stream' is created with <code>elv-stream create</code>.</p>
-<ol start="3">
-<li>Start the 'stream'</li>
-</ol>
+</li>
+<li>
+<p><strong>Start the 'stream'</strong></p>
 <p>Running <code>elv-stream start</code> will initiate listening for input. Once it is received, streaming begins.</p>
-<ol start="4">
-<li>Stop or Reset the 'stream'</li>
-</ol>
+</li>
+<li>
+<p><strong>Stop or Reset the 'stream'</strong></p>
 <p>During streaming, you can stop (pause) or reset the stream which will discontinue playout until the stream is restarted. The respective commands are <code>elv-stream stop</code> and <code>elv-stream reset</code>.</p>
-<ol start="5">
-<li>Terminate the stream</li>
+</li>
+<li>
+<p><strong>Terminate the stream</strong></p>
+<p>After <code>elv-stream terminate</code> is run, the stream is ended and can no longer be restarted. You can create a new stream within the same content object.</p>
+</li>
 </ol>
-<p>After <code>elv-stream terminate</code> is run, the stream is ended and can no longer be restarted.  You can create a new stream within the same content object.</p>
+<hr>
+<h2>EluvioAdmin CLI</h2>
+<p>The EluvioAdmin CLI (<code>elv-admin</code>) provides lower-level account, group, tenant, and fabric administration commands.</p>
+<pre class="prettyprint source"><code>EluvioLive Admin CLI
+
+Usage: elv-admin &lt;command>
+</code></pre>
+<p>Key command areas include:</p>
+<ul>
+<li><strong>Account management</strong> — create accounts, show balances, send funds, generate fabric and signed tokens</li>
+<li><strong>Group management</strong> — create access groups, add or remove members</li>
+<li><strong>Tenant administration</strong> — show, fix, and configure tenant contracts; manage content admins and tenant users; deploy tenant contracts; set up faucets and sharing keys</li>
+<li><strong>Object/contract utilities</strong> — set or get tenant contract IDs for wallets, content types, libraries, and groups</li>
+</ul>
     </article>
   </section>
 

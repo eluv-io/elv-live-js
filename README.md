@@ -2,7 +2,9 @@
 
 Eluvio Live JavaScript SDK and CLI
 
-A collection of libraries and utilities for managing content, live performance and NFT marketplaces on [Eluvio Live](https://live.eluv.io).
+A collection of libraries and utilities for managing live streams, NFT marketplaces, tenant administration, and content on [Eluvio Live](https://live.eluv.io).
+
+Includes `elv-live`, `elv-stream`, and `elv-admin`.
 
 ## Dependencies
 
@@ -22,6 +24,8 @@ to install the binaries `elv-live`, `elv-stream`, `elv-admin` globally in your p
 ```
 npm install -g
 ```
+
+---
 
 ## EluvioLive CLI
 
@@ -111,7 +115,7 @@ To show all wallets that have purchases in the tenancy and their corresponding e
 
 #### NFT commands
 
-##### Set up an NFT contract 
+##### Set up an NFT contract
 
 Set up a tradeable NFT contract and associate it with an NFT Template object:
 ```
@@ -203,6 +207,8 @@ All:
 ```
 
 
+---
+
 ## EluvioStream CLI
 
 The EluvioStream CLI (`elv-stream`) provides commands for managing live streams.
@@ -228,6 +234,8 @@ The general flow for managing a live stream is:
 5. **Terminate the stream**
 
    After `elv-stream terminate` is run, the stream is ended and can no longer be restarted. You can create a new stream within the same content object.
+
+---
 
 ## EluvioAdmin CLI
 
