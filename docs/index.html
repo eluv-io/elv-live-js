@@ -60,7 +60,9 @@
     <article>
       <h1>elv-live-js</h1>
 <p>Eluvio Live JavaScript SDK and CLI</p>
-<p>A collection of libraries and utilities for managing content, live performance and NFT marketplaces on <a href="https://live.eluv.io">Eluvio Live</a>.</p>
+<p>A collection of libraries and utilities for managing media, live streams, NFT marketplaces,
+tenant administration, and other content on the <a href="https://contentfabric.io">Eluvio Content Fabric</a>.</p>
+<p>Includes <code>elv-live</code>, <code>elv-stream</code>, and <code>elv-admin</code>.</p>
 <h2>Dependencies</h2>
 <p>You'll need the latest current Nodejs and NPM (Node 17.5.0+ or npm 8.5.1+): <a href="https:%5C/%5C/nodejs.org/en/download/current/">https://nodejs.org/en/download/current/</a></p>
 <h2>Build</h2>
@@ -71,6 +73,7 @@
 (eg, /opt/homebrew/bin/ on mac), use:</p>
 <pre class="prettyprint source"><code>npm install -g
 </code></pre>
+<hr>
 <h2>EluvioLive CLI</h2>
 <p>The EluvioLive CLI (<code>elv-live</code>) provides tenant, token, and marketplace management commands.</p>
 <pre class="prettyprint source"><code>EluvioLive CLI
@@ -187,6 +190,7 @@ NFT content object's value from /asset_metadata/nft if present.</p>
 <p>All:</p>
 <pre class="prettyprint source"><code>./elv-live tenant_set_token_uri all itenKGHd3iedqtA39krJUPkBTCNoTeX 0x43842733179fa1c38560a44f1d9067677461c8ca https://host-76-74-28-227.contentfabric.io/s/demov3/q/hq__E4PqmoR2raU3eJe93nLPJ8DAuPtJ7jsRnA1MRkwXmifToqqQH9cN6sXkqFpGuHVHepneqYjTTc/meta/public/nft
 </code></pre>
+<hr>
 <h2>EluvioStream CLI</h2>
 <p>The EluvioStream CLI (<code>elv-stream</code>) provides commands for managing live streams.</p>
 <p>The general flow for managing a live stream is:</p>
@@ -212,6 +216,7 @@ NFT content object's value from /asset_metadata/nft if present.</p>
 <p>After <code>elv-stream terminate</code> is run, the stream is ended and can no longer be restarted. You can create a new stream within the same content object.</p>
 </li>
 </ol>
+<hr>
 <h2>EluvioAdmin CLI</h2>
 <p>The EluvioAdmin CLI (<code>elv-admin</code>) provides lower-level account, group, tenant, and fabric administration commands.</p>
 <pre class="prettyprint source"><code>EluvioLive Admin CLI
