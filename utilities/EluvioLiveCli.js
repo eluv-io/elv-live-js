@@ -8,6 +8,7 @@ const { Marketplace } = require("../src/Marketplace");
 const { Notifier } = require ("../src/Notifier");
 const { ElvToken } = require ("../src/ElvToken.js");
 const { ElvContracts } = require ("../src/ElvContracts.js");
+const { ElvNtpTickets } = require("../src/ElvNtpTickets.js");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -31,6 +32,7 @@ process.emit = function (name, data, ...args) {
 
 let elvlv;
 let marketplace;
+let elvNtp;
 
 const Init = async ({debugLogging = false, asUrl}={}) => {
   const config = {
@@ -43,6 +45,14 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
 
   marketplace = new Marketplace(config);
   await marketplace.Init({ debugLogging, asUrl });
+};
+
+const InitNtp = async ({debugLogging = false} = {}) => {
+  elvNtp = new ElvNtpTickets({
+    configUrl: Config.networks[Config.net],
+    debugLogging
+  });
+  await elvNtp.Init({ privateKey: process.env.PRIVATE_KEY });
 };
 
 const CmdTenantAuthToken = async ({ argv }) => {
@@ -1965,6 +1975,194 @@ const CmdContentClearPolicy = async ({ argv }) => {
   }
 };
 
+const CmdOtpCreate = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.createNTPInstance({
+      tenantId: argv.tenant,
+      objectId: argv.object,
+      ntpClass: argv.ntp_class,
+      maxTickets: argv.max_tickets,
+      maxRedemptions: argv.max_redemptions,
+      startTime: argv.start_time,
+      endTime: argv.end_time,
+      ticketLength: argv.ticket_length
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpUpdate = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.updateNTPInstance({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      maxTickets: argv.max_tickets,
+      maxRedemptions: argv.max_redemptions,
+      startTime: argv.start_time,
+      endTime: argv.end_time
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpSuspend = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    await elvNtp.suspendNTPInstance({ tenantId: argv.tenant, ntpId: argv.otp });
+    console.log("NTP instance suspended.");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpDelete = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    await elvNtp.deleteNTPInstance({ tenantId: argv.tenant, ntpId: argv.otp });
+    console.log("NTP instance deleted.");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpList = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.listNTPInstances({
+      tenantId: argv.tenant,
+      count: argv.count,
+      offset: argv.offset
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpShow = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.getNTPInstance({ tenantId: argv.tenant, ntpId: argv.otp });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpReport = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.reportNTPInstance({ 
+      tenantId: argv.tenant, 
+      ntpId: argv.otp , 
+      password: argv.password, 
+      email: argv.email });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpStatus = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.statusNTPInstance({ 
+      tenantId: argv.tenant, 
+      ntpId: argv.otp, 
+      code: argv.code,
+      email: argv.email });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpIssueCode = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.issueNTPCode({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      email: argv.email,
+      maxRedemptions: argv.max_redemptions
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpIssueSignedCode = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.issueSignedNTPCode({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      email: argv.email,
+      maxRedemptions: argv.max_redemptions
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpRedeemCode = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.redeemCode({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      code: argv.code,
+      email: argv.email,
+      includeNTPId: argv.include_ntp_id
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpGenerateCodes = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const emails = argv.emails
+      ? fs.readFileSync(argv.emails, "utf8").trim().split("\n")
+      : undefined;
+    const res = await elvNtp.generateCodes({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      emails,
+      quantity: argv.quantity
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpMakeEmbedUrls = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const codes = JSON.parse(fs.readFileSync(argv.codes_file, "utf8"));
+    const res = await elvNtp.makeEmbedUrlsWithCodes({
+      objectId: argv.object,
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      codes
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -3829,6 +4027,185 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAdminHealth({ argv });
+    }
+  )
+
+  .command(
+    "otp <subcommand>",
+    "NTP instance (OTP) management commands",
+    (yargs) => {
+      yargs
+        .command(
+          "create <tenant> <object> [options]",
+          "Create a new NTP instance (class 4 ticket system)",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("object", { describe: "Permissions object ID", type: "string" })
+              .option("ntp_class", { describe: "NTP class (default 4)", type: "number", default: 4 })
+              .option("max_tickets", { describe: "Max tickets to issue (0 = unlimited)", type: "number", default: 10 })
+              .option("max_redemptions", { describe: "Max redemptions per ticket", type: "number", default: 100 })
+              .option("start_time", { describe: "Start time (ISO format, eg. 2024-01-01)", type: "string" })
+              .option("end_time", { describe: "End time (ISO format, eg. 2100-01-01)", type: "string" })
+              .option("ticket_length", { describe: "Ticket code length (default 6)", type: "number", default: 6 });
+          },
+          (argv) => { CmdOtpCreate({ argv }); }
+        )
+
+        .command(
+          "update <tenant> <otp> [options]",
+          "Update parameters of an existing NTP instance",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("max_tickets", { describe: "Max tickets to issue (0 = unlimited)", type: "number", default: 10 })
+              .option("max_redemptions", { describe: "Max redemptions per ticket", type: "number", default: 100 })
+              .option("start_time", { describe: "New start time (ISO format)", type: "string" })
+              .option("end_time", { describe: "New end time (ISO format)", type: "string" });
+          },
+          (argv) => { CmdOtpUpdate({ argv }); }
+        )
+
+        .command(
+          "suspend <tenant> <otp>",
+          "Suspend an NTP instance (all tickets will be considered expired)",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" });
+          },
+          (argv) => { CmdOtpSuspend({ argv }); }
+        )
+
+        .command(
+          "delete <tenant> <otp>",
+          "Delete an NTP instance (cannot be undone)",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" });
+          },
+          (argv) => { CmdOtpDelete({ argv }); }
+        )
+
+        .command(
+          "list <tenant> [options]",
+          "List NTP instances for a tenant",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .option("count", { describe: "Number of results to return (default 10)", type: "number", default: 10 })
+              .option("offset", { describe: "Offset from which to return results (default 0)", type: "number", default: 0 });
+          },
+          (argv) => { CmdOtpList({ argv }); }
+        )
+
+        .command(
+          "show <tenant> <otp>",
+          "Show info on an NTP instance",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" });
+          },
+          (argv) => { CmdOtpShow({ argv }); }
+        )
+
+        .command(
+          "report <tenant> <otp>",
+          "Show report on an NTP instance",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("password", { describe: "Password to encrypt the report with (optional)", type: "string" })
+              .option("email", { describe: "Email address to bind to this report", type: "string" });
+          },
+          (argv) => { CmdOtpReport({ argv }); }
+        )
+
+        .command(
+          "status <tenant> <otp> <code>",
+          "Check the status of an NTP ticket",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .positional("code", { describe: "Ticket code", type: "string" })
+              .option("email", { describe: "Email address bound to this ticket (if applicable)", type: "string" });
+          },
+          (argv) => { CmdOtpStatus({ argv }); }
+        )
+
+        .command(
+          "issue_code <tenant> <otp> [options]",
+          "Issue a single NTP ticket code",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("email", { describe: "Email address to bind to this ticket", type: "string" })
+              .option("max_redemptions", { describe: "Max redemptions for this ticket (overrides instance default)", type: "number" });
+          },
+          (argv) => { CmdOtpIssueCode({ argv }); }
+        )
+
+        .command(
+          "issue_signed_code <tenant> <otp> [options]",
+          "Issue a signed NTP ticket code (signed by the current user)",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("email", { describe: "Email address to bind to this ticket", type: "string" })
+              .option("max_redemptions", { describe: "Max redemptions for this ticket (overrides instance default)", type: "number" });
+          },
+          (argv) => { CmdOtpIssueSignedCode({ argv }); }
+        )
+
+        .command(
+          "redeem_code <tenant> <otp> <code> [options]",
+          "Redeem an NTP ticket code to authorize the client",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .positional("code", { describe: "Ticket code to redeem", type: "string" })
+              .option("email", { describe: "Email address bound to this ticket (if applicable)", type: "string" })
+              .option("include_ntp_id", { describe: "Include the NTP ID in the response", type: "boolean", default: false });
+          },
+          (argv) => { CmdOtpRedeemCode({ argv }); }
+        )
+
+        .command(
+          "generate_codes <tenant> <otp> [options]",
+          "Generate multiple NTP ticket codes in bulk",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("quantity", { describe: "Number of codes to generate", type: "number" })
+              .option("emails", { describe: "File containing one email per line to bind codes to", type: "string" });
+          },
+          (argv) => { CmdOtpGenerateCodes({ argv }); }
+        )
+
+        .command(
+          "make_embed_urls <tenant> <otp> <object> <codes_file>",
+          "Generate embed URLs for a set of NTP codes",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .positional("object", { describe: "Playable object ID (live or on-demand)", type: "string" })
+              .positional("codes_file", { describe: "Path to JSON file containing codes array (from generate_codes)", type: "string" });
+          },
+          (argv) => { CmdOtpMakeEmbedUrls({ argv }); }
+        )
+
+        .demandCommand(1, "Specify an otp subcommand")
+        .help();
     }
   )
 
