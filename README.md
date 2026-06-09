@@ -203,29 +203,46 @@ All:
 ```
 
 
-# EluvioStream CLI
+## EluvioStream CLI
 
-The EluvioStream CLI `elv-stream` provides commands for managing live streams.
+The EluvioStream CLI (`elv-stream`) provides commands for managing live streams.
 
 The general flow for managing a live stream is:
 
-1. Create and configure a live stream content object
+1. **Create and configure a live stream content object**
 
-  A live stream content object can be created in the Fabric Browser. Configuration can be performed with `elv-stream config`.
+   A live stream content object can be created in the Fabric Browser. Configuration can be performed with `elv-stream config`.
 
-2. Create a 'stream'
+2. **Create a 'stream'**
 
-  A live stream content object is only active once a 'stream' is created with `elv-stream create`.
+   A live stream content object is only active once a 'stream' is created with `elv-stream create`.
 
-3. Start the 'stream'
+3. **Start the 'stream'**
 
-  Running `elv-stream start` will initiate listening for input. Once it is received, streaming begins.
-  
-4. Stop or Reset the 'stream'
+   Running `elv-stream start` will initiate listening for input. Once it is received, streaming begins.
 
-  During streaming, you can stop (pause) or reset the stream which will discontinue playout until the stream is restarted. The respective commands are `elv-stream stop` and `elv-stream reset`.
+4. **Stop or Reset the 'stream'**
 
-5. Terminate the stream
+   During streaming, you can stop (pause) or reset the stream which will discontinue playout until the stream is restarted. The respective commands are `elv-stream stop` and `elv-stream reset`.
 
-  After `elv-stream terminate` is run, the stream is ended and can no longer be restarted.  You can create a new stream within the same content object.
+5. **Terminate the stream**
+
+   After `elv-stream terminate` is run, the stream is ended and can no longer be restarted. You can create a new stream within the same content object.
+
+## EluvioAdmin CLI
+
+The EluvioAdmin CLI (`elv-admin`) provides lower-level account, group, tenant, and fabric administration commands.
+
+```
+EluvioLive Admin CLI
+
+Usage: elv-admin <command>
+```
+
+Key command areas include:
+
+- **Account management** — create accounts, show balances, send funds, generate fabric and signed tokens
+- **Group management** — create access groups, add or remove members
+- **Tenant administration** — show, fix, and configure tenant contracts; manage content admins and tenant users; deploy tenant contracts; set up faucets and sharing keys
+- **Object/contract utilities** — set or get tenant contract IDs for wallets, content types, libraries, and groups
 
