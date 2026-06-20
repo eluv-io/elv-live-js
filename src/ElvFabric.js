@@ -410,6 +410,38 @@ class ElvFabric {
   }
 
   /**
+   * SetContractMetaAsync - async version of client SetContractMeta()
+   * Submits the putMeta transaction WITHOUT waiting for completionand
+   * returns the ethers transaction response so the caller can wait on it
+   *
+   * @param {string} address  contract address
+   * @param {string} key  metadata key
+   * @param {string} value metadata value
+   * @returns {object} ethers transaction response - caller can call .wait()
+   */
+  async SetContractMetaAsync({address, key, value}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseContent.abi")
+    );
+
+    if (address.startsWith("iq")){
+      address = this.client.utils.HashToAddress(address);
+    }
+
+    if (this.debug){
+      console.log("Address", address);
+    }
+
+    return await this.client.CallContractMethod({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "putMeta",
+      methodArgs: [key, value],
+      formatArguments: true,
+    });
+  }
+
+  /**
    * AccessGroupMemeber
    * Check if an address is a member of the access group
    * @param {string} group  Group ID (hex or igrp format)

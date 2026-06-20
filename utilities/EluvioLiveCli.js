@@ -1511,6 +1511,42 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   }
 };
 
+const CmdNFTSetPolicyPermissionsBatch = async ({ argv }) => {
+  console.log("NFT Set Policy and Permissions (batch)");
+  console.log(`Object list file: ${argv.object_list}`);
+  console.log(`Policy file path: ${argv.policy_path}`);
+  console.log(`Addresses: ${argv.addrs}`);
+  console.log(`verbose: ${argv.verbose}`);
+  console.log(`clear: ${argv.clear}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    const objectIds = fs
+      .readFileSync(argv.object_list, "utf8")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    console.log(`Loaded ${objectIds.length} object IDs`);
+
+    const res = await elvlv.NftSetPolicyAndPermissionsBatch({
+      objectIds,
+      policyPath: argv.policy_path,
+      addresses: argv.addrs,
+      clearAddresses: argv.clear
+    });
+
+    console.log(`Done. Succeeded: ${res.succeeded.length}, Failed: ${res.failed.length}`);
+    if (res.failed.length > 0) {
+      console.log("Failed objects:");
+      res.failed.forEach((f) => console.log(`  ${f.objectId}: ${f.error}`));
+    }
+  } catch (e) {
+    console.error("ERROR:", argv.verbose ? e : e.message);
+  }
+};
+
 const CmdTenantGetMinter = async ({ argv }) => {
   console.log("Tenant Minter Get Config");
   console.log(`TenantId: ${argv.tenant}`);
@@ -2690,6 +2726,35 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNFTSetPolicyPermissions({ argv });
+    }
+  )
+
+  .command(
+    "nft_set_policy_permissions_batch <object_list> <policy_path> [addrs..]",
+    "Batch version of nft_set_policy_permissions. Reads content object IDs from file and sets the specified policy and permissions.",
+    (yargs) => {
+      yargs
+        .positional("object_list", {
+          describe: "Path to a file with one content object ID per line",
+          type: "string",
+        })
+        .positional("policy_path", {
+          describe: "Path of policy object file",
+          type: "string",
+        })
+        .positional("addrs", {
+          describe:
+            "List of space separated NFT contract addresses to set. Calling multiple times with a new list will replace the existing.",
+          type: "string",
+        })
+        .option("clear", {
+          describe: "clear the nft owners",
+          type: "boolean",
+          default: false
+        });
+    },
+    (argv) => {
+      CmdNFTSetPolicyPermissionsBatch({ argv });
     }
   )
 

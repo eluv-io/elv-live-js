@@ -1924,6 +1924,133 @@ class EluvioLive {
   }
 
   /**
+   * Batch version of NftSetPolicyAndPermissions.
+   *
+   * Sets the same policy and permissions to a list of objects.
+   * Objects are processed in batches: within a batch all transactions are submitted sequentially (noce safety)
+   *
+   * @namedParams
+   * @param {string[]} objectIds - The NFT object IDs (iq__... or hex address)
+   * @param {string} policyPath - Path to the policy file (eg. nft_owner_minter.yaml). Note that the policy must contain the minter address
+   * @param {string[]} addresses - Array of addresses to set the policy permissions
+   * @param {boolean} [clearAddresses=false] - Clear existing permissions by writing an empty address list before applying the new ones
+   * @returns {object} { succeeded: string[], failed: {objectId, error}[] }
+   */
+  async NftSetPolicyAndPermissionsBatch({ objectIds, policyPath, addresses=[], clearAddresses=false }) {
+
+    const BATCH_SIZE = 100;
+
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    // Prepare the policy once (shared across all objects)
+    const policyString = fs.readFileSync(
+      policyPath
+    ).toString();
+
+    if (!policyString){
+      throw Error("Policy file contents is empty.");
+    }
+
+    if (this.debug){
+      console.log("Policy file contents: ", policyString);
+    }
+
+    let account = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+    account.InitWithClient({elvClient: this.client});
+
+    let policyFormat = await ElvUtils.parseAndSignPolicy({policyString, configUrl:this.configUrl, elvAccount:account});
+
+    if (this.debug){
+      console.log("Policy Value To Set: ", policyFormat);
+    }
+
+    const policyValue = JSON.stringify(policyFormat);
+
+    // Prepare the permission addresses once (shared across all objects)
+    if (clearAddresses){
+      addresses = [];
+    }
+
+    for (const address of addresses){
+      if (!ethers.utils.isAddress(address)){
+        throw Error(`"${address}" is not a valid ethereum address.`);
+      }
+    }
+
+    // _NFT_ACCESS is only written when clearing or when addresses were provided,
+    const setAccess = clearAddresses || addresses.length > 0;
+    const addressesString = JSON.stringify(addresses);
+
+    const succeeded = [];
+    const failed = [];
+
+    for (let i = 0; i < objectIds.length; i += BATCH_SIZE) {
+      const batch = objectIds.slice(i, i + BATCH_SIZE);
+      console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} objects)...`);
+
+      // Submit every transaction for this batch sequentially (nonce safety)
+      const pending = [];
+      for (const objectId of batch) {
+        try {
+          // Policy can only be set by object owner
+          const objectOwner = await this.client.authClient.Owner({id: objectId});
+          if (objectOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
+            throw Error("Policy must be set by object owner " + objectOwner);
+          }
+
+          const txs = [];
+          txs.push(await elvFabric.SetContractMetaAsync({
+            address: objectId,
+            key: "_ELV",
+            value: policyValue
+          }));
+
+          if (setAccess) {
+            txs.push(await elvFabric.SetContractMetaAsync({
+              address: objectId,
+              key: "_NFT_ACCESS",
+              value: addressesString
+            }));
+          }
+
+          pending.push({ objectId, txs });
+        } catch (e) {
+          console.error(`Failed to submit transactions for ${objectId}:`, this.debug ? e : (e.message || e));
+          failed.push({ objectId, error: e.message || e });
+        }
+      }
+
+      // Wait for all transactions in this batch
+      await Promise.all(pending.map(async ({ objectId, txs }) => {
+        try {
+          const receipts = await Promise.all(txs.map(tx => tx.wait()));
+          for (const receipt of receipts) {
+            if (!ElvUtils.isTransactionSuccess(receipt)) {
+              throw receipt;
+            }
+          }
+          succeeded.push(objectId);
+          if (this.debug) {
+            console.log(`Object ${objectId} done.`);
+          }
+        } catch (e) {
+          console.error(`Failed to confirm transactions for ${objectId}:`, this.debug ? e : (e.message || e));
+          failed.push({ objectId, error: e.message || e });
+        }
+      }));
+    }
+
+    return { succeeded, failed };
+  }
+
+  /**
    * Gets the nft policy and permissions for a given contract
    *
    * @namedParams
