@@ -136,6 +136,28 @@ class CatalogService {
       live_video: metadata.live_video ?? resolvedContentIdType === "live",
       public: !!resolvedPublic,
 
+      additional_views: [],
+      associated_media: [],
+      attributes: [],
+      permissions: [],
+      headers: [],
+      tags: [],
+      viewed_settings: {
+        description: "",
+        description_rich_text: "",
+        headers: [],
+        subtitle: "",
+        title: ""
+      },
+
+      type: "media",
+      enable_dvr: false,
+      override_settings_when_viewed: false,
+      player_controls: "",
+      player_loop: false,
+      player_muted: false,
+      player_profile: "",
+
       ...(resolvedTitles.catalog_title && { catalog_title: resolvedTitles.catalog_title }),
       ...(resolvedTitles.title && { title: resolvedTitles.title }),
       ...(resolvedTitles.subtitle && { subtitle: resolvedTitles.subtitle }),
@@ -460,9 +482,32 @@ class CatalogService {
         live_video: metadata.live_video ?? resolvedContentIdType === "live",
         public: !!resolvedPublic,
 
+        additional_views: [],
+        associated_media: [],
+        attributes: [],
+        permissions: [],
+        headers: [],
+        tags: [],
+        viewed_settings: {
+          description: "",
+          description_rich_text: "",
+          headers: [],
+          subtitle: "",
+          title: ""
+        },
+
+        type: "media",
+        enable_dvr: false,
+        override_settings_when_viewed: false,
+        player_controls: "",
+        player_loop: false,
+        player_muted: false,
+        player_profile: "",
+
         ...(metadata.catalog_title && { catalog_title: metadata.catalog_title }),
         ...(metadata.display_title && { title: metadata.display_title }),
         ...(metadata.subtitle && { subtitle: metadata.subtitle }),
+        ...(metadata.sidebar_title && { sidebar_title: metadata.sidebar_title }),
         ...(metadata.description && { description: metadata.description })
       };
 

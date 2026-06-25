@@ -234,7 +234,9 @@ class ElvMediaWallet {
     if (meta.catalog_title !== undefined) targetItem.catalog_title = meta.catalog_title;
     if (meta.display_title !== undefined) targetItem.display_title = meta.display_title;
     if (meta.subtitle !== undefined) targetItem.subtitle = meta.subtitle;
+    if (meta.sidebar_title !== undefined) targetItem.sidebar_title = meta.sidebar_title;
     if (meta.description !== undefined) targetItem.description = meta.description;
+    if (meta.description_rich_text !== undefined) targetItem.description_rich_text = meta.description_rich_text;
 
     // Other common passthrough fields
     const passthroughKeys = [
@@ -261,6 +263,7 @@ class ElvMediaWallet {
       "additional_views",
       "additional_views_label",
 
+      "associated_media",
       "offerings",
       "permissions",
       "tags",
