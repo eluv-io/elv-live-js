@@ -2701,7 +2701,7 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_set_policy_permissions <object> <policy_path> <addrs..>",
+    "nft_set_policy_permissions <object> <policy_path> [addrs..]",
     "Sets the policy and permissions granting NFT owners access to a content object. When no addresses are specified, only the policy is set.",
     (yargs) => {
       yargs
@@ -2719,7 +2719,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("clear", {
-          describe: "clear the nft owners",
+          describe: "Clear all NFT contract addresses from the content object. No addresses need to be specified when using this flag.",
           type: "boolean",
           default: false
         });
