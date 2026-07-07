@@ -125,7 +125,8 @@ class ElvSegments {
     segmentIndexes = [1, 2],
     contentType,
     atmos,
-    playoutFormat = "dash-widevine"
+    playoutFormat = "dash-widevine",
+    offering = "default",
   }) {
     if (!objectId) {
       throw new Error("objectId is required");
@@ -147,11 +148,11 @@ class ElvSegments {
     //   await this.client.LatestVersionHash({ objectId });
 
     const formatObjs =
-      metadata?.offerings?.default?.playout?.playout_formats;
+      metadata?.offerings?.[offering]?.playout?.playout_formats;
 
     if (!formatObjs || typeof formatObjs !== "object") {
       throw new Error(
-        "metadata.offerings.default.playout.playout_formats not found"
+        `metadata.offerings.${offering}.playout.playout_formats not found`
       );
     }
 
@@ -165,7 +166,7 @@ class ElvSegments {
       outputDir || path.join(process.cwd(), "output");
 
     for (const format of formats) {
-      const dashWidewineUrl = `playout/default/${format}`;
+      const dashWidewineUrl = `playout/${offering}/${format}`;
 
       const playlistUrl =
         await this.client.FabricUrl({

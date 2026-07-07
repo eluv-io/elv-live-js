@@ -397,7 +397,8 @@ const CmdDashSegmentsDownload = async ({argv}) => {
       segmentIndexes: segmentIndexes,
       contentType: argv.content_type,
       atmos: argv.atmos,
-      playoutFormat: argv.playout_format
+      playoutFormat: argv.playout_format,
+      offering: argv.offering,
     });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -897,6 +898,12 @@ yargs(hideBin(process.argv))
         .option("playout_format", {
           describe: "provide playout_format: dash-clear/dash-widevine",
           choices: ["dash-clear","dash-widevine"],
+          default: "dash-widevine"
+        })
+        .option("offering", {
+          describe: "provide offering: default | sbs",
+          choices: ["default", "sbs"],
+          default: "default"
         });
     },
     (argv) => {
