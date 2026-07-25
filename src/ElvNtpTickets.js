@@ -6,16 +6,18 @@ class ElvNtpTickets {
     this.debugLogging = debugLogging;
   }
 
-  async Init({privateKey}) {
+  async Init({privateKey, eth}) {
     this.client = await ElvClient.FromConfigurationUrl({ configUrl: this.configUrl });
     let wallet = await this.client.GenerateWallet();
     let signer = wallet.AddAccount({ privateKey });
     this.client.SetSigner({ signer });
     this.client.ToggleLogging(this.debugLogging);
-    this.client.SetNodes({
-        fabricURIs: ["https://host-76-74-29-13.contentfabric.io"],
-        ethereumURIs: ["https://host-76-74-29-13.contentfabric.io/eth/"]
-    });
+
+    if (eth) {
+      this.client.SetNodes({
+        ethereumURIs: [eth]
+      });
+    }
   }
 
   async createNTPInstance({ tenantId, objectId, groupAddresses, ntpClass = 4, maxTickets = 0, maxRedemptions=100, startTime, endTime, ticketLength = 6 }) {
@@ -225,9 +227,6 @@ class ElvNtpTickets {
     }
     if (!code) {
       throw new Error("Code is required to redeem code");
-    }
-    if (!email) {
-      throw new Error("Email is required to redeem code");
     }
 
     return await this.client.RedeemCode({
