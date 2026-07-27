@@ -47,12 +47,12 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
   await marketplace.Init({ debugLogging, asUrl });
 };
 
-const InitNtp = async ({debugLogging = false} = {}) => {
+const InitNtp = async ({debugLogging = false, eth} = {}) => {
   elvNtp = new ElvNtpTickets({
     configUrl: Config.networks[Config.net],
     debugLogging
   });
-  await elvNtp.Init({ privateKey: process.env.PRIVATE_KEY });
+  await elvNtp.Init({ privateKey: process.env.PRIVATE_KEY, eth });
 };
 
 const CmdTenantAuthToken = async ({ argv }) => {
@@ -2013,7 +2013,7 @@ const CmdContentClearPolicy = async ({ argv }) => {
 
 const CmdOtpCreate = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const res = await elvNtp.createNTPInstance({
       tenantId: argv.tenant,
       objectId: argv.object,
@@ -2032,7 +2032,7 @@ const CmdOtpCreate = async ({ argv }) => {
 
 const CmdOtpUpdate = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const res = await elvNtp.updateNTPInstance({
       tenantId: argv.tenant,
       ntpId: argv.otp,
@@ -2049,7 +2049,7 @@ const CmdOtpUpdate = async ({ argv }) => {
 
 const CmdOtpSuspend = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     await elvNtp.suspendNTPInstance({ tenantId: argv.tenant, ntpId: argv.otp });
     console.log("NTP instance suspended.");
   } catch (e) {
@@ -2059,7 +2059,7 @@ const CmdOtpSuspend = async ({ argv }) => {
 
 const CmdOtpDelete = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     await elvNtp.deleteNTPInstance({ tenantId: argv.tenant, ntpId: argv.otp });
     console.log("NTP instance deleted.");
   } catch (e) {
@@ -2069,7 +2069,7 @@ const CmdOtpDelete = async ({ argv }) => {
 
 const CmdOtpList = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const res = await elvNtp.listNTPInstances({
       tenantId: argv.tenant,
       count: argv.count,
@@ -2083,7 +2083,7 @@ const CmdOtpList = async ({ argv }) => {
 
 const CmdOtpShow = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const res = await elvNtp.getNTPInstance({ tenantId: argv.tenant, ntpId: argv.otp });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -2093,7 +2093,7 @@ const CmdOtpShow = async ({ argv }) => {
 
 const CmdOtpReport = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const res = await elvNtp.reportNTPInstance({ 
       tenantId: argv.tenant, 
       ntpId: argv.otp , 
@@ -2107,7 +2107,7 @@ const CmdOtpReport = async ({ argv }) => {
 
 const CmdOtpStatus = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const res = await elvNtp.statusNTPInstance({ 
       tenantId: argv.tenant, 
       ntpId: argv.otp, 
@@ -2121,7 +2121,7 @@ const CmdOtpStatus = async ({ argv }) => {
 
 const CmdOtpIssueCode = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const res = await elvNtp.issueNTPCode({
       tenantId: argv.tenant,
       ntpId: argv.otp,
@@ -2136,7 +2136,7 @@ const CmdOtpIssueCode = async ({ argv }) => {
 
 const CmdOtpIssueSignedCode = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const res = await elvNtp.issueSignedNTPCode({
       tenantId: argv.tenant,
       ntpId: argv.otp,
@@ -2151,7 +2151,7 @@ const CmdOtpIssueSignedCode = async ({ argv }) => {
 
 const CmdOtpRedeemCode = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const res = await elvNtp.redeemCode({
       tenantId: argv.tenant,
       ntpId: argv.otp,
@@ -2162,12 +2162,13 @@ const CmdOtpRedeemCode = async ({ argv }) => {
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
+    throw e;
   }
 };
 
 const CmdOtpGenerateCodes = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const emails = argv.emails
       ? fs.readFileSync(argv.emails, "utf8").trim().split("\n")
       : undefined;
@@ -2185,7 +2186,7 @@ const CmdOtpGenerateCodes = async ({ argv }) => {
 
 const CmdOtpMakeEmbedUrls = async ({ argv }) => {
   try {
-    await InitNtp({ debugLogging: argv.verbose });
+    await InitNtp({ debugLogging: argv.verbose, eth: argv.eth });
     const codes = JSON.parse(fs.readFileSync(argv.codes_file, "utf8"));
     const res = await elvNtp.makeEmbedUrlsWithCodes({
       objectId: argv.object,
@@ -4100,6 +4101,7 @@ yargs(hideBin(process.argv))
     "NTP instance (OTP) management commands",
     (yargs) => {
       yargs
+        .option("eth", { describe: "Alternate Ethereum node URL", type: "string" })
         .command(
           "create <tenant> <object> [options]",
           "Create a new NTP instance (class 4 ticket system)",
@@ -4240,7 +4242,7 @@ yargs(hideBin(process.argv))
               .option("email", { describe: "Email address bound to this ticket (if applicable)", type: "string" })
               .option("include_ntp_id", { describe: "Include the NTP ID in the response", type: "boolean", default: false });
           },
-          (argv) => { CmdOtpRedeemCode({ argv }); }
+          (argv) => { CmdOtpRedeemCode({ argv }).catch(() => process.exit(1)); }
         )
 
         .command(
