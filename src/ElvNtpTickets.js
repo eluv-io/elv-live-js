@@ -14,7 +14,9 @@ class ElvNtpTickets {
     this.client.ToggleLogging(this.debugLogging);
 
     if (eth) {
+       const fabricUri = eth.replace(/\/eth\/?$/, "");
       this.client.SetNodes({
+        fabricURIs: [fabricUri],
         ethereumURIs: [eth]
       });
     }
