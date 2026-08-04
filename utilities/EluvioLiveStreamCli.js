@@ -59,7 +59,8 @@ const CmdStreamCreate = async ({ argv }) => {
       finalize: argv.finalize,
       liveRecordingConfigArg: argv.live_recording_config,
       name: argv.name,
-      linkToSite:argv.link_to_site
+      linkToSite: argv.link_to_site,
+      permission: argv.permission
     });
 
     console.log(yaml.dump(status));
@@ -84,7 +85,7 @@ const CmdCreateStreamObjectBatch = async ({ argv }) => {
     if (!fs.existsSync(argv.batch_file)) {
       throw new Error("File not found.");
     }
-    
+
     let elvStream = new EluvioLiveStream({
       url: argv.url,
       debugLogging: argv.verbose
