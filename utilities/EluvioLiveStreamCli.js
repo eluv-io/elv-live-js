@@ -8,6 +8,22 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const path = require('path');
 
+const STREAM_OBJECT_ID_WIDTH = 32;
+const STREAM_NAME_WIDTH = 40;
+const STREAM_STATE_WIDTH = 13;
+const OUTPUT_ID_WIDTH = 8;
+const OUTPUT_NAME_WIDTH = 32;
+const OUTPUT_TYPE_WIDTH = 8;
+
+const FixedWidth = ({value, width, truncate = false}) => {
+  const text = String(value || "-").replace(/\s+/g, " ").trim();
+  const fitted = truncate && text.length > width ?
+    `${text.slice(0, width - 3)}...` :
+    text;
+
+  return fitted.padEnd(width);
+};
+
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
 //  (Use `node --trace-warnings ...` to show where the warning was created)
@@ -160,6 +176,51 @@ const CmdStreamStatus = async ({ argv }) => {
     }
 
     console.log(yaml.dump(status));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOutputStatus = async ({ argv }) => {
+  try {
+    const elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const status = await elvStream.OutputStatus({
+      name: argv.stream,
+      outputId: argv.output
+    });
+    console.log(yaml.dump(status));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOutputList = async ({ argv }) => {
+  try {
+    const elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const outputs = await elvStream.OutputList();
+    outputs.forEach(({objectId, outputId, name, type, url}) => {
+      const objectColumn = FixedWidth({value: objectId, width: STREAM_OBJECT_ID_WIDTH});
+      const outputColumn = FixedWidth({value: outputId, width: OUTPUT_ID_WIDTH, truncate: true});
+      const nameColumn = FixedWidth({value: name, width: OUTPUT_NAME_WIDTH, truncate: true});
+      const typeColumn = FixedWidth({value: type, width: OUTPUT_TYPE_WIDTH, truncate: true});
+      console.log(`${objectColumn}\t${outputColumn}\t${nameColumn}\t${typeColumn}\t${url || "-"}`);
+    });
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -352,7 +413,7 @@ const CmdWatermark = async ({ op, argv }) => {
   }
 };
 
-const CmdStreamListUrls = async ({ argv }) => {
+const CmdStreamList = async ({ argv }) => {
   try {
     const elvStream = new EluvioLiveStream({
       url: argv.url,
@@ -363,10 +424,25 @@ const CmdStreamListUrls = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    const res = await elvStream.StreamListUrls({
-      siteId: argv.site
+    const streams = await elvStream.StreamList({
+      siteId: argv.site,
+      includeStatus: argv.status
     });
-    console.log(yaml.dump(res));
+
+    if (argv.status) {
+      streams.forEach(({objectId, name, state, url}) => {
+        const idColumn = FixedWidth({value: objectId, width: STREAM_OBJECT_ID_WIDTH});
+        const nameColumn = FixedWidth({value: name, width: STREAM_NAME_WIDTH, truncate: true});
+        const stateColumn = FixedWidth({value: state, width: STREAM_STATE_WIDTH});
+        console.log(`${idColumn}\t${nameColumn}\t${stateColumn}\t${url || "-"}`);
+      });
+    } else {
+      streams.forEach(({objectId, name, url}) => {
+        const idColumn = FixedWidth({value: objectId, width: STREAM_OBJECT_ID_WIDTH});
+        const nameColumn = FixedWidth({value: name, width: STREAM_NAME_WIDTH, truncate: true});
+        console.log(`${idColumn}\t${nameColumn}\t${url || "-"}`);
+      });
+    }
   } catch (e) {
     console.error("ERROR:", e);
   }
@@ -623,6 +699,40 @@ yargs(hideBin(process.argv))
     }
   )
   .command(
+    "output <command>",
+    "Manage live outputs.",
+    (yargs) => {
+      return yargs
+        .command(
+          "status <stream> <output>",
+          "Retrieve live output configuration and runtime state.",
+          (yargs) => {
+            return yargs
+              .positional("stream", {
+                describe: "Live output settings object ID",
+                type: "string",
+              })
+              .positional("output", {
+                describe: "Live output ID (for example, out001)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdOutputStatus({ argv });
+          }
+        )
+        .command(
+          "list",
+          "List live output IDs, names, delivery types, and URLs for the current tenant.",
+          (yargs) => yargs,
+          (argv) => {
+            CmdOutputList({ argv });
+          }
+        )
+        .demandCommand(1);
+    }
+  )
+  .command(
     "reset <stream>",
     "Reset the currently active live stream.",
     (yargs) => {
@@ -856,17 +966,23 @@ yargs(hideBin(process.argv))
 
   .command(
     "list",
-    "List stream urls and their status.",
+    "List live stream object IDs, names, and ingest URLs for the current tenant.",
     (yargs) => {
       yargs
         .option("site", {
           describe:
             "Site ID",
           type: "string"
+        })
+        .option("status", {
+          describe:
+            "Include each stream's current state",
+          type: "boolean",
+          default: false
         });
     },
     (argv) => {
-      CmdStreamListUrls({ argv });
+      CmdStreamList({ argv });
     }
   )
 

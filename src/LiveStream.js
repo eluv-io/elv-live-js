@@ -3,6 +3,7 @@
  */
 
 const { ElvClient } = require("@eluvio/elv-client-js");
+const HttpClient = require("@eluvio/elv-client-js/src/HttpClient.js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { execSync } = require("child_process");
 const { Config } = require("./Config.js");
@@ -125,6 +126,312 @@ class EluvioLiveStream {
 
     return status;
 
+  }
+
+  /**
+   * Retrieve a live output configuration and state (including SRT)
+   *
+   * @namedParams
+   * @param {string} name - Object ID of the live output settings object
+   * @param {string} outputId - ID of the live output
+   * @returns {Promise<Object>} Live output configuration with a `state` field
+   */
+  async OutputStatus({name, outputId}) {
+    return this.client.OutputsState({
+      objectId: name,
+      outputId,
+      includeState: true
+    });
+  }
+
+  /**
+   * Retrieve identifying information and metadata for the current tenant.
+   *
+   * @returns {Promise<{tenantId: string, tenantObjectId: string, tenantLibraryId: string, metadata: Object}>} Tenant information
+   */
+  async TenantInfo() {
+    const tenantId = await this.client.userProfileClient.TenantContractId();
+    if (!tenantId) {
+      throw new Error("No tenant contract ID configured for the current account");
+    }
+
+    const tenantObjectId = tenantId.replace(/^iten/, "iq__");
+    const tenantLibraryId = await this.client.ContentObjectLibraryId({
+      objectId: tenantObjectId
+    });
+    const metadata = await this.client.ContentObjectMetadata({
+      libraryId: tenantLibraryId,
+      objectId: tenantObjectId
+    });
+
+    return {tenantId, tenantObjectId, tenantLibraryId, metadata};
+  }
+
+  /**
+   * List the live output IDs configured for the current tenant.
+   * The tenant's `public/sites/live_streams` metadata identifies the live
+   * streams site object. That object's `live_outputs` metadata contains the
+   * output settings object IDs, and each settings object's `live_outputs`
+   * metadata is keyed by output ID.
+   *
+   * SRT pull outputs may produce more than one row because they can expose
+   * multiple URLs.
+   *
+   * @returns {Promise<Array<{objectId: string, outputId: string, name: string, type: string, url: string}>>} Output details
+   */
+  async OutputList() {
+    const {metadata: tenantMetadata, tenantObjectId} = await this.TenantInfo();
+    const liveStreamsObjectId = tenantMetadata?.public?.sites?.live_streams;
+    if (!liveStreamsObjectId) {
+      throw new Error(`Missing public/sites/live_streams metadata on tenant object ${tenantObjectId}`);
+    }
+
+    const liveStreamsLibraryId = await this.client.ContentObjectLibraryId({
+      objectId: liveStreamsObjectId
+    });
+    const outputObjectIds = await this.client.ContentObjectMetadata({
+      libraryId: liveStreamsLibraryId,
+      objectId: liveStreamsObjectId,
+      metadataSubtree: "/live_outputs"
+    }) || [];
+
+    if (!Array.isArray(outputObjectIds)) {
+      throw new Error(`Invalid live_outputs metadata on live streams object ${liveStreamsObjectId}: expected an array`);
+    }
+
+    const outputsByObject = await Promise.all(outputObjectIds.map(async objectId => {
+      const libraryId = await this.client.ContentObjectLibraryId({objectId});
+      const outputs = await this.client.ContentObjectMetadata({
+        libraryId,
+        objectId,
+        metadataSubtree: "/live_outputs"
+      }) || {};
+
+      return Object.entries(outputs).flatMap(([outputId, output]) => {
+        const name = output?.name || "";
+        const type = ["srt_pull", "srt_push", "rtp", "udp"]
+          .find(outputType => output?.[outputType]);
+        const delivery = output?.[type];
+        const urls = type === "srt_pull" ? delivery?.urls : [delivery?.url];
+        const availableUrls = (urls || []).filter(Boolean);
+
+        if (availableUrls.length === 0) {
+          return [{objectId, outputId, name, type: type || "unknown", url: ""}];
+        }
+
+        return availableUrls.map(url => ({objectId, outputId, name, type, url}));
+      });
+    }));
+
+    return outputsByObject.flat();
+  }
+
+  /**
+   * Retrieve the state of one live stream without allowing an invalid or
+   * expired edge write token to abort a larger listing operation.
+   *
+   * @param {string} objectId - Live stream object ID
+   * @returns {Promise<string>} Stream state
+   */
+  async StreamState({objectId}) {
+    let libraryId;
+    let edgeWriteToken;
+    let ingressNodeApi;
+    let edgeMetadata;
+
+    try {
+      libraryId = await this.client.ContentObjectLibraryId({objectId});
+      const metadata = await this.client.ContentObjectMetadata({
+        libraryId,
+        objectId,
+        select: [
+          "live_recording_config/url",
+          "live_recording/fabric_config",
+          "live_recording/playout_config",
+          "live_recording/recording_config"
+        ]
+      }) || {};
+      const recordingConfig = metadata.live_recording_config;
+      const liveRecording = metadata.live_recording;
+
+      if (!recordingConfig?.url) {
+        return "unconfigured";
+      }
+
+      if (!liveRecording?.fabric_config ||
+        !liveRecording.playout_config ||
+        !liveRecording.recording_config) {
+        return "uninitialized";
+      }
+
+      ingressNodeApi = liveRecording.fabric_config.ingress_node_api;
+      if (!ingressNodeApi) {
+        return "uninitialized";
+      }
+
+      edgeWriteToken = liveRecording.fabric_config.edge_write_token;
+    } catch (error) {
+      return "unavailable";
+    }
+
+    if (!edgeWriteToken) {
+      return "inactive";
+    }
+
+    const fabricNodeUrl = ingressNodeApi.startsWith("http") ?
+      ingressNodeApi :
+      `https://${ingressNodeApi}`;
+    this.client.RecordWriteToken({
+      writeToken: edgeWriteToken,
+      fabricNodeUrl
+    });
+
+    try {
+      // Read edge metadata once and handle an expired token here. Calling the
+      // SDK StreamStatus after this would repeat the request and log expected
+      // stale-token errors (including request authorization) to stderr.
+      edgeMetadata = await this.client.CallBitcodeMethod({
+        libraryId,
+        objectId,
+        method: "/live/meta",
+        constant: true
+      });
+    } catch (error) {
+      if (/ERR_TOO_MANY_REDIRECTS/i.test(error?.message || "")) {
+        return "unavailable";
+      }
+
+      return "expired";
+    }
+
+    const recordings = edgeMetadata?.live_recording?.recordings;
+    const sequence = recordings?.recording_sequence;
+    if (!sequence || !recordings.live_offering?.[sequence - 1]) {
+      return "stopped";
+    }
+
+    try {
+      const statusUrl = await this.client.FabricUrl({
+        libraryId,
+        objectId,
+        writeToken: edgeWriteToken,
+        call: "live/status"
+      });
+      const lroStatus = await this.client.utils.ResponseToJson(
+        await HttpClient.Fetch(statusUrl)
+      );
+      const state = lroStatus?.state;
+
+      return state === "terminated" ? "stopped" : state || "unavailable";
+    } catch (error) {
+      return "stopped";
+    }
+  }
+
+  /**
+   * Retrieve the display name and configured ingest URL for one live stream
+   * from finalized metadata. This does not access the edge write token.
+   *
+   * @param {string} objectId - Live stream object ID
+   * @returns {Promise<{objectId: string, name: string, url: string}>} Stream information
+   */
+  async StreamInfo({objectId}) {
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
+    const metadata = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      select: [
+        "live_recording_config/name",
+        "live_recording_config/reference_url",
+        "live_recording_config/url",
+        "public/name",
+        "public/asset_metadata/display_title",
+        "public/asset_metadata/title"
+      ]
+    }) || {};
+    const recordingConfig = metadata.live_recording_config || {};
+    const assetMetadata = metadata.public?.asset_metadata || {};
+
+    return {
+      objectId,
+      name: recordingConfig.name || assetMetadata.display_title || assetMetadata.title || metadata.public?.name || "",
+      url: recordingConfig.reference_url || recordingConfig.url || ""
+    };
+  }
+
+  /**
+   * List the live stream objects linked from the current tenant's live-streams
+   * site. Status checks are optional so stale stream drafts cannot affect the
+   * default inventory operation. The default path reads unresolved site links,
+   * decodes their version hashes locally, then loads finalized metadata for up
+   * to 100 stream objects concurrently.
+   *
+   * @namedParams
+   * @param {string} [siteId] - Optional live-streams site object override
+   * @param {boolean} [includeStatus=false] - Retrieve each stream's state
+   * @returns {Promise<Array<{objectId: string, name?: string, url?: string, state?: string}>>} Stream information or states
+   */
+  async StreamList({siteId, includeStatus = false} = {}) {
+    if (!siteId) {
+      const {metadata: tenantMetadata, tenantObjectId} = await this.TenantInfo();
+      siteId = tenantMetadata?.public?.sites?.live_streams;
+      if (!siteId) {
+        throw new Error(`Missing public/sites/live_streams metadata on tenant object ${tenantObjectId}`);
+      }
+    }
+
+    const siteLibraryId = await this.client.ContentObjectLibraryId({objectId: siteId});
+    const streamMetadata = await this.client.ContentObjectMetadata({
+      libraryId: siteLibraryId,
+      objectId: siteId,
+      metadataSubtree: "public/asset_metadata/live_streams",
+      resolveLinks: false,
+      resolveIgnoreErrors: true,
+      resolveIncludeSource: false
+    }) || {};
+
+    const streamRefs = Object.values(streamMetadata).map(stream => {
+      if (typeof stream === "string" && stream.startsWith("iq__")) {
+        return {objectId: stream};
+      }
+
+      const versionHash = stream?.["."]?.source ||
+        stream?.["/"]?.match(/(hq__[A-Za-z0-9]+)/)?.[1];
+      if (!versionHash) {
+        return undefined;
+      }
+
+      try {
+        return {
+          objectId: this.client.utils.DecodeVersionHash(versionHash).objectId,
+          versionHash
+        };
+      } catch (error) {
+        return undefined;
+      }
+    }).filter(Boolean);
+    const uniqueStreamRefs = [...new Map(
+      streamRefs.map(stream => [stream.objectId, stream])
+    ).values()];
+
+    return this.client.utils.LimitedMap(100, uniqueStreamRefs, async ({objectId}) => {
+      const infoPromise = Promise.resolve()
+        .then(() => this.StreamInfo({objectId}))
+        .catch(() => ({objectId, name: "", url: ""}));
+
+      if (!includeStatus) {
+        return infoPromise;
+      }
+
+      const [info, state] = await Promise.all([
+        infoPromise,
+        Promise.resolve()
+          .then(() => this.StreamState({objectId}))
+          .catch(() => "unavailable")
+      ]);
+
+      return {...info, state};
+    });
   }
 
   /**
