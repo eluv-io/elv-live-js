@@ -2884,9 +2884,8 @@ class EluvioLive {
   }
 
   /**
-   * Purges elvauthd's cached PolicyService permissions for an NFT contract (issue #1407), so the
-   * next permission_check call re-reads its policy on-chain. Best-effort: the cache's own TTL is
-   * still the fallback if this fails.
+   * Purges elvauthd's cached PolicyService permissions for the given NFT contract.
+   * The cache's own TTL is still a fallback if this fails.
    *
    * @namedParams
    * @param {string} address - The NFT contract address. Can also be iq__... format.
