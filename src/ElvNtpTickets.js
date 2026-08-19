@@ -13,8 +13,8 @@ class ElvNtpTickets {
     this.client.SetSigner({ signer });
     this.client.ToggleLogging(this.debugLogging);
     this.client.SetNodes({
-        fabricURIs: ["https://host-76-74-29-13.contentfabric.io"],
-        ethereumURIs: ["https://host-76-74-29-13.contentfabric.io/eth/"]
+      fabricURIs: ["https://host-76-74-29-13.contentfabric.io"],
+      ethereumURIs: ["https://host-76-74-29-13.contentfabric.io/eth/"]
     });
   }
 

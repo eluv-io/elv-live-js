@@ -1844,7 +1844,7 @@ class EluvioLive {
    * @param {string[]} addresses - Array of addresses to set the policy permissions
    * @param {boolean} [clearAddresses=false] - Clear existing permissions by writing an empty address list before applying the new ones
    */
-  async NftSetPolicyAndPermissions({ objectId, policyPath, addresses=[], clearAddresses=false}) {
+  async NftSetPolicyAndPermissions({ objectId, policyPath, addresses=[], clearAddresses=false }) {
     let elvFabric = new ElvFabric({
       configUrl: this.configUrl,
       debugLogging: this.debug
@@ -1892,11 +1892,20 @@ class EluvioLive {
       throw res;
     }
 
+    const purgePermissionsCache = async () => {
+      try {
+        await this.NFTPurgePermissionsCache({ address: objectId });
+      } catch (e) {
+        console.warn(`Failed to purge permissions cache for ${objectId}:`, this.debug ? e : (e.message || e));
+      }
+    };
+
     if (!clearAddresses && addresses.length == 0) {
+      await purgePermissionsCache();
       return;
     }
 
-    if (clearAddresses){
+    if (clearAddresses) {
       addresses = [];
     }
 
@@ -1921,6 +1930,8 @@ class EluvioLive {
     if (!ElvUtils.isTransactionSuccess(res)) {
       throw res2;
     }
+
+    await purgePermissionsCache();
   }
 
   /**
@@ -1934,7 +1945,7 @@ class EluvioLive {
    * @param {string} policyPath - Path to the policy file (eg. nft_owner_minter.yaml). Note that the policy must contain the minter address
    * @param {string[]} addresses - Array of addresses to set the policy permissions
    * @param {boolean} [clearAddresses=false] - Clear existing permissions by writing an empty address list before applying the new ones
-   * @returns {object} { succeeded: string[], failed: {objectId, error}[] }
+   * @returns {object} { succeeded: string[], failed: {objectId, error}[], purgeFailed: {objectId, error}[] }
    */
   async NftSetPolicyAndPermissionsBatch({ objectIds, policyPath, addresses=[], clearAddresses=false }) {
 
@@ -2047,7 +2058,17 @@ class EluvioLive {
       }));
     }
 
-    return { succeeded, failed };
+    const purgeFailed = [];
+    await Promise.all(succeeded.map(async (objectId) => {
+      try {
+        await this.NFTPurgePermissionsCache({ address: objectId });
+      } catch (e) {
+        console.error(`Failed to purge permissions cache for ${objectId}:`, this.debug ? e : (e.message || e));
+        purgeFailed.push({ objectId, error: e.message || e });
+      }
+    }));
+
+    return { succeeded, failed, purgeFailed };
   }
 
   /**
@@ -2858,6 +2879,25 @@ class EluvioLive {
   async NFTRefresh({ tenant, address}) {
     let res = await this.PutServiceRequest({
       path: urljoin("/mkt/refresh/", tenant, address)
+    });
+    return await res.json();
+  }
+
+  /**
+   * Purges elvauthd's cached PolicyService permissions for an NFT contract (issue #1407), so the
+   * next permission_check call re-reads its policy on-chain. Best-effort: the cache's own TTL is
+   * still the fallback if this fails.
+   *
+   * @namedParams
+   * @param {string} address - The NFT contract address. Can also be iq__... format.
+   */
+  async NFTPurgePermissionsCache({ address }) {
+    if (address.startsWith("iq")){
+      address = Utils.HashToAddress(address);
+    }
+
+    let res = await this.PutServiceRequest({
+      path: urljoin("/mkt/permissions/purge/", address)
     });
     return await res.json();
   }

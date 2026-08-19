@@ -152,7 +152,7 @@ For generative NFTs we use the following convention: `--nft_dir` must specify on
 Example JSON File:
 ```json
 {
-  "count": 3,                                   (OPTIONAL, Default: 1)
+  "count": 3,                                  (OPTIONAL, Default: 1)
   "name": "Example NFT",                       (OPTIONAL, Default: from Content Object)
   "display_name": "Example NFT",               (OPTIONAL, Default: from Content Object)
   "description" : "This is an example NFT.",   (OPTIONAL, Default: from Content Object)

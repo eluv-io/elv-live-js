@@ -1542,6 +1542,10 @@ const CmdNFTSetPolicyPermissionsBatch = async ({ argv }) => {
       console.log("Failed objects:");
       res.failed.forEach((f) => console.log(`  ${f.objectId}: ${f.error}`));
     }
+    if (res.purgeFailed.length > 0) {
+      console.log("Failed to purge cached permissions for:");
+      res.purgeFailed.forEach((f) => console.log(`  ${f.objectId}: ${f.error}`));
+    }
   } catch (e) {
     console.error("ERROR:", argv.verbose ? e : e.message);
   }
