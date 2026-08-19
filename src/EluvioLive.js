@@ -1894,7 +1894,7 @@ class EluvioLive {
 
     const purgePermissionsCache = async () => {
       try {
-        await this.NFTPurgePermissionsCache({ address: objectId });
+        await this.NFTPurgePermissionsCache({ iq: objectId });
       } catch (e) {
         console.warn(`Failed to purge permissions cache for ${objectId}:`, this.debug ? e : (e.message || e));
       }
@@ -2064,7 +2064,7 @@ class EluvioLive {
       const chunk = succeeded.slice(i, i + PURGE_CONCURRENCY);
       await Promise.all(chunk.map(async (objectId) => {
         try {
-          await this.NFTPurgePermissionsCache({ address: objectId });
+          await this.NFTPurgePermissionsCache({ iq: objectId });
         } catch (e) {
           console.error(`Failed to purge permissions cache for ${objectId}:`, this.debug ? e : (e.message || e));
           purgeFailed.push({ objectId, error: e.message || e });
@@ -2888,19 +2888,16 @@ class EluvioLive {
   }
 
   /**
-   * Purges elvauthd's cached PolicyService permissions for the given NFT contract.
+   * Purges elvauthd's cached PolicyService permissions for the given NFT object.
    * The cache's own TTL is still a fallback if this fails.
    *
    * @namedParams
-   * @param {string} address - The NFT contract address. Can also be iq__... format.
+   * @param {string} iq - The NFT object id (iq__... format).
    */
-  async NFTPurgePermissionsCache({ address }) {
-    if (address.startsWith("iq")){
-      address = Utils.HashToAddress(address);
-    }
-
+  async NFTPurgePermissionsCache({ iq }) {
     let res = await this.PutServiceRequest({
-      path: urljoin("/mkt/permissions/purge/", address)
+      path: urljoin("/mkt/permissions/purge/", iq),
+      useFabricToken: true
     });
     return await res.json();
   }
