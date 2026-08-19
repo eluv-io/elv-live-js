@@ -2058,15 +2058,19 @@ class EluvioLive {
       }));
     }
 
+    const PURGE_CONCURRENCY = 20;
     const purgeFailed = [];
-    await Promise.all(succeeded.map(async (objectId) => {
-      try {
-        await this.NFTPurgePermissionsCache({ address: objectId });
-      } catch (e) {
-        console.error(`Failed to purge permissions cache for ${objectId}:`, this.debug ? e : (e.message || e));
-        purgeFailed.push({ objectId, error: e.message || e });
-      }
-    }));
+    for (let i = 0; i < succeeded.length; i += PURGE_CONCURRENCY) {
+      const chunk = succeeded.slice(i, i + PURGE_CONCURRENCY);
+      await Promise.all(chunk.map(async (objectId) => {
+        try {
+          await this.NFTPurgePermissionsCache({ address: objectId });
+        } catch (e) {
+          console.error(`Failed to purge permissions cache for ${objectId}:`, this.debug ? e : (e.message || e));
+          purgeFailed.push({ objectId, error: e.message || e });
+        }
+      }));
+    }
 
     return { succeeded, failed, purgeFailed };
   }
