@@ -2900,7 +2900,7 @@ class EluvioLive {
    */
   async NFTPurgePermissionsCache({ iq }) {
     let res = await this.PutServiceRequest({
-      path: urljoin("/mkt/permissions/purge/", iq),
+      path: urljoin("/mw/permission_purge/", iq),
       useFabricToken: true
     });
     return await res.json();
