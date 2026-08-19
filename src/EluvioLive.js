@@ -1924,10 +1924,10 @@ class EluvioLive {
     });
 
     if (this.debug){
-      console.log("Set Policy response: ", res);
+      console.log("Set Access response: ", res2);
     }
 
-    if (!ElvUtils.isTransactionSuccess(res)) {
+    if (!ElvUtils.isTransactionSuccess(res2)) {
       throw res2;
     }
 
