@@ -1888,6 +1888,10 @@ class EluvioLive {
       value: JSON.stringify(policyFormat)
     });
 
+    if (this.debug) {
+      console.log("Set Policy response: ", res);
+    }
+
     if (!ElvUtils.isTransactionSuccess(res)) {
       throw res;
     }
