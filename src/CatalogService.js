@@ -426,7 +426,7 @@ class CatalogService {
     return newItem;
   }
 
-  async CatalogItemBulkAdd({ objectId, filePath }) {
+  async CatalogItemBulkAdd({ objectId, filePath, thumbnailDir }) {
     console.log("Object ID:", objectId);
     console.log("File:", filePath);
 
@@ -460,6 +460,20 @@ class CatalogService {
       libraryId: catalogLib,
       objectId
     });
+
+    // Build thumbnail lookup from directory if provided
+    let thumbnailMap = {};
+    if (thumbnailDir && fs.existsSync(thumbnailDir)) {
+      const thumbFiles = fs.readdirSync(thumbnailDir).filter(f =>
+        /\.(jpg|jpeg|png|webp)$/i.test(f)
+      );
+      // Normalize a string for fuzzy matching: lowercase, collapse whitespace, remove punctuation
+      const normalize = str => str.toLowerCase().replace(/[_-]/g, " ").replace(/\s+/g, " ").trim();
+      for (const file of thumbFiles) {
+        thumbnailMap[normalize(path.basename(file, path.extname(file)))] = path.join(thumbnailDir, file);
+      }
+      console.log(`Loaded ${thumbFiles.length} thumbnail(s) from ${thumbnailDir}`);
+    }
 
     const createdItems = [];
 
@@ -553,6 +567,27 @@ class CatalogService {
           thumbnail_portrait: resolvedThumbnails.portrait,
           thumbnail_square: resolvedThumbnails.square
         });
+      }
+
+      // Match and upload thumbnail from local directory
+      if (!hasDirectThumbs && Object.keys(thumbnailMap).length > 0) {
+        const normalize = str => str.toLowerCase().replace(/[_-]/g, " ").replace(/\s+/g, " ").trim();
+        // Try label first, then title as fallback (handles prefixed labels)
+        const thumbPath = thumbnailMap[normalize(resolvedItemLabel)] ||
+          (metadata.title && thumbnailMap[normalize(metadata.title)]);
+        if (thumbPath) {
+          console.log(`  Uploading thumbnail for "${resolvedItemLabel}": ${path.basename(thumbPath)}`);
+          await this.wallet.applyThumbnailLink({
+            libraryId: catalogLib,
+            objectId,
+            writeToken: edit.write_token,
+            target: newItem,
+            catalogHash,
+            thumbnail_landscape: thumbPath
+          });
+        } else {
+          console.warn(`  No thumbnail match found for "${resolvedItemLabel}"`);
+        }
       }
 
       catalogMedia[newMediaId] = newItem;

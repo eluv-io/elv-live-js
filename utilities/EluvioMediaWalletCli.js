@@ -140,6 +140,7 @@ const CmdCatalogItemBulkAdd = async ({ argv }) => {
     const res = await wallet.CatalogItemBulkAdd({
       objectId: argv.object_id,
       filePath: argv.file,
+      thumbnailDir: argv.thumbnail_dir,
     });
     console.log(yaml.dump(res));
   } catch (error) {
@@ -312,7 +313,8 @@ const yargsInstance = yargs(hideBin(process.argv))
                 (yargs) => {
                   yargs
                     .positional("object_id", { describe: "Catalog Object ID", type: "string" })
-                    .option("file", { alias: "f", describe: "Path to JSON or YAML file containing an array of media item definitions", type: "string", demandOption: true });
+                    .option("file", { alias: "f", describe: "Path to JSON or YAML file containing an array of media item definitions", type: "string", demandOption: true })
+                    .option("thumbnail_dir", { alias: "t", describe: "Directory containing local thumbnail images to upload and attach to each media item", type: "string" });
                 },
                 (argv) => CmdCatalogItemBulkAdd({ argv })
               );
