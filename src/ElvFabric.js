@@ -410,6 +410,72 @@ class ElvFabric {
   }
 
   /**
+   * SetContractMetaPrewarmed
+   *
+   * Writes metadata value using a two-pass storage "pre-warming" technique, to support larger sizes.
+   *
+   * @param {string} address  contract address
+   * @param {string} key  metadata key
+   * @param {string} value metadata value
+   * @returns result of the final contract method call (the real value write)
+   */
+  async SetContractMetaPrewarmed({address, key, value}) {
+    const stepBytes = 15000;
+    const directWriteThreshold = 20000;
+    const targetLen = Buffer.byteLength(value, "utf8");
+
+    let currentLen = 0;
+    try {
+      const current = await this.GetContractMeta({address, key});
+      currentLen = Buffer.byteLength(current, "utf8");
+    } catch (e) {
+      currentLen = 0;
+    }
+
+    const growthNeeded = targetLen - currentLen;
+    if (growthNeeded <= directWriteThreshold) {
+      return await this.SetContractMeta({address, key, value});
+    }
+
+    if (this.debug) {
+      console.log(`SetContractMetaPrewarmed: target=${targetLen} bytes, already warm=${currentLen} bytes, pre-warming...`);
+    }
+
+    let step = stepBytes;
+    while (currentLen < targetLen) {
+      const nextLen = Math.min(targetLen, currentLen + step);
+      // Filler content is disposable - only its length and non-zero-ness matter for
+      // pre-warming the storage slots it occupies. "x" is plain ASCII: never a zero
+      // byte, and never needs JSON/string escaping.
+      const filler = "x".repeat(nextLen);
+
+      if (this.debug) {
+        console.log(`SetContractMetaPrewarmed: pre-warming ${currentLen} -> ${nextLen} bytes (step=${step})`);
+      }
+
+      try {
+        await this.SetContractMeta({address, key, value: filler});
+        currentLen = nextLen;
+      } catch (e) {
+        if (step <= 1000) {
+          throw e;
+        }
+        // Most likely exceeded the block gas limit for this step - back off and retry smaller
+        step = Math.floor(step / 2);
+        if (this.debug) {
+          console.log(`SetContractMetaPrewarmed: step failed, backing off to ${step} bytes`, e.message || e);
+        }
+      }
+    }
+
+    if (this.debug) {
+      console.log("SetContractMetaPrewarmed: storage fully pre-warmed, writing real value");
+    }
+
+    return await this.SetContractMeta({address, key, value});
+  }
+
+  /**
    * SetContractMetaAsync - async version of client SetContractMeta()
    * Submits the putMeta transaction WITHOUT waiting for completionand
    * returns the ethers transaction response so the caller can wait on it
