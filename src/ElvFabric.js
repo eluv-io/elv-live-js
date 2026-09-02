@@ -437,25 +437,24 @@ class ElvFabric {
       return await this.SetContractMeta({address, key, value});
     }
 
-    if (this.debug) {
-      console.log(`SetContractMetaPrewarmed: target=${targetLen} bytes, already warm=${currentLen} bytes, pre-warming...`);
-    }
+    console.log(`SetContractMetaPrewarmed: pre-warming storage, ${currentLen} -> ${targetLen} bytes`);
 
     let step = stepBytes;
+    let writeNum = 0;
     while (currentLen < targetLen) {
       const nextLen = Math.min(targetLen, currentLen + step);
-      // Filler content is disposable - only its length and non-zero-ness matter for
-      // pre-warming the storage slots it occupies. "x" is plain ASCII: never a zero
-      // byte, and never needs JSON/string escaping.
       const filler = "x".repeat(nextLen);
 
+      writeNum++;
       if (this.debug) {
-        console.log(`SetContractMetaPrewarmed: pre-warming ${currentLen} -> ${nextLen} bytes (step=${step})`);
+        console.log(`SetContractMetaPrewarmed: write #${writeNum}: pre-warming ${currentLen} -> ${nextLen} bytes (step=${step})`);
       }
 
       try {
         await this.SetContractMeta({address, key, value: filler});
         currentLen = nextLen;
+        const pct = ((currentLen / targetLen) * 100).toFixed(1);
+        console.log(`SetContractMetaPrewarmed: write #${writeNum} done, now ${currentLen} bytes (${pct}%)`);
       } catch (e) {
         if (step <= 1000) {
           throw e;
@@ -463,14 +462,12 @@ class ElvFabric {
         // Most likely exceeded the block gas limit for this step - back off and retry smaller
         step = Math.floor(step / 2);
         if (this.debug) {
-          console.log(`SetContractMetaPrewarmed: step failed, backing off to ${step} bytes`, e.message || e);
+          console.log(`SetContractMetaPrewarmed: write #${writeNum} failed at ${currentLen} -> ${nextLen} bytes, backing off to step=${step}`, e.message || e);
         }
       }
     }
 
-    if (this.debug) {
-      console.log("SetContractMetaPrewarmed: storage fully pre-warmed, writing real value");
-    }
+    console.log("SetContractMetaPrewarmed: storage fully pre-warmed, writing real value");
 
     return await this.SetContractMeta({address, key, value});
   }
