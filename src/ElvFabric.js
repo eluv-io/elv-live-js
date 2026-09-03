@@ -457,14 +457,20 @@ class ElvFabric {
         const pct = ((currentLen / targetLen) * 100).toFixed(0);
         console.log(`SetContractMetaPrewarmed: write #${writeNum} done, now ${currentLen} bytes (${pct}%)`);
       } catch (e) {
+        const msg = String(e?.reason || e?.error?.message || e?.data?.message || e?.message || e);
+        const gasLimitError = /exceed(s|ed)?\s+(the\s+)?block gas limit|intrinsic gas too low|out of gas|gas required exceeds allowance|transaction ran out of gas/i.test(msg);
+        if (!gasLimitError) {
+          throw e;
+        }
+
         if (step <= 1000) {
           throw e;
         }
-        // Most likely exceeded the block gas limit for this step - back off and retry smaller
+        // Exceeded the block gas limit for this step - back off and retry smaller
         step = Math.floor(step / 2);
         if (this.debug) {
           console.log(`SetContractMetaPrewarmed: write #${writeNum} failed at ${currentLen} ` +
-            `-> ${nextLen} bytes, backing off to step=${step}`, e.message || e);
+            `-> ${nextLen} bytes, backing off to step=${step}`, msg);
         }
       }
     }
