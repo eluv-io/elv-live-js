@@ -1882,7 +1882,7 @@ class EluvioLive {
       console.log("Policy Value To Set: ", policyFormat);
     }
 
-    let res = await elvFabric.SetContractMeta({
+    let res = await elvFabric.SetContractMetaPrewarmed({
       address: objectId,
       key: "_ELV",
       value: JSON.stringify(policyFormat)
@@ -1908,7 +1908,7 @@ class EluvioLive {
 
     let addressesString = JSON.stringify(addresses);
 
-    let res2 = await elvFabric.SetContractMeta({
+    let res2 = await elvFabric.SetContractMetaPrewarmed({
       address: objectId,
       key: "_NFT_ACCESS",
       value: addressesString

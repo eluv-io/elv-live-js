@@ -410,6 +410,77 @@ class ElvFabric {
   }
 
   /**
+   * SetContractMetaPrewarmed
+   *
+   * Writes metadata value using a two-pass storage "pre-warming" technique, to support larger sizes.
+   *
+   * @param {string} address  contract address
+   * @param {string} key  metadata key
+   * @param {string} value metadata value
+   * @returns result of the final contract method call (the real value write)
+   */
+  async SetContractMetaPrewarmed({address, key, value}) {
+    const stepBytes = 15000;
+    const directWriteThreshold = 20000;
+    const targetLen = Buffer.byteLength(value, "utf8");
+
+    let currentLen = 0;
+    try {
+      const current = await this.GetContractMeta({address, key});
+      currentLen = Buffer.byteLength(current, "utf8");
+    } catch (e) {
+      currentLen = 0;
+    }
+
+    const growthNeeded = targetLen - currentLen;
+    if (growthNeeded <= directWriteThreshold) {
+      return await this.SetContractMeta({address, key, value});
+    }
+
+    console.log(`SetContractMetaPrewarmed: pre-warming storage, ${currentLen} -> ${targetLen} bytes`);
+
+    let step = stepBytes;
+    let writeNum = 0;
+    while (currentLen < targetLen) {
+      const nextLen = Math.min(targetLen, currentLen + step);
+      const filler = "x".repeat(nextLen);
+
+      writeNum++;
+      if (this.debug) {
+        console.log(`SetContractMetaPrewarmed: write #${writeNum}: pre-warming ${currentLen} ` +
+          `-> ${nextLen} bytes (step=${step})`);
+      }
+
+      try {
+        await this.SetContractMeta({address, key, value: filler});
+        currentLen = nextLen;
+        const pct = ((currentLen / targetLen) * 100).toFixed(0);
+        console.log(`SetContractMetaPrewarmed: write #${writeNum} done, now ${currentLen} bytes (${pct}%)`);
+      } catch (e) {
+        const msg = String(e?.reason || e?.error?.message || e?.data?.message || e?.message || e);
+        const gasLimitError = /exceed(s|ed)?\s+(the\s+)?block gas limit|intrinsic gas too low|out of gas|gas required exceeds allowance|transaction ran out of gas/i.test(msg);
+        if (!gasLimitError) {
+          throw e;
+        }
+
+        if (step <= 1000) {
+          throw e;
+        }
+        // Exceeded the block gas limit for this step - back off and retry smaller
+        step = Math.floor(step / 2);
+        if (this.debug) {
+          console.log(`SetContractMetaPrewarmed: write #${writeNum} failed at ${currentLen} ` +
+            `-> ${nextLen} bytes, backing off to step=${step}`, msg);
+        }
+      }
+    }
+
+    console.log("SetContractMetaPrewarmed: storage fully pre-warmed, writing real value");
+
+    return await this.SetContractMeta({address, key, value});
+  }
+
+  /**
    * SetContractMetaAsync - async version of client SetContractMeta()
    * Submits the putMeta transaction WITHOUT waiting for completionand
    * returns the ethers transaction response so the caller can wait on it
