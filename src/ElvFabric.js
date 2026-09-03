@@ -447,7 +447,8 @@ class ElvFabric {
 
       writeNum++;
       if (this.debug) {
-        console.log(`SetContractMetaPrewarmed: write #${writeNum}: pre-warming ${currentLen} -> ${nextLen} bytes (step=${step})`);
+        console.log(`SetContractMetaPrewarmed: write #${writeNum}: pre-warming ${currentLen} ` +
+          `-> ${nextLen} bytes (step=${step})`);
       }
 
       try {
@@ -462,7 +463,8 @@ class ElvFabric {
         // Most likely exceeded the block gas limit for this step - back off and retry smaller
         step = Math.floor(step / 2);
         if (this.debug) {
-          console.log(`SetContractMetaPrewarmed: write #${writeNum} failed at ${currentLen} -> ${nextLen} bytes, backing off to step=${step}`, e.message || e);
+          console.log(`SetContractMetaPrewarmed: write #${writeNum} failed at ${currentLen} ` +
+            `-> ${nextLen} bytes, backing off to step=${step}`, e.message || e);
         }
       }
     }
