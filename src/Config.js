@@ -9,12 +9,11 @@ let net = process.env.ELV_NET || "main";
 net = NET_ALIASES[net] || net;
 
 if (!VALID_NETS.includes(net)) {
-  throw new Error(`Config: invalid network "${net}"`);
+  throw new Error(`Config: invalid network "${net}". Valid values are: main, dv3, test, dev`);
 }
 
 const networks = {
   main: "https://main.net955305.contentfabric.io",
-  demo: "https://demov3.net955210.contentfabric.io",
   demov3: "https://demov3.net955210.contentfabric.io",
   test: "https://test.net955205.contentfabric.io/config",
   dev: "http://localhost:8008/config?qspace=dev&self",
