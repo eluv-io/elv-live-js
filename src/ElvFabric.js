@@ -454,7 +454,7 @@ class ElvFabric {
       try {
         await this.SetContractMeta({address, key, value: filler});
         currentLen = nextLen;
-        const pct = ((currentLen / targetLen) * 100).toFixed(1);
+        const pct = ((currentLen / targetLen) * 100).toFixed(0);
         console.log(`SetContractMetaPrewarmed: write #${writeNum} done, now ${currentLen} bytes (${pct}%)`);
       } catch (e) {
         if (step <= 1000) {
