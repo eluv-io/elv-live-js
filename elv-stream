@@ -3,13 +3,25 @@
 export NODE_NO_WARNINGS=1
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# -m/--main, -d/--dv3/--demov3, -t/--test, --dev select the network via ELV_NET
+# (see src/Config.js); anything else is passed through to the underlying CLI.
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    -m|--main) export ELV_NET="main" ;;
+    -d|--dv3|--demov3) export ELV_NET="demov3" ;;
+    -t|--test) export ELV_NET="test" ;;
+    --dev) export ELV_NET="dev" ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
 
 if [ -e $SOURCE_DIR/utilities/EluvioLiveStreamCli.js ]
 then
-  exec node $SOURCE_DIR/utilities/EluvioLiveStreamCli.js "$@" 2>&1
+  exec node $SOURCE_DIR/utilities/EluvioLiveStreamCli.js "${ARGS[@]}" 2>&1
 elif [ -e $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/EluvioLiveStreamCli.js ]
 then
-  exec node $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/EluvioLiveStreamCli.js "$@" 2>&1
+  exec node $SOURCE_DIR/../lib/node_modules/@eluvio/elv-live-js/utilities/EluvioLiveStreamCli.js "${ARGS[@]}" 2>&1
 else
   echo "(elv-live-js) cannot find utilities/EluvioLiveStreamCli.js" 1>&2
   exit 1

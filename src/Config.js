@@ -1,4 +1,8 @@
-const net = "main"; // Set to "main"  "demov3" "test" "dev"
+// Default is "main".
+// Override by
+// - setting ELV_NET to "main", "demov3", "test", or "dev"
+// - using elv-live/elv-admin/elv-stream -m/-d/-t/--dev flags
+const net = process.env.ELV_NET || "main";
 
 const networks = {
   main: "https://main.net955305.contentfabric.io",
