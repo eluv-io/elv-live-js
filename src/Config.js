@@ -1,8 +1,16 @@
-// Default is "main".
-// Override by
-// - setting ELV_NET to "main", "demov3", "test", or "dev"
-// - using elv-live/elv-admin/elv-stream -m/-d/-t/--dev flags
-const net = process.env.ELV_NET || "main";
+
+// Default is "main", override via
+// - setting ELV_NET to "main", "dv3", "test", or "dev"
+// - using elv-live/elv-admin/elv-stream -m/--main/-d/--dv3/--test/--dev flags
+const VALID_NETS = ["main", "demov3", "test", "dev"];
+const NET_ALIASES = { dv3: "demov3", demo: "demov3" };
+
+let net = process.env.ELV_NET || "main";
+net = NET_ALIASES[net] || net;
+
+if (!VALID_NETS.includes(net)) {
+  throw new Error(`Config: invalid network "${net}"`);
+}
 
 const networks = {
   main: "https://main.net955305.contentfabric.io",

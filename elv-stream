@@ -3,14 +3,12 @@
 export NODE_NO_WARNINGS=1
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# -m/--main, -d/--dv3/--demov3, -t/--test, --dev select the network via ELV_NET
-# (see src/Config.js); anything else is passed through to the underlying CLI.
 ARGS=()
 for arg in "$@"; do
   case "$arg" in
     -m|--main) export ELV_NET="main" ;;
     -d|--dv3|--demov3) export ELV_NET="demov3" ;;
-    -t|--test) export ELV_NET="test" ;;
+    --test) export ELV_NET="test" ;;
     --dev) export ELV_NET="dev" ;;
     *) ARGS+=("$arg") ;;
   esac
