@@ -792,6 +792,7 @@ const CmdList = async ({ argv }) => {
   }
 };
 
+// syadmin only, must account in server's AdminAddresses, not a tenant key
 const CmdCreateWalletAccount = async ({ argv }) => {
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
@@ -2094,10 +2095,10 @@ const CmdOtpShow = async ({ argv }) => {
 const CmdOtpReport = async ({ argv }) => {
   try {
     await InitNtp({ debugLogging: argv.verbose });
-    const res = await elvNtp.reportNTPInstance({ 
-      tenantId: argv.tenant, 
-      ntpId: argv.otp , 
-      password: argv.password, 
+    const res = await elvNtp.reportNTPInstance({
+      tenantId: argv.tenant,
+      ntpId: argv.otp ,
+      password: argv.password,
       email: argv.email });
     console.log(yaml.dump(res));
   } catch (e) {
@@ -2108,9 +2109,9 @@ const CmdOtpReport = async ({ argv }) => {
 const CmdOtpStatus = async ({ argv }) => {
   try {
     await InitNtp({ debugLogging: argv.verbose });
-    const res = await elvNtp.statusNTPInstance({ 
-      tenantId: argv.tenant, 
-      ntpId: argv.otp, 
+    const res = await elvNtp.statusNTPInstance({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
       code: argv.code,
       email: argv.email });
     console.log(yaml.dump(res));
@@ -4023,7 +4024,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "create_wallet_account <email> <tenant> <property_slug>",
-    "create a wallet account and send tenant-branded email",
+    "create a wallet account and send tenant-branded email (sysadmin key required)",
     (yargs) => {
       yargs
         .positional("email", {
