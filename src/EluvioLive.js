@@ -3308,7 +3308,7 @@ class EluvioLive {
     // if email is a file, read the file
     if (email.startsWith("@")) {
       let emails = fs.readFileSync(email.slice(1), "utf-8").split(/\r?\n/);
-      let urlPath = "/wlt/ory/create_bulk_accounts";
+      let urlPath = "/adm/ory/create_bulk_accounts";
       res = await this.PostServiceRequest({
         path: urlPath,
         body: {
@@ -3320,9 +3320,10 @@ class EluvioLive {
           "schedule_at": scheduleAt
         },
         headers,
+        useFabricToken: true,
       });
     } else {
-      let urlPath = "/wlt/ory/create_account";
+      let urlPath = "/adm/ory/create_account";
       res = await this.PostServiceRequest({
         path: urlPath,
         body: {
@@ -3334,6 +3335,7 @@ class EluvioLive {
           "schedule_at": scheduleAt
         },
         headers,
+        useFabricToken: true,
       });
     }
 
