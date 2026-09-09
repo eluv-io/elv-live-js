@@ -792,7 +792,7 @@ const CmdList = async ({ argv }) => {
   }
 };
 
-// syadmin only, must account in server's AdminAddresses, not a tenant key
+// sysadmin only, key must be in server's AdminAddresses, not a tenant key
 const CmdCreateWalletAccount = async ({ argv }) => {
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
