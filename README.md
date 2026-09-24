@@ -297,8 +297,8 @@ representations are playout specifications — the renditions the fabric will
 serve — and `play_mode` decides which of the two is authoritative. Since the
 offering's were built by `create` from a fabricated source rather than from this
 object's ladder, generating them is what keeps conversion observationally
-neutral: every playout URL the legacy object advertised keeps working, and no URL
-the ladder never declared appears.
+neutral: the converted offering advertises exactly the rungs `ladder_specs`
+declares — no more, and in particular no fewer.
 
 Offerings already in `avtest_live` are left untouched — they are deliberate
 presentations, possibly partial ones. Nothing is written when nothing converts,

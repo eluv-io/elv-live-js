@@ -172,6 +172,19 @@ const SourceStreams = (ladderSpecs) => {
  */
 const CodecName = (codecs, streamName) => {
   const first = String(codecs || "").split(",")[0].trim();
+  if (first === "") {
+    // Legacy playout tolerates this - buildMasterPlaylistFromLadder omits the
+    // CODECS attribute when the rung has none - but the offerings path does
+    // not: CodecDescriptor() falls back to a hardcoded guess ("avc1.640028"
+    // for video, under a TODO), so an empty codec becomes a confident wrong
+    // answer rather than a missing one. Refuse instead.
+    throw new Error(
+      `source stream "${streamName}" has a ladder rung with no codecs; set codecs on ` +
+        "every rung of live_recording_config.playout_config.ladder_specs. Legacy playout " +
+        "omits the CODECS attribute in this case, but offerings playout substitutes a " +
+        "hardcoded guess, which no client can be expected to honor"
+    );
+  }
   const name = CODEC_NAMES[first.split(".")[0]];
   if (name === undefined) {
     throw new Error(

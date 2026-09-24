@@ -339,6 +339,16 @@ describe("representations are generated from ladder_specs", () => {
       .toBe(expected);
   });
 
+  test("a rung with no codecs is its own error", () => {
+    // A user-supplied playout_config.ladder_specs is used verbatim as the
+    // ladder profile (LiveConf.js:583), so a rung can reach us without codecs.
+    // Missing is not the same as unmapped and must not be reported as such.
+    const specs = O.Clone(MULTILANG.live_recording.recording_config.recording_params.ladder_specs);
+    delete specs.find((r) => r.stream_name === "audio_2").codecs;
+    expect(() => O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs}))
+      .toThrow(/audio_2.*no codecs/);
+  });
+
   test("an unmapped codec is an error, not a guess", () => {
     const specs = O.Clone(MULTILANG.live_recording.recording_config.recording_params.ladder_specs);
     specs.find((r) => r.stream_name === "audio_2").codecs = "opus";
