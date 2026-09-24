@@ -1288,7 +1288,10 @@ class EluvioLiveStream {
       return;
     }
     const decoded = Utils.DecodeWriteToken(writeToken);
-    // v1 tokens ("tqw_") carry no QID, so only cross-check when one is present.
+    // Only cross-check when the token actually carries a QID. Note the two
+    // similar prefixes: "tqw__" (two underscores) is normalized to "tq__" and
+    // does carry QID + NID - it is what the fabric issues today - while a true
+    // v1 "tqw_" (one underscore) is base58(RAND_BYTES) with no QID at all.
     if (decoded.objectId && decoded.objectId !== objectId) {
       throw new Error(`Write token ${writeToken} is for object ${decoded.objectId}, not ${objectId}`);
     }
