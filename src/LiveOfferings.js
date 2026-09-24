@@ -394,9 +394,9 @@ const ValidateOfferingsType = ({ladder, tracks, trackKeys, formats, push}) => {
         push(
           "W_BITRATE_DIVERGES",
           `audio track "${trackKey}" representation "${repKey}" targets ${rep.bit_rate} bps ` +
-            `but the ladder records source stream "${mssKey}" at ${source.bit_rate} bps; ` +
+            `but ladder_specs plays out source stream "${mssKey}" at ${source.bit_rate} bps; ` +
             "under avtest_live the representation is authoritative, so this silently " +
-            "changes the encode",
+            "changes the playout bitrate",
           {track: trackKey, representation: repKey}
         );
       }
