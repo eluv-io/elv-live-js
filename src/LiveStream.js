@@ -1461,6 +1461,143 @@ class EluvioLiveStream {
     }
     return res;
   }
+
+  /**
+   * Create a new offering by copying an existing one and filtering it.
+   *
+   * The selection is a filter: absent means keep everything, present means keep
+   * only what is listed. Nothing is renamed or repointed.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} offeringKey - Key of the new offering
+   * @param {Object} [offeringSelection] - Parsed selection; the CLI reads the file
+   * @param {string} [baseOfferingKey="default"] - Offering to copy from
+   * @param {string} [writeToken] - Apply to this draft instead of creating one
+   * @param {boolean} [finalize] - Finalize after the change (default: !writeToken)
+   * @param {boolean} [dryRun=false] - Compute and report, write nothing
+   * @returns {Promise<Object>} {object_id, offering_key, offering, valid, warnings, write_token, hash}
+   */
+  async AddOffering({objectId, offeringKey, offeringSelection = {}, baseOfferingKey = "default",
+    writeToken, finalize, dryRun = false}) {
+
+    if (!offeringKey || offeringKey.includes("/")) {
+      throw new Error(`invalid offering key "${offeringKey}"`);
+    }
+    this._checkWriteToken({writeToken, objectId});
+    const {libraryId} = await this._RequireStoppedStream({objectId, writeToken});
+    const {offerings, ladderSpecs} = await this._ReadOfferingsMeta({objectId, libraryId, writeToken});
+
+    const ladder = LiveOfferings.SourceStreams(ladderSpecs);
+    if (ladder.names.size === 0) {
+      throw new Error("object has no ladder_specs; it is not a configured live stream - run elv-stream config first");
+    }
+    const existing = offerings || {};
+    if (existing[offeringKey] !== undefined) {
+      throw new Error(`offering "${offeringKey}" already exists; delete it first`);
+    }
+    const base = existing[baseOfferingKey];
+    if (base === undefined) {
+      throw new Error(
+        `base offering "${baseOfferingKey}" not found (available: ${Object.keys(existing).sort().join(", ") || "none"})`);
+    }
+    if (LiveOfferings.OfferingType(base) !== "offerings") {
+      throw new Error(
+        `base offering "${baseOfferingKey}" is not offerings-based (play_mode: ${base.play_mode}) - ` +
+        "run enable_offerings first");
+    }
+
+    const offering = LiveOfferings.FilterOffering({baseOffering: base, baseOfferingKey, selection: offeringSelection});
+    this._requireValidOfferings({offerings: {[offeringKey]: offering}, ladder});
+
+    const {valid, warnings} = LiveOfferings.ValidateOffering({offering, ladder});
+    const res = {
+      object_id: objectId,
+      library_id: libraryId,
+      offering_key: offeringKey,
+      base_offering: baseOfferingKey,
+      valid,
+      warnings,
+      tracks: LiveOfferings.TrackInfo({offering}),
+      selection: LiveOfferings.ExtractSelection({offering})
+    };
+    if (dryRun) {
+      return {...res, dry_run: true, offering};
+    }
+
+    const token = writeToken || (await this.client.EditContentObject({objectId, libraryId})).write_token;
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: token,
+      metadataSubtree: `offerings/${offeringKey}`,
+      metadata: offering
+    });
+    res.write_token = token;
+    if (finalize !== undefined ? finalize : !writeToken) {
+      const fin = await this.client.FinalizeContentObject({
+        libraryId,
+        objectId,
+        writeToken: token,
+        commitMessage: `Add offering ${offeringKey}`
+      });
+      res.hash = fin.hash;
+    }
+    return res;
+  }
+
+  /**
+   * Remove one offering from a live stream object.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} offeringKey - Offering to remove
+   * @param {string} [writeToken] - Apply to this draft instead of creating one
+   * @param {boolean} [finalize] - Finalize after the change (default: !writeToken)
+   * @returns {Promise<Object>} {object_id, offering_key, deleted, remaining, write_token, hash}
+   */
+  async DeleteOffering({objectId, offeringKey, writeToken, finalize}) {
+    // DeleteMetadata defaults metadataSubtree to "/", which would delete all
+    // object metadata, so the key is checked before it is ever interpolated.
+    if (!offeringKey || offeringKey.includes("/")) {
+      throw new Error(`invalid offering key "${offeringKey}"`);
+    }
+    this._checkWriteToken({writeToken, objectId});
+    const {libraryId} = await this._RequireStoppedStream({objectId, writeToken});
+    const {offerings} = await this._ReadOfferingsMeta({objectId, libraryId, writeToken});
+
+    const existing = offerings || {};
+    if (existing[offeringKey] === undefined) {
+      throw new Error(
+        `offering "${offeringKey}" not found (available: ${Object.keys(existing).sort().join(", ") || "none"})`);
+    }
+    const remaining = Object.keys(existing).filter((k) => k !== offeringKey).sort();
+    if (remaining.length === 0) {
+      throw new Error(
+        `refusing to delete "${offeringKey}": it is the only offering, and an object with none ` +
+        "loses its DRM keys");
+    }
+
+    const token = writeToken || (await this.client.EditContentObject({objectId, libraryId})).write_token;
+    await this.client.DeleteMetadata({
+      libraryId,
+      objectId,
+      writeToken: token,
+      metadataSubtree: `offerings/${offeringKey}`
+    });
+
+    const res = {object_id: objectId, library_id: libraryId, offering_key: offeringKey, deleted: true, remaining, write_token: token};
+    if (finalize !== undefined ? finalize : !writeToken) {
+      const fin = await this.client.FinalizeContentObject({
+        libraryId,
+        objectId,
+        writeToken: token,
+        commitMessage: `Delete offering ${offeringKey}`
+      });
+      res.hash = fin.hash;
+    }
+    return res;
+  }
 } // End class
 
 // TODO fix and add as CLI command
