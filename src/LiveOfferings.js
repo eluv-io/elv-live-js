@@ -15,7 +15,11 @@
  *   track          - one selectable rendition group in an offering, living at
  *                    offerings.<key>.playout.streams.<trackKey>. The track key
  *                    is a path segment in the playout URL.
- *   representation - one encoding of a track, typed RepAudio or RepVideo.
+ *   representation - one rendition of a track, typed RepAudio or RepVideo. It
+ *                    is a playout target the fabric transcodes to on request,
+ *                    not a description of what was recorded - and so is a
+ *                    ladder rung. An object carries both, and play_mode decides
+ *                    which one resolveMeta treats as authoritative.
  *
  * Bare "stream" always means a source stream. The thing under playout.streams
  * is a track. "Ladder" is not used as a noun for either: ladder_specs conflates
@@ -38,6 +42,20 @@ const TRACK_KEY_RE = /^[A-Za-z0-9_.-]+$/;
 // Legacy playout rewrites requested track keys to these two, so any other key
 // in a legacy offering is unreachable.
 const LEGACY_TRACK_KEYS = ["audio", "video"];
+
+// Codec name for a rung's codecs string, keyed by its leading identifier. This
+// inverts the fabric's CodecDescriptor(), which maps a name to a descriptor.
+// A wrong name yields a wrong CODECS attribute and a client that refuses to
+// play, so an unrecognized identifier is an error rather than a guess.
+const CODEC_NAMES = {
+  "avc1": "h264",
+  "hev1": "h265",
+  "hvc1": "h265",
+  "mp4a": "aac",
+  "ec-3": "eac3",
+  "ac-3": "ac3",
+  "ac-4": "ac4"
+};
 
 /**
  * Every validation rule, keyed by code. Severity and applicability are data so
@@ -71,6 +89,10 @@ const RULES = {
   W_EMPTY_LABEL: {severity: "warning", appliesTo: "offerings"},
   // Retire this rule once live DASH is fixed in content-fabric.
   W_DASH_AUDIO_KEY: {severity: "warning", appliesTo: "offerings"},
+  // enable_offerings no longer produces this condition - it generates
+  // representations from the rungs - but it still catches a hand-authored
+  // offering, and every object converted before that change, which
+  // enable_offerings skips as already offerings-based.
   W_BITRATE_DIVERGES: {severity: "warning", appliesTo: "offerings"},
   W_DUPLICATE_SOURCE: {severity: "warning", appliesTo: "offerings"},
 
@@ -111,10 +133,15 @@ const SourceStreams = (ladderSpecs) => {
   const audio = [];
   const video = [];
   const byName = {};
+  const rungsByName = {};
 
   (ladderSpecs || []).forEach((rung) => {
     const name = rung.stream_name;
-    if (name === undefined || name === null || byName[name] !== undefined) {
+    if (name === undefined || name === null) {
+      return;
+    }
+    (rungsByName[name] = rungsByName[name] || []).push(rung);
+    if (byName[name] !== undefined) {
       return;
     }
     const entry = {
@@ -130,7 +157,81 @@ const SourceStreams = (ladderSpecs) => {
     (rung.media_type === MEDIA_TYPE_AUDIO ? audio : video).push(entry);
   });
 
-  return {audio, video, byName, names: new Set(Object.keys(byName))};
+  return {audio, video, byName, rungsByName, names: new Set(Object.keys(byName))};
+};
+
+/**
+ * Codec name for a rung's codecs string.
+ *
+ * A video rung's codecs is combined - "avc1.640028,mp4a.40.2" - because it is
+ * built for the HLS CODECS attribute of a variant stream, which names both the
+ * video and the audio it will be paired with. Only the first element describes
+ * this rung.
+ *
+ * @ignore
+ */
+const CodecName = (codecs, streamName) => {
+  const first = String(codecs || "").split(",")[0].trim();
+  const name = CODEC_NAMES[first.split(".")[0]];
+  if (name === undefined) {
+    throw new Error(
+      `source stream "${streamName}" declares codecs "${codecs}", whose codec ` +
+        `"${first}" is not one of ${SortedKeys(CODEC_NAMES).join(", ")}; refusing to ` +
+        "guess a codec name - a wrong one yields a CODECS attribute no client will play"
+    );
+  }
+  return name;
+};
+
+/**
+ * Build the representations of one track from the ladder rungs of its source
+ * stream - one representation per rung, keyed by the rung's own
+ * `representation` field.
+ *
+ * That key is not a convention this tool invents: LiveConf writes
+ * `representation = audioaudio_aac@${bit_rate}`, the legacy master playlist
+ * emits `{stream_name}/{representation}/playlist.m3u8`, and resolveMeta's
+ * legacy branch resolves a request by matching it. Reusing it verbatim is what
+ * makes an offerings-based object serve the same playout URLs the legacy object
+ * served.
+ *
+ * codec_desc carries the rung's codecs string, which short-circuits the
+ * fabric's CodecDescriptor() so the manifest says what the ladder declares
+ * rather than a hardcoded guess. For video it is the first element only: the
+ * offerings playlist builder appends the audio codec itself, so a combined
+ * string would emit it twice.
+ *
+ * @ignore
+ */
+const RepresentationsFor = ({rungs, streamName, mediaType}) => {
+  const representations = {};
+  const isVideo = mediaType === "video";
+  const topVideoBitRate = isVideo
+    ? Math.max(...rungs.map((rung) => rung.bit_rate || 0))
+    : undefined;
+
+  rungs.forEach((rung) => {
+    const codecs = String(rung.codecs || "");
+    const rep = {
+      bit_rate: rung.bit_rate,
+      codec: CodecName(codecs, streamName),
+      codec_desc: isVideo ? codecs.split(",")[0].trim() : codecs,
+      media_struct_stream_key: streamName,
+      // Only the top video rung is served without a transcode. Audio is always
+      // false: the recorded audio is not one of these rungs.
+      transcode_matches_rep: isVideo && rung.bit_rate === topVideoBitRate,
+      type: isVideo ? REP_VIDEO : REP_AUDIO
+    };
+    if (isVideo) {
+      rep.height = rung.height;
+      rep.width = rung.width;
+    }
+    // Sorted keys: the written metadata is diffed by hand and by the server API.
+    representations[rung.representation] = SortedKeys(rep).reduce(
+      (sorted, field) => Object.assign(sorted, {[field]: rep[field]}), {});
+  });
+
+  return representations;
 };
 
 /**
@@ -681,13 +782,15 @@ const ConvertOffering = ({offering, offeringKey, ladder, defaults}) => {
   const notForPlayout = ladder.audio.filter((source) => !source.stream_label).map((s) => s.stream_name);
 
   // One track per playable audio source stream, keyed by that stream's name.
-  // Every representation of the template is kept; only the source pointer,
-  // label and default flag change.
+  // The template contributes its shell - encryption_schemes above all, which
+  // cannot be synthesized - and the ladder contributes the representations.
   forPlayout.forEach((source) => {
     const track = Clone(template);
     track.label = source.stream_label || "";
-    SortedKeys(Reps(track)).forEach((repKey) => {
-      track.representations[repKey].media_struct_stream_key = source.stream_name;
+    track.representations = RepresentationsFor({
+      rungs: ladder.rungsByName[source.stream_name],
+      streamName: source.stream_name,
+      mediaType: "audio"
     });
     if (defaults.includes(source.stream_name)) {
       track.default_for_media_type = true;
@@ -700,17 +803,21 @@ const ConvertOffering = ({offering, offeringKey, ladder, defaults}) => {
     tracks[source.stream_name] = track;
   });
 
-  // Video: repoint every representation at the single video source stream.
-  // Usually already correct, which is exactly why a hand transformation forgets
-  // it - and why E_MSS_NOT_IN_LADDER checks video as well as audio.
+  // Video: regenerate from the video rungs, same as audio. The template's
+  // representations came from create(), which builds them from a fabricated
+  // production master rather than from this object's ladder, so they both
+  // invent rungs the ladder never asked for and omit one it does - and a
+  // dropped rung is an advertised playout URL that stops resolving.
   const videoName = ladder.video.length === 1 ? ladder.video[0].stream_name : undefined;
   if (videoName !== undefined) {
     SortedKeys(tracks).forEach((trackKey) => {
       if (TrackMediaType(tracks[trackKey]) !== "video") {
         return;
       }
-      SortedKeys(Reps(tracks[trackKey])).forEach((repKey) => {
-        tracks[trackKey].representations[repKey].media_struct_stream_key = videoName;
+      tracks[trackKey].representations = RepresentationsFor({
+        rungs: ladder.rungsByName[videoName],
+        streamName: videoName,
+        mediaType: "video"
       });
     });
   }

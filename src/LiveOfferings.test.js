@@ -57,18 +57,15 @@ describe("EnableOfferings", () => {
     const want = ENABLED.offerings.default.playout.streams;
     expect(Object.keys(got).sort()).toEqual(["audio_1", "audio_2", "audio_3", "audio_4", "video"]);
 
-    // Byte-identical to the hand edit apart from the two documented deltas:
-    // labels derive from the rung's stream_label, and the ladder's default
-    // rung propagates to default_for_media_type.
-    const normalize = (streams) => {
-      const s = O.Clone(streams);
-      Object.keys(s).forEach((k) => {
-        delete s[k].label;
-        delete s[k].default_for_media_type;
-      });
-      return s;
-    };
-    expect(normalize(got)).toEqual(normalize(want));
+    // The hand edit is evidence for track-level policy only, and no further:
+    // it was edited from a cloned offering, so it inherited the same
+    // representations this conversion now rebuilds from ladder_specs.
+    // Representations are checked against the ladder instead - see
+    // "representations are generated from ladder_specs" below.
+    Object.keys(want).forEach((trackKey) => {
+      expect(O.TrackSourceStream(got[trackKey])).toBe(O.TrackSourceStream(want[trackKey]));
+      expect(got[trackKey].encryption_schemes).toEqual(want[trackKey].encryption_schemes);
+    });
 
     expect(got.audio_1.label).toBe("Audio 1");
     expect(got.audio_4.label).toBe("Audio 4");
@@ -90,19 +87,24 @@ describe("EnableOfferings", () => {
     expect(streams.audio_1.representations).not.toBe(streams.audio_2.representations);
   });
 
-  test("keeps every representation of a multi-representation audio template", () => {
-    const src = legacyOfferings();
-    const reps = src.default.playout.streams.audio.representations;
-    reps["audioaudio_aac@64000"] = {...O.Clone(Object.values(reps)[0]), bit_rate: 64000};
+  test("an audio source stream with two rungs yields one track with two representations", () => {
+    // The rungs determine the representations, so an audio ABR pair on one
+    // source stream stays one track. The template's own representations are
+    // not consulted at all.
+    const specs = O.Clone(LADDER).concat([{
+      media_type: 2, stream_name: "audio_1", stream_label: "Audio 1",
+      representation: "audioaudio_aac@64000", bit_rate: 64000, codecs: "mp4a.40.2"
+    }]);
 
-    const {offerings} = O.EnableOfferings({offerings: src, ladderSpecs: LADDER});
-    ["audio_1", "audio_2", "audio_3", "audio_4"].forEach((k) => {
-      const track = offerings.default.playout.streams[k];
-      expect(Object.keys(track.representations).sort()).toEqual([
-        "audioaudio_aac@128000", "audioaudio_aac@64000"
-      ]);
-      expect(O.TrackSourceStream(track)).toBe(k);
-    });
+    const {offerings} = O.EnableOfferings({offerings: legacyOfferings(), ladderSpecs: specs});
+    const track = offerings.default.playout.streams.audio_1;
+    expect(Object.keys(track.representations).sort()).toEqual([
+      "audioaudio_aac@192000", "audioaudio_aac@64000"
+    ]);
+    expect(O.TrackSourceStream(track)).toBe("audio_1");
+    expect(Object.keys(offerings.default.playout.streams).sort()).toEqual([
+      "audio_1", "audio_2", "audio_3", "audio_4", "video"
+    ]);
   });
 
   test("skips audio source streams with no stream_label", () => {
@@ -219,6 +221,145 @@ describe("EnableOfferings on the multilang legacy fixture", () => {
   test("is idempotent", () => {
     const once = convert().offerings;
     expect(O.EnableOfferings({offerings: O.Clone(once), ladderSpecs: specs}).offerings).toEqual(once);
+  });
+});
+
+describe("representations are generated from ladder_specs", () => {
+  // ladder_specs and the base offering's representations are two independent
+  // playout ladders - resolveMeta serves whichever one play_mode selects - and
+  // create() builds the offering's from a fabricated production master rather
+  // than from this object's ladder. Converting by cloning therefore switches
+  // the object to a ladder nobody configured. Generating from ladder_specs is
+  // what makes conversion observationally neutral.
+  const cases = [
+    ["rugby", LEGACY],
+    ["multilang", MULTILANG]
+  ];
+
+  const convert = (fixture) => O.EnableOfferings({
+    offerings: O.Clone(fixture.offerings),
+    ladderSpecs: fixture.live_recording.recording_config.recording_params.ladder_specs
+  }).offerings.default.playout.streams;
+
+  // Every playout URL the legacy master playlist advertises is
+  // "{rung.stream_name}/{rung.representation}/", and the offerings playlist
+  // emits "{trackKey}/{repKey}/". Conversion keys tracks by stream_name, so
+  // asserting the two sets are equal is asserting that no URL is invented and,
+  // more importantly, that none is retired.
+  test.each(cases)("%s: playout URLs are exactly the ladder's", (_name, fixture) => {
+    const specs = fixture.live_recording.recording_config.recording_params.ladder_specs;
+    const streams = convert(fixture);
+
+    const advertised = new Set();
+    Object.keys(streams).forEach((trackKey) => {
+      Object.keys(streams[trackKey].representations).forEach((repKey) => {
+        advertised.add(`${trackKey}/${repKey}`);
+      });
+    });
+    const fromLadder = new Set(specs.map((r) => `${r.stream_name}/${r.representation}`));
+
+    expect([...advertised].sort()).toEqual([...fromLadder].sort());
+  });
+
+  test("the video ladder is the recorded one, not the fabricated one", () => {
+    // Regression guard with a name: cloning advertised six video rungs, three
+    // of which the ladder never asked for, and dropped 960x540@900000, which
+    // it did.
+    const before = Object.keys(LEGACY.offerings.default.playout.streams.video.representations);
+    expect(before).toHaveLength(6);
+    expect(before).not.toContain("videovideo_960x540_h264@900000");
+
+    const after = Object.keys(convert(LEGACY).video.representations).sort();
+    expect(after).toEqual([
+      "videovideo_1280x720_h264@4500000",
+      "videovideo_1920x1080_h264@9500000",
+      "videovideo_960x540_h264@2000000",
+      "videovideo_960x540_h264@900000"
+    ]);
+  });
+
+  test("representation fields come from the rung", () => {
+    const streams = convert(MULTILANG);
+    expect(streams.audio_3.representations["audioaudio_aac@192000"]).toEqual({
+      bit_rate: 192000,
+      codec: "aac",
+      codec_desc: "mp4a.40.2",
+      media_struct_stream_key: "audio_3",
+      transcode_matches_rep: false,
+      type: "RepAudio"
+    });
+    expect(streams.video.representations["videovideo_960x540_h264@2000000"]).toEqual({
+      bit_rate: 2000000,
+      codec: "h264",
+      codec_desc: "avc1.640028",
+      height: 540,
+      media_struct_stream_key: "video",
+      transcode_matches_rep: false,
+      type: "RepVideo",
+      width: 960
+    });
+  });
+
+  test("a video codec_desc never carries the audio codec too", () => {
+    // The offerings playlist builder appends the audio codec itself, so a
+    // combined codec_desc would emit it twice. The rungs are combined -
+    // "avc1.640028,mp4a.40.2" - because that is the HLS CODECS attribute of a
+    // variant stream.
+    const specs = MULTILANG.live_recording.recording_config.recording_params.ladder_specs;
+    expect(specs.filter((r) => r.media_type === 1).every((r) => r.codecs.includes(","))).toBe(true);
+
+    const reps = Object.values(convert(MULTILANG).video.representations);
+    expect(reps.every((rep) => !rep.codec_desc.includes(","))).toBe(true);
+  });
+
+  test("transcode_matches_rep marks the top video rung and nothing else", () => {
+    const streams = convert(MULTILANG);
+    const video = streams.video.representations;
+    expect(video["videovideo_1920x1080_h264@9500000"].transcode_matches_rep).toBe(true);
+    expect(Object.values(video).filter((r) => r.transcode_matches_rep)).toHaveLength(1);
+    // Audio is always false: the recorded audio is none of these rungs.
+    expect(["audio_1", "audio_2", "audio_3", "audio_4", "audio_5"].every((k) =>
+      Object.values(streams[k].representations).every((r) => r.transcode_matches_rep === false)
+    )).toBe(true);
+  });
+
+  test.each([
+    ["avc1.640028,mp4a.40.2", "h264"],
+    ["hev1.2.4.L150.90", "h265"],
+    ["hvc1.2.4.L150.90", "h265"],
+    ["mp4a.40.2", "aac"],
+    ["ec-3", "eac3"],
+    ["ac-3", "ac3"],
+    ["ac-4.02.01.01", "ac4"]
+  ])("codecs %p maps to codec %p", (codecs, expected) => {
+    const specs = O.Clone(MULTILANG.live_recording.recording_config.recording_params.ladder_specs);
+    specs.find((r) => r.stream_name === "audio_2").codecs = codecs;
+    const {offerings} = O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs});
+    expect(Object.values(offerings.default.playout.streams.audio_2.representations)[0].codec)
+      .toBe(expected);
+  });
+
+  test("an unmapped codec is an error, not a guess", () => {
+    const specs = O.Clone(MULTILANG.live_recording.recording_config.recording_params.ladder_specs);
+    specs.find((r) => r.stream_name === "audio_2").codecs = "opus";
+    expect(() => O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs}))
+      .toThrow(/audio_2.*"opus"/);
+  });
+
+  test("a converted offering no longer diverges from the ladder", () => {
+    // W_BITRATE_DIVERGES stays in the RULES table - it still catches a
+    // hand-authored offering, and every object converted by the earlier
+    // cloning implementation, which enable_offerings will never revisit. What
+    // changes is that conversion stops producing the condition itself.
+    const specs = MULTILANG.live_recording.recording_config.recording_params.ladder_specs;
+    const {offerings} = O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs});
+    const body = O.DescribeOfferings({offerings, ladderSpecs: specs});
+    expect(codes(body.offerings.default.warnings)).not.toContain("W_BITRATE_DIVERGES");
+
+    const diverged = O.Clone(offerings);
+    Object.values(diverged.default.playout.streams.audio_1.representations)[0].bit_rate = 128000;
+    expect(codes(O.DescribeOfferings({offerings: diverged, ladderSpecs: specs}).offerings.default.warnings))
+      .toContain("W_BITRATE_DIVERGES");
   });
 });
 

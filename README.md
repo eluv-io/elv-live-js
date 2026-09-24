@@ -255,7 +255,7 @@ Three terms are used throughout, because the metadata overloads the word
 |---|---|---|
 | **source stream** | one audio or video program the recorder produces | `ladder_specs[].stream_name` — what `media_struct_stream_key` points at |
 | **track** | one selectable rendition group in an offering | `offerings.<key>.playout.streams.<trackKey>` |
-| **representation** | one encoding of a track | `…streams.<trackKey>.representations.<repKey>` |
+| **representation** | one rendition of a track — a playout target the fabric transcodes to on request, not a description of the recording | `…streams.<trackKey>.representations.<repKey>` |
 
 > These commands are a **client-side stopgap**. Creating and editing live
 > offerings belongs server-side, in the content-fabric `/rep/live/offerings/`
@@ -290,6 +290,15 @@ actually delivers them is only known once recording starts.
 Converts legacy offerings to offerings-based playout: one track per audio source
 stream, keyed by the source stream's name, labels taken from the ladder's
 `stream_label`, and the ladder's default audio stream propagated.
+
+**Representations are generated from `ladder_specs`**, one per rung, keyed by the
+rung's own `representation` field. Both `ladder_specs` and an offering's
+representations are playout specifications — the renditions the fabric will
+serve — and `play_mode` decides which of the two is authoritative. Since the
+offering's were built by `create` from a fabricated source rather than from this
+object's ladder, generating them is what keeps conversion observationally
+neutral: every playout URL the legacy object advertised keeps working, and no URL
+the ladder never declared appears.
 
 Offerings already in `avtest_live` are left untouched — they are deliberate
 presentations, possibly partial ones. Nothing is written when nothing converts,
