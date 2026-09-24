@@ -6,6 +6,7 @@ const { ElvClient } = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { execSync } = require("child_process");
 const { Config } = require("./Config.js");
+const LiveOfferings = require("./LiveOfferings.js");
 
 const fs = require("fs");
 const got = require("got");
@@ -1273,6 +1274,92 @@ class EluvioLiveStream {
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
     const m = await this.client.ContentObjectMetadata({objectId, libraryId, metadataSubtree: "/public/content_types"});
     return m[label];
+  }
+
+  /**
+   * Validate that a write token, if supplied, belongs to this object.
+   *
+   * @namedParams
+   * @param {string} [writeToken] - Write token of an existing draft
+   * @param {string} objectId - Object ID the token must belong to
+   */
+  _checkWriteToken({writeToken, objectId}) {
+    if (!writeToken) {
+      return;
+    }
+    const decoded = Utils.DecodeWriteToken(writeToken);
+    // v1 tokens ("tqw_") carry no QID, so only cross-check when one is present.
+    if (decoded.objectId && decoded.objectId !== objectId) {
+      throw new Error(`Write token ${writeToken} is for object ${decoded.objectId}, not ${objectId}`);
+    }
+  }
+
+  /**
+   * Refuse to modify a live stream that is still active, matching the gate and
+   * wording used by `config` and `init`.
+   *
+   * The write token is threaded into StreamStatus so the gate reads draft state
+   * rather than stale committed metadata.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} [writeToken] - Write token of an existing draft
+   * @returns {Promise<Object>} {libraryId, objectId, state}
+   */
+  async _RequireStoppedStream({objectId, writeToken}) {
+    const validStates = ["uninitialized", "inactive", "stopped", "unconfigured", "initialized"];
+    const status = await this.client.StreamStatus({name: objectId, writeToken});
+    if (!validStates.includes(status.state)) {
+      throw new Error(`stream still active - must terminate first (state: ${status.state})`);
+    }
+    return {libraryId: status.libraryId, objectId: status.objectId, state: status.state};
+  }
+
+  /**
+   * Read the offerings map and the ladder in a single round trip.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} [libraryId] - Resolved if omitted
+   * @param {string} [writeToken] - Read through this draft instead of the committed object
+   * @returns {Promise<Object>} {libraryId, offerings, ladderSpecs}
+   */
+  async _ReadOfferingsMeta({objectId, libraryId, writeToken}) {
+    const ladderPath = "live_recording/recording_config/recording_params/ladder_specs";
+    if (!libraryId) {
+      libraryId = await this.client.ContentObjectLibraryId({objectId});
+    }
+    const meta = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "",
+      resolveLinks: false,
+      select: ["offerings", ladderPath]
+    }) || {};
+
+    const recordingParams = (((meta.live_recording || {}).recording_config || {}).recording_params) || {};
+    return {libraryId, offerings: meta.offerings, ladderSpecs: recordingParams.ladder_specs};
+  }
+
+  /**
+   * List the offerings of a live stream object with their type, validity and
+   * selection. Read-only; does not require the stream to be stopped.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} [writeToken] - Read through this draft instead of the committed object
+   * @returns {Promise<Object>} {object_id, library_id, source_streams, valid, offerings}
+   */
+  async ListOfferings({objectId, writeToken}) {
+    this._checkWriteToken({writeToken, objectId});
+    const {libraryId, offerings, ladderSpecs} = await this._ReadOfferingsMeta({objectId, writeToken});
+    return {
+      object_id: objectId,
+      library_id: libraryId,
+      ...(writeToken ? {write_token: writeToken} : {}),
+      ...LiveOfferings.DescribeOfferings({offerings, ladderSpecs})
+    };
   }
 } // End class
 

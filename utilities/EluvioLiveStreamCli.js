@@ -41,6 +41,31 @@ const CmdInit = async ({ argv }) => {
   }
 };
 
+const CmdListOfferings = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvStream.ListOfferings({
+      objectId: argv.object_id,
+      writeToken: argv.write_token
+    });
+    console.log(JSON.stringify(res, null, 2));
+    if (!res.valid) {
+      process.exitCode = 2;
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+    process.exitCode = 1;
+  }
+};
+
 const CmdStreamCreate = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
@@ -894,6 +919,27 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdStreamSwitch({ argv });
+    }
+  )
+
+  .command(
+    "list_offerings <object_id>",
+    "List the offerings of a live stream object as JSON, with type, validity and selection.",
+    (yargs) => {
+      yargs
+        .positional("object_id", {
+          describe:
+            "Object ID of the live stream (iq__...)",
+          type: "string",
+        })
+        .option("write_token", {
+          describe:
+            "Write token of an existing draft to read through. If omitted, the committed object is read.",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdListOfferings({ argv });
     }
   )
 
