@@ -21,6 +21,8 @@
  * is a track. "Ladder" is not used as a noun for either: ladder_specs conflates
  * source-stream identity with representation geometry, which is the flaw the
  * offerings model exists to undo.
+ *
+ * @module LiveOfferings
  */
 
 const OFFERINGS_PLAY_MODE = "avtest_live";
@@ -157,7 +159,10 @@ const Tracks = (offering) => ((offering || {}).playout || {}).streams || {};
 
 const Reps = (track) => (track || {}).representations || {};
 
-/** Media type of a track, from its representations. */
+/**
+ * Media type of a track, from its representations.
+ * @ignore
+ */
 const TrackMediaType = (track) => {
   const reps = Object.values(Reps(track));
   if (reps.length === 0) {
@@ -166,7 +171,10 @@ const TrackMediaType = (track) => {
   return reps[0].type === REP_AUDIO ? "audio" : reps[0].type === REP_VIDEO ? "video" : undefined;
 };
 
-/** The media_struct_stream_key shared by a track's representations, if any. */
+/**
+ * The media_struct_stream_key shared by a track's representations, if any.
+ * @ignore
+ */
 const TrackSourceStream = (track) => {
   const keys = [...new Set(Object.values(Reps(track)).map((r) => r.media_struct_stream_key))];
   return keys.length === 1 ? keys[0] : undefined;
@@ -296,7 +304,10 @@ const ValidateOffering = ({offering, ladder}) => {
   return {valid: errors.length === 0, type, errors, warnings};
 };
 
-/** Rules that apply only to play_mode: avtest_live. */
+/**
+ * Rules that apply only to play_mode: avtest_live.
+ * @ignore
+ */
 const ValidateOfferingsType = ({ladder, tracks, trackKeys, formats, push}) => {
   const audioCodecs = new Set();
   const defaults = [];
@@ -415,7 +426,10 @@ const ValidateOfferingsType = ({ladder, tracks, trackKeys, formats, push}) => {
   });
 };
 
-/** Rules that apply only to a legacy (play_mode-less) offering. */
+/**
+ * Rules that apply only to a legacy (play_mode-less) offering.
+ * @ignore
+ */
 const ValidateLegacyType = ({ladder, tracks, trackKeys, push}) => {
   trackKeys.forEach((trackKey) => {
     if (!LEGACY_TRACK_KEYS.includes(trackKey)) {
@@ -635,7 +649,10 @@ const EnableOfferings = ({offerings, ladderSpecs}) => {
   return {offerings: result, changes};
 };
 
-/** Convert one legacy offering in place. Returns its `changes` entry. */
+/**
+ * Convert one legacy offering in place. Returns its `changes` entry.
+ * @ignore
+ */
 const ConvertOffering = ({offering, offeringKey, ladder, defaults}) => {
   const tracks = Tracks(offering);
   const addedTracks = [];

@@ -1282,6 +1282,7 @@ class EluvioLiveStream {
    * @namedParams
    * @param {string} [writeToken] - Write token of an existing draft
    * @param {string} objectId - Object ID the token must belong to
+   * @ignore
    */
   _checkWriteToken({writeToken, objectId}) {
     if (!writeToken) {
@@ -1308,6 +1309,7 @@ class EluvioLiveStream {
    * @param {string} objectId - Object ID of the live stream
    * @param {string} [writeToken] - Write token of an existing draft
    * @returns {Promise<Object>} {libraryId, objectId, state}
+   * @ignore
    */
   async _RequireStoppedStream({objectId, writeToken}) {
     const validStates = ["uninitialized", "inactive", "stopped", "unconfigured", "initialized"];
@@ -1326,6 +1328,7 @@ class EluvioLiveStream {
    * @param {string} [libraryId] - Resolved if omitted
    * @param {string} [writeToken] - Read through this draft instead of the committed object
    * @returns {Promise<Object>} {libraryId, offerings, ladderSpecs}
+   * @ignore
    */
   async _ReadOfferingsMeta({objectId, libraryId, writeToken}) {
     const ladderPath = "live_recording/recording_config/recording_params/ladder_specs";
@@ -1371,6 +1374,7 @@ class EluvioLiveStream {
    * @namedParams
    * @param {Object} offerings - The /offerings map to validate
    * @param {Object} ladder - Result of LiveOfferings.SourceStreams()
+   * @ignore
    */
   _requireValidOfferings({offerings, ladder}) {
     const lines = [];
