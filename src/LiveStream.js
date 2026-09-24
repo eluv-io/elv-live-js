@@ -1364,6 +1364,103 @@ class EluvioLiveStream {
       ...LiveOfferings.DescribeOfferings({offerings, ladderSpecs})
     };
   }
+
+  /**
+   * Throw if any offering in the map is invalid, naming every finding.
+   *
+   * @namedParams
+   * @param {Object} offerings - The /offerings map to validate
+   * @param {Object} ladder - Result of LiveOfferings.SourceStreams()
+   */
+  _requireValidOfferings({offerings, ladder}) {
+    const lines = [];
+    Object.keys(offerings || {}).sort().forEach((offeringKey) => {
+      const {valid, errors} = LiveOfferings.ValidateOffering({offering: offerings[offeringKey], ladder});
+      if (valid) {
+        return;
+      }
+      lines.push(`offering "${offeringKey}":`);
+      errors.forEach((e) => {
+        const where = [e.track && `track "${e.track}"`, e.representation && `representation "${e.representation}"`]
+          .filter((x) => x).join(", ");
+        lines.push(`  ${e.code}: ${e.message}${where ? ` (${where})` : ""}`);
+      });
+    });
+    if (lines.length > 0) {
+      throw new Error("refusing to write an invalid result\n" + lines.join("\n"));
+    }
+  }
+
+  /**
+   * Enable offerings-based playout on a live stream object.
+   *
+   * Walks every offering but converts only the legacy ones: an offering already
+   * in "avtest_live" mode is a deliberate presentation, possibly a partial one,
+   * and is left untouched. Nothing is written when there is nothing to convert.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} [writeToken] - Apply to this draft instead of creating one
+   * @param {boolean} [finalize] - Finalize after the change (default: !writeToken)
+   * @param {boolean} [dryRun=false] - Compute and report, write nothing
+   * @returns {Promise<Object>} ListOfferings payload plus `changes`, `write_token` and `hash`
+   */
+  async EnableOfferings({objectId, writeToken, finalize, dryRun = false}) {
+    this._checkWriteToken({writeToken, objectId});
+    const {libraryId} = await this._RequireStoppedStream({objectId, writeToken});
+    const current = await this._ReadOfferingsMeta({objectId, libraryId, writeToken});
+
+    const ladder = LiveOfferings.SourceStreams(current.ladderSpecs);
+    if (ladder.names.size === 0) {
+      throw new Error("object has no ladder_specs; it is not a configured live stream - run elv-stream config first");
+    }
+
+    const {offerings, changes} = LiveOfferings.EnableOfferings({
+      offerings: current.offerings,
+      ladderSpecs: current.ladderSpecs
+    });
+
+    const converted = changes.filter((c) => c.action === "converted");
+    const describe = () => ({
+      object_id: objectId,
+      library_id: libraryId,
+      ...(writeToken ? {write_token: writeToken} : {}),
+      ...LiveOfferings.DescribeOfferings({offerings, ladderSpecs: current.ladderSpecs}),
+      changes
+    });
+
+    // Nothing to convert: do not open a draft, so a no-op run creates no version.
+    if (converted.length === 0) {
+      return describe();
+    }
+
+    this._requireValidOfferings({offerings, ladder});
+
+    if (dryRun) {
+      return {...describe(), dry_run: true};
+    }
+
+    const token = writeToken || (await this.client.EditContentObject({objectId, libraryId})).write_token;
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: token,
+      metadataSubtree: "offerings",
+      metadata: offerings
+    });
+
+    const res = {...describe(), write_token: token};
+    if (finalize !== undefined ? finalize : !writeToken) {
+      const fin = await this.client.FinalizeContentObject({
+        libraryId,
+        objectId,
+        writeToken: token,
+        commitMessage: "Enable offerings-based playout"
+      });
+      res.hash = fin.hash;
+    }
+    return res;
+  }
 } // End class
 
 // TODO fix and add as CLI command

@@ -66,6 +66,33 @@ const CmdListOfferings = async ({ argv }) => {
   }
 };
 
+const CmdEnableOfferings = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvStream.EnableOfferings({
+      objectId: argv.object_id,
+      writeToken: argv.write_token,
+      finalize: argv.finalize,
+      dryRun: argv.dry_run
+    });
+    console.log(JSON.stringify(res, null, 2));
+    if (!res.valid) {
+      process.exitCode = 2;
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+    process.exitCode = 1;
+  }
+};
+
 const CmdStreamCreate = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
@@ -943,6 +970,37 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdListOfferings({ argv });
+    }
+  )
+
+  .command(
+    "enable_offerings <object_id>",
+    "Convert legacy offerings on this object to offerings-based playout. Stream must be stopped.",
+    (yargs) => {
+      yargs
+        .positional("object_id", {
+          describe:
+            "Object ID of the live stream (iq__...)",
+          type: "string",
+        })
+        .option("write_token", {
+          describe:
+            "Write token of an existing draft to apply this change to. If omitted, a new draft is created and finalized.",
+          type: "string",
+        })
+        .option("finalize", {
+          describe:
+            "Finalize the object after the change (default: true unless --write_token is supplied)",
+          type: "boolean",
+        })
+        .option("dry_run", {
+          describe:
+            "Compute the result and print it, but write nothing",
+          type: "boolean",
+        })
+    },
+    (argv) => {
+      CmdEnableOfferings({ argv });
     }
   )
 
