@@ -2200,6 +2200,9 @@ const CmdOtpMakeEmbedUrls = async ({ argv }) => {
   }
 };
 
+// Only parse the command line when run as a program. Requiring this file
+// (e.g. from tests, for the exported Cmd* handlers) must not consume argv.
+if (require.main === module) {
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -4281,6 +4284,7 @@ yargs(hideBin(process.argv))
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")
   .scriptName("")
   .demandCommand(1).argv;
+}
 
 // For unit testing
 exports.CmdShuffle = CmdShuffle;
