@@ -95,10 +95,11 @@ const Finding = (code, message, context = {}) => ({
 /**
  * Group ladder rungs into source streams.
  *
- * A stream_name may legitimately carry several rungs - the rugby object's four
- * video rungs are all named "video", and an audio ABR ladder would be two rungs
- * both named "audio_1". Grouping is therefore by name, and a group identifies a
- * source stream, not a representation. Stream-level metadata comes from the
+ * A stream_name may legitimately carry several rungs - in
+ * test/testdata/live_offerings_legacy.json all four video rungs are named
+ * "video", and an audio ABR ladder would be two rungs both named "audio_1".
+ * Grouping is therefore by name, and a group identifies a source stream, not a
+ * representation. Stream-level metadata comes from the
  * first rung of each group, which is what the fabric's own rungMap does.
  *
  * @param {Array<Object>} ladderSpecs - live_recording/recording_config/recording_params/ladder_specs
