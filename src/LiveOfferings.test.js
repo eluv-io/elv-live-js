@@ -2,6 +2,7 @@ const O = require("./LiveOfferings.js");
 
 const LEGACY = require("../test/testdata/live_offerings_legacy.json");
 const ENABLED = require("../test/testdata/live_offerings_enabled.json");
+const MULTILANG = require("../test/testdata/live_offerings_legacy_multilang.json");
 
 const LADDER = LEGACY.live_recording.recording_config.recording_params.ladder_specs;
 const ladder = () => O.SourceStreams(LADDER);
@@ -154,6 +155,70 @@ describe("EnableOfferings", () => {
     delete src.default.playout.streams.audio;
     expect(() => O.EnableOfferings({offerings: src, ladderSpecs: LADDER}))
       .toThrow(/expected exactly one/);
+  });
+});
+
+describe("EnableOfferings on the multilang legacy fixture", () => {
+  // A second, independently recorded legacy object: five audio source streams
+  // across four languages (one of them empty), a 192000 ladder, and DASH
+  // formats on the offering. The rugby pair covers a four-audio object whose
+  // converted form was hand-edited; this one covers the shapes that pair lacks.
+  const specs = MULTILANG.live_recording.recording_config.recording_params.ladder_specs;
+  const convert = () =>
+    O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs});
+
+  test("the fixture is legacy before conversion", () => {
+    expect(O.OfferingType(MULTILANG.offerings.default)).toBe("ladder_specs");
+    expect(Object.keys(MULTILANG.offerings.default.playout.streams).sort()).toEqual(["audio", "video"]);
+  });
+
+  test("emits one track per audio source stream plus video", () => {
+    const {offerings, changes} = convert();
+    const streams = offerings.default.playout.streams;
+
+    expect(Object.keys(streams).sort()).toEqual([
+      "audio_1", "audio_2", "audio_3", "audio_4", "audio_5", "video"
+    ]);
+    expect(changes).toEqual([{
+      offering: "default",
+      action: "converted",
+      added_tracks: ["audio_1", "audio_2", "audio_3", "audio_4", "audio_5"],
+      removed_tracks: ["audio"]
+    }]);
+    expect(Object.keys(streams).map((k) => O.TrackSourceStream(streams[k])).sort()).toEqual([
+      "audio_1", "audio_2", "audio_3", "audio_4", "audio_5", "video"
+    ]);
+  });
+
+  test("an empty lang does not suppress a track", () => {
+    // audio_5 is recorded with lang "" but a non-empty stream_label, so it is
+    // advertised. The skip rule keys on the label, which is what the fabric's
+    // ShouldBeAdvertised() reads — never on lang.
+    expect(specs.find((r) => r.stream_name === "audio_5").lang).toBe("");
+    expect(convert().offerings.default.playout.streams.audio_5).toBeDefined();
+  });
+
+  test("labels and the default come from the ladder", () => {
+    const streams = convert().offerings.default.playout.streams;
+    expect(["audio_1", "audio_2", "audio_3", "audio_4", "audio_5"].map((k) => streams[k].label))
+      .toEqual(["Audio 1", "Audio 2", "Audio 3", "Audio 4", "Audio 5"]);
+    expect(streams.audio_1.default_for_media_type).toBe(true);
+    expect(["audio_2", "audio_3", "audio_4", "audio_5"]
+      .every((k) => streams[k].default_for_media_type === undefined)).toBe(true);
+  });
+
+  test("the converted offering is valid, with DASH the only structural caveat", () => {
+    const body = O.DescribeOfferings({offerings: convert().offerings, ladderSpecs: specs});
+    expect(body.offerings.default.type).toBe("offerings");
+    expect(body.offerings.default.errors).toEqual([]);
+    expect(body.offerings.default.valid).toBe(true);
+    // The offering carries dash-* formats against non-generic audio track keys.
+    expect(codes(body.offerings.default.warnings)).toContain("W_DASH_AUDIO_KEY");
+  });
+
+  test("is idempotent", () => {
+    const once = convert().offerings;
+    expect(O.EnableOfferings({offerings: O.Clone(once), ladderSpecs: specs}).offerings).toEqual(once);
   });
 });
 
