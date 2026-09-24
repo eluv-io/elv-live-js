@@ -652,10 +652,20 @@ const ConvertOffering = ({offering, offeringKey, ladder, defaults}) => {
   const templateKey = audioTrackKeys[0];
   const template = tracks[templateKey];
 
-  // One track per audio source stream, keyed by the source stream's name.
+  // An audio rung with an empty stream_label is recorded but not meant for
+  // playout: LiveConf sets playoutLabel only when recording_stream_config marks
+  // the stream playout: true, and the fabric's own ShouldBeAdvertised() leaves
+  // such a rung out of the legacy master playlist. Creating a track for it would
+  // publish a stream the object deliberately does not advertise, so skip it.
+  // The rule is audio-only - video rungs carry no stream_label and are always
+  // advertised.
+  const forPlayout = ladder.audio.filter((source) => source.stream_label);
+  const notForPlayout = ladder.audio.filter((source) => !source.stream_label).map((s) => s.stream_name);
+
+  // One track per playable audio source stream, keyed by that stream's name.
   // Every representation of the template is kept; only the source pointer,
   // label and default flag change.
-  ladder.audio.forEach((source) => {
+  forPlayout.forEach((source) => {
     const track = Clone(template);
     track.label = source.stream_label || "";
     SortedKeys(Reps(track)).forEach((repKey) => {
@@ -700,12 +710,17 @@ const ConvertOffering = ({offering, offeringKey, ladder, defaults}) => {
 
   offering.play_mode = OFFERINGS_PLAY_MODE;
 
-  return {
+  const change = {
     offering: offeringKey,
     action: "converted",
     added_tracks: addedTracks.sort(),
     removed_tracks: removedTracks.sort()
   };
+  if (notForPlayout.length > 0) {
+    change.skipped_source_streams = notForPlayout.sort();
+    change.skipped_reason = "no stream_label: recorded but not marked for playout";
+  }
+  return change;
 };
 
 /**

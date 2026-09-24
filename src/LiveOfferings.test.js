@@ -104,6 +104,31 @@ describe("EnableOfferings", () => {
     });
   });
 
+  test("skips audio source streams with no stream_label", () => {
+    // An empty stream_label is how the ladder encodes "recorded but not for
+    // playout" (LiveConf sets playoutLabel only when playout: true, and the
+    // fabric's ShouldBeAdvertised() drops such a rung from the master playlist).
+    const specs = O.Clone(LADDER);
+    specs.find((r) => r.stream_name === "audio_3").stream_label = "";
+
+    const {offerings, changes} = O.EnableOfferings({offerings: legacyOfferings(), ladderSpecs: specs});
+    const streams = offerings.default.playout.streams;
+
+    expect(Object.keys(streams).sort()).toEqual(["audio_1", "audio_2", "audio_4", "video"]);
+    expect(changes[0].added_tracks).toEqual(["audio_1", "audio_2", "audio_4"]);
+    expect(changes[0].skipped_source_streams).toEqual(["audio_3"]);
+    expect(changes[0].skipped_reason).toMatch(/not marked for playout/);
+  });
+
+  test("video rungs are never skipped for lacking a stream_label", () => {
+    // ShouldBeAdvertised() gates only audio on the label; video rungs carry
+    // none and are always advertised.
+    const l = ladder();
+    expect(l.video.every((s) => s.stream_label === "")).toBe(true);
+    const {offerings} = O.EnableOfferings({offerings: legacyOfferings(), ladderSpecs: LADDER});
+    expect(offerings.default.playout.streams.video).toBeDefined();
+  });
+
   test("is idempotent", () => {
     const once = O.EnableOfferings({offerings: legacyOfferings(), ladderSpecs: LADDER}).offerings;
     const twice = O.EnableOfferings({offerings: O.Clone(once), ladderSpecs: LADDER});
