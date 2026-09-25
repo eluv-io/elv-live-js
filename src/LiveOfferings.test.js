@@ -1,9 +1,11 @@
 const O = require("./LiveOfferings.js");
 
+// One demov3 object, before and after. LEGACY is its legacy form - the single
+// DRM-carrying offering create() writes, keyed audio/video. ENABLED is the same
+// object after enable_offerings and three add_offering runs, every offering of
+// which was played back and verified.
 const LEGACY = require("../test/testdata/live_offerings_legacy.json");
 const ENABLED = require("../test/testdata/live_offerings_enabled.json");
-const MULTILANG = require("../test/testdata/live_offerings_legacy_multilang.json");
-const MULTILANG_ENABLED = require("../test/testdata/live_offerings_enabled_multilang.json");
 
 const LADDER = LEGACY.live_recording.recording_config.recording_params.ladder_specs;
 const ladder = () => O.SourceStreams(LADDER);
@@ -17,7 +19,8 @@ const codes = (findings) => findings.map((f) => f.code);
 describe("SourceStreams", () => {
   test("groups rungs by stream_name, first rung wins", () => {
     const l = ladder();
-    expect(l.audio.map((s) => s.stream_name)).toEqual(["audio_1", "audio_2", "audio_3", "audio_4"]);
+    expect(l.audio.map((s) => s.stream_name))
+      .toEqual(["audio_1", "audio_2", "audio_3", "audio_4", "audio_5"]);
     // Four video rungs all named "video" collapse to one source stream.
     expect(l.video.map((s) => s.stream_name)).toEqual(["video"]);
     expect(l.byName.audio_1.stream_label).toBe("Audio 1");
@@ -29,7 +32,7 @@ describe("SourceStreams", () => {
       {media_type: 2, stream_name: "audio_1", bit_rate: 64000, representation: "audioaudio_aac@64000"}
     ]);
     expect(O.SourceStreams(specs).audio.map((s) => s.stream_name)).toEqual([
-      "audio_1", "audio_2", "audio_3", "audio_4"
+      "audio_1", "audio_2", "audio_3", "audio_4", "audio_5"
     ]);
   });
 });
@@ -46,23 +49,23 @@ describe("OfferingType", () => {
 });
 
 describe("EnableOfferings", () => {
-  test("golden transform reproduces the hand-edited offering", () => {
+  test("converts the legacy offering into the verified offerings-based one", () => {
     const {offerings, changes} = O.EnableOfferings({offerings: legacyOfferings(), ladderSpecs: LADDER});
 
     expect(changes).toEqual([
-      {offering: "default", action: "converted", added_tracks: ["audio_1", "audio_2", "audio_3", "audio_4"], removed_tracks: ["audio"]}
+      {offering: "default", action: "converted", added_tracks: ["audio_1", "audio_2", "audio_3", "audio_4", "audio_5"], removed_tracks: ["audio"]}
     ]);
     expect(offerings.default.play_mode).toBe(O.OFFERINGS_PLAY_MODE);
 
     const got = offerings.default.playout.streams;
     const want = ENABLED.offerings.default.playout.streams;
-    expect(Object.keys(got).sort()).toEqual(["audio_1", "audio_2", "audio_3", "audio_4", "video"]);
+    expect(Object.keys(got).sort())
+      .toEqual(["audio_1", "audio_2", "audio_3", "audio_4", "audio_5", "video"]);
 
-    // The hand edit is evidence for track-level policy only, and no further:
-    // it was edited from a cloned offering, so it inherited the same
-    // representations this conversion now rebuilds from ladder_specs.
-    // Representations are checked against the ladder instead - see
-    // "representations are generated from ladder_specs" below.
+    // LEGACY and ENABLED are two versions of one object, so the track shells
+    // must carry over byte for byte. Representations are checked separately,
+    // against ladder_specs - see "representations are generated from
+    // ladder_specs" below.
     Object.keys(want).forEach((trackKey) => {
       expect(O.TrackSourceStream(got[trackKey])).toBe(O.TrackSourceStream(want[trackKey]));
       expect(got[trackKey].encryption_schemes).toEqual(want[trackKey].encryption_schemes);
@@ -74,16 +77,42 @@ describe("EnableOfferings", () => {
     expect(got.audio_2.default_for_media_type).toBeUndefined();
 
     // Fields outside playout.streams are untouched.
-    expect(offerings.default.offer_as_live).toBe(false);
-    expect(offerings.default.drm_optional).toBe(false);
-    expect(offerings.default.mez_prep_specs).toEqual(LEGACY.offerings.default.mez_prep_specs);
+    ["offer_as_live", "drm_optional", "store_clear", "mez_prep_specs"].forEach((field) =>
+      expect([field, offerings.default[field]])
+        .toEqual([field, LEGACY.offerings.default[field]]));
+  });
+
+  test("the fixture is legacy before conversion", () => {
+    expect(O.OfferingType(LEGACY.offerings.default)).toBe("ladder_specs");
+    expect(Object.keys(LEGACY.offerings.default.playout.streams).sort()).toEqual(["audio", "video"]);
+  });
+
+  test("a missing lang does not suppress a track", () => {
+    // audio_5 is recorded with no lang but a real stream_label, so it is
+    // advertised. The skip rule keys on the label, which is what the fabric's
+    // ShouldBeAdvertised() reads - never on lang.
+    expect(LADDER.find((r) => r.stream_name === "audio_5").lang).toBeFalsy();
+    const {offerings} = O.EnableOfferings({offerings: legacyOfferings(), ladderSpecs: LADDER});
+    expect(offerings.default.playout.streams.audio_5).toBeDefined();
+  });
+
+  test("labels and the default come from the ladder", () => {
+    const streams = O.EnableOfferings({
+      offerings: legacyOfferings(), ladderSpecs: LADDER
+    }).offerings.default.playout.streams;
+    expect(["audio_1", "audio_2", "audio_3", "audio_4", "audio_5"].map((k) => streams[k].label))
+      .toEqual(["Audio 1", "Audio 2", "Audio 3", "Audio 4", "Audio 5"]);
+    expect(streams.audio_1.default_for_media_type).toBe(true);
+    expect(["audio_2", "audio_3", "audio_4", "audio_5"]
+      .every((k) => streams[k].default_for_media_type === undefined)).toBe(true);
   });
 
   test("every emitted track is a distinct clone", () => {
     const {offerings} = O.EnableOfferings({offerings: legacyOfferings(), ladderSpecs: LADDER});
     const streams = offerings.default.playout.streams;
-    expect(["audio_1", "audio_2", "audio_3", "audio_4"].map((k) => O.TrackSourceStream(streams[k])))
-      .toEqual(["audio_1", "audio_2", "audio_3", "audio_4"]);
+    expect(["audio_1", "audio_2", "audio_3", "audio_4", "audio_5"]
+      .map((k) => O.TrackSourceStream(streams[k])))
+      .toEqual(["audio_1", "audio_2", "audio_3", "audio_4", "audio_5"]);
     // Aliasing instead of deep-copying would make these the same object.
     expect(streams.audio_1.representations).not.toBe(streams.audio_2.representations);
   });
@@ -104,7 +133,7 @@ describe("EnableOfferings", () => {
     ]);
     expect(O.TrackSourceStream(track)).toBe("audio_1");
     expect(Object.keys(offerings.default.playout.streams).sort()).toEqual([
-      "audio_1", "audio_2", "audio_3", "audio_4", "video"
+      "audio_1", "audio_2", "audio_3", "audio_4", "audio_5", "video"
     ]);
   });
 
@@ -118,8 +147,9 @@ describe("EnableOfferings", () => {
     const {offerings, changes} = O.EnableOfferings({offerings: legacyOfferings(), ladderSpecs: specs});
     const streams = offerings.default.playout.streams;
 
-    expect(Object.keys(streams).sort()).toEqual(["audio_1", "audio_2", "audio_4", "video"]);
-    expect(changes[0].added_tracks).toEqual(["audio_1", "audio_2", "audio_4"]);
+    expect(Object.keys(streams).sort())
+      .toEqual(["audio_1", "audio_2", "audio_4", "audio_5", "video"]);
+    expect(changes[0].added_tracks).toEqual(["audio_1", "audio_2", "audio_4", "audio_5"]);
     expect(changes[0].skipped_source_streams).toEqual(["audio_3"]);
     expect(changes[0].skipped_reason).toMatch(/not marked for playout/);
   });
@@ -161,70 +191,6 @@ describe("EnableOfferings", () => {
   });
 });
 
-describe("EnableOfferings on the multilang legacy fixture", () => {
-  // A second, independently recorded legacy object: five audio source streams
-  // across four languages (one of them empty), a 192000 ladder, and DASH
-  // formats on the offering. The rugby pair covers a four-audio object whose
-  // converted form was hand-edited; this one covers the shapes that pair lacks.
-  const specs = MULTILANG.live_recording.recording_config.recording_params.ladder_specs;
-  const convert = () =>
-    O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs});
-
-  test("the fixture is legacy before conversion", () => {
-    expect(O.OfferingType(MULTILANG.offerings.default)).toBe("ladder_specs");
-    expect(Object.keys(MULTILANG.offerings.default.playout.streams).sort()).toEqual(["audio", "video"]);
-  });
-
-  test("emits one track per audio source stream plus video", () => {
-    const {offerings, changes} = convert();
-    const streams = offerings.default.playout.streams;
-
-    expect(Object.keys(streams).sort()).toEqual([
-      "audio_1", "audio_2", "audio_3", "audio_4", "audio_5", "video"
-    ]);
-    expect(changes).toEqual([{
-      offering: "default",
-      action: "converted",
-      added_tracks: ["audio_1", "audio_2", "audio_3", "audio_4", "audio_5"],
-      removed_tracks: ["audio"]
-    }]);
-    expect(Object.keys(streams).map((k) => O.TrackSourceStream(streams[k])).sort()).toEqual([
-      "audio_1", "audio_2", "audio_3", "audio_4", "audio_5", "video"
-    ]);
-  });
-
-  test("an empty lang does not suppress a track", () => {
-    // audio_5 is recorded with lang "" but a non-empty stream_label, so it is
-    // advertised. The skip rule keys on the label, which is what the fabric's
-    // ShouldBeAdvertised() reads — never on lang.
-    expect(specs.find((r) => r.stream_name === "audio_5").lang).toBe("");
-    expect(convert().offerings.default.playout.streams.audio_5).toBeDefined();
-  });
-
-  test("labels and the default come from the ladder", () => {
-    const streams = convert().offerings.default.playout.streams;
-    expect(["audio_1", "audio_2", "audio_3", "audio_4", "audio_5"].map((k) => streams[k].label))
-      .toEqual(["Audio 1", "Audio 2", "Audio 3", "Audio 4", "Audio 5"]);
-    expect(streams.audio_1.default_for_media_type).toBe(true);
-    expect(["audio_2", "audio_3", "audio_4", "audio_5"]
-      .every((k) => streams[k].default_for_media_type === undefined)).toBe(true);
-  });
-
-  test("the converted offering is valid, with DASH the only structural caveat", () => {
-    const body = O.DescribeOfferings({offerings: convert().offerings, ladderSpecs: specs});
-    expect(body.offerings.default.type).toBe("offerings");
-    expect(body.offerings.default.errors).toEqual([]);
-    expect(body.offerings.default.valid).toBe(true);
-    // The offering carries dash-* formats against non-generic audio track keys.
-    expect(codes(body.offerings.default.warnings)).toContain("W_DASH_AUDIO_KEY");
-  });
-
-  test("is idempotent", () => {
-    const once = convert().offerings;
-    expect(O.EnableOfferings({offerings: O.Clone(once), ladderSpecs: specs}).offerings).toEqual(once);
-  });
-});
-
 describe("representations are generated from ladder_specs", () => {
   // ladder_specs and the base offering's representations are two independent
   // playout ladders - resolveMeta serves whichever one play_mode selects - and
@@ -232,11 +198,6 @@ describe("representations are generated from ladder_specs", () => {
   // than from this object's ladder. Converting by cloning therefore switches
   // the object to a ladder nobody configured. Generating from ladder_specs is
   // what makes conversion observationally neutral.
-  const cases = [
-    ["rugby", LEGACY],
-    ["multilang", MULTILANG]
-  ];
-
   const convert = (fixture) => O.EnableOfferings({
     offerings: O.Clone(fixture.offerings),
     ladderSpecs: fixture.live_recording.recording_config.recording_params.ladder_specs
@@ -247,9 +208,9 @@ describe("representations are generated from ladder_specs", () => {
   // emits "{trackKey}/{repKey}/". Conversion keys tracks by stream_name, so
   // asserting the two sets are equal is asserting that no URL is invented and,
   // more importantly, that none is retired.
-  test.each(cases)("%s: playout URLs are exactly the ladder's", (_name, fixture) => {
-    const specs = fixture.live_recording.recording_config.recording_params.ladder_specs;
-    const streams = convert(fixture);
+  test("playout URLs are exactly the ladder's", () => {
+    const specs = LEGACY.live_recording.recording_config.recording_params.ladder_specs;
+    const streams = convert(LEGACY);
 
     const advertised = new Set();
     Object.keys(streams).forEach((trackKey) => {
@@ -280,7 +241,7 @@ describe("representations are generated from ladder_specs", () => {
   });
 
   test("representation fields come from the rung", () => {
-    const streams = convert(MULTILANG);
+    const streams = convert(LEGACY);
     expect(streams.audio_3.representations["audioaudio_aac@192000"]).toEqual({
       bit_rate: 192000,
       codec: "aac",
@@ -306,15 +267,15 @@ describe("representations are generated from ladder_specs", () => {
     // combined codec_desc would emit it twice. The rungs are combined -
     // "avc1.640028,mp4a.40.2" - because that is the HLS CODECS attribute of a
     // variant stream.
-    const specs = MULTILANG.live_recording.recording_config.recording_params.ladder_specs;
+    const specs = LEGACY.live_recording.recording_config.recording_params.ladder_specs;
     expect(specs.filter((r) => r.media_type === 1).every((r) => r.codecs.includes(","))).toBe(true);
 
-    const reps = Object.values(convert(MULTILANG).video.representations);
+    const reps = Object.values(convert(LEGACY).video.representations);
     expect(reps.every((rep) => !rep.codec_desc.includes(","))).toBe(true);
   });
 
   test("transcode_matches_rep marks the top video rung and nothing else", () => {
-    const streams = convert(MULTILANG);
+    const streams = convert(LEGACY);
     const video = streams.video.representations;
     expect(video["videovideo_1920x1080_h264@9500000"].transcode_matches_rep).toBe(true);
     expect(Object.values(video).filter((r) => r.transcode_matches_rep)).toHaveLength(1);
@@ -333,9 +294,9 @@ describe("representations are generated from ladder_specs", () => {
     ["ac-3", "ac3"],
     ["ac-4.02.01.01", "ac4"]
   ])("codecs %p maps to codec %p", (codecs, expected) => {
-    const specs = O.Clone(MULTILANG.live_recording.recording_config.recording_params.ladder_specs);
+    const specs = O.Clone(LEGACY.live_recording.recording_config.recording_params.ladder_specs);
     specs.find((r) => r.stream_name === "audio_2").codecs = codecs;
-    const {offerings} = O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs});
+    const {offerings} = O.EnableOfferings({offerings: O.Clone(LEGACY.offerings), ladderSpecs: specs});
     expect(Object.values(offerings.default.playout.streams.audio_2.representations)[0].codec)
       .toBe(expected);
   });
@@ -344,16 +305,16 @@ describe("representations are generated from ladder_specs", () => {
     // A user-supplied playout_config.ladder_specs is used verbatim as the
     // ladder profile (LiveConf.js:583), so a rung can reach us without codecs.
     // Missing is not the same as unmapped and must not be reported as such.
-    const specs = O.Clone(MULTILANG.live_recording.recording_config.recording_params.ladder_specs);
+    const specs = O.Clone(LEGACY.live_recording.recording_config.recording_params.ladder_specs);
     delete specs.find((r) => r.stream_name === "audio_2").codecs;
-    expect(() => O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs}))
+    expect(() => O.EnableOfferings({offerings: O.Clone(LEGACY.offerings), ladderSpecs: specs}))
       .toThrow(/audio_2.*no codecs/);
   });
 
   test("an unmapped codec is an error, not a guess", () => {
-    const specs = O.Clone(MULTILANG.live_recording.recording_config.recording_params.ladder_specs);
+    const specs = O.Clone(LEGACY.live_recording.recording_config.recording_params.ladder_specs);
     specs.find((r) => r.stream_name === "audio_2").codecs = "opus";
-    expect(() => O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs}))
+    expect(() => O.EnableOfferings({offerings: O.Clone(LEGACY.offerings), ladderSpecs: specs}))
       .toThrow(/audio_2.*"opus"/);
   });
 
@@ -362,8 +323,8 @@ describe("representations are generated from ladder_specs", () => {
     // hand-authored offering, and every object converted by the earlier
     // cloning implementation, which enable_offerings will never revisit. What
     // changes is that conversion stops producing the condition itself.
-    const specs = MULTILANG.live_recording.recording_config.recording_params.ladder_specs;
-    const {offerings} = O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs});
+    const specs = LEGACY.live_recording.recording_config.recording_params.ladder_specs;
+    const {offerings} = O.EnableOfferings({offerings: O.Clone(LEGACY.offerings), ladderSpecs: specs});
     const body = O.DescribeOfferings({offerings, ladderSpecs: specs});
     expect(codes(body.offerings.default.warnings)).not.toContain("W_BITRATE_DIVERGES");
 
@@ -375,7 +336,7 @@ describe("representations are generated from ladder_specs", () => {
 });
 
 describe("golden: the converted form of a legacy object", () => {
-  // live_offerings_enabled_multilang.json is a verified artifact, not a
+  // live_offerings_enabled.json is a verified artifact, not a
   // snapshot of this code's output: it is the metadata of demov3 object
   // iq__P3xUVn2MpNEjabinoJixRPM7FfP after enable_offerings, whose HLS master
   // playlist was confirmed identical to the same object's legacy one, with
@@ -383,31 +344,23 @@ describe("golden: the converted form of a legacy object", () => {
   // ffprobe showing each video segment decoded at the rung's declared
   // geometry and bitrate.
   //
-  // It is the converted form of a DIFFERENT object from the legacy fixture -
-  // we have no pre-conversion dump of this one - so DRM material cannot match:
-  // encryption_schemes and drm_keys are per-object and are inherited from
-  // whichever base offering create() built. Everything the transformation
-  // itself decides is compared exactly.
-  const specs = MULTILANG.live_recording.recording_config.recording_params.ladder_specs;
+  // It is the same object as the legacy fixture, one version later, so the
+  // comparison can be exact - apart from the six
+  // drm_keys.<id>["."].container hashes, which name the version holding the
+  // blob and so change on every commit.
+  const specs = LEGACY.live_recording.recording_config.recording_params.ladder_specs;
   const convert = () =>
-    O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs}).offerings.default;
+    O.EnableOfferings({offerings: O.Clone(LEGACY.offerings), ladderSpecs: specs}).offerings.default;
 
-  const golden = () => O.Clone(MULTILANG_ENABLED.offerings.default);
+  const golden = () => O.Clone(ENABLED.offerings.default);
   const GOLDEN_LADDER =
-    MULTILANG_ENABLED.live_recording.recording_config.recording_params.ladder_specs;
+    ENABLED.live_recording.recording_config.recording_params.ladder_specs;
 
-  test("play_mode, tracks and representations match the verified object exactly", () => {
-    const got = convert().playout.streams;
-    const want = golden().playout.streams;
-
-    expect(convert().play_mode).toBe(MULTILANG_ENABLED.offerings.default.play_mode);
-    expect(Object.keys(got).sort()).toEqual(Object.keys(want).sort());
-
-    Object.keys(want).forEach((trackKey) => {
-      expect(got[trackKey].representations).toEqual(want[trackKey].representations);
-      expect(got[trackKey].label).toEqual(want[trackKey].label);
-      expect(got[trackKey].default_for_media_type).toEqual(want[trackKey].default_for_media_type);
-    });
+  test("playout.streams matches the verified object byte for byte", () => {
+    // The whole of playout.streams, not a field-by-field subset: same object,
+    // one version apart, so anything that differs is a defect.
+    expect(convert().playout.streams).toEqual(golden().playout.streams);
+    expect(convert().play_mode).toBe(ENABLED.offerings.default.play_mode);
   });
 
   test("nothing outside playout.streams and play_mode is invented", () => {
@@ -423,7 +376,7 @@ describe("golden: the converted form of a legacy object", () => {
 
   test("every offering on the golden object is valid", () => {
     const body = O.DescribeOfferings({
-      offerings: O.Clone(MULTILANG_ENABLED.offerings), ladderSpecs: GOLDEN_LADDER
+      offerings: O.Clone(ENABLED.offerings), ladderSpecs: GOLDEN_LADDER
     });
     expect(Object.keys(body.offerings).sort())
       .toEqual(["audio_only", "clear", "default", "one_rung"]);
@@ -435,9 +388,9 @@ describe("golden: the converted form of a legacy object", () => {
 
   test("a second run leaves every offering alone", () => {
     const again = O.EnableOfferings({
-      offerings: O.Clone(MULTILANG_ENABLED.offerings), ladderSpecs: GOLDEN_LADDER
+      offerings: O.Clone(ENABLED.offerings), ladderSpecs: GOLDEN_LADDER
     });
-    expect(again.offerings).toEqual(MULTILANG_ENABLED.offerings);
+    expect(again.offerings).toEqual(ENABLED.offerings);
     expect(again.changes.map((c) => c.action)).toEqual(["skipped", "skipped", "skipped", "skipped"]);
   });
 
@@ -448,14 +401,14 @@ describe("golden: the converted form of a legacy object", () => {
       GOLDEN_LADDER.map((r) => `${r.stream_name}/${r.representation}`));
 
     const urls = (key) => {
-      const streams = MULTILANG_ENABLED.offerings[key].playout.streams;
+      const streams = ENABLED.offerings[key].playout.streams;
       const out = [];
       Object.keys(streams).forEach((t) =>
         Object.keys(streams[t].representations).forEach((r) => out.push(`${t}/${r}`)));
       return out.sort();
     };
 
-    Object.keys(MULTILANG_ENABLED.offerings).forEach((key) => {
+    Object.keys(ENABLED.offerings).forEach((key) => {
       urls(key).forEach((u) => expect([key, u, fromLadder.has(u)]).toEqual([key, u, true]));
     });
     expect(urls("default")).toEqual([...fromLadder].sort());
@@ -468,7 +421,7 @@ describe("golden: offerings derived with add_offering", () => {
   // clear playout method, `one_rung` only DRM ones and a single video rung,
   // and `audio_only` emits its audio as variant streams because it has no
   // video. All three served init and media segments, one_rung's under AES-128.
-  const offering = (key) => O.Clone(MULTILANG_ENABLED.offerings[key]);
+  const offering = (key) => O.Clone(ENABLED.offerings[key]);
 
   test.each([
     ["audio_only", ["audio_1", "audio_2"]],
@@ -506,11 +459,11 @@ describe("golden: offerings derived with add_offering", () => {
   });
 
   test("each offering round-trips through ExtractSelection", () => {
-    Object.keys(MULTILANG_ENABLED.offerings).forEach((key) => {
+    Object.keys(ENABLED.offerings).forEach((key) => {
       const o = offering(key);
       const selection = O.ExtractSelection({offering: o});
       expect([key, O.FilterOffering({baseOffering: offering(key), selection})])
-        .toEqual([key, MULTILANG_ENABLED.offerings[key]]);
+        .toEqual([key, ENABLED.offerings[key]]);
     });
   });
 
@@ -599,11 +552,84 @@ describe("ValidateOffering", () => {
   });
 
   test("DASH formats warn only when the audio track key is not literally 'audio'", () => {
+    // default carries dash-* formats against audio_1..audio_5.
     expect(codes(validate(enabledOffering("default")).warnings)).toContain("W_DASH_AUDIO_KEY");
-    // one_rung keys its audio track "audio", which is what deployed DASH expects.
+    // The derived offerings kept only HLS formats, so the rule cannot apply.
     expect(codes(validate(enabledOffering("one_rung")).warnings)).not.toContain("W_DASH_AUDIO_KEY");
-    // clear carries no DASH formats at all.
     expect(codes(validate(enabledOffering("clear")).warnings)).not.toContain("W_DASH_AUDIO_KEY");
+
+    // Renaming the track to the literal key deployed DASH looks up silences it.
+    const renamed = mutate((o, t) => {
+      ["audio_2", "audio_3", "audio_4", "audio_5"].forEach((k) => delete t[k]);
+      t.audio = t.audio_1;
+      delete t.audio_1;
+    });
+    expect(codes(validate(renamed).warnings)).not.toContain("W_DASH_AUDIO_KEY");
+  });
+
+  test("a track key and the source stream it presents are independent", () => {
+    // The track key is a playout URL segment; media_struct_stream_key is the
+    // pointer into ladder_specs. Nothing requires them to agree, and an
+    // offering that renames a track must still validate.
+    const renamed = mutate((o, t) => {
+      t.commentary = t.audio_3;
+      delete t.audio_3;
+    });
+    const result = validate(renamed);
+    expect(O.TrackSourceStream(O.Tracks(renamed).commentary)).toBe("audio_3");
+    expect({valid: result.valid, errors: codes(result.errors)}).toEqual({valid: true, errors: []});
+  });
+
+  test.each([
+    ["a representation has no media_struct_stream_key", "E_MSS_MISSING",
+      (o, t) => { Object.values(t.audio_1.representations)[0].media_struct_stream_key = ""; }],
+    ["two audio tracks claim the default", "W_MULTI_DEFAULT",
+      (o, t) => { t.audio_2.default_for_media_type = true; }],
+    ["no audio track claims the default", "W_NO_DEFAULT",
+      (o, t) => { delete t.audio_1.default_for_media_type; }],
+    ["two tracks present the same source stream", "W_DUPLICATE_SOURCE",
+      (o, t) => { t.audio_copy = O.Clone(t.audio_1); delete t.audio_copy.default_for_media_type; }],
+    ["a representation declares no codec", "W_NO_CODEC",
+      (o, t) => { Object.values(t.audio_1.representations)[0].codec = ""; }],
+    ["an audio track carries two representations", "W_MULTI_AUDIO_REP",
+      (o, t) => {
+        const rep = O.Clone(Object.values(t.audio_1.representations)[0]);
+        t.audio_1.representations["audioaudio_aac@64000"] = {...rep, bit_rate: 64000};
+      }]
+  ])("%s -> %s", (_name, code, fn) => {
+    const result = validate(mutate(fn));
+    expect(codes([...result.warnings, ...result.errors])).toContain(code);
+  });
+
+  test("a track with no label and no rung label -> W_EMPTY_LABEL", () => {
+    // The fabric falls back to the rung's stream_label when the track's is
+    // empty, so the rule needs both to be blank. Such a rendition is present
+    // but nameless on the offerings path - it is not dropped, which is what
+    // separates this from W_LEGACY_EMPTY_LABEL.
+    const offering = enabledOffering("default");
+    O.Tracks(offering).audio_1.label = "";
+    const specs = O.Clone(LADDER);
+    specs.find((r) => r.stream_name === "audio_1").stream_label = "";
+
+    const result = O.ValidateOffering({offering, ladder: O.SourceStreams(specs)});
+    expect(codes(result.warnings)).toContain("W_EMPTY_LABEL");
+  });
+
+  test.each([
+    ["the ladder records audio but the offering has no audio track", "E_LEGACY_MISSING_TRACK",
+      (o) => { delete o.playout.streams.audio; }],
+    ["an audio rung carries no stream_label", "W_LEGACY_EMPTY_LABEL", null]
+  ])("legacy: %s -> %s", (_name, code, fn) => {
+    const offering = O.Clone(LEGACY.offerings.default);
+    if (fn) {
+      fn(offering);
+      expect(codes(O.ValidateOffering({offering, ladder: ladder()}).errors)).toContain(code);
+      return;
+    }
+    const specs = O.Clone(LADDER);
+    specs.find((r) => r.stream_name === "audio_3").stream_label = "";
+    const result = O.ValidateOffering({offering, ladder: O.SourceStreams(specs)});
+    expect(codes(result.warnings)).toContain(code);
   });
 });
 
@@ -620,7 +646,7 @@ describe("DescribeOfferings", () => {
     expect(body.valid).toBe(true);
     expect(body.offerings).toEqual({});
     expect(body.source_streams.audio.map((s) => s.stream_name)).toEqual([
-      "audio_1", "audio_2", "audio_3", "audio_4"
+      "audio_1", "audio_2", "audio_3", "audio_4", "audio_5"
     ]);
   });
 
@@ -631,9 +657,11 @@ describe("DescribeOfferings", () => {
 
     const oneRung = body.offerings.one_rung;
     expect(oneRung.type).toBe("offerings");
-    // The track key and the source stream it presents are independent.
-    expect(oneRung.tracks.audio.media_struct_stream_key).toBe("audio_4");
-    expect(oneRung.selection.tracks.audio).toEqual(["audioaudio_aac@128000"]);
+    // A derived offering presents a subset: one_rung drops audio_4 and keeps a
+    // single video rung.
+    expect(Object.keys(oneRung.tracks).sort())
+      .toEqual(["audio_1", "audio_2", "audio_3", "audio_5", "video"]);
+    expect(oneRung.selection.tracks.video).toEqual(["videovideo_1920x1080_h264@9500000"]);
   });
 });
 
