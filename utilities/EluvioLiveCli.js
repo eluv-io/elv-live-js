@@ -2767,7 +2767,7 @@ yargs(hideBin(process.argv))
           default: false
         })
         .option("append", {
-          describe: "Add the addresses to the existing list instead of replacing it. Addresses already present are skipped.",
+          describe: "Append the addresses to the existing list instead of replacing it.",
           type: "boolean",
           default: false
         });
