@@ -6,6 +6,7 @@ const { ElvClient } = require("@eluvio/elv-client-js");
 const Utils = require("@eluvio/elv-client-js/src/Utils.js");
 const { execSync } = require("child_process");
 const { Config } = require("./Config.js");
+const LiveOfferings = require("./LiveOfferings.js");
 
 const fs = require("fs");
 const got = require("got");
@@ -1273,6 +1274,338 @@ class EluvioLiveStream {
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
     const m = await this.client.ContentObjectMetadata({objectId, libraryId, metadataSubtree: "/public/content_types"});
     return m[label];
+  }
+
+  /**
+   * Validate that a write token, if supplied, belongs to this object.
+   *
+   * @namedParams
+   * @param {string} [writeToken] - Write token of an existing draft
+   * @param {string} objectId - Object ID the token must belong to
+   * @ignore
+   */
+  _checkWriteToken({writeToken, objectId}) {
+    if (!writeToken) {
+      return;
+    }
+    const decoded = Utils.DecodeWriteToken(writeToken);
+    // Only cross-check when the token actually carries a QID. Note the two
+    // similar prefixes: "tqw__" (two underscores) is normalized to "tq__" and
+    // does carry QID + NID - it is what the fabric issues today - while a true
+    // v1 "tqw_" (one underscore) is base58(RAND_BYTES) with no QID at all.
+    if (decoded.objectId && decoded.objectId !== objectId) {
+      throw new Error(`Write token ${writeToken} is for object ${decoded.objectId}, not ${objectId}`);
+    }
+  }
+
+  /**
+   * Refuse to modify a live stream that is still active, matching the gate and
+   * wording used by `config` and `init`.
+   *
+   * The write token is threaded into StreamStatus so the gate reads draft state
+   * rather than stale committed metadata.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} [writeToken] - Write token of an existing draft
+   * @returns {Promise<Object>} {libraryId, objectId, state}
+   * @ignore
+   */
+  async _RequireStoppedStream({objectId, writeToken}) {
+    const validStates = ["uninitialized", "inactive", "stopped", "unconfigured", "initialized"];
+    const status = await this.client.StreamStatus({name: objectId, writeToken});
+    if (!validStates.includes(status.state)) {
+      throw new Error(`stream still active - must terminate first (state: ${status.state})`);
+    }
+    return {libraryId: status.libraryId, objectId: status.objectId, state: status.state};
+  }
+
+  /**
+   * Read the offerings map and the ladder in a single round trip.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} [libraryId] - Resolved if omitted
+   * @param {string} [writeToken] - Read through this draft instead of the committed object
+   * @returns {Promise<Object>} {libraryId, offerings, ladderSpecs}
+   * @ignore
+   */
+  async _ReadOfferingsMeta({objectId, libraryId, writeToken}) {
+    const ladderPath = "live_recording/recording_config/recording_params/ladder_specs";
+    if (!libraryId) {
+      libraryId = await this.client.ContentObjectLibraryId({objectId});
+    }
+    const meta = await this.client.ContentObjectMetadata({
+      libraryId,
+      objectId,
+      writeToken,
+      metadataSubtree: "",
+      resolveLinks: false,
+      select: ["offerings", ladderPath]
+    }) || {};
+
+    const recordingParams = (((meta.live_recording || {}).recording_config || {}).recording_params) || {};
+    return {libraryId, offerings: meta.offerings, ladderSpecs: recordingParams.ladder_specs};
+  }
+
+  /**
+   * List the offerings of a live stream object with their type, validity and
+   * selection. Read-only; does not require the stream to be stopped.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} [writeToken] - Read through this draft instead of the committed object
+   * @returns {Promise<Object>} {object_id, library_id, source_streams, valid, offerings}
+   */
+  async ListOfferings({objectId, writeToken}) {
+    this._checkWriteToken({writeToken, objectId});
+    const {libraryId, offerings, ladderSpecs} = await this._ReadOfferingsMeta({objectId, writeToken});
+    return {
+      object_id: objectId,
+      library_id: libraryId,
+      ...(writeToken ? {write_token: writeToken} : {}),
+      ...LiveOfferings.DescribeOfferings({offerings, ladderSpecs})
+    };
+  }
+
+  /**
+   * Throw if any offering in the map is invalid, naming every finding.
+   *
+   * @namedParams
+   * @param {Object} offerings - The /offerings map to validate
+   * @param {Object} ladder - Result of LiveOfferings.SourceStreams()
+   * @ignore
+   */
+  _requireValidOfferings({offerings, ladder}) {
+    const lines = [];
+    Object.keys(offerings || {}).sort().forEach((offeringKey) => {
+      const {valid, errors} = LiveOfferings.ValidateOffering({offering: offerings[offeringKey], ladder});
+      if (valid) {
+        return;
+      }
+      lines.push(`offering "${offeringKey}":`);
+      errors.forEach((e) => {
+        const where = [e.track && `track "${e.track}"`, e.representation && `representation "${e.representation}"`]
+          .filter((x) => x).join(", ");
+        lines.push(`  ${e.code}: ${e.message}${where ? ` (${where})` : ""}`);
+      });
+    });
+    if (lines.length > 0) {
+      throw new Error("refusing to write an invalid result\n" + lines.join("\n"));
+    }
+  }
+
+  /**
+   * Enable offerings-based playout on a live stream object.
+   *
+   * Walks every offering but converts only the legacy ones: an offering already
+   * in "avtest_live" mode is a deliberate presentation, possibly a partial one,
+   * and is left untouched. Nothing is written when there is nothing to convert.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} [writeToken] - Apply to this draft instead of creating one
+   * @param {boolean} [finalize] - Finalize after the change (default: !writeToken)
+   * @param {boolean} [dryRun=false] - Compute and report, write nothing
+   * @returns {Promise<Object>} ListOfferings payload plus `changes`, `write_token` and `hash`
+   */
+  async EnableOfferings({objectId, writeToken, finalize, dryRun = false}) {
+    this._checkWriteToken({writeToken, objectId});
+    const {libraryId} = await this._RequireStoppedStream({objectId, writeToken});
+    const current = await this._ReadOfferingsMeta({objectId, libraryId, writeToken});
+
+    const ladder = LiveOfferings.SourceStreams(current.ladderSpecs);
+    if (ladder.names.size === 0) {
+      throw new Error("object has no ladder_specs; it is not a configured live stream - run elv-stream config first");
+    }
+
+    const {offerings, changes} = LiveOfferings.EnableOfferings({
+      offerings: current.offerings,
+      ladderSpecs: current.ladderSpecs
+    });
+
+    const converted = changes.filter((c) => c.action === "converted");
+    const describe = () => ({
+      object_id: objectId,
+      library_id: libraryId,
+      ...(writeToken ? {write_token: writeToken} : {}),
+      ...LiveOfferings.DescribeOfferings({offerings, ladderSpecs: current.ladderSpecs}),
+      changes
+    });
+
+    // Nothing to convert: do not open a draft, so a no-op run creates no version.
+    if (converted.length === 0) {
+      return describe();
+    }
+
+    // Validate only what this run converted: skipped offerings are left as they
+    // were, so a pre-existing problem in one must not block the conversion.
+    this._requireValidOfferings({
+      offerings: Object.fromEntries(converted.map((c) => [c.offering, offerings[c.offering]])),
+      ladder
+    });
+
+    if (dryRun) {
+      return {...describe(), dry_run: true};
+    }
+
+    const token = writeToken || (await this.client.EditContentObject({objectId, libraryId})).write_token;
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: token,
+      metadataSubtree: "offerings",
+      metadata: offerings
+    });
+
+    const res = {...describe(), write_token: token};
+    if (finalize !== undefined ? finalize : !writeToken) {
+      const fin = await this.client.FinalizeContentObject({
+        libraryId,
+        objectId,
+        writeToken: token,
+        commitMessage: "Enable offerings-based playout"
+      });
+      res.hash = fin.hash;
+    }
+    return res;
+  }
+
+  /**
+   * Create a new offering by copying an existing one and filtering it.
+   *
+   * The selection is a filter: absent means keep everything, present means keep
+   * only what is listed. Nothing is renamed or repointed.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} offeringKey - Key of the new offering
+   * @param {Object} [offeringSelection] - Parsed selection; the CLI reads the file
+   * @param {string} [baseOfferingKey="default"] - Offering to copy from
+   * @param {string} [writeToken] - Apply to this draft instead of creating one
+   * @param {boolean} [finalize] - Finalize after the change (default: !writeToken)
+   * @param {boolean} [dryRun=false] - Compute and report, write nothing
+   * @returns {Promise<Object>} {object_id, offering_key, offering, valid, warnings, write_token, hash}
+   */
+  async AddOffering({objectId, offeringKey, offeringSelection = {}, baseOfferingKey = "default",
+    writeToken, finalize, dryRun = false}) {
+
+    if (!offeringKey || offeringKey.includes("/")) {
+      throw new Error(`invalid offering key "${offeringKey}"`);
+    }
+    this._checkWriteToken({writeToken, objectId});
+    const {libraryId} = await this._RequireStoppedStream({objectId, writeToken});
+    const {offerings, ladderSpecs} = await this._ReadOfferingsMeta({objectId, libraryId, writeToken});
+
+    const ladder = LiveOfferings.SourceStreams(ladderSpecs);
+    if (ladder.names.size === 0) {
+      throw new Error("object has no ladder_specs; it is not a configured live stream - run elv-stream config first");
+    }
+    const existing = offerings || {};
+    if (existing[offeringKey] !== undefined) {
+      throw new Error(`offering "${offeringKey}" already exists; delete it first`);
+    }
+    const base = existing[baseOfferingKey];
+    if (base === undefined) {
+      throw new Error(
+        `base offering "${baseOfferingKey}" not found (available: ${Object.keys(existing).sort().join(", ") || "none"})`);
+    }
+    if (LiveOfferings.OfferingType(base) !== "offerings") {
+      throw new Error(
+        `base offering "${baseOfferingKey}" is not offerings-based (play_mode: ${base.play_mode}) - ` +
+        "run enable_offerings first");
+    }
+
+    const offering = LiveOfferings.FilterOffering({baseOffering: base, baseOfferingKey, selection: offeringSelection});
+    this._requireValidOfferings({offerings: {[offeringKey]: offering}, ladder});
+
+    const {valid, warnings} = LiveOfferings.ValidateOffering({offering, ladder});
+    const res = {
+      object_id: objectId,
+      library_id: libraryId,
+      offering_key: offeringKey,
+      base_offering: baseOfferingKey,
+      valid,
+      warnings,
+      tracks: LiveOfferings.TrackInfo({offering}),
+      selection: LiveOfferings.ExtractSelection({offering})
+    };
+    if (dryRun) {
+      return {...res, dry_run: true, offering};
+    }
+
+    const token = writeToken || (await this.client.EditContentObject({objectId, libraryId})).write_token;
+    await this.client.ReplaceMetadata({
+      libraryId,
+      objectId,
+      writeToken: token,
+      metadataSubtree: `offerings/${offeringKey}`,
+      metadata: offering
+    });
+    res.write_token = token;
+    if (finalize !== undefined ? finalize : !writeToken) {
+      const fin = await this.client.FinalizeContentObject({
+        libraryId,
+        objectId,
+        writeToken: token,
+        commitMessage: `Add offering ${offeringKey}`
+      });
+      res.hash = fin.hash;
+    }
+    return res;
+  }
+
+  /**
+   * Remove one offering from a live stream object.
+   *
+   * @namedParams
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} offeringKey - Offering to remove
+   * @param {string} [writeToken] - Apply to this draft instead of creating one
+   * @param {boolean} [finalize] - Finalize after the change (default: !writeToken)
+   * @returns {Promise<Object>} {object_id, offering_key, deleted, remaining, write_token, hash}
+   */
+  async DeleteOffering({objectId, offeringKey, writeToken, finalize}) {
+    // DeleteMetadata defaults metadataSubtree to "/", which would delete all
+    // object metadata, so the key is checked before it is ever interpolated.
+    if (!offeringKey || offeringKey.includes("/")) {
+      throw new Error(`invalid offering key "${offeringKey}"`);
+    }
+    this._checkWriteToken({writeToken, objectId});
+    const {libraryId} = await this._RequireStoppedStream({objectId, writeToken});
+    const {offerings} = await this._ReadOfferingsMeta({objectId, libraryId, writeToken});
+
+    const existing = offerings || {};
+    if (existing[offeringKey] === undefined) {
+      throw new Error(
+        `offering "${offeringKey}" not found (available: ${Object.keys(existing).sort().join(", ") || "none"})`);
+    }
+    const remaining = Object.keys(existing).filter((k) => k !== offeringKey).sort();
+    if (remaining.length === 0) {
+      throw new Error(
+        `refusing to delete "${offeringKey}": it is the only offering, and an object with none ` +
+        "loses its DRM keys");
+    }
+
+    const token = writeToken || (await this.client.EditContentObject({objectId, libraryId})).write_token;
+    await this.client.DeleteMetadata({
+      libraryId,
+      objectId,
+      writeToken: token,
+      metadataSubtree: `offerings/${offeringKey}`
+    });
+
+    const res = {object_id: objectId, library_id: libraryId, offering_key: offeringKey, deleted: true, remaining, write_token: token};
+    if (finalize !== undefined ? finalize : !writeToken) {
+      const fin = await this.client.FinalizeContentObject({
+        libraryId,
+        objectId,
+        writeToken: token,
+        commitMessage: `Delete offering ${offeringKey}`
+      });
+      res.hash = fin.hash;
+    }
+    return res;
   }
 } // End class
 

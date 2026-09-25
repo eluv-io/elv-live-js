@@ -41,6 +41,118 @@ const CmdInit = async ({ argv }) => {
   }
 };
 
+const CmdListOfferings = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvStream.ListOfferings({
+      objectId: argv.object_id,
+      writeToken: argv.write_token
+    });
+    console.log(JSON.stringify(res, null, 2));
+    if (!res.valid) {
+      process.exitCode = 2;
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+    process.exitCode = 1;
+  }
+};
+
+const CmdEnableOfferings = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvStream.EnableOfferings({
+      objectId: argv.object_id,
+      writeToken: argv.write_token,
+      finalize: argv.finalize,
+      dryRun: argv.dry_run
+    });
+    console.log(JSON.stringify(res, null, 2));
+    if (!res.valid) {
+      process.exitCode = 2;
+    }
+  } catch (e) {
+    console.error("ERROR:", e);
+    process.exitCode = 1;
+  }
+};
+
+const CmdAddOffering = async ({ argv }) => {
+  try {
+    let offeringSelection = {};
+    if (argv.offering_selection) {
+      if (!fs.existsSync(argv.offering_selection)) {
+        throw new Error(`offering selection file not found: ${argv.offering_selection}`);
+      }
+      // yaml.load parses JSON too, matching the --live_recording_config precedent
+      offeringSelection = yaml.load(fs.readFileSync(argv.offering_selection, "utf8"));
+    }
+
+    let elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvStream.AddOffering({
+      objectId: argv.object_id,
+      offeringKey: argv.offering_key,
+      offeringSelection,
+      baseOfferingKey: argv.base_offering,
+      writeToken: argv.write_token,
+      finalize: argv.finalize,
+      dryRun: argv.dry_run
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+    process.exitCode = 1;
+  }
+};
+
+const CmdDeleteOffering = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const res = await elvStream.DeleteOffering({
+      objectId: argv.object_id,
+      offeringKey: argv.offering_key,
+      writeToken: argv.write_token,
+      finalize: argv.finalize
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+    process.exitCode = 1;
+  }
+};
+
 const CmdStreamCreate = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
@@ -396,6 +508,9 @@ const CmdStreamSwitch = async ({ argv }) => {
 }
 
 
+// Only parse the command line when run as a program. Requiring this file
+// (e.g. from tests, for the exported Cmd* handlers) must not consume argv.
+if (require.main === module) {
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -897,8 +1012,132 @@ yargs(hideBin(process.argv))
     }
   )
 
+  .command(
+    "list_offerings <object_id>",
+    "List the offerings of a live stream object as JSON, with type, validity and selection.",
+    (yargs) => {
+      yargs
+        .positional("object_id", {
+          describe:
+            "Object ID of the live stream (iq__...)",
+          type: "string",
+        })
+        .option("write_token", {
+          describe:
+            "Write token of an existing draft to read through. If omitted, the committed object is read.",
+          type: "string",
+        })
+    },
+    (argv) => {
+      CmdListOfferings({ argv });
+    }
+  )
+
+  .command(
+    "enable_offerings <object_id>",
+    "Convert legacy offerings on this object to offerings-based playout. Stream must be stopped.",
+    (yargs) => {
+      yargs
+        .positional("object_id", {
+          describe:
+            "Object ID of the live stream (iq__...)",
+          type: "string",
+        })
+        .option("write_token", {
+          describe:
+            "Write token of an existing draft to apply this change to. If omitted, a new draft is created and finalized.",
+          type: "string",
+        })
+        .option("finalize", {
+          describe:
+            "Finalize the object after the change (default: true unless --write_token is supplied)",
+          type: "boolean",
+        })
+        .option("dry_run", {
+          describe:
+            "Compute the result and print it, but write nothing",
+          type: "boolean",
+        })
+    },
+    (argv) => {
+      CmdEnableOfferings({ argv });
+    }
+  )
+
+  .command(
+    "add_offering <object_id> <offering_key>",
+    "Create a new offering by copying an existing one and filtering it. Stream must be stopped.",
+    (yargs) => {
+      yargs
+        .positional("object_id", {
+          describe: "Object ID of the live stream (iq__...)",
+          type: "string",
+        })
+        .positional("offering_key", {
+          describe: "Key of the new offering",
+          type: "string",
+        })
+        .option("offering_selection", {
+          describe:
+            "Path to a JSON file listing the tracks, representations and formats to keep. Anything omitted is kept in full.",
+          type: "string",
+        })
+        .option("base_offering", {
+          describe: "Offering to copy from (default: 'default')",
+          type: "string",
+        })
+        .option("write_token", {
+          describe:
+            "Write token of an existing draft to apply this change to. If omitted, a new draft is created and finalized.",
+          type: "string",
+        })
+        .option("finalize", {
+          describe:
+            "Finalize the object after the change (default: true unless --write_token is supplied)",
+          type: "boolean",
+        })
+        .option("dry_run", {
+          describe: "Compute the result and print it, but write nothing",
+          type: "boolean",
+        })
+    },
+    (argv) => {
+      CmdAddOffering({ argv });
+    }
+  )
+
+  .command(
+    "delete_offering <object_id> <offering_key>",
+    "Remove an offering from a live stream object. Stream must be stopped.",
+    (yargs) => {
+      yargs
+        .positional("object_id", {
+          describe: "Object ID of the live stream (iq__...)",
+          type: "string",
+        })
+        .positional("offering_key", {
+          describe: "Offering to remove",
+          type: "string",
+        })
+        .option("write_token", {
+          describe:
+            "Write token of an existing draft to apply this change to. If omitted, a new draft is created and finalized.",
+          type: "string",
+        })
+        .option("finalize", {
+          describe:
+            "Finalize the object after the change (default: true unless --write_token is supplied)",
+          type: "boolean",
+        })
+    },
+    (argv) => {
+      CmdDeleteOffering({ argv });
+    }
+  )
+
   .strict()
   .help()
   .usage("Eluvio Live Stream CLI\n\nUsage: elv-stream <command>")
   .scriptName("")
   .demandCommand(1).argv;
+}
