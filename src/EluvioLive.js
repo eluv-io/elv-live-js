@@ -3302,8 +3302,6 @@ class EluvioLive {
   async CreateWalletAccount({ email, tenant, callbackUrl, onlyCreateAccount, onlySendEmail, scheduleAt}) {
     let headers = {};
     let res = "";
-    console.log("email", email, "tenant", tenant, "callbackUrl", callbackUrl,
-      "onlyCreateAccount", onlyCreateAccount, "onlySentEmail", onlySendEmail, "scheduleAt", scheduleAt);
 
     // if email is a file, read the file
     if (email.startsWith("@")) {
