@@ -1928,7 +1928,7 @@ class EluvioLive {
   }
 
   /**
-   * Sets only the NFT permission addresses (_NFT_ACCESS) for a given object,
+   * Sets the NFT permission addresses (_NFT_ACCESS) for a given object,
    * leaving the existing policy (_ELV) untouched.
    *
    * @namedParams

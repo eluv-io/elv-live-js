@@ -2749,7 +2749,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "nft_set_policy_addresses <object> [addrs..]",
-    "Sets only the NFT contract addresses granting NFT owners access to a content object, leaving the existing policy unchanged.",
+    "Sets the NFT contract addresses granting NFT owners access to a content object, leaving the existing policy unchanged.",
     (yargs) => {
       yargs
         .positional("object", {

@@ -115,7 +115,7 @@ Commands:
   nft_set_policy_permissions <object>       Sets the policy and permissions
   <policy_path> [addrs..]                   granting NFT owners access to a
                                             content object.
-  nft_set_policy_addresses <object>         Sets only the NFT contract addresses
+  nft_set_policy_addresses <object>         Sets the NFT contract addresses
   [addrs..]                                 granting NFT owners access to a
                                             content object, leaving the existing
                                             policy unchanged.
