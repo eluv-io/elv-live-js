@@ -154,6 +154,47 @@ describe("EnableOfferings", () => {
     expect(changes[0].skipped_reason).toMatch(/not marked for playout/);
   });
 
+  test("drops the template even when it points at a recorded source stream", () => {
+    // The template's key is not a stream name, but its representations name
+    // audio_1. Keeping it would advertise audio_1 twice, once with create()'s
+    // fabricated rendition.
+    const src = legacyOfferings();
+    Object.values(src.default.playout.streams.audio.representations)
+      .forEach((rep) => { rep.media_struct_stream_key = "audio_1"; });
+
+    const {offerings, changes} = O.EnableOfferings({offerings: src, ladderSpecs: LADDER});
+    expect(Object.keys(offerings.default.playout.streams).sort())
+      .toEqual(["audio_1", "audio_2", "audio_3", "audio_4", "audio_5", "video"]);
+    expect(changes[0].removed_tracks).toEqual(["audio"]);
+  });
+
+  test("drops the template when its key names a skipped source stream", () => {
+    // A recorded-but-not-for-playout stream named "audio" must not survive
+    // through the template, which the skip rule never regenerates.
+    const specs = O.Clone(LADDER).concat([{
+      media_type: 2, stream_name: "audio", stream_label: "",
+      representation: "audioaudio_aac@128000", bit_rate: 128000, codecs: "mp4a.40.2"
+    }]);
+
+    const {offerings, changes} = O.EnableOfferings({offerings: legacyOfferings(), ladderSpecs: specs});
+    expect(offerings.default.playout.streams.audio).toBeUndefined();
+    expect(changes[0].removed_tracks).toEqual(["audio"]);
+    expect(changes[0].skipped_source_streams).toEqual(["audio"]);
+  });
+
+  test("keeps the template key when a playable source stream regenerates it", () => {
+    const specs = O.Clone(LADDER).concat([{
+      media_type: 2, stream_name: "audio", stream_label: "Audio 0",
+      representation: "audioaudio_aac@128000", bit_rate: 128000, codecs: "mp4a.40.2"
+    }]);
+
+    const {offerings, changes} = O.EnableOfferings({offerings: legacyOfferings(), ladderSpecs: specs});
+    const track = offerings.default.playout.streams.audio;
+    expect(track.label).toBe("Audio 0");
+    expect(O.TrackSourceStream(track)).toBe("audio");
+    expect(changes[0].removed_tracks).toEqual([]);
+  });
+
   test("video rungs are never skipped for lacking a stream_label", () => {
     // ShouldBeAdvertised() gates only audio on the label; video rungs carry
     // none and are always advertised.

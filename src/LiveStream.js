@@ -1438,7 +1438,12 @@ class EluvioLiveStream {
       return describe();
     }
 
-    this._requireValidOfferings({offerings, ladder});
+    // Validate only what this run converted: skipped offerings are left as they
+    // were, so a pre-existing problem in one must not block the conversion.
+    this._requireValidOfferings({
+      offerings: Object.fromEntries(converted.map((c) => [c.offering, offerings[c.offering]])),
+      ladder
+    });
 
     if (dryRun) {
       return {...describe(), dry_run: true};

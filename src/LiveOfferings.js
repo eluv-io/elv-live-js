@@ -835,15 +835,14 @@ const ConvertOffering = ({offering, offeringKey, ladder, defaults}) => {
     });
   }
 
-  // Drop the orphaned template track: mandatory, not cosmetic. A surviving
-  // generic "audio" track points at a source stream the ladder does not record,
-  // which hard-fails the entire master playlist.
-  if (tracks[templateKey] !== undefined && !ladder.names.has(templateKey)) {
-    const mssKey = TrackSourceStream(tracks[templateKey]);
-    if (mssKey === undefined || !ladder.names.has(mssKey)) {
-      delete tracks[templateKey];
-      removedTracks.push(templateKey);
-    }
+  // Drop the template track unless a playable source stream regenerated it
+  // under its own key: mandatory, not cosmetic. A surviving template keeps
+  // create()'s fabricated representations - it either points at a source stream
+  // the ladder does not record, which hard-fails the entire master playlist, or
+  // duplicates (or un-skips) a stream the loop above already handled.
+  if (!forPlayout.some((source) => source.stream_name === templateKey)) {
+    delete tracks[templateKey];
+    removedTracks.push(templateKey);
   }
 
   offering.play_mode = OFFERINGS_PLAY_MODE;
