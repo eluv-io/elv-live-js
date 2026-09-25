@@ -393,6 +393,8 @@ describe("golden: the converted form of a legacy object", () => {
     O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs}).offerings.default;
 
   const golden = () => O.Clone(MULTILANG_ENABLED.offerings.default);
+  const GOLDEN_LADDER =
+    MULTILANG_ENABLED.live_recording.recording_config.recording_params.ladder_specs;
 
   test("play_mode, tracks and representations match the verified object exactly", () => {
     const got = convert().playout.streams;
@@ -419,33 +421,108 @@ describe("golden: the converted form of a legacy object", () => {
       .toEqual(Object.keys(want.playout.playout_formats).sort());
   });
 
-  test("the golden object is itself valid, and is left alone by a second run", () => {
-    const goldenSpecs =
-      MULTILANG_ENABLED.live_recording.recording_config.recording_params.ladder_specs;
+  test("every offering on the golden object is valid", () => {
     const body = O.DescribeOfferings({
-      offerings: O.Clone(MULTILANG_ENABLED.offerings), ladderSpecs: goldenSpecs
+      offerings: O.Clone(MULTILANG_ENABLED.offerings), ladderSpecs: GOLDEN_LADDER
     });
-    expect(body.offerings.default.type).toBe("offerings");
-    expect(body.offerings.default.errors).toEqual([]);
+    expect(Object.keys(body.offerings).sort())
+      .toEqual(["audio_only", "clear", "default", "one_rung"]);
+    Object.keys(body.offerings).forEach((key) => {
+      expect([key, body.offerings[key].type]).toEqual([key, "offerings"]);
+      expect([key, body.offerings[key].errors]).toEqual([key, []]);
+    });
+  });
 
+  test("a second run leaves every offering alone", () => {
     const again = O.EnableOfferings({
-      offerings: O.Clone(MULTILANG_ENABLED.offerings), ladderSpecs: goldenSpecs
+      offerings: O.Clone(MULTILANG_ENABLED.offerings), ladderSpecs: GOLDEN_LADDER
     });
     expect(again.offerings).toEqual(MULTILANG_ENABLED.offerings);
-    expect(again.changes).toEqual([
-      {offering: "default", action: "skipped", reason: "already offerings-based"}
-    ]);
+    expect(again.changes.map((c) => c.action)).toEqual(["skipped", "skipped", "skipped", "skipped"]);
   });
 
   test("every advertised playout URL is a ladder rung", () => {
-    const goldenSpecs =
-      MULTILANG_ENABLED.live_recording.recording_config.recording_params.ladder_specs;
-    const streams = MULTILANG_ENABLED.offerings.default.playout.streams;
-    const advertised = [];
-    Object.keys(streams).forEach((t) =>
-      Object.keys(streams[t].representations).forEach((r) => advertised.push(`${t}/${r}`)));
-    expect(advertised.sort()).toEqual(
-      goldenSpecs.map((r) => `${r.stream_name}/${r.representation}`).sort());
+    // Each derived offering presents a subset, so it must be a subset of the
+    // ladder's URLs; `default` presents all of them.
+    const fromLadder = new Set(
+      GOLDEN_LADDER.map((r) => `${r.stream_name}/${r.representation}`));
+
+    const urls = (key) => {
+      const streams = MULTILANG_ENABLED.offerings[key].playout.streams;
+      const out = [];
+      Object.keys(streams).forEach((t) =>
+        Object.keys(streams[t].representations).forEach((r) => out.push(`${t}/${r}`)));
+      return out.sort();
+    };
+
+    Object.keys(MULTILANG_ENABLED.offerings).forEach((key) => {
+      urls(key).forEach((u) => expect([key, u, fromLadder.has(u)]).toEqual([key, u, true]));
+    });
+    expect(urls("default")).toEqual([...fromLadder].sort());
+  });
+});
+
+describe("golden: offerings derived with add_offering", () => {
+  // The three offerings beside `default` were produced by add_offering on the
+  // same demov3 object and each was played back: `clear` advertises only the
+  // clear playout method, `one_rung` only DRM ones and a single video rung,
+  // and `audio_only` emits its audio as variant streams because it has no
+  // video. All three served init and media segments, one_rung's under AES-128.
+  const offering = (key) => O.Clone(MULTILANG_ENABLED.offerings[key]);
+
+  test.each([
+    ["audio_only", ["audio_1", "audio_2"]],
+    ["clear", ["audio_1", "audio_2", "audio_3", "audio_4", "audio_5", "video"]],
+    ["one_rung", ["audio_1", "audio_2", "audio_3", "audio_5", "video"]]
+  ])("%s presents exactly its tracks", (key, tracks) => {
+    expect(Object.keys(O.Tracks(offering(key))).sort()).toEqual(tracks);
+  });
+
+  test("a filtered offering keeps only the formats it selected", () => {
+    expect(Object.keys(offering("clear").playout.playout_formats)).toEqual(["hls-clear"]);
+    // one_rung drops every clear format, so playout is DRM-only.
+    expect(Object.keys(offering("one_rung").playout.playout_formats).sort())
+      .toEqual(["hls-aes128", "hls-fairplay", "hls-playready-cenc", "hls-sample-aes",
+        "hls-widevine-cenc"]);
+  });
+
+  test("one_rung keeps a single video representation", () => {
+    expect(Object.keys(O.Tracks(offering("one_rung")).video.representations))
+      .toEqual(["videovideo_1920x1080_h264@9500000"]);
+  });
+
+  test("derived offerings inherit encryption_schemes and drm_keys untouched", () => {
+    // This is what let one_rung play under AES-128: filtering formats must not
+    // prune the keys they resolve against.
+    const base = offering("default");
+    ["audio_only", "clear", "one_rung"].forEach((key) => {
+      const derived = offering(key);
+      expect([key, derived.playout.drm_keys]).toEqual([key, base.playout.drm_keys]);
+      Object.keys(O.Tracks(derived)).forEach((trackKey) => {
+        expect([key, trackKey, O.Tracks(derived)[trackKey].encryption_schemes])
+          .toEqual([key, trackKey, O.Tracks(base)[trackKey].encryption_schemes]);
+      });
+    });
+  });
+
+  test("each offering round-trips through ExtractSelection", () => {
+    Object.keys(MULTILANG_ENABLED.offerings).forEach((key) => {
+      const o = offering(key);
+      const selection = O.ExtractSelection({offering: o});
+      expect([key, O.FilterOffering({baseOffering: offering(key), selection})])
+        .toEqual([key, MULTILANG_ENABLED.offerings[key]]);
+    });
+  });
+
+  test("the derived offerings are reproducible from default by FilterOffering", () => {
+    ["audio_only", "clear", "one_rung"].forEach((key) => {
+      const selection = O.ExtractSelection({offering: offering(key)});
+      const built = O.FilterOffering({baseOffering: offering("default"), selection});
+      expect([key, Object.keys(O.Tracks(built)).sort()])
+        .toEqual([key, Object.keys(O.Tracks(offering(key))).sort()]);
+      expect([key, Object.keys(built.playout.playout_formats).sort()])
+        .toEqual([key, Object.keys(offering(key).playout.playout_formats).sort()]);
+    });
   });
 });
 

@@ -304,10 +304,6 @@ Offerings already in `avtest_live` are left untouched — they are deliberate
 presentations, possibly partial ones. Nothing is written when nothing converts,
 so a second run creates no new version.
 
-The write is gated on a stopped stream, and it reuses the stream's existing edge
-write token rather than opening a second draft — two drafts on one live object
-would conflict when both are committed.
-
 Audio source streams with an empty `stream_label` are **skipped**: that is how
 the ladder records "not for playout", and the fabric leaves such a stream out of
 the legacy master playlist. They are reported in `changes.skipped_source_streams`.
