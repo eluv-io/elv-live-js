@@ -1915,11 +1915,64 @@ class EluvioLive {
     });
 
     if (this.debug){
-      console.log("Set Policy response: ", res);
+      console.log("Set Policy response: ", res2);
+    }
+
+    if (!ElvUtils.isTransactionSuccess(res2)) {
+      throw res2;
+    }
+  }
+
+  /**
+   * Sets only the NFT permission addresses (_NFT_ACCESS) for a given object,
+   * leaving the existing policy (_ELV) untouched.
+   *
+   * @namedParams
+   * @param {string} objectId - The NFT object ID
+   * @param {string[]} addresses - Array of addresses to set; replaces the existing list
+   * @param {boolean} [clearAddresses=false] - Clear all existing addresses (addresses must be empty)
+   */
+  async NftSetPolicyAddresses({ objectId, addresses=[], clearAddresses=false }) {
+    if (clearAddresses && addresses.length > 0) {
+      throw Error("Specify either addresses or clear, not both.");
+    }
+    if (!clearAddresses && addresses.length == 0) {
+      throw Error("No addresses specified (use clear to remove all addresses).");
+    }
+
+    for (const address of addresses){
+      if (!ethers.utils.isAddress(address)){
+        throw Error(`"${address}" is not a valid ethereum address.`);
+      }
+    }
+
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    // Permissions can only be set by object owner
+    const objectOwner = await this.client.authClient.Owner({id: objectId});
+    if (objectOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
+      throw Error("Permissions must be set by object owner " + objectOwner);
+    }
+
+    let res = await elvFabric.SetContractMetaPrewarmed({
+      address: objectId,
+      key: "_NFT_ACCESS",
+      value: JSON.stringify(addresses)
+    });
+
+    if (this.debug){
+      console.log("Set _NFT_ACCESS response: ", res);
     }
 
     if (!ElvUtils.isTransactionSuccess(res)) {
-      throw res2;
+      throw res;
     }
   }
 

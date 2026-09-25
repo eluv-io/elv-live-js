@@ -115,6 +115,10 @@ Commands:
   nft_set_policy_permissions <object>       Sets the policy and permissions
   <policy_path> [addrs..]                   granting NFT owners access to a
                                             content object.
+  nft_set_policy_addresses <object>         Sets only the NFT contract addresses
+  [addrs..]                                 granting NFT owners access to a
+                                            content object, leaving the existing
+                                            policy unchanged.
   tenant_get_minter_config <tenant>         Gets the minter configuration for
   [options]                                 this tenant key
   tenant_create_minter_config <tenant>      Creates the minter configuration for
