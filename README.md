@@ -371,6 +371,12 @@ guard, so parallel writes to overlapping metadata are last-write-wins.
 
 - The three writing commands require the stream to be stopped, the same gate as
   `config` and `init`.
+- **A change only reaches playout in the next recording period.** The recorder
+  loads its live metadata when a period starts, so restarting the stream is what
+  makes a converted or newly added offering visible. Until then playout keeps
+  serving the snapshot the session began with, and `options.json` reports
+  `offering not found` for an offering that is committed and valid. `list_offerings`
+  reads the object, so it shows the change immediately either way.
 - `list_offerings` may warn that DASH playout will fail for audio track keys
   other than the literal `audio`. That is a limitation of deployed fabric, not of
   the offering; HLS is unaffected.
