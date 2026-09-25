@@ -1888,20 +1888,24 @@ class EluvioLive {
       value: JSON.stringify(policyFormat)
     });
 
+    if (this.debug) {
+      console.log("Set Policy response: ", res);
+    }
+
     if (!ElvUtils.isTransactionSuccess(res)) {
-      throw res;
+      throw Object.assign(Error(`Set _ELV failed (tx ${res.transactionHash})`), {receipt: res});
     }
 
     if (!clearAddresses && addresses.length == 0) {
       return;
     }
 
-    if (clearAddresses){
+    if (clearAddresses) {
       addresses = [];
     }
 
-    for (const address of addresses){
-      if (!ethers.utils.isAddress(address)){
+    for (const address of addresses) {
+      if (!ethers.utils.isAddress(address)) {
         throw Error(`"${address}" is not a valid ethereum address.`);
       }
     }
@@ -1914,12 +1918,12 @@ class EluvioLive {
       value: addressesString
     });
 
-    if (this.debug){
-      console.log("Set Policy response: ", res2);
+    if (this.debug) {
+      console.log("Set _NFT_ACCESS response: ", res2);
     }
 
     if (!ElvUtils.isTransactionSuccess(res2)) {
-      throw res2;
+      throw Object.assign(Error(`Set _NFT_ACCESS failed (tx ${res2.transactionHash})`), {receipt: res2});
     }
   }
 
@@ -1940,8 +1944,8 @@ class EluvioLive {
       throw Error("No addresses specified (use clear to remove all addresses).");
     }
 
-    for (const address of addresses){
-      if (!ethers.utils.isAddress(address)){
+    for (const address of addresses) {
+      if (!ethers.utils.isAddress(address)) {
         throw Error(`"${address}" is not a valid ethereum address.`);
       }
     }
@@ -1967,12 +1971,12 @@ class EluvioLive {
       value: JSON.stringify(addresses)
     });
 
-    if (this.debug){
+    if (this.debug) {
       console.log("Set _NFT_ACCESS response: ", res);
     }
 
     if (!ElvUtils.isTransactionSuccess(res)) {
-      throw res;
+      throw Object.assign(Error(`Set _NFT_ACCESS failed (tx ${res.transactionHash})`), {receipt: res});
     }
   }
 
@@ -2007,11 +2011,11 @@ class EluvioLive {
       policyPath
     ).toString();
 
-    if (!policyString){
+    if (!policyString) {
       throw Error("Policy file contents is empty.");
     }
 
-    if (this.debug){
+    if (this.debug) {
       console.log("Policy file contents: ", policyString);
     }
 
@@ -2020,19 +2024,19 @@ class EluvioLive {
 
     let policyFormat = await ElvUtils.parseAndSignPolicy({policyString, configUrl:this.configUrl, elvAccount:account});
 
-    if (this.debug){
+    if (this.debug) {
       console.log("Policy Value To Set: ", policyFormat);
     }
 
     const policyValue = JSON.stringify(policyFormat);
 
     // Prepare the permission addresses once (shared across all objects)
-    if (clearAddresses){
+    if (clearAddresses) {
       addresses = [];
     }
 
-    for (const address of addresses){
-      if (!ethers.utils.isAddress(address)){
+    for (const address of addresses) {
+      if (!ethers.utils.isAddress(address)) {
         throw Error(`"${address}" is not a valid ethereum address.`);
       }
     }
@@ -2086,7 +2090,7 @@ class EluvioLive {
           const receipts = await Promise.all(txs.map(tx => tx.wait()));
           for (const receipt of receipts) {
             if (!ElvUtils.isTransactionSuccess(receipt)) {
-              throw receipt;
+              throw Object.assign(Error(`Transaction failed (tx ${receipt.transactionHash})`), {receipt});
             }
           }
           succeeded.push(objectId);
