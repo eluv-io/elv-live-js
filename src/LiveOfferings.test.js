@@ -3,6 +3,7 @@ const O = require("./LiveOfferings.js");
 const LEGACY = require("../test/testdata/live_offerings_legacy.json");
 const ENABLED = require("../test/testdata/live_offerings_enabled.json");
 const MULTILANG = require("../test/testdata/live_offerings_legacy_multilang.json");
+const MULTILANG_ENABLED = require("../test/testdata/live_offerings_enabled_multilang.json");
 
 const LADDER = LEGACY.live_recording.recording_config.recording_params.ladder_specs;
 const ladder = () => O.SourceStreams(LADDER);
@@ -370,6 +371,81 @@ describe("representations are generated from ladder_specs", () => {
     Object.values(diverged.default.playout.streams.audio_1.representations)[0].bit_rate = 128000;
     expect(codes(O.DescribeOfferings({offerings: diverged, ladderSpecs: specs}).offerings.default.warnings))
       .toContain("W_BITRATE_DIVERGES");
+  });
+});
+
+describe("golden: the converted form of a legacy object", () => {
+  // live_offerings_enabled_multilang.json is a verified artifact, not a
+  // snapshot of this code's output: it is the metadata of demov3 object
+  // iq__P3xUVn2MpNEjabinoJixRPM7FfP after enable_offerings, whose HLS master
+  // playlist was confirmed identical to the same object's legacy one, with
+  // every rung's playlist, init segment and media segment serving 200 and
+  // ffprobe showing each video segment decoded at the rung's declared
+  // geometry and bitrate.
+  //
+  // It is the converted form of a DIFFERENT object from the legacy fixture -
+  // we have no pre-conversion dump of this one - so DRM material cannot match:
+  // encryption_schemes and drm_keys are per-object and are inherited from
+  // whichever base offering create() built. Everything the transformation
+  // itself decides is compared exactly.
+  const specs = MULTILANG.live_recording.recording_config.recording_params.ladder_specs;
+  const convert = () =>
+    O.EnableOfferings({offerings: O.Clone(MULTILANG.offerings), ladderSpecs: specs}).offerings.default;
+
+  const golden = () => O.Clone(MULTILANG_ENABLED.offerings.default);
+
+  test("play_mode, tracks and representations match the verified object exactly", () => {
+    const got = convert().playout.streams;
+    const want = golden().playout.streams;
+
+    expect(convert().play_mode).toBe(MULTILANG_ENABLED.offerings.default.play_mode);
+    expect(Object.keys(got).sort()).toEqual(Object.keys(want).sort());
+
+    Object.keys(want).forEach((trackKey) => {
+      expect(got[trackKey].representations).toEqual(want[trackKey].representations);
+      expect(got[trackKey].label).toEqual(want[trackKey].label);
+      expect(got[trackKey].default_for_media_type).toEqual(want[trackKey].default_for_media_type);
+    });
+  });
+
+  test("nothing outside playout.streams and play_mode is invented", () => {
+    // Per-object DRM material and mez_prep_specs provenance aside, the rest of
+    // the offering is whatever the base offering already carried.
+    const got = convert();
+    const want = golden();
+    ["drm_optional", "offer_as_live", "store_clear", "audio_individual_drm_keys", "ready"]
+      .forEach((field) => expect(got[field]).toEqual(want[field]));
+    expect(Object.keys(got.playout.playout_formats).sort())
+      .toEqual(Object.keys(want.playout.playout_formats).sort());
+  });
+
+  test("the golden object is itself valid, and is left alone by a second run", () => {
+    const goldenSpecs =
+      MULTILANG_ENABLED.live_recording.recording_config.recording_params.ladder_specs;
+    const body = O.DescribeOfferings({
+      offerings: O.Clone(MULTILANG_ENABLED.offerings), ladderSpecs: goldenSpecs
+    });
+    expect(body.offerings.default.type).toBe("offerings");
+    expect(body.offerings.default.errors).toEqual([]);
+
+    const again = O.EnableOfferings({
+      offerings: O.Clone(MULTILANG_ENABLED.offerings), ladderSpecs: goldenSpecs
+    });
+    expect(again.offerings).toEqual(MULTILANG_ENABLED.offerings);
+    expect(again.changes).toEqual([
+      {offering: "default", action: "skipped", reason: "already offerings-based"}
+    ]);
+  });
+
+  test("every advertised playout URL is a ladder rung", () => {
+    const goldenSpecs =
+      MULTILANG_ENABLED.live_recording.recording_config.recording_params.ladder_specs;
+    const streams = MULTILANG_ENABLED.offerings.default.playout.streams;
+    const advertised = [];
+    Object.keys(streams).forEach((t) =>
+      Object.keys(streams[t].representations).forEach((r) => advertised.push(`${t}/${r}`)));
+    expect(advertised.sort()).toEqual(
+      goldenSpecs.map((r) => `${r.stream_name}/${r.representation}`).sort());
   });
 });
 
