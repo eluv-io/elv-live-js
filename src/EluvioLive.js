@@ -1933,12 +1933,16 @@ class EluvioLive {
    *
    * @namedParams
    * @param {string} objectId - The NFT object ID
-   * @param {string[]} addresses - Array of addresses to set; replaces the existing list
-   * @param {boolean} [clearAddresses=false] - Clear all existing addresses (addresses must be empty)
+   * @param {string[]} addresses - Array of addresses to set; replaces the existing list unless appendAddresses is set
+   * @param {boolean} [clearAddresses=false] - Clear all existing addresses
+   * @param {boolean} [appendAddresses=false] - Append addresses to the existing list
    */
-  async NftSetPolicyAddresses({ objectId, addresses=[], clearAddresses=false }) {
+  async NftSetPolicyAddresses({ objectId, addresses=[], clearAddresses=false, appendAddresses=false }) {
     if (clearAddresses && addresses.length > 0) {
       throw Error("Specify either addresses or clear, not both.");
+    }
+    if (clearAddresses && appendAddresses) {
+      throw Error("Specify either append or clear, not both.");
     }
     if (!clearAddresses && addresses.length == 0) {
       throw Error("No addresses specified (use clear to remove all addresses).");
@@ -1963,6 +1967,47 @@ class EluvioLive {
     const objectOwner = await this.client.authClient.Owner({id: objectId});
     if (objectOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
       throw Error("Permissions must be set by object owner " + objectOwner);
+    }
+
+    if (appendAddresses) {
+      const existingString = await elvFabric.GetContractMeta({
+        address: objectId,
+        key: "_NFT_ACCESS"
+      });
+
+      if (this.debug) {
+        console.log("Get _NFT_ACCESS response: ", existingString);
+      }
+
+      // an unparseable existing value is an error here, since treating it as empty would silently overwrite it
+      let existing = [];
+      if (existingString) {
+        try {
+          existing = JSON.parse(existingString);
+        } catch (e) {
+          throw Error(`Couldn't parse existing _NFT_ACCESS value, not appending: ${existingString}`);
+        }
+        if (!Array.isArray(existing)) {
+          throw Error(`Existing _NFT_ACCESS value is not a list, not appending: ${existingString}`);
+        }
+      }
+
+      const seen = new Set(existing.map(a => String(a).toLowerCase()));
+      const added = [];
+      for (const address of addresses) {
+        if (!seen.has(address.toLowerCase())) {
+          seen.add(address.toLowerCase());
+          added.push(address);
+        }
+      }
+
+      if (added.length == 0) {
+        console.log("All addresses already present, nothing to append.");
+        return;
+      }
+
+      console.log(`Appending ${added.length} address(es) to ${existing.length} existing.`);
+      addresses = existing.concat(added);
     }
 
     let res = await elvFabric.SetContractMetaPrewarmed({

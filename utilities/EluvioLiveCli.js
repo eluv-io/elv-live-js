@@ -1519,7 +1519,8 @@ const CmdNFTSetPolicyAddresses = async ({ argv }) => {
     await elvlv.NftSetPolicyAddresses({
       objectId: argv.object,
       addresses: argv.addrs || [],
-      clearAddresses: argv.clear
+      clearAddresses: argv.clear,
+      appendAddresses: argv.append
     });
 
     console.log("Success!");
@@ -2757,11 +2758,16 @@ yargs(hideBin(process.argv))
         })
         .positional("addrs", {
           describe:
-            "List of space separated NFT contract addresses to set. Replaces the existing list.",
+            "List of space separated NFT contract addresses to set. Replaces the existing list unless --append is used.",
           type: "string",
         })
         .option("clear", {
           describe: "Clear all NFT contract addresses from the content object.",
+          type: "boolean",
+          default: false
+        })
+        .option("append", {
+          describe: "Add the addresses to the existing list instead of replacing it. Addresses already present are skipped.",
           type: "boolean",
           default: false
         });
