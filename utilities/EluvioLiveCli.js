@@ -1512,6 +1512,23 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   }
 };
 
+const CmdNFTSetPolicyAddresses = async ({ argv }) => {
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    await elvlv.NftSetPolicyAddresses({
+      objectId: argv.object,
+      addresses: argv.addrs || [],
+      clearAddresses: argv.clear,
+      appendAddresses: argv.append
+    });
+
+    console.log("Success!");
+  } catch (e) {
+    console.error("ERROR:", argv.verbose ? e : e.message);
+  }
+};
+
 const CmdNFTSetPolicyPermissionsBatch = async ({ argv }) => {
   console.log("NFT Set Policy and Permissions (batch)");
   console.log(`Object list file: ${argv.object_list}`);
@@ -2727,6 +2744,36 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdNFTSetPolicyPermissions({ argv });
+    }
+  )
+
+  .command(
+    "nft_set_policy_addresses <object> [addrs..]",
+    "Sets the NFT contract addresses granting NFT owners access to a content object, leaving the existing policy unchanged.",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object to grant access to",
+          type: "string",
+        })
+        .positional("addrs", {
+          describe:
+            "List of space separated NFT contract addresses to set. Replaces the existing list unless --append is used.",
+          type: "string",
+        })
+        .option("clear", {
+          describe: "Clear all NFT contract addresses from the content object.",
+          type: "boolean",
+          default: false
+        })
+        .option("append", {
+          describe: "Append the addresses to the existing list instead of replacing it.",
+          type: "boolean",
+          default: false
+        });
+    },
+    (argv) => {
+      CmdNFTSetPolicyAddresses({ argv });
     }
   )
 

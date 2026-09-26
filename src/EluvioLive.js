@@ -1888,20 +1888,24 @@ class EluvioLive {
       value: JSON.stringify(policyFormat)
     });
 
+    if (this.debug) {
+      console.log("Set Policy response: ", res);
+    }
+
     if (!ElvUtils.isTransactionSuccess(res)) {
-      throw res;
+      throw Object.assign(Error(`Set _ELV failed (tx ${res.transactionHash})`), {receipt: res});
     }
 
     if (!clearAddresses && addresses.length == 0) {
       return;
     }
 
-    if (clearAddresses){
+    if (clearAddresses) {
       addresses = [];
     }
 
-    for (const address of addresses){
-      if (!ethers.utils.isAddress(address)){
+    for (const address of addresses) {
+      if (!ethers.utils.isAddress(address)) {
         throw Error(`"${address}" is not a valid ethereum address.`);
       }
     }
@@ -1914,12 +1918,110 @@ class EluvioLive {
       value: addressesString
     });
 
-    if (this.debug){
-      console.log("Set Policy response: ", res);
+    if (this.debug) {
+      console.log("Set _NFT_ACCESS response: ", res2);
+    }
+
+    if (!ElvUtils.isTransactionSuccess(res2)) {
+      throw Object.assign(Error(`Set _NFT_ACCESS failed (tx ${res2.transactionHash})`), {receipt: res2});
+    }
+  }
+
+  /**
+   * Sets the NFT permission addresses (_NFT_ACCESS) for a given object,
+   * leaving the existing policy (_ELV) untouched.
+   *
+   * @namedParams
+   * @param {string} objectId - The NFT object ID
+   * @param {string[]} addresses - Array of addresses to set; replaces the existing list unless appendAddresses is set
+   * @param {boolean} [clearAddresses=false] - Clear all existing addresses
+   * @param {boolean} [appendAddresses=false] - Append addresses to the existing list
+   */
+  async NftSetPolicyAddresses({ objectId, addresses=[], clearAddresses=false, appendAddresses=false }) {
+    if (clearAddresses && addresses.length > 0) {
+      throw Error("Specify either addresses or clear, not both.");
+    }
+    if (clearAddresses && appendAddresses) {
+      throw Error("Specify either append or clear, not both.");
+    }
+    if (!clearAddresses && addresses.length == 0) {
+      throw Error("No addresses specified (use clear to remove all addresses).");
+    }
+
+    for (const address of addresses) {
+      if (!ethers.utils.isAddress(address)) {
+        throw Error(`"${address}" is not a valid ethereum address.`);
+      }
+    }
+
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    // Permissions can only be set by object owner
+    const objectOwner = await this.client.authClient.Owner({id: objectId});
+    if (objectOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
+      throw Error("Permissions must be set by object owner " + objectOwner);
+    }
+
+    if (appendAddresses) {
+      const existingString = await elvFabric.GetContractMeta({
+        address: objectId,
+        key: "_NFT_ACCESS"
+      });
+
+      if (this.debug) {
+        console.log("Get _NFT_ACCESS response: ", existingString);
+      }
+
+      // an unparseable existing value is an error here, since treating it as empty would silently overwrite it
+      let existing = [];
+      if (existingString) {
+        try {
+          existing = JSON.parse(existingString);
+        } catch (e) {
+          throw Error(`Couldn't parse existing _NFT_ACCESS value, not appending: ${existingString}`);
+        }
+        if (!Array.isArray(existing)) {
+          throw Error(`Existing _NFT_ACCESS value is not a list, not appending: ${existingString}`);
+        }
+      }
+
+      const seen = new Set(existing.map(a => String(a).toLowerCase()));
+      const added = [];
+      for (const address of addresses) {
+        if (!seen.has(address.toLowerCase())) {
+          seen.add(address.toLowerCase());
+          added.push(address);
+        }
+      }
+
+      if (added.length == 0) {
+        console.log("All addresses already present, nothing to append.");
+        return;
+      }
+
+      console.log(`Appending ${added.length} address(es) to ${existing.length} existing.`);
+      addresses = existing.concat(added);
+    }
+
+    let res = await elvFabric.SetContractMetaPrewarmed({
+      address: objectId,
+      key: "_NFT_ACCESS",
+      value: JSON.stringify(addresses)
+    });
+
+    if (this.debug) {
+      console.log("Set _NFT_ACCESS response: ", res);
     }
 
     if (!ElvUtils.isTransactionSuccess(res)) {
-      throw res2;
+      throw Object.assign(Error(`Set _NFT_ACCESS failed (tx ${res.transactionHash})`), {receipt: res});
     }
   }
 
@@ -1954,11 +2056,11 @@ class EluvioLive {
       policyPath
     ).toString();
 
-    if (!policyString){
+    if (!policyString) {
       throw Error("Policy file contents is empty.");
     }
 
-    if (this.debug){
+    if (this.debug) {
       console.log("Policy file contents: ", policyString);
     }
 
@@ -1967,19 +2069,19 @@ class EluvioLive {
 
     let policyFormat = await ElvUtils.parseAndSignPolicy({policyString, configUrl:this.configUrl, elvAccount:account});
 
-    if (this.debug){
+    if (this.debug) {
       console.log("Policy Value To Set: ", policyFormat);
     }
 
     const policyValue = JSON.stringify(policyFormat);
 
     // Prepare the permission addresses once (shared across all objects)
-    if (clearAddresses){
+    if (clearAddresses) {
       addresses = [];
     }
 
-    for (const address of addresses){
-      if (!ethers.utils.isAddress(address)){
+    for (const address of addresses) {
+      if (!ethers.utils.isAddress(address)) {
         throw Error(`"${address}" is not a valid ethereum address.`);
       }
     }
@@ -2033,7 +2135,7 @@ class EluvioLive {
           const receipts = await Promise.all(txs.map(tx => tx.wait()));
           for (const receipt of receipts) {
             if (!ElvUtils.isTransactionSuccess(receipt)) {
-              throw receipt;
+              throw Object.assign(Error(`Transaction failed (tx ${receipt.transactionHash})`), {receipt});
             }
           }
           succeeded.push(objectId);
