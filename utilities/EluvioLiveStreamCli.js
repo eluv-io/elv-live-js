@@ -181,6 +181,30 @@ const CmdStreamStatus = async ({ argv }) => {
   }
 };
 
+const CmdOutputSetNodeIds = async ({ argv }) => {
+  try {
+    const elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    const { meta, hash } = await elvStream.SetOutputNodesId({
+      outputId: argv.outputId,
+      outputName: argv.outputName,
+      nodeIds: argv.nodeIds,
+      outputType: argv.output_type
+    });
+    console.log(yaml.dump({ meta, hash }));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+
 const CmdOutputStatus = async ({ argv }) => {
   try {
     const elvStream = new EluvioLiveStream({
@@ -722,6 +746,34 @@ yargs(hideBin(process.argv))
           }
         )
         .command(
+          "setnodeids <outputId> <outputName> <nodeIds ..>",
+          "Set the node ID for a live output.",
+          (yargs) => {
+            return yargs
+              .option("output_type", {
+                describe: "Type of live output (srt_pull, srt_push, rtp, udp)",
+                type: "string",
+                choices: ["srt_pull", "srt_push", "rtp", "udp"],
+                default: "srt_pull"
+              })
+              .positional("outputId", {
+                describe: "Live output settings object ID",
+                type: "string",
+              })
+              .positional("outputName", {
+                describe: "Live output ID (for example, out001)",
+                type: "string",
+              })
+              .positional("nodeIds", {
+                describe: "Node IDs for the live output (space-separated list)",
+                type: "string",
+              });
+          },
+          (argv) => {
+            CmdOutputSetNodeIds({ argv });
+          }
+        )
+        .command(
           "list",
           "List live output IDs, names, delivery types, and URLs for the current tenant.",
           (yargs) => yargs,
@@ -730,6 +782,7 @@ yargs(hideBin(process.argv))
           }
         )
         .demandCommand(1);
+
     }
   )
   .command(
