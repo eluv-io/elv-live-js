@@ -254,7 +254,7 @@ const CmdNftBurn = async ({ argv }) => {
 };
 
 const CmdNftProxyBurn = async ({ argv }) => {
-  console.log("NFT Proxy burn ", argv.tenant, 'addr:'+argv.addr, 'id:'+argv.token_id, 'from:'+argv.from_addr);
+  console.log("NFT Proxy burn ", argv.tenant, "addr:"+argv.addr, "id:"+argv.token_id, "from:"+argv.from_addr);
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
