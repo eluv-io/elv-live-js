@@ -254,13 +254,15 @@ const CmdNftBurn = async ({ argv }) => {
 };
 
 const CmdNftProxyBurn = async ({ argv }) => {
-  console.log("NFT Proxy burn ", argv.addr, argv.token_id);
+  console.log("NFT Proxy burn ", argv.tenant, "addr:"+argv.addr, "id:"+argv.token_id, "from:"+argv.from_addr);
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.NftProxyBurn({
       addr: argv.addr,
       tokenId: argv.token_id,
+      fromAddr: argv.from_addr,
+      tenant: argv.tenant,
     });
 
     console.log(yaml.dump(res));
@@ -2483,8 +2485,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_proxy_burn <addr> <token_id>",
-    "Burn the specified NFT",
+    "nft_proxy_burn <addr> <token_id> [from_addr] [tenant] [options]",
+    "Burn the specified NFT by transferring it to 0x...0dead via the Authority Service",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -2494,6 +2496,14 @@ yargs(hideBin(process.argv))
         .positional("token_id", {
           describe: "External token ID",
           type: "string", // BigNumber as string
+        })
+        .positional("from_addr", {
+          describe: "Current owner address (hex); looked up from the contract if omitted",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID (iten...); looked up via contract address if omitted",
+          type: "string",
         });
     },
     (argv) => {

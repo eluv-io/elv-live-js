@@ -2789,14 +2789,57 @@ class EluvioLive {
   /**
    * Burn the specified NFT token as a proxy owner
    *
+   * Uses the Authority Service to proxy-transfer the token from
+   * fromAddr to 0x...0dead using the tenant's proxy owner key
+   *
    * @namedParams
-   * @param {string} addr - Local NFT contract address
-   * @param {integer} tokenId - External NFT token ID
+   * @param {string} addr - NFT contract address
+   * @param {integer} tokenId - NFT token ID
+   * @param {string} fromAddr - current token owner (optional: looked up via ownerOf if not provided)
+   * @param {string} tenant - The tenant ID (optional: looked up via contract address if not provided)
    * @return {Promise<Object>} - NFT info JSON
    */
-  // eslint-disable-next-line no-unused-vars
-  async NftProxyBurn({ addr, tokenId }) {
-    return "Sorry, not yet implemented.";
+  async NftProxyBurn({ addr, tokenId, fromAddr, tenant }) {
+    if (!tenant) {
+      try {
+        const configRes = await this.client.authClient.MakeAuthServiceRequest({
+          method: "GET",
+          path: urljoin(this.asUrlPath, "config", "nft", addr),
+        });
+        tenant = (await configRes.json()).tenant;
+      } catch (e) {
+        throw Error(`Could not determine tenant for contract ${addr} (${e.status || ""} ${e.message || e}); pass explicitly`);
+      }
+      if (!tenant) {
+        throw Error(`Could not determine tenant for contract ${addr}; pass explicitly`);
+      }
+      console.log("Tenant", tenant);
+    }
+
+    if (!fromAddr) {
+      const abi = fs.readFileSync(
+        path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+      );
+      fromAddr = await this.client.CallContractMethod({
+        contractAddress: addr,
+        abi: JSON.parse(abi),
+        methodName: "ownerOf",
+        methodArgs: [tokenId],
+        formatArguments: true,
+      });
+      console.log("Token owner", fromAddr);
+    }
+
+    const res = await this.PostServiceRequest({
+      path: urljoin("tnt", tenant, "entitlement", "revoke"),
+      body: {
+        nft_addr: addr,
+        token_id: tokenId.toString(),
+        from_addr: fromAddr,
+      },
+      useFabricToken: true,
+    });
+    return await res.json();
   }
 
   /**
