@@ -2502,7 +2502,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("tenant", {
-          describe: "Tenant ID (iten...); looked up from the contract if omitted",
+          describe: "Tenant ID (iten...); looked up via contract address if omitted",
           type: "string",
         });
     },

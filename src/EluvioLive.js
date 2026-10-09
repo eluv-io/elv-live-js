@@ -2796,7 +2796,7 @@ class EluvioLive {
    * @param {string} addr - NFT contract address
    * @param {integer} tokenId - NFT token ID
    * @param {string} fromAddr - current token owner (optional: looked up via ownerOf if not provided)
-   * @param {string} tenant - The tenant ID (optional: looked up from the contract if not provided)
+   * @param {string} tenant - The tenant ID (optional: looked up via contract address if not provided)
    * @return {Promise<Object>} - NFT info JSON
    */
   async NftProxyBurn({ addr, tokenId, fromAddr, tenant }) {
