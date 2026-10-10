@@ -235,6 +235,154 @@ The general flow for managing a live stream is:
 
    After `elv-stream terminate` is run, the stream is ended and can no longer be restarted. You can create a new stream within the same content object.
 
+### Offerings
+
+An offering decides which of the recorded streams a viewer can select, and under
+which playout formats. There are two models:
+
+- **Legacy** — playout is built from `ladder_specs`, and the single offering
+  exists only to carry DRM keys. Its track keys must be the generic `audio` and
+  `video`.
+- **Offerings-based** — `play_mode: "avtest_live"`. Playout is built from the
+  offering itself, so one object can expose several named offerings, each
+  selecting a different subset of the recorded streams. Track keys appear in the
+  playout URL.
+
+Three terms are used throughout, because the metadata overloads the word
+"stream":
+
+| term | what it is | where it lives |
+|---|---|---|
+| **source stream** | one audio or video program the recorder produces | `ladder_specs[].stream_name` — what `media_struct_stream_key` points at |
+| **track** | one selectable rendition group in an offering | `offerings.<key>.playout.streams.<trackKey>` |
+| **representation** | one rendition of a track — a playout target the fabric transcodes to on request, not a description of the recording | `…streams.<trackKey>.representations.<repKey>` |
+
+> These commands are a **client-side stopgap**. Creating and editing live
+> offerings belongs server-side, in the content-fabric `/rep/live/offerings/`
+> API; until that ships, this is how it is done.
+
+#### `list_offerings <object_id>`
+
+Prints JSON: the object's source streams, and for each offering its `type`,
+whether it is `valid`, any `errors` and `warnings`, its tracks, and the selection
+that would reproduce it.
+
+It is also a validator, and **sets an exit code** — unlike the other `elv-stream`
+commands, which always exit 0:
+
+| code | meaning |
+|---|---|
+| `0` | success; every offering is valid |
+| `1` | the command failed — bad arguments, network, state gate, or a write refused |
+| `2` | it ran, but at least one offering is invalid |
+
+Two classes of error are worth knowing, because the fabric reports them poorly.
+A wrong **video** `media_struct_stream_key` produces a perfectly well-formed
+master playlist and then fails every segment request; and representations within
+one track that disagree on `media_struct_stream_key` validate on the first one
+and emit `CHANNELS="0",NAME=""` for the rest.
+
+Source stream names are checked against `ladder_specs`. Whether the ingest
+actually delivers them is only known once recording starts.
+
+#### `enable_offerings <object_id>`
+
+Converts legacy offerings to offerings-based playout: one track per audio source
+stream, keyed by the source stream's name, labels taken from the ladder's
+`stream_label`, and the ladder's default audio stream propagated.
+
+**Representations are generated from `ladder_specs`**, one per rung, keyed by the
+rung's own `representation` field. Both `ladder_specs` and an offering's
+representations are playout specifications — the renditions the fabric will
+serve — and `play_mode` decides which of the two is authoritative. Since the
+offering's were built by `create` from a fabricated source rather than from this
+object's ladder, generating them is what keeps conversion observationally
+neutral: the converted offering advertises exactly the rungs `ladder_specs`
+declares — no more, and in particular no fewer.
+
+Offerings already in `avtest_live` are left untouched — they are deliberate
+presentations, possibly partial ones. Nothing is written when nothing converts,
+so a second run creates no new version.
+
+Audio source streams with an empty `stream_label` are **skipped**: that is how
+the ladder records "not for playout", and the fabric leaves such a stream out of
+the legacy master playlist. They are reported in `changes.skipped_source_streams`.
+
+#### `add_offering <object_id> <offering_key>`
+
+Copies a base offering (`--base_offering`, default `default`) and applies
+`--offering_selection` as a **filter** — absent means keep everything, present
+means keep only what is listed. Nothing is renamed or repointed; every surviving
+field keeps the value it had in the base.
+
+```json
+{
+  "default_audio_key": "audio_3",
+  "formats": ["hls-clear", "dash-widevine"],
+  "tracks": {
+    "audio_3": ["audioaudio_aac@128000"],
+    "video":   ["videovideo_1920x1080_h264@9500000"]
+  }
+}
+```
+
+| field | absent | present |
+|---|---|---|
+| `tracks` | all tracks kept | only the listed track keys kept |
+| `tracks.<key>` | `null` keeps all its representations | only the listed representation keys kept |
+| `formats` | all playout formats kept | only the listed formats kept |
+
+`default_audio_key` is the one non-filter key: which track is the default is only
+answerable after filtering, since a selection may exclude the base's default.
+
+Naming a track, representation or format the base does not have is an error that
+lists what is available. `list_offerings` emits a ready-made selection per
+offering, so the quickest way to write one is to copy that and delete from it.
+
+#### `delete_offering <object_id> <offering_key>`
+
+Removes one offering. Deleting the last remaining offering is refused — an object
+with none loses its DRM keys. There is no `--force`: replacing an offering is a
+delete followed by an add, which with `--write_token` lands in a single commit.
+
+#### Drafts
+
+All four commands accept `--write_token`, so several changes can be staged in one
+draft and committed once. The three that write also accept `--finalize`, which
+defaults to false when a write token is supplied.
+
+```bash
+elv-stream create --object_id iq__... --no-finalize          # prints writeToken
+elv-stream enable_offerings iq__... --write_token tq__...
+elv-stream add_offering iq__... commentary \
+    --offering_selection selection.json --write_token tq__...
+elv-stream list_offerings iq__... --write_token tq__...      # inspect before committing
+node <elv-utils-js>/utilities/DraftFinalize.js \
+    --writeToken tq__... --commitMsg "add commentary offering"
+```
+
+Nothing is committed until that last step. `--dry_run` on `enable_offerings` and
+`add_offering` computes and prints the result without touching the fabric at all.
+
+Run these commands sequentially against one draft — there is no concurrency
+guard, so parallel writes to overlapping metadata are last-write-wins.
+
+#### Notes
+
+- The three writing commands require the stream to be stopped, the same gate as
+  `config` and `init`.
+- **A change only reaches playout in the next recording period.** The recorder
+  loads its live metadata when a period starts, so restarting the stream is what
+  makes a converted or newly added offering visible. Until then playout keeps
+  serving the snapshot the session began with, and `options.json` reports
+  `offering not found` for an offering that is committed and valid. `list_offerings`
+  reads the object, so it shows the change immediately either way.
+- `list_offerings` may warn that DASH playout will fail for audio track keys
+  other than the literal `audio`. That is a limitation of deployed fabric, not of
+  the offering; HLS is unaffected.
+- `live_recording_config.playout_config.playout_formats` does **not** drive
+  playout. Formats come from the offering's own `playout.playout_formats`.
+
 ---
 
 ## EluvioAdmin CLI
