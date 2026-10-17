@@ -486,7 +486,7 @@ const CmdLiveTenantDeploy = async ({ argv }) => {
 
     })
 
-  console.log(yaml.dump(res));
+  console.log(`Live Tenant ${argv.tenant_id}/${argv.tenant_slug}  Deployed on ${argv.environment} `);
   } catch (e) {
     console.error("ERROR:", e);
   }
