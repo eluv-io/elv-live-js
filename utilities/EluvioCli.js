@@ -25,6 +25,8 @@ const sql = postgres({
   password: "",
 });
 
+const {ElvWalletClient,ElvClient} = require("@eluvio/elv-client-js");
+
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
 //  (Use `node --trace-warnings ...` to show where the warning was created)
@@ -448,6 +450,45 @@ const CmdTenantFundUser = async ({ argv }) => {
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e.message);
+  }
+};
+
+const CmdLiveTenantDeploy = async ({ argv }) => {
+  try {
+    
+    console.log(`Live Tenant Deploy \`${Config.net}  ${argv.tenant_slug} ${argv.tenant_id} - ${argv.environment}\``);
+    const client = await ElvClient.FromConfigurationUrl({
+      configUrl: Config.networks[Config.net],
+    });
+    const w  = client.GenerateWallet();
+    const s = w.AddAccount({privateKey: process.env.PRIVATE_KEY});
+    client.SetSigner({ signer:s });
+    client.ToggleLogging(argv.verbose);
+  
+    const wclient = await ElvWalletClient.Initialize({
+      client:client,
+      appId: "default",
+      skipMarketplaceLoad: true,
+      storeAuthToken: false,
+      network: Config.net,
+      mode: argv.environment,
+      marketplaceParams: {
+        tenantSlug: argv.tenant_slug,
+        marketplaceSlug: argv.marketplace_slug
+      }
+    })
+
+    let res = await wclient.DeployTenant({
+      tenantId: argv.tenant_id,
+      tenantSlug: argv.tenant_slug,
+      tenantLatestHQ: argv.tenant_latest_hq,
+      environment: argv.environment
+
+    })
+
+  console.log(`Live Tenant ${argv.tenant_id}/${argv.tenant_slug}  Deployed on ${argv.environment} `);
+  } catch (e) {
+    console.error("ERROR:", e);
   }
 };
 
@@ -2299,6 +2340,41 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdGetTenantInfo({ argv });
+    }
+  )
+
+  .command(
+    "live_tenant_deploy <tenant_id> <tenant_slug> [options]",
+    "Deploys a tenant on the live object id",
+    (yargs) => {
+      yargs
+        .positional("tenant_id", {
+          describe: "Tenant Id",
+          type: "string",
+        })
+        .positional("tenant_slug", {
+          describe: "Tenant Slug",
+          type: "string",
+        })
+        .option("tenant_latest_hq", {
+          describe: "Latest HQ for tenant object",
+          type: "string",
+        })
+        .option("marketplace_slug", {
+          describe: "Marketplace Slug",
+          type: "string",
+        })
+        .option("environment", {
+          describe:
+            "Type of environment.",
+          choices: ["production", "staging"],
+          default: "production",
+        });
+        
+        
+    },
+    (argv) => {
+      CmdLiveTenantDeploy({ argv });
     }
   )
 
