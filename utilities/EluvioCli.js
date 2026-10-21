@@ -1938,7 +1938,7 @@ yargs(hideBin(process.argv))
         })
         .positional("funds", {
           describe:
-            "How much to fund the new account from this private key in ETH.",
+            "How much to send from this private key in ETH.",
           type: "string",
         });
     },
@@ -1963,7 +1963,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "account_offer_signature <nft_addr> <mint_helper_addr> <token_id> <offer_id>",
-    "Creates an offer signature for use by the minter to redeem and nft offer. Note the current key must be a token owner of the nft.",
+    "Creates an offer signature for use by the minter to redeem an nft offer. Note the current key must be a token owner of the nft.",
     (yargs) => {
       yargs
         .positional("nft_addr", {
@@ -1993,7 +1993,7 @@ yargs(hideBin(process.argv))
     "Creates a fabric token using this key",
     (yargs) => {
       yargs.option("duration", {
-        describe: "Library ID to authorize",
+        describe: "Time until the token expires, in milliseconds (default: 120000 = 2 min)",
         type: "string",
       });
     },
@@ -2114,7 +2114,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "space_tenant_info <tenant>",
-    "Shot tenant information.",
+    "Show tenant information.",
     (yargs) => {
       yargs.positional("tenant", {
         describe: "Tenant ID (iten)",
@@ -2471,7 +2471,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "space_tenant_set_eluvio_live_id <tenant> <eluvio_live_id>",
-    "Set the tenant-leve Eluvio Live object ID in the tenant contract.",
+    "Set the tenant-level Eluvio Live object ID in the tenant contract.",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -2479,7 +2479,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("eluvio_live_id", {
-          describe: "Object ID of the tenant-leve Eluvio Live object (iq)",
+          describe: "Object ID of the tenant-level Eluvio Live object (iq)",
           type: "string",
         });
     },
@@ -2498,7 +2498,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("library", {
-          describe: "Libary ID",
+          describe: "Library ID",
           type: "string",
         })
         .option("limit", {
@@ -2513,7 +2513,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "content_meta_set_batch <csv_file>",
-    "Set metadata fields for the list of content object IDs in the CSV fle.",
+    "Set metadata fields for the list of content object IDs in the CSV file.",
     (yargs) => {
       yargs
         .positional("csv_file", {
@@ -2692,7 +2692,7 @@ yargs(hideBin(process.argv))
     (yargs) => {
       yargs.positional("address", {
         describe:
-          "this address would be remove from the authorized address list",
+          "this address would be removed from the authorized address list",
         type: "string",
       });
     },

@@ -549,7 +549,7 @@ yargs(hideBin(process.argv))
         })
         .option("start", {
           describe:
-            "Optionally start the the new stream (equivalent to calling 'start')",
+            "Optionally start the new stream (equivalent to calling 'start')",
           type: "boolean",
         })
         .option("show_curl", {
@@ -655,7 +655,7 @@ yargs(hideBin(process.argv))
   )
   .command(
     "insertion <stream> <time> <target_hash>",
-    "Pauses the currently active live stream.",
+    "Add or remove (with --remove) a content insertion in the live stream at the given time.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -697,7 +697,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "download <stream>",
-    "Download the live stream recording and creates and mp4 file.",
+    "Download the live stream recording and create an mp4 file.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -707,7 +707,7 @@ yargs(hideBin(process.argv))
         })
         .option("period", {
           describe:
-            "Download a specific recording period (instead of the lastone)",
+            "Download a specific recording period (instead of the last one)",
           type: "int",
         })
         .option("offset", {
