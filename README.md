@@ -55,7 +55,9 @@ Options:
       --help     Show help                                             [boolean]
 ```
 
-[Complete Command Line Help](CMDLINE.md)
+Complete Command Line Reference:
+  [https://docs.eluv.io/tools/eluvio-live-cli/overview/](https://docs.eluv.io/tools/eluvio-live-cli/overview/)
+
 
 ### Usage Examples
 
