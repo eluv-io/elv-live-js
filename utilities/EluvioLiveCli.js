@@ -2346,7 +2346,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "nft_proxy_transfer <addr> <token_id> <from_addr> <to_addr>",
-    "Tranfer NFT as a proxy owner",
+    "Transfer NFT as a proxy owner",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -2373,7 +2373,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "nft_proxy_transfer_batch <input_file>",
-    "Tranfer NFT as a proxy owner in batches",
+    "Transfer NFT as a proxy owner in batches",
     (yargs) => {
       yargs
         .positional("input_file", {
@@ -2514,7 +2514,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "nft_set_transfer_fee <addr> <fee>",
-    "Decode and look up a local NFT by external token ID",
+    "Set the base transfer fee on the NFT contract",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -2533,7 +2533,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "nft_get_transfer_fee <addr>",
-    "Decode and look up a local NFT by external token ID",
+    "Get the base transfer fee of the NFT contract",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -2625,7 +2625,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("token_id", {
-          describe: "Offer ID",
+          describe: "NFT token ID",
           type: "integer",
         })
         .positional("offer_id", {
@@ -2671,7 +2671,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("token_id", {
-          describe: "Offer ID",
+          describe: "NFT token ID",
           type: "integer",
         })
         .positional("offer_id", {
@@ -2702,7 +2702,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("token_id", {
-          describe: "Offer ID",
+          describe: "NFT token ID",
           type: "integer",
         })
         .positional("offer_id", {
@@ -2892,7 +2892,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]",
-    "Reset the token URI(s) for tenant NFT contract(s)",
+    "Set the token URI for a single token, a batch (CSV), or all tokens of a tenant NFT contract",
     (yargs) => {
       yargs
         .positional("request_type", {
@@ -2930,7 +2930,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_update_token_uri <tenant> <addr> <hash> [options]",
-    "Reset the token URI(s) for tenant NFT contract(s)",
+    "Update the token URIs of all tokens in a tenant NFT contract to a new NFT template object hash",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -2947,7 +2947,7 @@ yargs(hideBin(process.argv))
         })
         .option("dry_run", {
           describe:
-            "Default 'true'",
+            "Only show the changes without submitting them (default: true)",
           type: "boolean",
         });
     },
@@ -3047,7 +3047,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("end_vote", {
-          describe: "Event vote end date (ISO foramt)",
+          describe: "Event vote end date (ISO format)",
           type: "string",
         })
         .option("start_mint", {
@@ -3366,7 +3366,7 @@ yargs(hideBin(process.argv))
         })
         .positional("addr", {
           describe:
-            "Address the to add",
+            "Address to remove",
           type: "string",
         });
     },
@@ -3386,7 +3386,7 @@ yargs(hideBin(process.argv))
         })
         .positional("addr", {
           describe:
-            "Address the to add",
+            "Address to check",
           type: "string",
         });
     },
@@ -3599,7 +3599,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_replace_minter_config <tenant> [options]",
-    "Creates the minter configuration for this tenant key",
+    "Replaces the minter configuration for this tenant key",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -3665,7 +3665,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_delete_minter_config <tenant> [options]",
-    "Creates the minter configuration for this tenant key",
+    "Deletes the minter configuration for this tenant key",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -3868,7 +3868,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "token_contract_create <name> <symbol> <decimals> <amount> [options]",
-    "Deploy elv token  contract",
+    "Deploy elv token contract",
     (yargs) => {
       yargs
         .positional("name", {
