@@ -765,7 +765,7 @@ yargs(hideBin(process.argv))
         .option("drm", {
           describe:
             "Use DRM or clear (default 'true')",
-          type: "bool",
+          type: "boolean",
           default: true,
         })
         .option("include-tags", {
