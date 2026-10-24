@@ -443,6 +443,59 @@ class ElvContracts {
   }
 
   /**
+   * Read direct user grants, excluding ownership and permissions through groups.
+   * Permission values are 0 (none), 1 (tentative), or 2 (confirmed).
+   */
+  async GetObjectUserPermissions({ objectId, userAddress }) {
+    const walletAddress = await this.client.userProfileClient.UserWalletAddress({
+      address: userAddress,
+    });
+    if (!walletAddress || Utils.EqualAddress(walletAddress, Utils.nullAddress)) {
+      throw Error(`No wallet found for user ${userAddress}`);
+    }
+
+    const raw = Number(await this.client.CallContractMethod({
+      contractAddress: walletAddress,
+      methodName: "getContentObjectRights",
+      methodArgs: [Utils.HashToAddress(objectId)],
+    }));
+
+    // Permissions are encoded as 'manage' in the hundreds place, 'access' in tens place, 'see' in ones place.
+    return {
+      user_address: userAddress,
+      wallet_address: walletAddress,
+      object_id: objectId,
+      raw,
+      permissions: {
+        see: raw % 10,
+        access: Math.floor(raw / 10) % 10,
+        manage: Math.floor(raw / 100),
+      },
+    };
+  }
+
+  /** Grant or revoke one direct user permission without changing other grants. */
+  async SetObjectUserPermission({ objectId, userAddress, permission, remove = false }) {
+    const permissionTypes = { see: 0, access: 1, manage: 2 };
+    if (!Object.prototype.hasOwnProperty.call(permissionTypes, permission)) {
+      throw Error(`Invalid permission type: ${permission}`);
+    }
+
+    const walletAddress = await this.client.userProfileClient.UserWalletAddress({
+      address: userAddress,
+    });
+    if (!walletAddress || Utils.EqualAddress(walletAddress, Utils.nullAddress)) {
+      throw Error(`No wallet found for user ${userAddress}`);
+    }
+
+    return await this.client.CallContractMethodAndWait({
+      contractAddress: Utils.HashToAddress(objectId),
+      methodName: "setRights",
+      methodArgs: [userAddress, permissionTypes[permission], remove ? 0 : 2],
+    });
+  }
+
+  /**
    * cleanUp objects to remove references to dead objects
    * @param {string} objectAddr: address of the object
    * @param {string} objectType: object type (library | content_object | group | content_type)
