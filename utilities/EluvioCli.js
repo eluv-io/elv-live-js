@@ -1621,6 +1621,37 @@ const CmdSetObjectGroupPermission = async ({ argv }) => {
   }
 };
 
+const CmdObjectUserPermissions = async ({ argv, set = false }) => {
+  try {
+    const objectId = argv.object.startsWith("0x")
+      ? ElvUtils.AddressToId({ prefix: "iq__", address: argv.object })
+      : argv.object;
+    const userAddress = Ethers.utils.getAddress(
+      argv.user.startsWith("iusr") ? Utils.HashToAddress(argv.user) : argv.user
+    );
+    const elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+    await elvContract.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    if (set) {
+      await elvContract.SetObjectUserPermission({
+        objectId,
+        userAddress,
+        permission: argv.permission,
+        remove: argv.remove,
+      });
+    }
+
+    const res = await elvContract.GetObjectUserPermissions({ objectId, userAddress });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+    process.exitCode = 1;
+  }
+};
+
 const CmdCleanupObject = async ({ argv }) => {
   console.log("Parameters:");
   console.log("object", argv.object);
@@ -2766,6 +2797,38 @@ yargs(hideBin(process.argv))
     (argv) => {
       CmdSetObjectGroupPermission({ argv });
     }
+  )
+
+  .command(
+    "set_object_user_permission <object> <user> <permission> [options]",
+    "Grant or revoke a direct user permission on an object; print resulting direct grants",
+    (yargs) => {
+      yargs
+        .positional("object", { describe: "object ID or address", type: "string" })
+        .positional("user", { describe: "user ID or account address", type: "string" })
+        .positional("permission", {
+          describe: "type of permission to grant or revoke",
+          choices: ["see", "access", "manage"],
+          type: "string",
+        })
+        .option("remove", {
+          describe: "Revoke the specified permission",
+          type: "boolean",
+          default: false,
+        });
+    },
+    (argv) => CmdObjectUserPermissions({ argv, set: true })
+  )
+
+  .command(
+    "get_object_user_permissions <object> <user>",
+    "Read direct user grants (0=none, 1=tentative, 2=confirmed); excludes group permissions and ownership",
+    (yargs) => {
+      yargs
+        .positional("object", { describe: "object ID or address", type: "string" })
+        .positional("user", { describe: "user ID or account address", type: "string" });
+    },
+    (argv) => CmdObjectUserPermissions({ argv })
   )
 
   .command(
