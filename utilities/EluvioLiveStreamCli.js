@@ -2,16 +2,18 @@ const { EluvioLiveStream } = require("../src/LiveStream.js");
 const { ElvSpace } = require("../src/ElvSpace.js");
 const { Config } = require("../src/Config.js");
 
+const fs = require("fs");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
+const path = require('path');
 
 // hack that quiets this msg:
 //  node:87980) ExperimentalWarning: The Fetch API is an experimental feature. This feature could change at any time
 //  (Use `node --trace-warnings ...` to show where the warning was created)
 const originalEmit = process.emit;
 process.emit = function (name, data, ...args) {
-  if(name === `warning` && typeof data === `object` && data.name === `ExperimentalWarning`) {
+  if (name === `warning` && typeof data === `object` && data.name === `ExperimentalWarning`) {
     return false;
   }
   return originalEmit.apply(process, arguments);
@@ -50,7 +52,68 @@ const CmdStreamCreate = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StreamCreate({
+    const status = await elvStream.streamCreate({
+      objectId: argv.object_id,
+      libraryId: argv.library,
+      url: argv.stream_url,
+      finalize: argv.finalize,
+      liveRecordingConfigArg: argv.live_recording_config,
+      name: argv.name,
+      linkToSite: argv.link_to_site,
+      permission: argv.permission
+    });
+
+    console.log(yaml.dump(status));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdCreateStreamObjectBatch = async ({ argv }) => {
+  if (argv.batch_file === undefined) {
+    const exampleFileContents = fs.readFileSync("src/live_stream_bulk_example.yaml", "utf8");
+    exampleFile = yaml.load(exampleFileContents);
+    argv.yaml_batch_file_example && console.log(yaml.dump(exampleFile));
+    argv.json_batch_file_example && console.log(JSON.stringify(exampleFile, null, 2));
+    process.exit(0);
+  }
+  try {
+    const extension = path.extname(argv.batch_file).toLowerCase();
+    if (![".json", ".yaml", ".yml"].includes(extension)) {
+      throw new Error("Invalid file extension. Please use a .json, .yaml, or .yml file");
+    }
+    if (!fs.existsSync(argv.batch_file)) {
+      throw new Error("File not found.");
+    }
+
+    let elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    console.log("Creating a batch of streams!!!")
+    await elvStream.CreateStreamObjectBatch(argv.batch_file);
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdStreamStartRecording = async ({ argv }) => {
+  try {
+    let elvStream = new EluvioLiveStream({
+      url: argv.url,
+      debugLogging: argv.verbose
+    });
+
+    await elvStream.Init({
+      privateKey: process.env.PRIVATE_KEY,
+    });
+
+    let status = await elvStream.StreamStartRecording({
       name: argv.stream,
       start: argv.start,
       show_curl: argv.show_curl
@@ -72,7 +135,7 @@ const CmdStreamTerminate = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StopSession({name: argv.stream});
+    let status = await elvStream.StopSession({ name: argv.stream });
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -90,11 +153,11 @@ const CmdStreamStatus = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params});
+    let status = await elvStream.Status({name: argv.stream, stopLro: false, showParams: argv.show_params, saveMeta: argv.saveMeta});
 
     // Optional latency calculator
     if (argv.latency) {
-      status.latency = await elvStream.LatencyCalculator({status});
+      status.latency = await elvStream.LatencyCalculator({ status });
     }
 
     console.log(yaml.dump(status));
@@ -115,7 +178,7 @@ const CmdStreamOp = async ({ argv, op }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StartOrStopOrReset({name: argv.stream, op, stopLro: false});
+    let status = await elvStream.StartOrStopOrReset({ name: argv.stream, op, stopLro: false });
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -126,6 +189,7 @@ const CmdStreamInsertion = async ({ argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
       url: argv.url,
+      token: argv.token,
       debugLogging: argv.verbose
     });
 
@@ -140,6 +204,7 @@ const CmdStreamInsertion = async ({ argv }) => {
       // Time specified as an ISO string
       t = new Date(argv.time).getTime();
       if (t == undefined || isNaN(t)) {
+
         console.log("Bad time specification", argv.time);
         return;
       }
@@ -183,7 +248,7 @@ const CmdStreamDownload = async ({ argv }) => {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset, makeFrame: argv.frames});
+    let status = await elvStream.StreamDownload({name: argv.stream, period: argv.period, offset: argv.offset, makeFrame: argv.frames, mpegtsCopy: argv.mpegts});
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -209,7 +274,7 @@ const CmdStreamConfig = async ({ argv }) => {
     });
     await space.Init({ spaceOwnerKey: process.env.PRIVATE_KEY });
 
-    let status = await elvStream.StreamConfig({name: argv.stream, space});
+    let status = await elvStream.StreamConfig({ name: argv.stream, space });
     console.log(yaml.dump(status));
   } catch (e) {
     console.error("ERROR:", e);
@@ -238,21 +303,27 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       for (let i = 0; i < streamsList.length; i++) {
         const s = streamsList[i].split(":");
         console.log("s", s);
-        streams[s[0]] = {stream_index: parseInt(s[1])};
+        streams[s[0]] = { stream_index: parseInt(s[1]) };
       }
       argv.streams = streams
       console.log("Streams: ", streams);
     }
 
     let status = await elvStream.StreamCopyToVod({
-      name: argv.stream,
+      stream: argv.stream,
       object: argv.object,
       library: argv.library,
+      name: argv.name,
+      title: argv.title,
+      drm: argv.drm,
+      includeTags: argv.includeTags,
+      defaultDash: argv.defaultDash,
+      keepExistingStreams: argv.keepExistingStreams,
       eventId: argv.event_id,
       startTime: argv.start_time,
       endTime: argv.end_time,
       recordingPeriod: argv.recording_period,
-      streams: argv.streams
+      streams: argv.streams,
     });
     console.log(yaml.dump(status));
   } catch (e) {
@@ -260,7 +331,7 @@ const CmdStreamCopyToVod = async ({ argv }) => {
   }
 };
 
-const CmdWatermark = async ({op, argv}) => {
+const CmdWatermark = async ({ op, argv }) => {
   try {
     let elvStream = new EluvioLiveStream({
       url: argv.url,
@@ -274,7 +345,8 @@ const CmdWatermark = async ({op, argv}) => {
     let res = await elvStream.Watermark({
       op,
       objectId: argv.stream,
-      fileName: argv.file});
+      fileName: argv.file
+    });
     console.log(yaml.dump(res));
   } catch (e) {
     console.error("ERROR:", e);
@@ -334,6 +406,93 @@ yargs(hideBin(process.argv))
     describe: "Optional node endpoint (eg. https://host-x-x-x-x.contentfabric.io)",
     type: "string",
   })
+  .option("token", {
+    describe: "Externally provided access token",
+    type: "string",
+  })
+
+  .command(
+    "create",
+    "Create a single new live stream object",
+    (yargs) => {
+      yargs
+        .option("object_id", {
+          describe: "object ID for updating an existing stream object",
+          type: "string"
+        })
+        .option("library", {
+          describe: "Library ID containing the stream object",
+          type: "string"
+        })
+        .option("stream_url", {
+          describe: "Ingest URL for the live stream",
+          type: "string"
+        })
+        .option("live_recording_config", {
+          describe: "Live recording configuration: path to a JSON file, or the name of a profile to look up from the site",
+          type: "string"
+        })
+        .option("finalize", {
+          describe: "Finalize the object after creation",
+          type: "boolean",
+          default: true
+        })
+        .option("name", {
+          describe: "Name for the new stream object",
+          type: "string"
+        })
+        .option("permission", {
+          describe: "Access permission level for the stream object",
+          type: "string",
+          choices: ["owner", "editable", "viewable", "listable", "public"],
+          default: "editable"
+        })
+        .option("link_to_site", {
+          describe: "Automatically link the new stream to the site object after creation",
+          type: "boolean",
+          default: true
+        })
+        .demandOption(["library", "stream_url"])
+    },
+    (argv) => CmdStreamCreate({ argv })
+  )
+
+  .command(
+    "create_batch",
+    "Create a batch of new live stream objects.",
+    (yargs) => {
+      return yargs
+        .resetOptions()
+        .help()
+        .option("batch_file", {
+          describe: "Path to .json, .yaml, or .yml file",
+          type: "string",
+        })
+        .option("yaml_batch_file_example", {
+          describe: "Print out an example of a yaml/yml bulk file",
+          type: "boolean",
+        })
+        .option("json_batch_file_example", {
+          describe: "Print out an example of a json bulk file",
+          type: "boolean",
+        })
+        // Prevent more than one being used at once
+        .conflicts('batch_file', ['yaml_batch_file_example', 'json_batch_file_example'])
+        .conflicts('yaml_batch_file_example', ['batch_file', 'json_batch_file_example'])
+        .conflicts('json_batch_file_example', ['batch_file', 'yaml_batch_file_example'])
+        // Ensure at least one is provided
+        .check((argv) => {
+          if (!argv.batch_file && !argv.yaml_batch_file_example && !argv.json_batch_file_example) {
+            throw new Error("Check failed: You must provide one of options: --batch_file, --yaml_batch_file_example, or --json_batch_file_example");
+          }
+          return true;
+        })
+        .usage("Usage: $0 create_batch --batch_file [path]");
+    },
+    (argv) => {
+       CmdCreateStreamObjectBatch({ argv });
+    }
+  )
 
   .command(
     "config <stream>",
@@ -372,15 +531,15 @@ yargs(hideBin(process.argv))
           type: "string",
         })
 
-      },
+    },
     (argv) => {
       CmdInit({ argv });
     }
   )
 
   .command(
-    "create <stream>",
-    "Create a new live stream for this stream object.",
+    "start_recording <stream>",
+    "Create a new edge write token for this stream object.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -390,7 +549,7 @@ yargs(hideBin(process.argv))
         })
         .option("start", {
           describe:
-            "Optionally start the the new stream (equivalent to calling 'start')",
+            "Optionally start the new stream (equivalent to calling 'start')",
           type: "boolean",
         })
         .option("show_curl", {
@@ -400,7 +559,7 @@ yargs(hideBin(process.argv))
         })
     },
     (argv) => {
-      CmdStreamCreate({ argv });
+      CmdStreamStartRecording({ argv });
     }
   )
   .command(
@@ -453,6 +612,12 @@ yargs(hideBin(process.argv))
             "Calculate stream latency (may take a few minutes)",
           type: "bool",
         })
+        .option("save-meta", {
+          describe:
+            "Save edge write token metadata to a local JSON file",
+          type: "boolean",
+          default: true,
+        })
     },
     (argv) => {
       CmdStreamStatus({ argv });
@@ -490,7 +655,7 @@ yargs(hideBin(process.argv))
   )
   .command(
     "insertion <stream> <time> <target_hash>",
-    "Pauses the currently active live stream.",
+    "Add or remove (with --remove) a content insertion in the live stream at the given time.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -532,7 +697,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "download <stream>",
-    "Download the live stream recording and creates and mp4 file.",
+    "Download the live stream recording and create an mp4 file.",
     (yargs) => {
       yargs
         .positional("stream", {
@@ -542,7 +707,7 @@ yargs(hideBin(process.argv))
         })
         .option("period", {
           describe:
-            "Download a specific recording period (instead of the lastone)",
+            "Download a specific recording period (instead of the last one)",
           type: "int",
         })
         .option("offset", {
@@ -555,8 +720,13 @@ yargs(hideBin(process.argv))
             "Create a frame JPG for each video part",
           type: "bool",
         })
+        .option("mpegts", {
+          describe:
+            "Download the MPEGTS copy instead of the MP4 mezzanine",
+          type: "bool",
+        })
 
-      },
+    },
     (argv) => {
       CmdStreamDownload({ argv });
     }
@@ -581,6 +751,40 @@ yargs(hideBin(process.argv))
           describe:
             "Copy to a new object in this library",
           type: "string",
+        })
+        .option("name", {
+          describe:
+            "Object name (used for management)",
+          type: "string",
+        })
+        .option("title", {
+          describe:
+            "Object title (used for playout)",
+          type: "string",
+        })
+        .option("drm", {
+          describe:
+            "Use DRM or clear (default 'true')",
+          type: "boolean",
+          default: true,
+        })
+        .option("include-tags", {
+          describe:
+            "Copy video tags from the live stream",
+          type: "boolean",
+          default: false,
+        })
+        .option("default-dash", {
+          describe:
+            "Add a default_dash offering for chromecasting (clear DASH)",
+          type: "boolean",
+          default: false,
+        })
+        .option("keep-existing-streams", {
+          describe:
+            "Keep existing stream info including thumbnails",
+          type: "boolean",
+          default: false,
         })
         .option("event_id", {
           describe:
@@ -619,12 +823,12 @@ yargs(hideBin(process.argv))
     "Set watermark for this stream.",
     (yargs) => {
       yargs
-      .positional("stream", {
-        describe:
-          "Stream name or QID (content ID)",
-        type: "string",
-      })
-      .positional("file", {
+        .positional("stream", {
+          describe:
+            "Stream name or QID (content ID)",
+          type: "string",
+        })
+        .positional("file", {
           describe:
             "File containing JSON watermark spec",
           type: "string",
@@ -640,12 +844,12 @@ yargs(hideBin(process.argv))
     "Remove watermark from the stream.",
     (yargs) => {
       yargs
-      .positional("stream", {
-        describe:
-          "Stream name or QID (content ID)",
-        type: "string",
-      })
-  },
+        .positional("stream", {
+          describe:
+            "Stream name or QID (content ID)",
+          type: "string",
+        })
+    },
     (argv) => {
       CmdWatermark({ op: "rm", argv });
     }
@@ -663,7 +867,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdStreamListUrls({argv});
+      CmdStreamListUrls({ argv });
     }
   )
 
@@ -689,7 +893,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdStreamSwitch({argv});
+      CmdStreamSwitch({ argv });
     }
   )
 

@@ -10,6 +10,7 @@ const { Config } = require("./Config.js");
 const fs = require("fs");
 const got = require("got");
 const https = require("https");
+const yaml = require("js-yaml");
 
 const MakeTxLessToken = async({client, libraryId, objectId, versionHash}) => {
   const tok = await client.authClient.AuthorizationToken({libraryId, objectId,
@@ -18,6 +19,11 @@ const MakeTxLessToken = async({client, libraryId, objectId, versionHash}) => {
   return tok;
 };
 
+/**
+ * Provides live stream management operations on the Eluvio Content Fabric:
+ * creating and configuring streams, controlling recording sessions, copying
+ * live recordings to VoD objects, and measuring ingest/egress latency.
+ */
 class EluvioLiveStream {
 
   /**
@@ -25,10 +31,11 @@ class EluvioLiveStream {
    *
    * @namedParams
    * @param {string} url - Optional node endpoint URL (overwrites config URL)
-   * @param {bool} debugLogging - Optional debug logging flag
-   * @return {EluvioLive} - New EluvioLive object connected to the specified content fabric and blockchain
+   * @param {boolean} debugLogging - Optional debug logging flag
+   * @param {string} token - Optional static authorization token
+   * @return {EluvioLiveStream} - New EluvioLiveStream object connected to the specified content fabric
    */
-  constructor({ url, debugLogging = false }) {
+  constructor({ url, debugLogging = false, token }) {
 
     if (url) {
       this.configUrl = url+"/config?self&qspace="+Config.net;
@@ -36,8 +43,13 @@ class EluvioLiveStream {
       this.configUrl = Config.networks[Config.net];
     }
     this.debug = debugLogging;
+    this.staticToken = token;
   }
 
+  /**
+   * Initialize the EluvioLiveStream SDK, connecting to the Content Fabric
+   * using the PRIVATE_KEY environment variable.
+   */
   async Init() {
     this.client = await ElvClient.FromConfigurationUrl({
       configUrl: this.configUrl,
@@ -49,8 +61,20 @@ class EluvioLiveStream {
     });
     this.client.SetSigner({ signer });
     this.client.ToggleLogging(this.debug);
+
+    if (this.staticToken) {
+      console.log("Use static token");
+      this.client.SetStaticToken({token: this.staticToken});
+    }
   }
 
+  /**
+   * Prepare a stream for status retrieval by setting a transaction-less static token,
+   * reducing auth overhead when polling multiple streams.
+   *
+   * @namedParams
+   * @param {string} name - The object ID of the live stream
+   */
   async StatusPrep({name}) {
 
     const objectId = name;
@@ -68,28 +92,150 @@ class EluvioLiveStream {
     }
   }
 
-  /*
-   * Retrive the status of the current live stream session
+  /**
+   * Retrieve the status of the current live stream session.
    *
-   * States:
-
-   * unconfigured    - no live_recording_config
-   * uninitialized   - no live_recording config generated
-   * inactive        - live_recording config initialized but no 'edge write token'
-   * stopped         - edge-write-token but not started
-   * starting        - LRO running but no source data yet
-   * running         - stream is running and producing output
-   * stalled         - LRO running but no source data (so not producing output)
+   * Stream states:
+   * - `unconfigured`  — no live_recording_config
+   * - `uninitialized` — no live_recording config generated
+   * - `inactive`      — live_recording config initialized but no edge write token
+   * - `stopped`       — edge write token exists but recording not started
+   * - `starting`      — LRO running but no source data yet
+   * - `running`       — stream is running and producing output
+   * - `stalled`       — LRO running but no source data (not producing output)
+   *
+   * @namedParams
+   * @param {string} name - The object ID of the live stream
+   * @param {boolean} [stopLro=false] - Stop the LRO if the stream is stalled
+   * @param {boolean} [showParams=false] - Include recording parameters in the response
+   * @param {boolean} [saveMeta=true] - Write edge metadata to a local JSON file
+   * @returns {Promise<Object>} Stream status object
    */
-  async Status({name, stopLro = false, showParams = false}) {
-    return this.client.StreamStatus({name, stopLro, showParams});
+  async Status({ name, stopLro = false, showParams = false, saveMeta = true }) {
+    let status = await this.client.StreamStatus({name, stopLro, showParams});
+
+    if (saveMeta) {
+      let edgeMeta = await this.client.ContentObjectMetadata({
+        libraryId: status.libraryId,
+        objectId: status.objectId,
+        writeToken: status.edgeWriteToken
+      });
+      fs.writeFileSync("meta-" + status.name + ".json", JSON.stringify(edgeMeta, null, 2));
+    }
+
+    return status;
+
   }
 
-  /*
-  * StreamCreate creates a new edge write token
-  */
-  async StreamCreate ({name, start = false, show_curl = false}) {
-    const status = await this.client.StreamCreate({name, start});
+  /**
+   * Create a live stream object on the Content Fabric.
+   * The recording configuration may be either a named profile or a path to a
+   * local YAML/JSON file.
+   *
+   * @namedParams
+   * @param {string} [objectId] - Existing content object ID to use as the stream object
+   * @param {string} [libraryId] - Library in which to create a new stream object
+   * @param {string} url - Ingest URL for the live source
+   * @param {boolean} [finalize] - Finalize the object after creation
+   * @param {string} liveRecordingConfigArg - Named profile or path to a YAML/JSON config file
+   * @param {string} [name] - Display name for the stream object
+   * @param {string} [permission] - Permission level (e.g. "editable")
+   * @param {boolean} [linkToSite] - Link the stream to its site object
+   * @returns {Promise<Object>} Result from StreamCreate
+   */
+  async streamCreate({ objectId, libraryId, url, finalize, liveRecordingConfigArg, name, permission, linkToSite }) {
+    let liveRecordingConfig;
+    if (fs.existsSync(liveRecordingConfigArg)) {
+      // Although its yaml.load it still works with JSON sources!
+      liveRecordingConfig = yaml.load(fs.readFileSync(liveRecordingConfigArg, "utf8"));
+    } else {
+      liveRecordingConfig = await this.client.StreamConfigProfile({profileName: liveRecordingConfigArg});
+    }
+
+    const options = {};
+    if (name !== undefined) options.name = name;
+    if (permission !== undefined) options.permission = permission;
+    if (linkToSite !== undefined) options.linkToSite = linkToSite;
+
+    return await this.client.StreamCreate({
+      objectId,
+      libraryId,
+      url,
+      finalize,
+      options,
+      liveRecordingConfig
+    });
+  }
+
+  /**
+   * Create multiple live stream objects in bulk from a YAML or JSON batch file.
+   * The file must define `library`, `streams[]`, and either `profile_name` or
+   * `profile_data` at the top level.
+   *
+   * @param {string} batch_file - Path to the YAML/JSON batch configuration file
+   * @returns {Promise<boolean>} true on success
+   */
+  async CreateStreamObjectBatch(batch_file){
+    let bulkFileContents = {};
+    try {
+      const fileContents = fs.readFileSync(batch_file, "utf8");
+      // Although its yaml.load it still works with JSON sources!
+      bulkFileContents = yaml.load(fileContents);
+    } catch (e) {
+      console.error(`Error: Could not read or parse file. ${e.message}`);
+      process.exit(1);
+    }
+
+    // check if we will use a saved profile or one defined in the file
+    let liveRecordingConfig;
+    if (bulkFileContents.profile_name !== undefined) {
+      liveRecordingConfig = await this.client.StreamConfigProfile({profileName: bulkFileContents.profile_name});
+    } else if (bulkFileContents.profile_data !== undefined) {
+      liveRecordingConfig = bulkFileContents.profile_data;
+    } else {
+      console.log("ERROR: profile_name or profile_data not defined in batch file");
+      process.exit(1);
+    }
+
+    // iterate through all the streams and create them
+    const libraryId = bulkFileContents.library;
+    const streams = bulkFileContents.streams;
+    for (const stream of streams) {
+      try {
+        console.log(`CREATING ${stream.name}`);
+        const url = stream.url;
+        const options = {
+          name: stream.name,
+          displayTitle: stream.name,
+          linkToSite: stream.link_to_site ?? true,
+          permission: stream.permission ?? "editable"
+        };
+        await this.client.StreamCreate({
+          libraryId,
+          url,
+          options,
+          liveRecordingConfig
+        });
+      } catch (e) {
+        console.error(`Error: Could not create stream: ${e.message}`);
+        process.exit(1);
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Start a new recording session by creating a new edge write token.
+   * Optionally prints the curl commands needed to manually control the stream.
+   *
+   * @namedParams
+   * @param {string} name - The object ID of the live stream
+   * @param {boolean} [start=false] - Immediately start the LRO after creating the token
+   * @param {boolean} [show_curl=false] - Print curl commands for manual stream control
+   * @returns {Promise<Object>} Recording session status
+   */
+  async StreamStartRecording ({name, start = false, show_curl = false}) {
+    const status = await this.client.StreamStartRecording({name, start});
 
     if (show_curl) {
       const objectId = status.object_id;
@@ -137,43 +283,79 @@ class EluvioLiveStream {
   }
 
 
-  /*
-  * Start, stop or reset a stream within the current session (current edge write token)
-  * The 'op' parameter can be:
-  * - 'start'
-  * - 'reset'  Stops current LRO recording and starts a new one.  Does not create a new edge write token
-  *            (just creates a new recording period in the existing edge write token)
-  * - 'stop'
-  * Returns stream status
-  */
+  /**
+   * Start, stop, or reset a stream within the current recording session
+   * (current edge write token).
+   *
+   * Operations:
+   * - `start` — begin the LRO
+   * - `reset` — stop the current LRO and start a new one; creates a new recording
+   *             period inside the existing edge write token (does NOT create a new token)
+   * - `stop`  — stop the LRO
+   *
+   * @namedParams
+   * @param {string} name - The object ID of the live stream
+   * @param {string} op - Operation: "start" | "reset" | "stop"
+   * @returns {Promise<Object>} Stream status
+   */
   async StartOrStopOrReset({name, op}) {
     return this.client.StreamStartOrStopOrReset({name, op});
   }
 
-  /*
+  /**
    * Stop the live stream session and close the edge write token.
-   * Not implemented fully
+   *
+   * @namedParams
+   * @param {string} name - The object ID of the live stream
+   * @returns {Promise<Object>} Result from StreamStopRecording
    */
   async StopSession({name}) {
-    return this.client.StreamStopSession({name});
+    return this.client.StreamStopRecording({name});
   }
 
+  /**
+   * Initialize a live stream, generating the live_recording configuration from
+   * the user-supplied live_recording_config metadata.
+   *
+   * @namedParams
+   * @param {string} name - The object ID of the live stream
+   * @param {boolean} [drm=false] - Enable DRM for the stream output
+   * @param {string} [format] - Output format override
+   * @returns {Promise<Object>} Initialization result
+   */
   async Initialize({name, drm=false, format}) {
     return this.client.StreamInitialize({name, drm, format});
   }
 
-  // Add a content insertion entry
-  // Parameters:
-  // - insertionTime - seconds (float)
-  // - sinceStart - true if time specified since stream start, false if since epoch
-  // - duration - seconds (float, deafault 20.0)
-  // - targetHash -  playable
-  // - remove - flag to remove the insertion at that exact 'time' (instead of adding)
+  /**
+   * Add or remove a content insertion entry in the live stream.
+   *
+   * @namedParams
+   * @param {string} name - The object ID of the live stream
+   * @param {number} insertionTime - Insertion time in seconds (float)
+   * @param {boolean} sinceStart - true if time is relative to stream start, false if Unix epoch seconds
+   * @param {number} [duration=20.0] - Insertion duration in seconds (float)
+   * @param {string} targetHash - Content hash of the playable insertion content
+   * @param {boolean} [remove=false] - Remove the insertion at the given time instead of adding it
+   * @returns {Promise<Object>} Result from StreamInsertion
+   */
   async Insertion({name, insertionTime, sinceStart, duration, targetHash, remove}) {
     return this.client.StreamInsertion({name, insertionTime, sinceStart, duration, targetHash, remove});
   }
 
-  async StreamDownload({name, period, offset, makeFrame}) {
+  /**
+   * Download the raw parts of a live stream recording period and reassemble
+   * them into an MP4 (or MPEG-TS) file using ffmpeg.
+   *
+   * @namedParams
+   * @param {string} name - The object ID of the live stream
+   * @param {number} [period] - Recording period index; defaults to the latest period
+   * @param {number} [offset=0] - Skip parts before this many seconds from the start
+   * @param {boolean} [makeFrame=false] - Extract a JPEG thumbnail from each video part
+   * @param {boolean} [mpegtsCopy=false] - Output as a concatenated MPEG-TS file instead of MP4
+   * @returns {Promise<Object>} Status object with `file` path and `state`
+   */
+  async StreamDownload({name, period, offset, makeFrame, mpegtsCopy}) {
 
     let objectId = name;
     let status = {name};
@@ -238,11 +420,16 @@ class EluvioLiveStream {
       !fs.existsSync(dpath) && fs.mkdirSync(dpath, {recursive: true});
 
       // Reorder streams list so it starts with video
-      let mts = ["video"];
-      for (let mi = 0; mi < streams.length; mi ++) {
-        if (streams[mi].includes("video"))
-          continue;
-        mts.push(streams[mi]);
+      let mts = [];
+      if (mpegtsCopy) {
+        mts.push("mpegts");
+      } else {
+        mts.push("video");
+        for (let mi = 0; mi < streams.length; mi ++) {
+          if (streams[mi].includes("video"))
+            continue;
+          mts.push(streams[mi]);
+        }
       }
 
       let inputs = "";
@@ -251,16 +438,20 @@ class EluvioLiveStream {
 
       for (let mi = 0; mi < mts.length; mi ++) {
         let mt = mts[mi];
-        inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
+
         if (mt.includes("video")) {
+          inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
           inputs_map = inputs_map + ` -map ${mi}:v:0`;
-        } else {
+        } else if (mt.includes("audio")) {
+          inputs = inputs + " -i " + dpath + "/" + mt + ".mp4";
           inputs_map = inputs_map + ` -map ${mi}:a:0`;
         }
+
         console.log("Downloading ", mt);
         let mtpath = dpath + "/" + mt;
         let partsfile = dpath + "/parts_" + mt + ".txt";
         !fs.existsSync(mtpath) && fs.mkdirSync(mtpath);
+
         var sources = recording.sources[mt].parts;
         for (let i = 0; i < sources.length - 1; i++) {
 
@@ -307,6 +498,16 @@ class EluvioLiveStream {
           }
         }
 
+        if (mpegtsCopy) {
+          // Concatenate parts into one ts file
+          status.file = dpath + "/" + mt + ".ts";
+          let cmd = "ffmpeg -f concat -safe 0 -i " + partsfile + " -map 0 -c copy " + status.file;
+          console.log("Running", cmd);
+          execSync(cmd);
+          status.state = "completed";
+          return status;
+        }
+
         // Concatenate parts into one mp4
         let cmd = "ffmpeg -f concat -safe 0 -i " + partsfile + " -c copy " + dpath + "/" + mt + ".mp4";
         console.log("Running", cmd);
@@ -330,17 +531,35 @@ class EluvioLiveStream {
   }
 
 
-  /*
-  * Copy a portion of a live stream recording into a standard VoD object using the zero-copy content fabric API.
-  *
-  * Limitations:
-  * - currently requires the target object to be pre-created and have content encryption keys (CAPS)
-  * - for audio and video to be sync'd, the live stream needs to have the beginning of the desired recording period
-  *   - for an event stream, make sure the TTL is long enough to allow running the live-to-vod command before the beginning of the recording expires
-  *   - for 24/7 streams, make sure to reset the stream before the desired recording (as to create a new recording period) and have the TTL long enough
-  *     to allow running the live-to-vod command before the beginning of the recording expires.
-  * - startTime and endTime are not currently implemented by this tool
-  */
+  /**
+   * Copy a portion of a live stream recording into a standard VoD object using
+   * the zero-copy Content Fabric API.  If no target object is supplied one is
+   * created automatically in the specified library.
+   *
+   * Limitations:
+   * - the target object must have content encryption keys (CAPS) set
+   * - audio and video sync requires the recording period to start from the
+   *   very beginning of the desired segment; for event streams ensure the TTL
+   *   is long enough; for 24/7 streams reset the stream first
+   * - `startTime` / `endTime` trimming requires the fabric node to support it
+   *
+   * @namedParams
+   * @param {string} stream - Object ID of the source live stream
+   * @param {string} [object] - Object ID of the existing target VoD object; a new object is created if omitted
+   * @param {string} [library] - Library ID for the new VoD object (required when `object` is omitted)
+   * @param {string} [name] - Name for the new VoD object
+   * @param {string} [title] - Title for the new VoD object's asset metadata
+   * @param {boolean} [drm=true] - Enable DRM on the VoD mezzanine
+   * @param {boolean} [includeTags=false] - Copy video tags from the live stream
+   * @param {boolean} [defaultDash=false] - Add a `default_dash` (Chromecast-friendly) offering
+   * @param {boolean} [keepExistingStreams=false] - Preserve existing stream info (e.g. thumbnails) in the target
+   * @param {string} [eventId] - SCTE-35 event ID used to look up start/end times automatically
+   * @param {string} [startTime] - ISO-8601 start time for the clip (e.g. "2023-10-03T02:09:02.00Z")
+   * @param {string} [endTime] - ISO-8601 end time for the clip
+   * @param {number} [recordingPeriod] - Recording period index to copy (-1 for latest)
+   * @param {string[]} [streams] - Stream tracks to include (e.g. ["video", "audio"])
+   * @returns {Promise<Object>} Status object including `target_hash` of the finalized VoD object
+   */
 
   /*
     Example fabric API flow:
@@ -373,12 +592,20 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({name, object, library, eventId, startTime, endTime, recordingPeriod, streams}) {
+  async StreamCopyToVod({stream, object, library, name, title, drm = true, includeTags = false, defaultDash = false, keepExistingStreams = false, eventId, startTime, endTime, recordingPeriod, streams}) {
 
-    const objectId = name;
-    const abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
+    const objectId = stream;
+    let abrProfileLiveToVod;
 
-    let status = await this.Status({name});
+    if (drm) {
+      console.log("DRM");
+      abrProfileLiveToVod = require("./abr_profile_live_to_vod_drm.json");
+    } else {
+      console.log("NO DRM");
+      abrProfileLiveToVod = require("./abr_profile_live_to_vod.json");
+    }
+
+    let status = await this.Status({name: stream});
     let libraryId = status.libraryId;
 
     let targetLibraryId;
@@ -394,11 +621,21 @@ class EluvioLiveStream {
         throw "content type not found: title";
       }
       console.log("Creating new object in library " + library);
+
+      if (!name) {
+        name = "VOD - Live Stream " + stream + " - " + new Date().toISOString();
+      }
+      if (!title) {
+        title = "Live Stream " + stream + " - " + new Date().toISOString();
+      }
       const newObject = await this.client.CreateContentObject({libraryId: library, options: {
         type: typeId,
         meta: {
           public: {
-            name: "VOD - Live Stream " + name + " - " + new Date().toISOString()
+            name: name,
+            asset_metadata: {
+              title: title
+            }
           }
         }
       }});
@@ -411,7 +648,29 @@ class EluvioLiveStream {
       targetLibraryId = await this.client.ContentObjectLibraryId({objectId: object});
     }
 
-    console.log("Copying stream", name, "object", object);
+    // If updating an existing object, capture entry/exit rat from existing
+    // offerings so we can restore them after live-to-vod overwrites them.
+    let preservedOfferingPoints = {};
+    if (object && targetWriteToken == undefined) {
+      for (const offeringKey of ["default", "default_dash"]) {
+        const existing = await this.client.ContentObjectMetadata({
+          libraryId: targetLibraryId,
+          objectId: object,
+          metadataSubtree: `offerings/${offeringKey}`
+        });
+        if (existing && (existing.entry_point_rat || existing.exit_point_rat)) {
+          preservedOfferingPoints[offeringKey] = {
+            entry_point_rat: existing.entry_point_rat,
+            exit_point_rat: existing.exit_point_rat
+          };
+          console.log(
+            `Preserving offerings/${offeringKey} entry_point_rat=${existing.entry_point_rat} exit_point_rat=${existing.exit_point_rat}`
+          );
+        }
+      }
+    }
+
+    console.log("Copying stream", stream, "object", object, "drm", drm);
 
     // Validation - require target object
     if (!object) {
@@ -460,7 +719,7 @@ class EluvioLiveStream {
       status.target_library_id = targetLibraryId;
       status.target_write_token = targetWriteToken;
 
-      console.log("Process live source (takes around 20 sec per hour of content)");
+      console.log("Process live source (takes around 30 sec per hour of content)");
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
@@ -472,7 +731,8 @@ class EluvioLiveStream {
           "end_time": endTime, // eg. "2023-10-03T02:15:00.00Z",
           "streams": streams,
           "recording_period": recordingPeriod,
-          "variant_key": "default"
+          "variant_key": "default",
+          "include_tags": includeTags   // true to copy video tags from live stream
         },
         constant: false,
         format: "text"
@@ -484,8 +744,29 @@ class EluvioLiveStream {
         "offering_key": "default",
         "prod_master_hash": targetWriteToken,
         "variant_key": "default",
-        "keep_other_streams": false
+        "keep_other_streams": keepExistingStreams, // true to keep existing stream info including thumbnails
+
+        ...(defaultDash && {
+          "additional_offering_specs": {
+            "default_dash": [       // creates an offering for chromecasting
+              {
+                "op": "replace",
+                "path": "/playout/playout_formats",
+                "value": {
+                  "dash-clear": {
+                    "drm": null,
+                    "protocol": {
+                      "min_buffer_length": 2,
+                      "type": "ProtoDash"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        })
       };
+
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
@@ -501,7 +782,7 @@ class EluvioLiveStream {
         libraryId: targetLibraryId,
         objectId: object,
         writeToken: targetWriteToken,
-        method: "/media/live_to_vod/copy",
+        method: "/media/live_to_vod/copy",   // Takes about 20 sec per "hour" of live
         body: {
           "variant_key": "default",
           "offering_key": "default",
@@ -511,6 +792,7 @@ class EluvioLiveStream {
       });
 
       console.log("Finalize VoD mezzanine");
+
       await this.client.CallBitcodeMethod({
         libraryId: targetLibraryId,
         objectId: object,
@@ -520,6 +802,36 @@ class EluvioLiveStream {
         constant: false,
         format: "text"
       });
+
+      // Restore previously captured entry/exit rat values onto the offerings
+      for (const [offeringKey, points] of Object.entries(preservedOfferingPoints)) {
+        const offering = await this.client.ContentObjectMetadata({
+          libraryId: targetLibraryId,
+          objectId: object,
+          writeToken: targetWriteToken,
+          metadataSubtree: `offerings/${offeringKey}`
+        });
+        if (!offering) {
+          console.log(`Skipping restore for offerings/${offeringKey} (not present after copy)`);
+          continue;
+        }
+        if (points.entry_point_rat !== undefined) {
+          offering.entry_point_rat = points.entry_point_rat;
+        }
+        if (points.exit_point_rat !== undefined) {
+          offering.exit_point_rat = points.exit_point_rat;
+        }
+        await this.client.ReplaceMetadata({
+          libraryId: targetLibraryId,
+          objectId: object,
+          writeToken: targetWriteToken,
+          metadataSubtree: `offerings/${offeringKey}`,
+          metadata: offering
+        });
+        console.log(
+          `Restored offerings/${offeringKey} entry_point_rat=${points.entry_point_rat} exit_point_rat=${points.exit_point_rat}`
+        );
+      }
 
       let finalize = true;
       if (finalize) {
@@ -548,6 +860,15 @@ class EluvioLiveStream {
     }
   }
 
+  /**
+   * Set or remove a simple watermark on a live stream object.
+   *
+   * @namedParams
+   * @param {string} op - Operation: "set" to apply a watermark, "rm" to remove it
+   * @param {string} objectId - Object ID of the live stream
+   * @param {string} [fileName] - Path to a JSON file containing the watermark definition (required for "set")
+   * @returns {Promise<Object>} Object with `watermark` and finalized `hash`
+   */
   async Watermark({op, objectId, fileName}) {
 
     const libraryId = await this.client.ContentObjectLibraryId({objectId});
@@ -608,6 +929,14 @@ class EluvioLiveStream {
     return res;
   }
 
+  /**
+   * Retrieve the resolved recording configuration for a live stream, merging
+   * the user-supplied `live_recording_config` metadata with the base profile.
+   *
+   * @namedParams
+   * @param {string} name - The object ID of the live stream
+   * @returns {Promise<Object>} Resolved stream configuration
+   */
   async StreamConfig({name}) {
 
     const objectId = name;
@@ -622,6 +951,13 @@ class EluvioLiveStream {
     return this.client.StreamConfig({name, customSettings: userConfig});
   }
 
+  /**
+   * List all playout URLs for streams associated with a site object.
+   *
+   * @namedParams
+   * @param {string} siteId - Object ID of the site
+   * @returns {Promise<Object>} Map of stream names to playout URLs
+   */
   async StreamListUrls({siteId}) {
     return this.client.StreamListUrls({siteId});
   }
@@ -631,7 +967,15 @@ class EluvioLiveStream {
   }
 
   /**
-   * Calculate live streaming latency - ingest, egress, metadata.
+   * Calculate live streaming latency across three dimensions: part ingest delay,
+   * segment egress delay, and metadata retrieval time.
+   *
+   * Probes segments at positions 1, 8, and 15 within the current mezzanine part
+   * and aggregates min/max/avg egress delay.
+   *
+   * @namedParams
+   * @param {Object} status - Stream status object (from {@link Status})
+   * @returns {Promise<Object>} Latency stats including `part_ingest`, `egress`, and `meta_delay`
    */
   async LatencyCalculator({status}) {
 
@@ -745,7 +1089,16 @@ class EluvioLiveStream {
   }
 
   /**
-   * Calculate latency stats for a given segment
+   * Measure the egress latency for a single HLS segment by timing an HTTP GET
+   * from its scheduled availability to first byte and full download.
+   *
+   * @namedParams
+   * @param {number} segNum - Segment index within the recording period
+   * @param {Object} stats - Cumulative stats object; egress fields are updated in place
+   * @param {number} sequence - Current recording sequence number
+   * @param {Object} period - Recording period metadata object
+   * @param {Object} status - Stream status object (provides library/object IDs)
+   * @returns {Promise<Object>} Per-segment result: segNum, segDelay, segDelayFirstByte, segSize, downloadMbps
    */
   async LatencySegment({segNum, stats, sequence, period, status}) {
 
@@ -804,6 +1157,15 @@ class EluvioLiveStream {
     };
   }
 
+  /**
+   * Look up the start and end times for a SCTE-35 event by its ID,
+   * using the LRO status URL from the stream status object.
+   *
+   * @namedParams
+   * @param {string} eventId - SCTE-35 event ID to search for
+   * @param {Object} status - Stream status object (must include `lro_status_url`)
+   * @returns {Promise<Object>} Object with `eventStart`, `eventEnd`, and `eventId`
+   */
   async CueInfo({eventId, status}) {
     let cues;
     try {
@@ -836,6 +1198,16 @@ class EluvioLiveStream {
     return {eventStart, eventEnd, eventId};
   }
 
+  /**
+   * Switch a stream's playout source between its primary live feed and a
+   * backup content hash (e.g. a pre-recorded fallback).
+   *
+   * @namedParams
+   * @param {string} name - Object ID of the stream (site) object
+   * @param {string} source - "primary" to use the live feed, "backup" to use the backup hash
+   * @param {string} [backupHash] - Content hash of the backup object (required when source is "backup")
+   * @returns {Promise<Object>} Finalize result with `source` and resolved `link`
+   */
   async StreamSwitch({name, source, backupHash}) {
 
     console.log("Switch", name, source, backupHash);
@@ -887,8 +1259,14 @@ class EluvioLiveStream {
     };
   }
 
-  // Find a content type by label (e.g. 'live-stream', 'title') based on the
-  // content types stored in the tenant object
+  /**
+   * Find a content type object ID by its label, looking up the types registered
+   * in the tenant's top-level object (`public/content_types`).
+   *
+   * @namedParams
+   * @param {string} label - Content type label (e.g. "live-stream", "title")
+   * @returns {Promise<string|undefined>} Content type object ID, or undefined if not found
+   */
   async FindContentType({label}) {
     const tenantId = await this.client.userProfileClient.TenantContractId();
     const objectId = "iq__" + tenantId.substring(4);
@@ -962,5 +1340,7 @@ const ConfigStreamRebroadcast = async () => {
   }
 };
 */
+
+
 
 exports.EluvioLiveStream = EluvioLiveStream;
