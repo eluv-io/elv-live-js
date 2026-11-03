@@ -546,6 +546,7 @@ class EluvioLiveStream {
    * @namedParams
    * @param {string} stream - Object ID of the source live stream
    * @param {string} [object] - Object ID of the existing target VoD object; a new object is created if omitted
+   * @param {string} [writeToken] - Existing target draft to reuse instead of opening a new draft
    * @param {string} [library] - Library ID for the new VoD object (required when `object` is omitted)
    * @param {string} [name] - Name for the new VoD object
    * @param {string} [title] - Title for the new VoD object's asset metadata
@@ -561,6 +562,65 @@ class EluvioLiveStream {
    * @returns {Promise<Object>} Status object including `target_hash` of the finalized VoD object
    */
 
+  async StreamCopyToVod({stream, object, writeToken, library, name, title, drm = true, includeTags = false, defaultDash = false, keepExistingStreams = false, eventId, startTime, endTime, recordingPeriod = -1, streams}) {
+    if (object == undefined) {
+      if (library == undefined) {
+        throw Error("one of object or library must be specified");
+      }
+      const typeId = await this.FindContentType({label: "title"});
+      if (typeId == undefined) {
+        throw Error("content type not found: title");
+      }
+
+      const newObject = await this.client.CreateContentObject({
+        libraryId: library,
+        options: {
+          type: typeId,
+          meta: {
+            public: {
+              name: name || "VOD - Live Stream " + stream + " - " + new Date().toISOString(),
+              asset_metadata: {
+                title: title || "Live Stream " + stream + " - " + new Date().toISOString()
+              }
+            }
+          }
+        }
+      });
+      object = newObject.objectId;
+      await this.client.SetPermission({objectId: object, writeToken: newObject.writeToken, permission: "editable"});
+      writeToken = newObject.writeToken;
+    }
+
+    const status = await this.client.StreamCopyToVod({
+      name: stream,
+      targetObjectId: object,
+      writeToken,
+      drm,
+      includeTags,
+      defaultDash,
+      keepExistingStreams,
+      eventId,
+      startTime,
+      endTime,
+      recordingPeriod,
+      streams
+    });
+
+    // Retain the local API's result fields for existing callers and CLI output.
+    return {
+      ...status,
+      live_object_id: status.liveObjectId,
+      live_hash: status.liveHash,
+      target_object_id: status.targetObjectId,
+      target_library_id: status.targetLibraryId,
+      target_write_token: status.targetWriteToken,
+      target_hash: status.targetHash
+    };
+  }
+
+  /**
+   * Original local copy-to-VOD implementation, retained for comparison.
+   */
   /*
     Example fabric API flow:
 
@@ -592,7 +652,7 @@ class EluvioLiveStream {
       https://host-76-74-34-194.contentfabric.io/qlibs/ilib24CtWSJeVt9DiAzym8jB6THE9e7H/q/$QWT/call/media/abr_mezzanine/offerings/default/finalize -d '{}' -H "Authorization: Bearer $TOK"
 
   */
-  async StreamCopyToVod({stream, object, library, name, title, drm = true, includeTags = false, defaultDash = false, keepExistingStreams = false, eventId, startTime, endTime, recordingPeriod, streams}) {
+  async StreamCopyToVodOld({stream, object, library, name, title, drm = true, includeTags = false, defaultDash = false, keepExistingStreams = false, eventId, startTime, endTime, recordingPeriod, streams}) {
 
     const objectId = stream;
     let abrProfileLiveToVod;
