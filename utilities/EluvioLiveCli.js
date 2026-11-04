@@ -2220,7 +2220,7 @@ const CmdOtpMakeEmbedUrls = async ({ argv }) => {
   }
 };
 
-yargs(hideBin(process.argv))
+const cli = yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
     type: "boolean",
@@ -4338,7 +4338,11 @@ yargs(hideBin(process.argv))
   .help()
   .usage("EluvioLive CLI\n\nUsage: elv-live <command>")
   .scriptName("")
-  .demandCommand(1).argv;
+  .demandCommand(1);
+
+if (require.main === module) {
+  cli.parse();
+}
 
 // For unit testing
 exports.CmdShuffle = CmdShuffle;

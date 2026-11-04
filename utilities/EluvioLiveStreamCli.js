@@ -791,12 +791,11 @@ yargs(hideBin(process.argv))
             "Optional SCTE35 program or chapter event ID",
           type: "string",
         })
-        // PENDING(jon): Disabled until live-to-vod supports starting at an offset into a recording_period`
-        // .option("start_time", {
-        //   describe:
-        //     "Start at the specified time in the stream",
-        //   type: "string",
-        // })
+        .option("start_time", {
+          describe:
+            "Start at the specified ISO-8601 time in the stream",
+          type: "string",
+        })
         .option("end_time", {
           describe:
             "End at the specified time in the stream",
