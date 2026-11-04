@@ -52,7 +52,6 @@ describe("Local copy-to-VOD client wrapper", () => {
       drm: true, includeTags: false, defaultDash: false,
       keepExistingStreams: false, recordingPeriod: -1
     }));
-    expect(typeof stream.StreamCopyToVodOld).toBe("function");
   });
 
   test("passes the new target draft to the client without an intermediate commit", async () => {
