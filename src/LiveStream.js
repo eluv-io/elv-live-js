@@ -576,6 +576,7 @@ class EluvioLiveStream {
         libraryId: library,
         options: {
           type: typeId,
+          createKMSConk: true,
           meta: {
             public: {
               name: name || "VOD - Live Stream " + stream + " - " + new Date().toISOString(),
@@ -587,8 +588,8 @@ class EluvioLiveStream {
         }
       });
       object = newObject.objectId;
-      await this.client.SetPermission({objectId: object, writeToken: newObject.writeToken, permission: "editable"});
       writeToken = newObject.writeToken;
+      await this.client.SetPermission({objectId: object, writeToken, permission: "editable"});
     }
 
     const status = await this.client.StreamCopyToVod({
