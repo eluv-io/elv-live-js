@@ -18,6 +18,26 @@ const MakeTxLessToken = async({client, libraryId, objectId, versionHash}) => {
   return tok;
 };
 
+const toZulu = (value, useLocalTime = true) => {
+  if (value === undefined || value === null || value === "") return value;
+
+  let input = String(value).trim().replace(" ", "T");
+
+  // JS parses date-only strings as UTC, so make them explicit date-times
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) input += "T00:00:00";
+
+  // JS parses date-times without a timezone as local time
+  const hasTimezone = /T.*(Z|[+-]\d{2}(:?\d{2})?)$/i.test(input);
+  if (!hasTimezone && !useLocalTime) input += "Z";
+
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) {
+    throw Error(`invalid time: ${value}`);
+  }
+
+  return date.toISOString().replace(".000Z", "Z");
+};
+
 /**
  * Provides live stream management operations on the Eluvio Content Fabric:
  * creating and configuring streams, controlling recording sessions, copying
@@ -561,7 +581,7 @@ class EluvioLiveStream {
    * @returns {Promise<Object>} Status object including `target_hash` of the finalized VoD object
    */
 
-  async StreamCopyToVod({stream, object, writeToken, library, name, title, drm = true, includeTags = false, defaultDash = false, keepExistingStreams = false, eventId, startTime, endTime, recordingPeriod = -1, streams}) {
+  async StreamCopyToVod({stream, object, writeToken, library, name, title, drm = true, includeTags = false, defaultDash = false, keepExistingStreams = false, eventId, startTime, endTime, recordingPeriod = -1, streams, useLocalTime = false}) {
     if (object == undefined) {
       if (library == undefined) {
         throw Error("one of object or library must be specified");
@@ -590,6 +610,10 @@ class EluvioLiveStream {
       writeToken = newObject.writeToken;
       await this.client.SetPermission({objectId: object, writeToken, permission: "editable"});
     }
+
+    // update start time and end time to zulu if user opted to pass values as local time
+    startTime = toZulu(startTime, useLocalTime);
+    endTime = toZulu(endTime, useLocalTime);
 
     const status = await this.client.StreamCopyToVod({
       name: stream,

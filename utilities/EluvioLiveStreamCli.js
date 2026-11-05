@@ -324,6 +324,7 @@ const CmdStreamCopyToVod = async ({ argv }) => {
       endTime: argv.end_time,
       recordingPeriod: argv.recording_period,
       streams: argv.streams,
+      useLocalTime: argv.useLocalTime
     });
     console.log(yaml.dump(status));
   } catch (e) {
@@ -810,6 +811,11 @@ yargs(hideBin(process.argv))
           describe:
             "List specific streams to be copied (eg. 'video:0,audio:1,audio_spa:2')",
           type: "string",
+        })
+        .option("use-local-time", {
+          type: "boolean",
+          default: false,
+          describe: "Treat --start_time and --end_time as local time and convert them to Zulu. Times with an explicit timezone are not converted."
         })
     },
     (argv) => {
