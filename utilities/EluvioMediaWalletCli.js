@@ -208,8 +208,9 @@ const CmdPropertySectionItemDelete = async ({ argv }) => {
 const CmdApiTest = async ({ argv }) => {
   console.log("API Test Command Invoked\n");
   try {
-    const network = argv.network;
-    const consts = Config.consts[network === "demo" ? "demov3" : network] || {};
+    // Same aliases as src/Config.js (ELV_NET): demo and dv3 both mean demov3.
+    const network = { demo: "demov3", dv3: "demov3" }[argv.network] || argv.network;
+    const consts = Config.consts[network] || {};
     const service = new ApiTestService({
       configUrl: Config.networks[network],
       network,
@@ -422,7 +423,7 @@ const yargsInstance = yargs(hideBin(process.argv))
       yargs
         .option("property_id", { alias: "p", describe: "Property ID(s) to test (default: every active property)", type: "array", string: true })
         .option("max_properties", { describe: "Test at most this many properties", type: "number" })
-        .option("network", { describe: "Network to test", choices: ["main", "demov3", "demo"], default: Config.net })
+        .option("network", { describe: "Network to test (default: ELV_NET, or main)", choices: ["main", "demov3", "dv3", "demo"], default: Config.net })
         .option("env", { describe: "API environment (staging appends env=staging)", choices: ["prod", "staging"], default: "prod" })
         .option("jwt", { describe: "OAuth ID token: runs the real app login (wlt/login/jwt, wlt/sign/csat). Env: ELV_JWT", type: "string" })
         .option("token", { describe: "Existing fabric token / CSAT to test with. Env: ELV_FABRIC_TOKEN", type: "string" })
