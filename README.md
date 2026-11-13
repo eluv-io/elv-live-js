@@ -229,3 +229,87 @@ The general flow for managing a live stream is:
 
   After `elv-stream terminate` is run, the stream is ended and can no longer be restarted.  You can create a new stream within the same content object.
 
+
+
+# EluvioMediaWallet CLI
+
+The EluvioMediaWallet CLI `elv-mediawallet` manages media catalogs and properties. It can also test the backend APIs that the Media Wallet apps (tvOS, Android and web) depend on.
+
+## API health test
+
+`elv-mediawallet api-test` calls every API that the wallet apps use, with the same request shapes the apps send. Run it after an infrastructure redeploy to confirm the apps still work.
+
+It starts with a set of global checks:
+
+- the fabric config
+- every authority-service and fabric node listed in the config
+- the property list and discover
+- TV device activation (create a code, then poll it)
+- the URL shortener
+- the wallet web app
+- the state store
+- the signed-in user's NFTs, NFT info and redemption status
+
+Then it runs these checks on each active property:
+
+- property detail, main page and sections
+- search filters, search and the multiview sidebar
+- media items, autoplay and playout options
+- the HLS playlist, playout options by hash and the FairPlay license server
+- fabric images
+
+Choose how to sign in. If you provide more than one, the first one in this list is used:
+
+| Credential | How to pass it | What it tests |
+|---|---|---|
+| Fabric token / CSAT | `--token` or `ELV_FABRIC_TOKEN` | Calls the APIs with an existing session. |
+| OAuth ID token (JWT) | `--jwt` or `ELV_JWT` (add `--tenant_id` if the login is scoped to a tenant) | Runs the app's real login: `wlt/login/jwt` and `wlt/sign/csat`. It then checks `wlt/refresh/csat` and `wlt/login/status`, and releases the session when it finishes. |
+| Private key | `PRIVATE_KEY` | Signs a fabric token locally, the same way the web wallet does for external-wallet logins. The run covers only the account's own tenant (see below). |
+| None | `--anonymous` | Tests as a logged-out user, with the static token. |
+
+Pass credentials as environment variables, not flags, so they don't end up in your shell history.
+
+### Private key runs are scoped to the account's tenant
+
+A private key belongs to one tenant. The command reads that tenant (`iten...`) from the account's wallet, then tests only the properties whose `tenant.tenant_iten` matches. Redemption status is checked for that tenant too.
+
+- With `-p`: properties from other tenants are skipped, and the output says which tenant each one belongs to.
+- With `--tenant_id`: it must match the account's tenant, or the run stops. If the account's tenant can't be read, `--tenant_id` is used instead, with a WARN.
+- If the account has no tenant and you don't pass `--tenant_id`, the run stops with an error.
+
+```bash
+# Everything for the account's tenant
+PRIVATE_KEY=<0x key> ./elv-mediawallet api-test
+
+# One property of that tenant
+PRIVATE_KEY=<0x key> ./elv-mediawallet api-test -p iq__...
+
+# Check that the key belongs to the tenant you expect
+PRIVATE_KEY=<0x key> ./elv-mediawallet api-test --tenant_id iten...
+```
+
+```bash
+# Every active property on the network set in src/Config.js, logged out
+./elv-mediawallet api-test --anonymous
+
+# As a user, on specific properties, with a JUnit report for CI
+ELV_JWT=<id token> ./elv-mediawallet api-test --tenant_id iten... -p iq__aaa iq__bbb --junit report.xml
+
+# As the account behind PRIVATE_KEY, on the demo network
+./elv-mediawallet api-test --network demov3
+```
+
+Each check gets one of these results:
+
+| Result | Meaning |
+|---|---|
+| PASS | The call worked. |
+| WARN | The call worked, but it was slow (`--slow_ms`) or needed a retry. Also used when every video tried was gated for this user, or when one video was broken but another one played. |
+| FAIL | Wrong status, malformed response, 5xx, or timeout. |
+| SKIP | An earlier check this one needs failed, or a credential is missing. |
+
+The command exits with status 1 if any check FAILs. With `--strict`, it also exits 1 on WARN. Use `--json` to write a JSON report.
+
+To check playback, the command looks for a video the user can play. It tries up to `--media_scan` videos per property (default 5), VOD first. It skips gated videos (403) and upcoming live events that have no stream yet.
+
+The activation-code and URL-shortener checks create short-lived records on the server. Pass `--read_only` to skip them.

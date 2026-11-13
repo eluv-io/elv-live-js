@@ -3,6 +3,7 @@ const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 
 const { ElvMediaWallet } = require("../src/ElvMediaWallet");
+const { ApiTestService } = require("../src/ApiTestService");
 const { Config } = require("../src/Config");
 
 const makeWallet = (argv) => new ElvMediaWallet({
@@ -202,6 +203,46 @@ const CmdPropertySectionItemDelete = async ({ argv }) => {
   }
 };
 
+/* ----------------------- API test handler ----------------------- */
+
+const CmdApiTest = async ({ argv }) => {
+  console.log("API Test Command Invoked\n");
+  try {
+    const network = argv.network;
+    const consts = Config.consts[network === "demo" ? "demov3" : network] || {};
+    const service = new ApiTestService({
+      configUrl: Config.networks[network],
+      network,
+      walletUrl: consts.walletUrl,
+      env: argv.env,
+      timeoutMs: argv.timeout * 1000,
+      slowMs: argv.slow_ms,
+      readOnly: argv.read_only,
+      skipNodeSweep: argv.skip_node_sweep,
+      mediaScan: argv.media_scan,
+      debugLogging: argv.verbose
+    });
+
+    // Secrets come from env vars by default so they stay out of shell history.
+    const { counts } = await service.Run({
+      token: argv.anonymous ? undefined : argv.token || process.env.ELV_FABRIC_TOKEN,
+      jwt: argv.anonymous ? undefined : argv.jwt || process.env.ELV_JWT,
+      privateKey: argv.anonymous ? undefined : process.env.PRIVATE_KEY,
+      tenantId: argv.tenant_id,
+      propertyIds: argv.property_id || [],
+      maxProperties: argv.max_properties
+    });
+
+    if (argv.junit) service.WriteJunit(argv.junit);
+    if (argv.json) service.WriteJson(argv.json);
+
+    if (counts.FAIL || (argv.strict && counts.WARN)) process.exit(1);
+  } catch (error) {
+    console.error("Error running API tests:", error);
+    process.exit(1);
+  }
+};
+
 /* ----------------------- CLI ----------------------- */
 
 const yargsInstance = yargs(hideBin(process.argv))
@@ -373,7 +414,31 @@ const yargsInstance = yargs(hideBin(process.argv))
         }
       );
     },
-  });
+  })
+  .command(
+    "api-test [options]",
+    "Check every API the media wallet apps use, on each active property (run after infra redeploys)",
+    (yargs) => {
+      yargs
+        .option("property_id", { alias: "p", describe: "Property ID(s) to test (default: every active property)", type: "array", string: true })
+        .option("max_properties", { describe: "Test at most this many properties", type: "number" })
+        .option("network", { describe: "Network to test", choices: ["main", "demov3", "demo"], default: Config.net })
+        .option("env", { describe: "API environment (staging appends env=staging)", choices: ["prod", "staging"], default: "prod" })
+        .option("jwt", { describe: "OAuth ID token: runs the real app login (wlt/login/jwt, wlt/sign/csat). Env: ELV_JWT", type: "string" })
+        .option("token", { describe: "Existing fabric token / CSAT to test with. Env: ELV_FABRIC_TOKEN", type: "string" })
+        .option("anonymous", { describe: "Ignore PRIVATE_KEY / ELV_JWT / ELV_FABRIC_TOKEN and test logged out", type: "boolean", default: false })
+        .option("tenant_id", { describe: "Tenant ID (iten...). With PRIVATE_KEY: must match the account's tenant, or is used when it can't be read. Also used for JWT login and redemption status", type: "string" })
+        .option("media_scan", { describe: "Videos to try per property when looking for one the user can play", type: "number", default: 5 })
+        .option("read_only", { describe: "Skip calls that create server records (activation code, short URL)", type: "boolean", default: false })
+        .option("skip_node_sweep", { describe: "Only test the first node of each service", type: "boolean", default: false })
+        .option("timeout", { describe: "Per-request timeout in seconds", type: "number", default: 30 })
+        .option("slow_ms", { describe: "WARN when a call takes longer than this", type: "number", default: 8000 })
+        .option("strict", { describe: "Exit non-zero on warnings too", type: "boolean", default: false })
+        .option("junit", { describe: "Write a JUnit XML report to this path", type: "string" })
+        .option("json", { describe: "Write a JSON report to this path", type: "string" });
+    },
+    (argv) => CmdApiTest({ argv })
+  );
 
 yargsInstance
   .strict()
