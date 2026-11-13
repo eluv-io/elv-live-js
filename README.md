@@ -256,3 +256,93 @@ Key command areas include:
 - **Tenant administration** — show, fix, and configure tenant contracts; manage content admins and tenant users; deploy tenant contracts; set up faucets and sharing keys
 - **Object/contract utilities** — set or get tenant contract IDs for wallets, content types, libraries, and groups
 
+
+
+# EluvioMediaWallet CLI
+
+The EluvioMediaWallet CLI `elv-mediawallet` manages media catalogs and properties. It can also test the backend APIs that the Media Wallet apps (tvOS, Android and web) depend on.
+
+## API health test
+
+`elv-mediawallet api-test` calls every API that the wallet apps use, with the same request shapes the apps send. Run it after an infrastructure redeploy to confirm the apps still work.
+
+It starts with a set of global checks:
+
+- the fabric config
+- every authority-service and fabric node listed in the config
+- the property list and discover
+- TV device activation (create a code, then poll it)
+- the URL shortener
+- the wallet web app
+- the state store
+- the staging auth host that Android's JWT deep links use (reachability only)
+- the signed-in user's NFTs, NFT info and redemption status
+- the claim and redemption route `wlt/act/{tenant}`, sent an empty request: a 400 shows the route is live, and nothing is claimed
+
+Then it runs these checks on each active property:
+
+- property detail, main page and sections
+- search filters, search and the multiview sidebar
+- permission states (`permissions?no_cache=true`), then the marketplace SKU (`apigw/marketplaces/{id}/sku/{sku}`) and the marketplace metadata on fabric, for the first purchasable item
+- media items, autoplay and playout options
+- the HLS playlist, playout options by hash, the fabric `options.json` path and the FairPlay license server
+- fabric images
+
+Choose how to sign in. If you provide more than one, the first one in this list is used:
+
+| Credential | How to pass it | What it tests |
+|---|---|---|
+| Fabric token / CSAT | `--token` or `ELV_FABRIC_TOKEN` | Calls the APIs with an existing session. |
+| OAuth ID token (JWT) | `--jwt` or `ELV_JWT` | Runs the app's real login. It checks the `wlt/login/jwt` response (`addr`, `eth` and `token` must be present; a missing `pubkey`, `ident`, `subject` or `issuer_id` is a WARN), loads the signer from `wlt/keys`, then calls `wlt/sign/csat`, `wlt/refresh/csat` and `wlt/login/status`. It releases the session when it finishes. If the user has a `tenant_binding`, the run covers only that tenant (see below). |
+| Private key | `PRIVATE_KEY` | Signs a fabric token locally, the same way the web wallet does for external-wallet logins. The run covers only the account's own tenant (see below). |
+| None | `--anonymous` | Tests as a logged-out user, with the static token. |
+
+Pass credentials as environment variables, not flags, so they don't end up in your shell history.
+
+### Private key and JWT runs are scoped to the account's tenant
+
+The command finds the account's tenant, then tests only the properties that belong to it (matched by `tenant.tenant_iten` or `tenant.tenant_id`). Redemption status is checked for that tenant too.
+
+- With a private key, the tenant is read from the account's wallet.
+- With a JWT, it comes from `tenant_binding` in the `wlt/login/jwt` response. That tenant (in its `iten…` form) is then sent as `tid` to `wlt/sign/csat` and used for `wlt/status/act/{tenant}`, as the apps do. A user with no tenant binding is tested on all properties.
+
+- With `-p`: properties from other tenants are skipped, and the output says which tenant each one belongs to.
+- With `--tenant_id`: it must match the account's tenant, or the run stops. If the account's tenant can't be read, `--tenant_id` is used instead, with a WARN.
+- With a private key, if the account has no tenant and you don't pass `--tenant_id`, the run stops with an error.
+
+```bash
+# Everything for the account's tenant
+PRIVATE_KEY=<0x key> ./elv-mediawallet api-test
+
+# One property of that tenant
+PRIVATE_KEY=<0x key> ./elv-mediawallet api-test -p iq__...
+
+# Check that the key belongs to the tenant you expect
+PRIVATE_KEY=<0x key> ./elv-mediawallet api-test --tenant_id iten...
+```
+
+```bash
+# Every active property on the network set in src/Config.js, logged out
+./elv-mediawallet api-test --anonymous
+
+# As a user, on specific properties, with a JUnit report for CI
+ELV_JWT=<id token> ./elv-mediawallet api-test --tenant_id iten... -p iq__aaa iq__bbb --junit report.xml
+
+# As the account behind PRIVATE_KEY, on the demo network
+./elv-mediawallet api-test --network demov3
+```
+
+Each check gets one of these results:
+
+| Result | Meaning |
+|---|---|
+| PASS | The call worked. |
+| WARN | The call worked, but it was slow (`--slow_ms`) or needed a retry. Also used when every video tried was gated for this user, or when one video was broken but another one played. |
+| FAIL | Wrong status, malformed response, 5xx, or timeout. |
+| SKIP | An earlier check this one needs failed, or a credential is missing. |
+
+The command exits with status 1 if any check FAILs. With `--strict`, it also exits 1 on WARN. Use `--json` to write a JSON report.
+
+To check playback, the command looks for a video the user can play. It tries up to `--media_scan` videos per property (default 5), VOD first. It skips gated videos (403) and upcoming live events that have no stream yet.
+
+The activation-code and URL-shortener checks create short-lived records on the server. Pass `--read_only` to skip them.
