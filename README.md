@@ -275,14 +275,17 @@ It starts with a set of global checks:
 - the URL shortener
 - the wallet web app
 - the state store
+- the staging auth host that Android's JWT deep links use (reachability only)
 - the signed-in user's NFTs, NFT info and redemption status
+- the claim and redemption route `wlt/act/{tenant}`, sent an empty request: a 400 shows the route is live, and nothing is claimed
 
 Then it runs these checks on each active property:
 
 - property detail, main page and sections
 - search filters, search and the multiview sidebar
+- permission states (`permissions?no_cache=true`), then the marketplace SKU (`apigw/marketplaces/{id}/sku/{sku}`) and the marketplace metadata on fabric, for the first purchasable item
 - media items, autoplay and playout options
-- the HLS playlist, playout options by hash and the FairPlay license server
+- the HLS playlist, playout options by hash, the fabric `options.json` path and the FairPlay license server
 - fabric images
 
 Choose how to sign in. If you provide more than one, the first one in this list is used:

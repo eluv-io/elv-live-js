@@ -25,6 +25,7 @@ const HLS_KEYS = ["hls-clear", "hls-aes128", "hls-fairplay", "hls-sample-aes"]; 
 const USER_AGENT = "elv-mediawallet-api-test/1.0";
 const SHORTENER_URL = "https://elv.lv/tiny/create";
 const STATE_STORE_URL = "https://appsvc.svc.eluv.io";
+const DEEPLINK_AUTH_URL = "https://wlt.stg.svc.eluv.io/as";
 
 class CheckError extends Error {}
 class Skip extends Error {}
@@ -729,6 +730,20 @@ class ApiTestService {
         return { res, detail: `reachable (HTTP ${res.status} for unknown transaction)` };
       }
     );
+
+    // Android's DeepLinkAuthApi hardcodes the staging auth service for JWT deep links.
+    // Only check it answers: sending a real JWT there would log in to staging.
+    await this.check(
+      "Deep-link auth host",
+      { endpoint: `POST ${DEEPLINK_AUTH_URL}/wlt/login/jwt`, usedBy: "DeepLinkAuthApi (JWT deep links)" },
+      async () => {
+        const res = await this.http(`${DEEPLINK_AUTH_URL}/wlt/login/jwt`, { method: "POST", body: {} });
+        if (res.status === 401 || res.status === 400 || res.status === 403) {
+          return { res, detail: `reachable (HTTP ${res.status} without a JWT)` };
+        }
+        throw new CheckError(`expected 401 without a JWT, got HTTP ${res.status || res.error}: ${res.snippet()}`);
+      }
+    );
   }
 
   async checkAuthenticated({ tenantId }) {
@@ -738,7 +753,8 @@ class ApiTestService {
       "Auth: user properties",
       "Auth: NFT contract info",
       "Auth: NFT token info",
-      "Auth: redemption status"
+      "Auth: redemption status",
+      "Auth: claim/redeem route"
     ];
     if (!this.ctx.userToken) {
       const endpoints = [
@@ -747,7 +763,8 @@ class ApiTestService {
         "GET mw/properties?include_public=false",
         "GET nft/info/{contract}",
         "GET nft/info/{contract}/{token}",
-        "GET wlt/status/act/{tenant}"
+        "GET wlt/status/act/{tenant}",
+        "POST wlt/act/{tenant}"
       ];
       names.forEach((name, i) =>
         this.record({ scope: "global", name, endpoint: endpoints[i], status: SKIP, detail: "no user auth" })
@@ -792,6 +809,20 @@ class ApiTestService {
       if (!tenantId) throw new Skip("no tenant (no tenant_binding or account tenant; pass --tenant_id)");
       const res = this.expect(await this.mw(`wlt/status/act/${tenantId}`, { token }));
       return { res, detail: `${(res.json() || []).length} redemptions` };
+    });
+
+    // Claims and redemptions POST here. An empty request claims nothing: a live route
+    // rejects it with 400, a missing one answers 404.
+    await this.check(names[6], { endpoint: "POST wlt/act/{tenant}", usedBy: "NftClaimApi / RedeemableOffersApi" }, async () => {
+      const tenant = tenantId || ((this.ctx.properties || [])[0] || {}).tenant?.tenant_iten;
+      if (!tenant) throw new Skip("no tenant to post to");
+      const res = await this.mw(`wlt/act/${tenant}`, { method: "POST", body: {}, token });
+      if (res.status === 400) return { res, detail: "route alive (empty request rejected, nothing claimed)" };
+      if (res.status === 404) throw new CheckError("route missing (HTTP 404)");
+      if (res.status !== null && res.status < 300) {
+        return { res, status: WARN, detail: `empty request accepted (HTTP ${res.status}); expected 400` };
+      }
+      throw new CheckError(`HTTP ${res.status || res.error}: ${res.snippet()}`);
     });
   }
 
@@ -867,6 +898,45 @@ class ApiTestService {
         const res = this.expect(await this.mw(`mw/properties/${pid}/sidebar/live`, { method: "POST" }));
         if (!("contents" in (res.json() || {}))) throw new CheckError("response missing 'contents'");
         return { res };
+      }
+    );
+
+    await this.check(
+      "Permission states",
+      opts({ endpoint: "GET mw/properties/{id}/permissions?no_cache=true", usedBy: "MediaWalletV2Api (permissions)", needs: ["property"] }),
+      async () => {
+        const res = this.expect(await this.mw(`mw/properties/${pid}/permissions?no_cache=true`));
+        const states = (res.json() || {}).permission_auth_state;
+        if (!states || typeof states !== "object") throw new CheckError("response missing 'permission_auth_state'");
+        const items = Object.values(states);
+        // A purchasable item gives the marketplace + SKU the purchase prompt looks up next.
+        const item = items.find((s) => s && s.marketplace_id && s.marketplace_sku);
+        if (item) p.marketplace = { id: item.marketplace_id, sku: item.marketplace_sku, label: item.label || item.title };
+        const authorized = items.filter((s) => s && s.authorized).length;
+        return { res, detail: `${items.length} permission items, ${authorized} authorized for this user` };
+      }
+    );
+
+    await this.check(
+      "Marketplace SKU",
+      opts({ endpoint: "GET apigw/marketplaces/{marketplace}/sku/{sku}", usedBy: "GatewayApi (purchase prompt)", needs: ["marketplace"] }),
+      async () => {
+        const { id, sku, label } = p.marketplace;
+        const res = this.expect(await this.mw(`apigw/marketplaces/${id}/sku/${sku}`));
+        const body = res.json();
+        if (!body || typeof body !== "object" || Array.isArray(body)) throw new CheckError("expected a SKU object");
+        return { res, detail: label || sku };
+      }
+    );
+
+    await this.check(
+      "Marketplace metadata",
+      opts({ endpoint: "GET {fabric}/q/{marketplace}/meta/public/asset_metadata", usedBy: "MarketplaceApi (legacy NFT detail)", needs: ["marketplace"] }),
+      async () => {
+        const res = this.expect(await this.http(this.fabricUrl(`q/${p.marketplace.id}/meta/public/asset_metadata`)));
+        const body = res.json();
+        if (!body || typeof body !== "object") throw new CheckError(`no asset_metadata for marketplace ${p.marketplace.id}`);
+        return { res, detail: `${p.marketplace.id} (${Math.round(res.body.length / 1024)} KB)` };
       }
     );
 
@@ -1029,6 +1099,16 @@ class ApiTestService {
       opts({ endpoint: "GET mw/playout_options/{hash}", usedBy: "Fabric.getOptionsFromHash", needs: ["versionHash"] }),
       async () => {
         const res = this.expect(await this.mw(`mw/playout_options/${p.versionHash}`));
+        if (!HLS_KEYS.some((k) => k in (res.json() || {}))) throw new CheckError("no HLS format returned");
+        return { res };
+      }
+    );
+
+    await this.check(
+      "Playout options (fabric path)",
+      opts({ endpoint: "GET {fabric}/q/{hash}/rep/playout/default/options.json", usedBy: "AssetFetcherApi (no property ID)", needs: ["versionHash"] }),
+      async () => {
+        const res = this.expect(await this.http(this.fabricUrl(`q/${p.versionHash}/rep/playout/default/options.json`)));
         if (!HLS_KEYS.some((k) => k in (res.json() || {}))) throw new CheckError("no HLS format returned");
         return { res };
       }
