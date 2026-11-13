@@ -239,6 +239,7 @@ class ApiTestService {
   /* ----------------------- Entry point ----------------------- */
 
   async Run({ privateKey, jwt, token, tenantId, propertyIds = [], maxProperties }) {
+    this.ctx.requestedTenant = tenantId;
     console.log(`== Global checks (${this.network}, ${this.env}) ==`);
     await this.checkConfig();
     if (!this.ctx.asBase) return this.summary();
@@ -260,7 +261,9 @@ class ApiTestService {
     await this.checkNodeSweep();
     await this.checkLogin();
     await this.checkMisc();
-    await this.checkAuthenticated({ tenantId: this.ctx.scopeTenant || tenantId });
+    await this.checkAuthenticated({
+      tenantId: this.ctx.tenantIten || this.ctx.scopeTenantIten || this.ctx.scopeTenant || tenantId
+    });
 
     for (const p of properties) {
       console.log(`\n== Property ${p.name || p.title || ""} (${p.id}) ==`);
@@ -328,21 +331,68 @@ class ApiTestService {
             `JWT expired at ${new Date(claims.exp * 1000).toISOString()} (${ago} min ago); get a fresh ID token`
           );
         }
-        let result;
-        try {
-          result = await this.timed(() => client.SetRemoteSigner({ idToken: jwt, tenantId, unsignedPublicAuth: true }));
-        } catch (error) {
-          throw new CheckError(`login rejected: ${error.message || error.status || error}`);
+        // Call the login ourselves (same body elv-client sends) so the response can be checked;
+        // SetRemoteSigner only keeps addr/eth/token and drops the rest.
+        const body = { ext: { share_email: false } };
+        if (tenantId) body.tid = tenantId;
+        const res = await this.mw("wlt/login/jwt", { method: "POST", body, token: jwt });
+        if (res.status === 401 || res.status === 403) {
+          throw new CheckError(`login rejected (HTTP ${res.status}): ${this.errorReason(res) || "unauthorized"}`);
         }
-        this.ctx.clusterToken = client.signer.authToken;
+        this.expect(res);
+        const login = res.json() || {};
+
+        // Fields the apps need: a missing one breaks login outright.
+        const missing = [];
+        if (!/^0x[0-9a-fA-F]{40}$/.test(login.addr || "")) missing.push("addr");
+        if (!login.eth) missing.push("eth");
+        if (!login.token) missing.push("token");
+        if (missing.length) throw new CheckError(`login response missing/invalid: ${missing.join(", ")}`);
+
+        this.ctx.clusterToken = login.token;
+        this.ctx.loginAddress = login.addr.toLowerCase();
+        this.ctx.tenantBinding = login.tenant_binding;
+
+        // Identity fields seen in a healthy response: losing one is worth a warning, not a failure.
+        const absent = ["pubkey", "ident", "subject", "issuer_id"].filter((k) => !login[k]);
         const left = claims.exp ? `, JWT valid ${Math.round((claims.exp * 1000 - Date.now()) / 60000)} more min` : "";
-        return { ms: result.ms, detail: `address ${client.CurrentAccountAddress()}${left}` };
+        return {
+          res,
+          status: absent.length ? WARN : PASS,
+          detail: `address ${login.addr}${left}${absent.length ? `; response lacks ${absent.join(", ")}` : ""}`
+        };
       });
       // Without a session the rest would silently run logged out, which isn't what was asked for.
       if (!this.ctx.clusterToken) {
         this.ctx.abort = true;
         return;
       }
+
+      // Hand the cluster token to elv-client: it loads the signing key from wlt/keys instead of logging in again.
+      await this.check("Auth: load signer keys", { endpoint: "GET wlt/keys", usedBy: "remote signer" }, async () => {
+        let result;
+        try {
+          result = await this.timed(() =>
+            client.SetRemoteSigner({ authToken: this.ctx.clusterToken, tenantId, unsignedPublicAuth: true })
+          );
+        } catch (error) {
+          throw new CheckError(`wlt/keys failed: ${error.message || error.status || error}`);
+        }
+        const address = (client.CurrentAccountAddress() || "").toLowerCase();
+        if (address !== this.ctx.loginAddress) {
+          throw new CheckError(`wlt/keys address ${address} doesn't match login address ${this.ctx.loginAddress}`);
+        }
+        return { ms: result.ms, detail: "address matches login" };
+      });
+      if (!client.signer || !client.signer.authToken) {
+        this.ctx.abort = true;
+        return;
+      }
+
+      await this.resolveJwtTenant({ tenantId });
+      if (this.ctx.abort) return;
+      // From here on, tenant-scoped calls use the bound tenant (iten form when known).
+      const boundTenant = this.ctx.tenantIten || this.ctx.scopeTenant || tenantId;
 
       // Raw nonce, like the apps' install ID; the client sends its SHA-512 as install_id.
       this.ctx.nonce = crypto.randomUUID();
@@ -353,7 +403,7 @@ class ApiTestService {
           const { value, ms } = await this.timed(() =>
             client.signer.RetrieveCSAT({
               nonce: this.ctx.nonce,
-              tenantId,
+              tenantId: boundTenant,
               duration: 1,
               appName: "elv-mediawallet api-test"
             })
@@ -361,7 +411,8 @@ class ApiTestService {
           if (!value || !value.token) throw new CheckError(`no token in response: ${JSON.stringify(value)}`);
           this.ctx.userToken = value.token;
           this.ctx.refreshToken = value.refresh_token;
-          return { ms, detail: value.refresh_token ? "token + refresh_token" : "token (no refresh_token)" };
+          const tid = boundTenant ? `, tid ${boundTenant}` : ", no tid";
+          return { ms, detail: `${value.refresh_token ? "token + refresh_token" : "token (no refresh_token)"}${tid}` };
         }
       );
 
@@ -455,15 +506,70 @@ class ApiTestService {
     );
   }
 
-  // Keep only the scoped tenant's properties, so a private-key run tests just that account's tenant.
+  /* A JWT login reports the tenant the user is bound to (tenant_binding), so a JWT
+     run covers that tenant's properties, like a private-key run does. */
+  async resolveJwtTenant({ tenantId }) {
+    const binding = this.ctx.tenantBinding;
+    const bound = binding && typeof binding === "object" ? binding.tenant_id || binding.tenant_iten : binding;
+    const base = { scope: "global", name: "Auth: tenant binding", endpoint: "POST wlt/login/jwt (tenant_binding)", usedBy: "tenant scoping" };
+
+    if (!bound) {
+      if (tenantId) {
+        this.ctx.scopeTenant = tenantId;
+        if (tenantId.startsWith("iten")) this.ctx.tenantIten = tenantId;
+        this.record({ ...base, status: WARN, detail: `login has no tenant_binding, using --tenant_id ${tenantId}` });
+      } else {
+        this.record({ ...base, status: PASS, detail: "user has no tenant binding; testing all properties" });
+      }
+      return;
+    }
+
+    // Tenant-scoped APIs (wlt/sign/csat tid, wlt/status/act/{tenant}) take the iten form, like Android.
+    let iten = (binding && binding.tenant_iten) || (String(bound).startsWith("iten") ? bound : undefined);
+    let iqId = String(bound).startsWith("iq__") ? bound : undefined;
+    if (!iten || !iqId) {
+      // The two forms aren't derivable from each other; the property list carries both.
+      const res = await this.http(this.asUrl("mw/properties?include_public=true"), { token: this.ctx.staticToken });
+      const match = (((res.status === 200 && res.json()) || {}).contents || [])
+        .map((p) => p.tenant || {})
+        .find((t) => [t.tenant_id, t.tenant_iten].includes(bound));
+      if (match) {
+        iten = iten || match.tenant_iten;
+        iqId = iqId || match.tenant_id;
+      }
+    }
+
+    if (tenantId && ![bound, iten, iqId].includes(tenantId)) {
+      this.ctx.abort = true;
+      this.record({ ...base, status: FAIL, detail: `user is bound to ${iten || bound}, not --tenant_id ${tenantId}` });
+      return;
+    }
+
+    this.ctx.scopeTenant = bound;
+    this.ctx.tenantIten = iten;
+    if (!iten) {
+      this.record({
+        ...base,
+        status: WARN,
+        detail: `bound to ${bound}, but no iten found for it; tenant-scoped calls will use ${bound}`
+      });
+      return;
+    }
+    const forms = iqId && iqId !== iten ? `${iten} (${iqId})` : iten;
+    this.record({ ...base, status: PASS, detail: `${forms}; used for tid and tenant-scoped APIs` });
+  }
+
+  // Keep only the scoped tenant's properties, so a private-key or JWT run tests just the account's tenant.
   scopeProperties(properties, propertyIds) {
     const tenant = this.ctx.scopeTenant;
     if (!tenant) return properties;
 
+    // Properties carry the tenant both as an iten and as its iq__ object ID: match either.
     const tenantOf = (p) => (p.tenant || {}).tenant_iten;
+    const belongs = (p) => [(p.tenant || {}).tenant_iten, (p.tenant || {}).tenant_id].includes(tenant);
     const kept = [];
     for (const p of properties) {
-      if (tenantOf(p) === tenant) {
+      if (belongs(p)) {
         kept.push(p);
       } else if (propertyIds.length) {
         // Only report on the ones the caller asked for; silently drop the rest.
@@ -483,8 +589,19 @@ class ApiTestService {
         detail: `no active properties found for tenant ${tenant}`
       });
     } else {
-      const name = (kept[0].tenant || {}).tenant_name;
-      console.log(`\nScoped to tenant ${tenant}${name ? ` (${name})` : ""}: ${kept.length} properties`);
+      const t = kept[0].tenant || {};
+      // Redemption status wants the iten form, whichever form the binding used.
+      this.ctx.scopeTenantIten = t.tenant_iten || tenant;
+      const requested = this.ctx.requestedTenant;
+      if (requested && ![t.tenant_iten, t.tenant_id].includes(requested)) {
+        this.record({
+          scope: "global",
+          name: "Tenant properties",
+          status: FAIL,
+          detail: `--tenant_id ${requested} is not the account's tenant (${t.tenant_iten} / ${t.tenant_id})`
+        });
+      }
+      console.log(`\nScoped to tenant ${this.ctx.scopeTenantIten}${t.tenant_name ? ` (${t.tenant_name})` : ""}: ${kept.length} properties`);
     }
     return kept;
   }
@@ -672,7 +789,7 @@ class ApiTestService {
 
     // Android's route. tvOS's Fabric.getWalletStatus calls "alt/status/act", which 404s.
     await this.check(names[5], { endpoint: "GET wlt/status/act/{tenant}", usedBy: "redemption status (Android)" }, async () => {
-      if (!tenantId) throw new Skip("pass --tenant_id");
+      if (!tenantId) throw new Skip("no tenant (no tenant_binding or account tenant; pass --tenant_id)");
       const res = this.expect(await this.mw(`wlt/status/act/${tenantId}`, { token }));
       return { res, detail: `${(res.json() || []).length} redemptions` };
     });

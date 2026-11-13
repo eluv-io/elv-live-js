@@ -290,19 +290,22 @@ Choose how to sign in. If you provide more than one, the first one in this list 
 | Credential | How to pass it | What it tests |
 |---|---|---|
 | Fabric token / CSAT | `--token` or `ELV_FABRIC_TOKEN` | Calls the APIs with an existing session. |
-| OAuth ID token (JWT) | `--jwt` or `ELV_JWT` (add `--tenant_id` if the login is scoped to a tenant) | Runs the app's real login: `wlt/login/jwt` and `wlt/sign/csat`. It then checks `wlt/refresh/csat` and `wlt/login/status`, and releases the session when it finishes. |
+| OAuth ID token (JWT) | `--jwt` or `ELV_JWT` | Runs the app's real login. It checks the `wlt/login/jwt` response (`addr`, `eth` and `token` must be present; a missing `pubkey`, `ident`, `subject` or `issuer_id` is a WARN), loads the signer from `wlt/keys`, then calls `wlt/sign/csat`, `wlt/refresh/csat` and `wlt/login/status`. It releases the session when it finishes. If the user has a `tenant_binding`, the run covers only that tenant (see below). |
 | Private key | `PRIVATE_KEY` | Signs a fabric token locally, the same way the web wallet does for external-wallet logins. The run covers only the account's own tenant (see below). |
 | None | `--anonymous` | Tests as a logged-out user, with the static token. |
 
 Pass credentials as environment variables, not flags, so they don't end up in your shell history.
 
-### Private key runs are scoped to the account's tenant
+### Private key and JWT runs are scoped to the account's tenant
 
-A private key belongs to one tenant. The command reads that tenant (`iten...`) from the account's wallet, then tests only the properties whose `tenant.tenant_iten` matches. Redemption status is checked for that tenant too.
+The command finds the account's tenant, then tests only the properties that belong to it (matched by `tenant.tenant_iten` or `tenant.tenant_id`). Redemption status is checked for that tenant too.
+
+- With a private key, the tenant is read from the account's wallet.
+- With a JWT, it comes from `tenant_binding` in the `wlt/login/jwt` response. That tenant (in its `iten…` form) is then sent as `tid` to `wlt/sign/csat` and used for `wlt/status/act/{tenant}`, as the apps do. A user with no tenant binding is tested on all properties.
 
 - With `-p`: properties from other tenants are skipped, and the output says which tenant each one belongs to.
 - With `--tenant_id`: it must match the account's tenant, or the run stops. If the account's tenant can't be read, `--tenant_id` is used instead, with a WARN.
-- If the account has no tenant and you don't pass `--tenant_id`, the run stops with an error.
+- With a private key, if the account has no tenant and you don't pass `--tenant_id`, the run stops with an error.
 
 ```bash
 # Everything for the account's tenant
