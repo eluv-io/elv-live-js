@@ -8,12 +8,14 @@ const { Marketplace } = require("../src/Marketplace");
 const { Notifier } = require ("../src/Notifier");
 const { ElvToken } = require ("../src/ElvToken.js");
 const { ElvContracts } = require ("../src/ElvContracts.js");
+const { ElvNtpTickets } = require("../src/ElvNtpTickets.js");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 const yaml = require("js-yaml");
 const fs = require("fs");
 const path = require("path");
+const { BatchNFTOperations } = require("../src/BatchNFTOperations");
 const prompt = require("prompt-sync")({ sigint: true });
 const exec = require("child_process").exec;
 
@@ -30,6 +32,7 @@ process.emit = function (name, data, ...args) {
 
 let elvlv;
 let marketplace;
+let elvNtp;
 
 const Init = async ({debugLogging = false, asUrl}={}) => {
   const config = {
@@ -42,6 +45,14 @@ const Init = async ({debugLogging = false, asUrl}={}) => {
 
   marketplace = new Marketplace(config);
   await marketplace.Init({ debugLogging, asUrl });
+};
+
+const InitNtp = async ({debugLogging = false} = {}) => {
+  elvNtp = new ElvNtpTickets({
+    configUrl: Config.networks[Config.net],
+    debugLogging
+  });
+  await elvNtp.Init({ privateKey: process.env.PRIVATE_KEY });
 };
 
 const CmdTenantAuthToken = async ({ argv }) => {
@@ -243,13 +254,15 @@ const CmdNftBurn = async ({ argv }) => {
 };
 
 const CmdNftProxyBurn = async ({ argv }) => {
-  console.log("NFT Proxy burn ", argv.addr, argv.token_id);
+  console.log("NFT Proxy burn ", argv.tenant, "addr:"+argv.addr, "id:"+argv.token_id, "from:"+argv.from_addr);
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
 
     let res = await elvlv.NftProxyBurn({
       addr: argv.addr,
       tokenId: argv.token_id,
+      fromAddr: argv.from_addr,
+      tenant: argv.tenant,
     });
 
     console.log(yaml.dump(res));
@@ -331,6 +344,58 @@ const CmdNftPackSetDist = async ({ argv }) => {
 
     console.log(yaml.dump(res));
   } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdNftProxyTransferBatch = async ({ argv }) => {
+  console.log(
+    "NFT - transfer as proxy owner in batches",
+    "input-file", argv.input_file,
+    "verbose", argv.verbose,
+    "concurrency", argv.concurrency,
+    "batch_size", argv.batch_size,
+  );
+  try {
+    const configUrl = Config.networks[Config.net];
+
+    batchOps = new BatchNFTOperations({configUrl});
+    await batchOps.Init({debugLogging:argv.debug});
+
+    let res = await batchOps.BatchNftTransfer({
+      inputFile: argv.input_file,
+      concurrency: argv.concurrency,
+      batchSize: argv.batch_size,
+    });
+
+    console.log("All NFT proxy transfers have been processed!");
+
+    if (res.failed && res.failed.length > 0) {
+      const file = "batchNftTransfer_failed.csv";
+      const header =  "status,tokenId,addr,fromAddr,toAddr,error\n";
+
+      const rows = res.failed.map(({ tokenId, addr, fromAddr, toAddr, e }) => {
+        const errorMsg = e?.message || e || "";
+        const safeError = `"${String(errorMsg).replace(/"/g, '""')}"`;
+        return `failed,${tokenId},${addr},${fromAddr},${toAddr},${safeError}`;
+      }).join("\n");
+
+      fs.writeFileSync(file, header + rows + "\n", "utf8");
+      console.log(`Written ${res.failed.length} failed records to ${file}`);
+    }
+
+    if (res.ownerMismatch && res.ownerMismatch.length > 0) {
+      const file = "batchNftTransfer_ownerMismatch.csv";
+      const header =  "status,tokenId,addr,fromAddr,toAddr,actualOwner\n";
+
+      const rows = res.ownerMismatch.map(({ tokenId, addr, fromAddr, toAddr, actualOwner }) => {
+        return `owner_mismatch,${tokenId},${addr},${fromAddr},${toAddr},${actualOwner}`;
+      }).join("\n");
+
+      fs.writeFileSync(file, header + rows + "\n", "utf8");
+      console.log(`Written ${res.ownerMismatch.length} owner_mismatch records to ${file}`);
+    }
+  } catch(e) {
     console.error("ERROR:", e);
   }
 };
@@ -662,13 +727,14 @@ const CmdTenantWallets = async ({ argv }) => {
 
     if (argv.csv && argv.csv != "") {
       console.log(`CSV: ${argv.csv}`);
-      let out = "user_address,ident,created,extras\n";
+      let out = "user_address,ident,email,created,extras\n";
       for (let i = 0; i < res.contents.length; i++) {
         const ident = res.contents[i].ident ? res.contents[i].ident : "";
+        const email = res.contents[i].email ? res.contents[i].email : "";
         let json = res.contents[i].extra_json ? JSON.stringify(res.contents[i].extra_json) : "";
         json = json.replaceAll("\"", "\"\"");
         created = new Date(res.contents[i].created * 1000);
-        out = out + res.contents[i].addr + "," + ident + "," + created.toISOString() + ",\"" +  json + "\"\n";
+        out = out + res.contents[i].addr + "," + ident + "," + email + "," + created.toISOString() + ",\"" +  json + "\"\n";
       }
       fs.writeFileSync(argv.csv, out);
     } else {
@@ -729,6 +795,7 @@ const CmdList = async ({ argv }) => {
   }
 };
 
+// sysadmin only, key must be in server's AdminAddresses, not a tenant key
 const CmdCreateWalletAccount = async ({ argv }) => {
   try {
     await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
@@ -1448,6 +1515,59 @@ const CmdNFTSetPolicyPermissions = async ({ argv }) => {
   }
 };
 
+const CmdNFTSetPolicyAddresses = async ({ argv }) => {
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    await elvlv.NftSetPolicyAddresses({
+      objectId: argv.object,
+      addresses: argv.addrs || [],
+      clearAddresses: argv.clear,
+      appendAddresses: argv.append
+    });
+
+    console.log("Success!");
+  } catch (e) {
+    console.error("ERROR:", argv.verbose ? e : e.message);
+  }
+};
+
+const CmdNFTSetPolicyPermissionsBatch = async ({ argv }) => {
+  console.log("NFT Set Policy and Permissions (batch)");
+  console.log(`Object list file: ${argv.object_list}`);
+  console.log(`Policy file path: ${argv.policy_path}`);
+  console.log(`Addresses: ${argv.addrs}`);
+  console.log(`verbose: ${argv.verbose}`);
+  console.log(`clear: ${argv.clear}`);
+
+  try {
+    await Init({ debugLogging: argv.verbose, asUrl: argv.as_url });
+
+    const objectIds = fs
+      .readFileSync(argv.object_list, "utf8")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    console.log(`Loaded ${objectIds.length} object IDs`);
+
+    const res = await elvlv.NftSetPolicyAndPermissionsBatch({
+      objectIds,
+      policyPath: argv.policy_path,
+      addresses: argv.addrs,
+      clearAddresses: argv.clear
+    });
+
+    console.log(`Done. Succeeded: ${res.succeeded.length}, Failed: ${res.failed.length}`);
+    if (res.failed.length > 0) {
+      console.log("Failed objects:");
+      res.failed.forEach((f) => console.log(`  ${f.objectId}: ${f.error}`));
+    }
+  } catch (e) {
+    console.error("ERROR:", argv.verbose ? e : e.message);
+  }
+};
+
 const CmdTenantGetMinter = async ({ argv }) => {
   console.log("Tenant Minter Get Config");
   console.log(`TenantId: ${argv.tenant}`);
@@ -1912,6 +2032,194 @@ const CmdContentClearPolicy = async ({ argv }) => {
   }
 };
 
+const CmdOtpCreate = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.createNTPInstance({
+      tenantId: argv.tenant,
+      objectId: argv.object,
+      ntpClass: argv.ntp_class,
+      maxTickets: argv.max_tickets,
+      maxRedemptions: argv.max_redemptions,
+      startTime: argv.start_time,
+      endTime: argv.end_time,
+      ticketLength: argv.ticket_length
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpUpdate = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.updateNTPInstance({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      maxTickets: argv.max_tickets,
+      maxRedemptions: argv.max_redemptions,
+      startTime: argv.start_time,
+      endTime: argv.end_time
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpSuspend = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    await elvNtp.suspendNTPInstance({ tenantId: argv.tenant, ntpId: argv.otp });
+    console.log("NTP instance suspended.");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpDelete = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    await elvNtp.deleteNTPInstance({ tenantId: argv.tenant, ntpId: argv.otp });
+    console.log("NTP instance deleted.");
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpList = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.listNTPInstances({
+      tenantId: argv.tenant,
+      count: argv.count,
+      offset: argv.offset
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpShow = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.getNTPInstance({ tenantId: argv.tenant, ntpId: argv.otp });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpReport = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.reportNTPInstance({
+      tenantId: argv.tenant,
+      ntpId: argv.otp ,
+      password: argv.password,
+      email: argv.email });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpStatus = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.statusNTPInstance({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      code: argv.code,
+      email: argv.email });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpIssueCode = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.issueNTPCode({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      email: argv.email,
+      maxRedemptions: argv.max_redemptions
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpIssueSignedCode = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.issueSignedNTPCode({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      email: argv.email,
+      maxRedemptions: argv.max_redemptions
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpRedeemCode = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const res = await elvNtp.redeemCode({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      code: argv.code,
+      email: argv.email,
+      includeNTPId: argv.include_ntp_id
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpGenerateCodes = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const emails = argv.emails
+      ? fs.readFileSync(argv.emails, "utf8").trim().split("\n")
+      : undefined;
+    const res = await elvNtp.generateCodes({
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      emails,
+      quantity: argv.quantity
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
+const CmdOtpMakeEmbedUrls = async ({ argv }) => {
+  try {
+    await InitNtp({ debugLogging: argv.verbose });
+    const codes = JSON.parse(fs.readFileSync(argv.codes_file, "utf8"));
+    const res = await elvNtp.makeEmbedUrlsWithCodes({
+      objectId: argv.object,
+      tenantId: argv.tenant,
+      ntpId: argv.otp,
+      codes
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -2038,7 +2346,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "nft_proxy_transfer <addr> <token_id> <from_addr> <to_addr>",
-    "Tranfer NFT as a proxy owner",
+    "Transfer NFT as a proxy owner",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -2064,14 +2372,35 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_build <library> <object> [options]",
+    "nft_proxy_transfer_batch <input_file>",
+    "Transfer NFT as a proxy owner in batches",
+    (yargs) => {
+      yargs
+        .positional("input_file", {
+          describe: "CSV file with values: addr, tokenId, fromAddr, toAddr",
+          type: "string",
+        })
+        .option("concurrency", {
+          describe: "number of concurrent operations (default: 5)",
+        })
+        .option("batch_size", {
+          describe: "size of each batch (default:20)",
+        })
+        .option("verbose", {
+          describe: "enable debug",
+          type: "boolean",
+        });
+    },
+    (argv) => {
+      CmdNftProxyTransferBatch({ argv });
+    }
+  )
+
+  .command(
+    "nft_build <object> [options]",
     "Build the public/nft section based on asset metadata. If --nft_dir is specified, will build a generative nft based on *.json files inside the dir. See README.md for more details.",
     (yargs) => {
       yargs
-        .positional("library", {
-          describe: "Content library",
-          type: "string",
-        })
         .positional("object", {
           describe: "Content object hash (hq__) or id (iq__)",
           type: "string",
@@ -2157,8 +2486,8 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_proxy_burn <addr> <token_id>",
-    "Burn the specified NFT",
+    "nft_proxy_burn <addr> <token_id> [from_addr] [tenant] [options]",
+    "Burn the specified NFT by transferring it to 0x...0dead via the Authority Service",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -2168,6 +2497,14 @@ yargs(hideBin(process.argv))
         .positional("token_id", {
           describe: "External token ID",
           type: "string", // BigNumber as string
+        })
+        .positional("from_addr", {
+          describe: "Current owner address (hex); looked up from the contract if omitted",
+          type: "string",
+        })
+        .positional("tenant", {
+          describe: "Tenant ID (iten...); looked up via contract address if omitted",
+          type: "string",
         });
     },
     (argv) => {
@@ -2177,7 +2514,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "nft_set_transfer_fee <addr> <fee>",
-    "Decode and look up a local NFT by external token ID",
+    "Set the base transfer fee on the NFT contract",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -2196,7 +2533,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "nft_get_transfer_fee <addr>",
-    "Decode and look up a local NFT by external token ID",
+    "Get the base transfer fee of the NFT contract",
     (yargs) => {
       yargs
         .positional("addr", {
@@ -2288,7 +2625,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("token_id", {
-          describe: "Offer ID",
+          describe: "NFT token ID",
           type: "integer",
         })
         .positional("offer_id", {
@@ -2334,7 +2671,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("token_id", {
-          describe: "Offer ID",
+          describe: "NFT token ID",
           type: "integer",
         })
         .positional("offer_id", {
@@ -2365,7 +2702,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("token_id", {
-          describe: "Offer ID",
+          describe: "NFT token ID",
           type: "integer",
         })
         .positional("offer_id", {
@@ -2393,12 +2730,71 @@ yargs(hideBin(process.argv))
   )
 
   .command(
-    "nft_set_policy_permissions <object> <policy_path> <addrs..>",
+    "nft_set_policy_permissions <object> <policy_path> [addrs..]",
     "Sets the policy and permissions granting NFT owners access to a content object. When no addresses are specified, only the policy is set.",
     (yargs) => {
       yargs
         .positional("object", {
           describe: "ID of the content object to grant access to",
+          type: "string",
+        })
+        .positional("policy_path", {
+          describe: "Path of policy object file",
+          type: "string",
+        })
+        .positional("addrs", {
+          describe:
+            "List of space separated NFT contract addresses to set. Calling multiple times with a new list will replace the existing.",
+          type: "string",
+        })
+        .option("clear", {
+          describe: "Clear all NFT contract addresses from the content object. No addresses need to be specified when using this flag.",
+          type: "boolean",
+          default: false
+        });
+    },
+    (argv) => {
+      CmdNFTSetPolicyPermissions({ argv });
+    }
+  )
+
+  .command(
+    "nft_set_policy_addresses <object> [addrs..]",
+    "Sets the NFT contract addresses granting NFT owners access to a content object, leaving the existing policy unchanged.",
+    (yargs) => {
+      yargs
+        .positional("object", {
+          describe: "ID of the content object to grant access to",
+          type: "string",
+        })
+        .positional("addrs", {
+          describe:
+            "List of space separated NFT contract addresses to set. Replaces the existing list unless --append is used.",
+          type: "string",
+        })
+        .option("clear", {
+          describe: "Clear all NFT contract addresses from the content object.",
+          type: "boolean",
+          default: false
+        })
+        .option("append", {
+          describe: "Append the addresses to the existing list instead of replacing it.",
+          type: "boolean",
+          default: false
+        });
+    },
+    (argv) => {
+      CmdNFTSetPolicyAddresses({ argv });
+    }
+  )
+
+  .command(
+    "nft_set_policy_permissions_batch <object_list> <policy_path> [addrs..]",
+    "Batch version of nft_set_policy_permissions. Reads content object IDs from file and sets the specified policy and permissions.",
+    (yargs) => {
+      yargs
+        .positional("object_list", {
+          describe: "Path to a file with one content object ID per line",
           type: "string",
         })
         .positional("policy_path", {
@@ -2417,7 +2813,7 @@ yargs(hideBin(process.argv))
         });
     },
     (argv) => {
-      CmdNFTSetPolicyPermissions({ argv });
+      CmdNFTSetPolicyPermissionsBatch({ argv });
     }
   )
 
@@ -2496,7 +2892,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_set_token_uri <request_type> <tenant> <contract_address> <new_token_uri> [options]",
-    "Reset the token URI(s) for tenant NFT contract(s)",
+    "Set the token URI for a single token, a batch (CSV), or all tokens of a tenant NFT contract",
     (yargs) => {
       yargs
         .positional("request_type", {
@@ -2534,7 +2930,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_update_token_uri <tenant> <addr> <hash> [options]",
-    "Reset the token URI(s) for tenant NFT contract(s)",
+    "Update the token URIs of all tokens in a tenant NFT contract to a new NFT template object hash",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -2551,7 +2947,7 @@ yargs(hideBin(process.argv))
         })
         .option("dry_run", {
           describe:
-            "Default 'true'",
+            "Only show the changes without submitting them (default: true)",
           type: "boolean",
         });
     },
@@ -2651,7 +3047,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("end_vote", {
-          describe: "Event vote end date (ISO foramt)",
+          describe: "Event vote end date (ISO format)",
           type: "string",
         })
         .option("start_mint", {
@@ -2970,7 +3366,7 @@ yargs(hideBin(process.argv))
         })
         .positional("addr", {
           describe:
-            "Address the to add",
+            "Address to remove",
           type: "string",
         });
     },
@@ -2990,7 +3386,7 @@ yargs(hideBin(process.argv))
         })
         .positional("addr", {
           describe:
-            "Address the to add",
+            "Address to check",
           type: "string",
         });
     },
@@ -3133,7 +3529,7 @@ yargs(hideBin(process.argv))
       yargs.option("name", {
         describe: "Tenant name",
         type: "string"
-      })
+      });
       yargs.option("status",{
         describe: "Path to the JSON File for existing tenant provision config",
         type: "string",
@@ -3203,7 +3599,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_replace_minter_config <tenant> [options]",
-    "Creates the minter configuration for this tenant key",
+    "Replaces the minter configuration for this tenant key",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -3269,7 +3665,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "tenant_delete_minter_config <tenant> [options]",
-    "Creates the minter configuration for this tenant key",
+    "Deletes the minter configuration for this tenant key",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -3472,7 +3868,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "token_contract_create <name> <symbol> <decimals> <amount> [options]",
-    "Deploy elv token  contract",
+    "Deploy elv token contract",
     (yargs) => {
       yargs
         .positional("name", {
@@ -3686,7 +4082,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "create_wallet_account <email> <tenant> <property_slug>",
-    "create a wallet account and send tenant-branded email",
+    "create a wallet account and send tenant-branded email (sysadmin key required)",
     (yargs) => {
       yargs
         .positional("email", {
@@ -3755,6 +4151,185 @@ yargs(hideBin(process.argv))
     },
     (argv) => {
       CmdAdminHealth({ argv });
+    }
+  )
+
+  .command(
+    "otp <subcommand>",
+    "NTP instance (OTP) management commands",
+    (yargs) => {
+      yargs
+        .command(
+          "create <tenant> <object> [options]",
+          "Create a new NTP instance (class 4 ticket system)",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("object", { describe: "Permissions object ID", type: "string" })
+              .option("ntp_class", { describe: "NTP class (default 4)", type: "number", default: 4 })
+              .option("max_tickets", { describe: "Max tickets to issue (0 = unlimited)", type: "number", default: 10 })
+              .option("max_redemptions", { describe: "Max redemptions per ticket", type: "number", default: 100 })
+              .option("start_time", { describe: "Start time (ISO format, eg. 2024-01-01)", type: "string" })
+              .option("end_time", { describe: "End time (ISO format, eg. 2100-01-01)", type: "string" })
+              .option("ticket_length", { describe: "Ticket code length (default 6)", type: "number", default: 6 });
+          },
+          (argv) => { CmdOtpCreate({ argv }); }
+        )
+
+        .command(
+          "update <tenant> <otp> [options]",
+          "Update parameters of an existing NTP instance",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("max_tickets", { describe: "Max tickets to issue (0 = unlimited)", type: "number", default: 10 })
+              .option("max_redemptions", { describe: "Max redemptions per ticket", type: "number", default: 100 })
+              .option("start_time", { describe: "New start time (ISO format)", type: "string" })
+              .option("end_time", { describe: "New end time (ISO format)", type: "string" });
+          },
+          (argv) => { CmdOtpUpdate({ argv }); }
+        )
+
+        .command(
+          "suspend <tenant> <otp>",
+          "Suspend an NTP instance (all tickets will be considered expired)",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" });
+          },
+          (argv) => { CmdOtpSuspend({ argv }); }
+        )
+
+        .command(
+          "delete <tenant> <otp>",
+          "Delete an NTP instance (cannot be undone)",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" });
+          },
+          (argv) => { CmdOtpDelete({ argv }); }
+        )
+
+        .command(
+          "list <tenant> [options]",
+          "List NTP instances for a tenant",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .option("count", { describe: "Number of results to return (default 10)", type: "number", default: 10 })
+              .option("offset", { describe: "Offset from which to return results (default 0)", type: "number", default: 0 });
+          },
+          (argv) => { CmdOtpList({ argv }); }
+        )
+
+        .command(
+          "show <tenant> <otp>",
+          "Show info on an NTP instance",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" });
+          },
+          (argv) => { CmdOtpShow({ argv }); }
+        )
+
+        .command(
+          "report <tenant> <otp>",
+          "Show report on an NTP instance",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("password", { describe: "Password to encrypt the report with (optional)", type: "string" })
+              .option("email", { describe: "Email address to bind to this report", type: "string" });
+          },
+          (argv) => { CmdOtpReport({ argv }); }
+        )
+
+        .command(
+          "status <tenant> <otp> <code>",
+          "Check the status of an NTP ticket",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .positional("code", { describe: "Ticket code", type: "string" })
+              .option("email", { describe: "Email address bound to this ticket (if applicable)", type: "string" });
+          },
+          (argv) => { CmdOtpStatus({ argv }); }
+        )
+
+        .command(
+          "issue_code <tenant> <otp> [options]",
+          "Issue a single NTP ticket code",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("email", { describe: "Email address to bind to this ticket", type: "string" })
+              .option("max_redemptions", { describe: "Max redemptions for this ticket (overrides instance default)", type: "number" });
+          },
+          (argv) => { CmdOtpIssueCode({ argv }); }
+        )
+
+        .command(
+          "issue_signed_code <tenant> <otp> [options]",
+          "Issue a signed NTP ticket code (signed by the current user)",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("email", { describe: "Email address to bind to this ticket", type: "string" })
+              .option("max_redemptions", { describe: "Max redemptions for this ticket (overrides instance default)", type: "number" });
+          },
+          (argv) => { CmdOtpIssueSignedCode({ argv }); }
+        )
+
+        .command(
+          "redeem_code <tenant> <otp> <code> [options]",
+          "Redeem an NTP ticket code to authorize the client",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .positional("code", { describe: "Ticket code to redeem", type: "string" })
+              .option("email", { describe: "Email address bound to this ticket (if applicable)", type: "string" })
+              .option("include_ntp_id", { describe: "Include the NTP ID in the response", type: "boolean", default: false });
+          },
+          (argv) => { CmdOtpRedeemCode({ argv }); }
+        )
+
+        .command(
+          "generate_codes <tenant> <otp> [options]",
+          "Generate multiple NTP ticket codes in bulk",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .option("quantity", { describe: "Number of codes to generate", type: "number" })
+              .option("emails", { describe: "File containing one email per line to bind codes to", type: "string" });
+          },
+          (argv) => { CmdOtpGenerateCodes({ argv }); }
+        )
+
+        .command(
+          "make_embed_urls <tenant> <otp> <object> <codes_file>",
+          "Generate embed URLs for a set of NTP codes",
+          (yargs) => {
+            yargs
+              .positional("tenant", { describe: "Tenant ID", type: "string" })
+              .positional("otp", { describe: "NTP instance ID", type: "string" })
+              .positional("object", { describe: "Playable object ID (live or on-demand)", type: "string" })
+              .positional("codes_file", { describe: "Path to JSON file containing codes array (from generate_codes)", type: "string" });
+          },
+          (argv) => { CmdOtpMakeEmbedUrls({ argv }); }
+        )
+
+        .demandCommand(1, "Specify an otp subcommand")
+        .help();
     }
   )
 

@@ -232,8 +232,8 @@ class ElvFabric {
 
   /**
    * GetMetaByIds
-   * @param {[string]} ids  object of id to metadata
-   * @param {[string]} fields  array of fields
+   * @param {Object.<string, Object>} ids - Map of content object IDs to their metadata objects
+   * @param {string[]} fields - Metadata field paths to extract for each object
    */
   async GetMetaByIds({ids,fields}) {
 
@@ -241,7 +241,7 @@ class ElvFabric {
       throw Error("ElvAccount not intialized");
     }
 
-    if (!ids || ids.length == 0){
+    if (!ids || Object.keys(ids).length === 0){
       throw Error("No ids given.");
     }
 
@@ -410,6 +410,109 @@ class ElvFabric {
   }
 
   /**
+   * SetContractMetaPrewarmed
+   *
+   * Writes metadata value using a two-pass storage "pre-warming" technique, to support larger sizes.
+   *
+   * @param {string} address  contract address
+   * @param {string} key  metadata key
+   * @param {string} value metadata value
+   * @returns result of the final contract method call (the real value write)
+   */
+  async SetContractMetaPrewarmed({address, key, value}) {
+    const stepBytes = 15000;
+    const directWriteThreshold = 20000;
+    const targetLen = Buffer.byteLength(value, "utf8");
+
+    let currentLen = 0;
+    try {
+      const current = await this.GetContractMeta({address, key});
+      currentLen = Buffer.byteLength(current, "utf8");
+    } catch (e) {
+      currentLen = 0;
+    }
+
+    const growthNeeded = targetLen - currentLen;
+    if (growthNeeded <= directWriteThreshold) {
+      return await this.SetContractMeta({address, key, value});
+    }
+
+    console.log(`SetContractMetaPrewarmed: pre-warming storage, ${currentLen} -> ${targetLen} bytes`);
+
+    let step = stepBytes;
+    let writeNum = 0;
+    while (currentLen < targetLen) {
+      const nextLen = Math.min(targetLen, currentLen + step);
+      const filler = "x".repeat(nextLen);
+
+      writeNum++;
+      if (this.debug) {
+        console.log(`SetContractMetaPrewarmed: write #${writeNum}: pre-warming ${currentLen} ` +
+          `-> ${nextLen} bytes (step=${step})`);
+      }
+
+      try {
+        await this.SetContractMeta({address, key, value: filler});
+        currentLen = nextLen;
+        const pct = ((currentLen / targetLen) * 100).toFixed(0);
+        console.log(`SetContractMetaPrewarmed: write #${writeNum} done, now ${currentLen} bytes (${pct}%)`);
+      } catch (e) {
+        const msg = String(e?.reason || e?.error?.message || e?.data?.message || e?.message || e);
+        const gasLimitError = /exceed(s|ed)?\s+(the\s+)?block gas limit|intrinsic gas too low|out of gas|gas required exceeds allowance|transaction ran out of gas/i.test(msg);
+        if (!gasLimitError) {
+          throw e;
+        }
+
+        if (step <= 1000) {
+          throw e;
+        }
+        // Exceeded the block gas limit for this step - back off and retry smaller
+        step = Math.floor(step / 2);
+        if (this.debug) {
+          console.log(`SetContractMetaPrewarmed: write #${writeNum} failed at ${currentLen} ` +
+            `-> ${nextLen} bytes, backing off to step=${step}`, msg);
+        }
+      }
+    }
+
+    console.log("SetContractMetaPrewarmed: storage fully pre-warmed, writing real value");
+
+    return await this.SetContractMeta({address, key, value});
+  }
+
+  /**
+   * SetContractMetaAsync - async version of client SetContractMeta()
+   * Submits the putMeta transaction WITHOUT waiting for completionand
+   * returns the ethers transaction response so the caller can wait on it
+   *
+   * @param {string} address  contract address
+   * @param {string} key  metadata key
+   * @param {string} value metadata value
+   * @returns {object} ethers transaction response - caller can call .wait()
+   */
+  async SetContractMetaAsync({address, key, value}) {
+    const abi = fs.readFileSync(
+      path.resolve(__dirname, "../contracts/v3/BaseContent.abi")
+    );
+
+    if (address.startsWith("iq")){
+      address = this.client.utils.HashToAddress(address);
+    }
+
+    if (this.debug){
+      console.log("Address", address);
+    }
+
+    return await this.client.CallContractMethod({
+      contractAddress: address,
+      abi: JSON.parse(abi),
+      methodName: "putMeta",
+      methodArgs: [key, value],
+      formatArguments: true,
+    });
+  }
+
+  /**
    * AccessGroupMemeber
    * Check if an address is a member of the access group
    * @param {string} group  Group ID (hex or igrp format)
@@ -482,6 +585,135 @@ class ElvFabric {
   }
 
 
+  async GroupDecryptOauth({group, spaceAddr}) {
+    if (!group || !spaceAddr) {
+      throw new Error("group and spaceAddr are required");
+    }
+
+    if (group.startsWith("igrp")){
+      group = this.client.utils.HashToAddress(group);
+    }
+
+    if (this.debug) {
+      console.log("Group", group);
+      console.log("SpaceAddr", spaceAddr);
+    }
+
+    const contentSpaceLibraryId = ElvUtils.AddressToId({prefix: "ilib", address: spaceAddr});
+    const groupId = ElvUtils.AddressToId({prefix: "iq__", address: group});
+    const userIdKey = "/eluv.jwtv." + ElvUtils.AddressToId({prefix: "iusr", address: this.client.signer.address});
+    const kmsIdKey = "/eluv.jwtv." + ElvUtils.AddressToId({prefix: "ikms", address: this.client.signer.address});
+    let cap = await this.client.ContentObjectMetadata({
+      libraryId: contentSpaceLibraryId,
+      objectId: groupId,
+      metadataSubtree: userIdKey,
+    });
+    if (!cap) {
+      cap = await this.client.ContentObjectMetadata({
+        libraryId: contentSpaceLibraryId,
+        objectId: groupId,
+        metadataSubtree: kmsIdKey,
+      });
+
+      if (!cap) {
+        throw new Error(`Cap not found for group ${group} for signer ${this.client.signer.address}`);
+      }
+    }
+
+    return await this.client.Crypto.DecryptCap(cap, this.client.signer._signingKey().privateKey);
+  }
+
+  async GroupEncryptOauth({group, spaceAddr, kmsAddr, oauthConfig}) {
+
+    if (this.debug) {
+      console.log("Group", group);
+      console.log("SpaceAddr", spaceAddr);
+      console.log("KmsAddr", kmsAddr);
+      console.log("OauthConfig", oauthConfig);
+    }
+
+
+    if (!group || !spaceAddr) {
+      throw new Error("group and spaceAddr are required");
+    }
+    if (!kmsAddr) {
+      throw new Error("kmsAddr is required");
+    }
+
+    if (!oauthConfig ) {
+      throw new Error(`
+        oauthConfig is required:
+        {
+          issuer: 'https://xxx/oauth2/default',
+          claims: {
+              aud: '0oaxxx',
+              groups: [ 'group-name' ]
+          }
+        } or [{issuer,claims}, {issuer,claims}]`);
+    }
+
+    let parsedOauthConfig;
+    try {
+      parsedOauthConfig =
+        typeof oauthConfig === "string"
+          ? JSON.parse(oauthConfig)
+          : oauthConfig;
+    } catch (e) {
+      throw new Error("oauthConfig must be valid JSON");
+    }
+
+    let configs = Array.isArray(parsedOauthConfig)? parsedOauthConfig:[parsedOauthConfig];
+
+    configs.forEach((config, index) => {
+      const {issuer, claims} = config;
+      if (!issuer || typeof issuer !== "string") {
+        throw new Error(`oauthConfig[${index}].issuer must be set`);
+      }
+      if (!claims || typeof claims !== "object") {
+        throw new Error(`oauthConfig[${index}].claims must be an object`);
+      }
+      if (!claims.aud || typeof claims.aud !== "string") {
+        throw new Error(`oauthConfig[${index}].claims.aud must be set`);
+      }
+      if (!claims.groups || !Array.isArray(claims.groups) || claims.groups.length === 0){
+        throw new Error(`oauthConfig[${index}].claims.groups must be set with array of groups`);
+      }
+
+    });
+
+
+    if (group.startsWith("igrp")){
+      group = this.client.utils.HashToAddress(group);
+    }
+
+    const kmsId = ElvUtils.AddressToId({prefix: "ikms", address: kmsAddr});
+
+
+    await this.client.LinkAccessGroupToOauth({
+      groupAddress: group,
+      kmsId,
+      oauthConfig: parsedOauthConfig
+    });
+
+    const contentSpaceLibraryId = ElvUtils.AddressToId({prefix: "ilib", address: spaceAddr});
+    const groupId = ElvUtils.AddressToId({prefix: "iq__", address: group});
+    const metadata = await this.client.ContentObjectMetadata({
+      libraryId: contentSpaceLibraryId,
+      objectId: groupId,
+    });
+
+    const kmsIdKey = "eluv.jwtv." + kmsId;
+    const userIdKey = "eluv.jwtv." + ElvUtils.AddressToId({prefix: "iusr", address: this.client.signer.address});
+    const hasKmsCap = metadata && metadata[kmsIdKey] !== undefined;
+    const hasUserCap = metadata && metadata[userIdKey] !== undefined;
+    if (!hasKmsCap) {
+      throw Error(`KMS ${kmsIdKey} not set in metadata`);
+    }
+    if (!hasUserCap) {
+      throw Error(`USER ${userIdKey} not set in metadata`);
+    }
+    return `Successfully set oauthConfig on ${group}.`;
+  }
 }
 
 

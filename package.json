@@ -2,14 +2,15 @@
   "name": "@eluvio/elv-live-js",
   "version": "1.6.0",
   "description": "Eluvio Live SDK and Tools",
-  "main": "EluvioLive.js",
+  "main": "src/EluvioLive.js",
   "bin": {
     "elv-live": "elv-live",
     "elv-stream": "elv-stream",
     "elv-admin": "elv-admin"
-   },
+  },
   "scripts": {
     "bump-version": "npm --git-tag-version --no-commit-hooks version patch",
+    "build-docs": "./node_modules/.bin/jsdoc --configure ./.jsdoc.json --readme README.md",
     "test": "jest",
     "test-one": "jest -t \"shuffle directory\"",
     "lint": "./node_modules/.bin/eslint \"src/**/*.js\" \"test/**/*.js\" --fix",
@@ -36,14 +37,17 @@
     "/contracts",
     "/src",
     "/utilities",
+    "elv-admin",
     "elv-live",
+    "elv-stream",
     "package.json",
     "LICENSE",
     "README.md"
   ],
   "homepage": "https://github.com/eluv-io/elv-live-js#readme",
   "dependencies": {
-    "@eluvio/elv-client-js": "^4.0.107",
+    "@eluvio/elv-client-js": "github:eluv-io/elv-client-js#develop",
+    "axios": "^1.16.0",
     "big-number": "^2.0.0",
     "cbor-x": "^1.5.4",
     "csv-parse": "^5.3.0",
@@ -53,6 +57,7 @@
     "got": "^11.8.6",
     "js-yaml": "^3.14.1",
     "keccak256": "^1.0.6",
+    "p-limit": "^2.3.0",
     "postgres": "^3.3.5",
     "prompt-sync": "^4.2.0",
     "seedrandom": "^3.0.5",
@@ -60,11 +65,13 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
+    "@jsdoc/salty": "^0.2.12",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-html": "^5.0.5",
     "http-server": "^0.12.1",
     "jest": "^27.4.7",
+    "jsdoc": "^4.0.5",
     "pre-commit": "^1.2.2",
     "prettier": "2.5.1"
   }

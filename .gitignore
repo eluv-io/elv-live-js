@@ -109,4 +109,6 @@ dist
 # JetBrains
 .idea
 
+# macOS folder metadata
+.DS_Store
 

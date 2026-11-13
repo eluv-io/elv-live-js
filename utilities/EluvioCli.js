@@ -7,6 +7,7 @@ const { BatchHelper } = require("../src/BatchHelper");
 const { Config } = require("../src/Config.js");
 const Ethers = require("ethers");
 const constants = require("../src/Constants");
+const { ElvIssuer } = require("../src/ElvIssuer");
 
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
@@ -1620,6 +1621,37 @@ const CmdSetObjectGroupPermission = async ({ argv }) => {
   }
 };
 
+const CmdObjectUserPermissions = async ({ argv, set = false }) => {
+  try {
+    const objectId = argv.object.startsWith("0x")
+      ? ElvUtils.AddressToId({ prefix: "iq__", address: argv.object })
+      : argv.object;
+    const userAddress = Ethers.utils.getAddress(
+      argv.user.startsWith("iusr") ? Utils.HashToAddress(argv.user) : argv.user
+    );
+    const elvContract = new ElvContracts({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+    await elvContract.Init({ privateKey: process.env.PRIVATE_KEY });
+
+    if (set) {
+      await elvContract.SetObjectUserPermission({
+        objectId,
+        userAddress,
+        permission: argv.permission,
+        remove: argv.remove,
+      });
+    }
+
+    const res = await elvContract.GetObjectUserPermissions({ objectId, userAddress });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", e);
+    process.exitCode = 1;
+  }
+};
+
 const CmdCleanupObject = async ({ argv }) => {
   console.log("Parameters:");
   console.log("object", argv.object);
@@ -1770,6 +1802,90 @@ const CmdDeleteContentsBatch = async ({ argv }) => {
   }
 };
 
+const CmdGroupDecryptOauth = async ({argv}) => {
+  try {
+    const elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+
+    await elvFabric.Init({privateKey: process.env.PRIVATE_KEY});
+
+    const res = await elvFabric.GroupDecryptOauth({
+      group: argv.group,
+      spaceAddr: Config.consts[Config.net].spaceAddress,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
+const CmdGroupEncryptOauth = async ({argv}) => {
+  try {
+    const elvFabric = new ElvFabric({
+      configUrl: Config.networks[Config.net],
+      debugLogging: argv.verbose,
+    });
+
+    await elvFabric.Init({privateKey: process.env.PRIVATE_KEY});
+
+    const res = await elvFabric.GroupEncryptOauth({
+      group: argv.group,
+      spaceAddr: Config.consts[Config.net].spaceAddress,
+      kmsAddr: Config.consts[Config.net].kmsAddress,
+      oauthConfig: argv.oauth_config,
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
+const CmdIssuerOktaGet = async ({argv}) => {
+  try {
+    const adminToken = process.env.ADMIN_TOKEN;
+    const elvIssuer = new ElvIssuer({
+      configUrl: Config.networks[Config.net],
+      debug: argv.verbose,
+    });
+
+    await elvIssuer.Init();
+    const res = await elvIssuer.GetOktaGroupsAndUsers({
+      oktaDomain: argv.okta_domain,
+      adminToken: adminToken,
+      out: argv.out
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
+const CmdIssuerOktaSync = async ({argv}) => {
+  try {
+    const adminToken = process.env.ADMIN_TOKEN;
+    const privateKey = process.env.PRIVATE_KEY;
+    const elvIssuer = new ElvIssuer({
+      configUrl: Config.networks[Config.net],
+      debug: argv.verbose,
+    });
+
+    await elvIssuer.Init();
+    const res = await elvIssuer.SyncOktaIssuer({
+      policyId: argv.policy_id,
+      oktaDomain: argv.okta_domain,
+      adminToken,
+      privateKey,
+      keepExistingPart: argv.keep_existing_part,
+      userGroupList: argv.user_group_list
+    });
+    console.log(yaml.dump(res));
+  } catch (e) {
+    console.error("ERROR:", argv.verbose? e: e.message);
+  }
+};
+
 yargs(hideBin(process.argv))
   .option("verbose", {
     describe: "Verbose mode",
@@ -1853,7 +1969,7 @@ yargs(hideBin(process.argv))
         })
         .positional("funds", {
           describe:
-            "How much to fund the new account from this private key in ETH.",
+            "How much to send from this private key in ETH.",
           type: "string",
         });
     },
@@ -1878,7 +1994,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "account_offer_signature <nft_addr> <mint_helper_addr> <token_id> <offer_id>",
-    "Creates an offer signature for use by the minter to redeem and nft offer. Note the current key must be a token owner of the nft.",
+    "Creates an offer signature for use by the minter to redeem an nft offer. Note the current key must be a token owner of the nft.",
     (yargs) => {
       yargs
         .positional("nft_addr", {
@@ -1908,7 +2024,7 @@ yargs(hideBin(process.argv))
     "Creates a fabric token using this key",
     (yargs) => {
       yargs.option("duration", {
-        describe: "Library ID to authorize",
+        describe: "Time until the token expires, in milliseconds (default: 120000 = 2 min)",
         type: "string",
       });
     },
@@ -2029,7 +2145,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "space_tenant_info <tenant>",
-    "Shot tenant information.",
+    "Show tenant information.",
     (yargs) => {
       yargs.positional("tenant", {
         describe: "Tenant ID (iten)",
@@ -2386,7 +2502,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "space_tenant_set_eluvio_live_id <tenant> <eluvio_live_id>",
-    "Set the tenant-leve Eluvio Live object ID in the tenant contract.",
+    "Set the tenant-level Eluvio Live object ID in the tenant contract.",
     (yargs) => {
       yargs
         .positional("tenant", {
@@ -2394,7 +2510,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .positional("eluvio_live_id", {
-          describe: "Object ID of the tenant-leve Eluvio Live object (iq)",
+          describe: "Object ID of the tenant-level Eluvio Live object (iq)",
           type: "string",
         });
     },
@@ -2413,7 +2529,7 @@ yargs(hideBin(process.argv))
           type: "string",
         })
         .option("library", {
-          describe: "Libary ID",
+          describe: "Library ID",
           type: "string",
         })
         .option("limit", {
@@ -2428,7 +2544,7 @@ yargs(hideBin(process.argv))
 
   .command(
     "content_meta_set_batch <csv_file>",
-    "Set metadata fields for the list of content object IDs in the CSV fle.",
+    "Set metadata fields for the list of content object IDs in the CSV file.",
     (yargs) => {
       yargs
         .positional("csv_file", {
@@ -2607,7 +2723,7 @@ yargs(hideBin(process.argv))
     (yargs) => {
       yargs.positional("address", {
         describe:
-          "this address would be remove from the authorized address list",
+          "this address would be removed from the authorized address list",
         type: "string",
       });
     },
@@ -2681,6 +2797,38 @@ yargs(hideBin(process.argv))
     (argv) => {
       CmdSetObjectGroupPermission({ argv });
     }
+  )
+
+  .command(
+    "set_object_user_permission <object> <user> <permission> [options]",
+    "Grant or revoke a direct user permission on an object; print resulting direct grants",
+    (yargs) => {
+      yargs
+        .positional("object", { describe: "object ID or address", type: "string" })
+        .positional("user", { describe: "user ID or account address", type: "string" })
+        .positional("permission", {
+          describe: "type of permission to grant or revoke",
+          choices: ["see", "access", "manage"],
+          type: "string",
+        })
+        .option("remove", {
+          describe: "Revoke the specified permission",
+          type: "boolean",
+          default: false,
+        });
+    },
+    (argv) => CmdObjectUserPermissions({ argv, set: true })
+  )
+
+  .command(
+    "get_object_user_permissions <object> <user>",
+    "Read direct user grants (0=none, 1=tentative, 2=confirmed); excludes group permissions and ownership",
+    (yargs) => {
+      yargs
+        .positional("object", { describe: "object ID or address", type: "string" })
+        .positional("user", { describe: "user ID or account address", type: "string" });
+    },
+    (argv) => CmdObjectUserPermissions({ argv })
   )
 
   .command(
@@ -2772,6 +2920,86 @@ yargs(hideBin(process.argv))
             CmdDeleteContentsBatch({ argv });
           }
         );
+    }
+  )
+
+  .command(
+    "group_decrypt_oauth <group>",
+    "Decrypt the oauth info: issuer, claims.aud, claims.groups[] from group metadata",
+    (yargs) => {
+      yargs.positional("group",{
+        describe: "group id or address",
+        type: "string"
+      });
+    },
+    (argv) => {
+      CmdGroupDecryptOauth({argv});
+    }
+  )
+
+  .command(
+    "group_encrypt_oauth <group> <oauth_config>",
+    "Encrypt oauth info: issuer, claims.aud, claims.groups[] and store in group metadata",
+    (yargs) => {
+      yargs
+        .positional("group",{
+          describe: "group id or address",
+          type: "string"
+        })
+        .positional("oauth_config",{
+          describe: "oauth config json",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdGroupEncryptOauth({argv});
+    }
+  )
+
+  .command(
+    "issuer_okta_get <okta_domain>",
+    "Retrieve all Okta users and groups for given issuer",
+    (yargs) => {
+      yargs
+        .positional("okta_domain", {
+          describe: "okta domain url",
+          type: "string"
+        })
+        .option("out", {
+          describe: "output-file path",
+          type: "string"
+        });
+    },
+    (argv) => {
+      CmdIssuerOktaGet({argv});
+    }
+  )
+
+  .command(
+    "issuer_okta_sync <policy_id>",
+    "Retrieve all Okta users and groups for given issuer and update the policy object metadata",
+    (yargs) => {
+      yargs
+        .positional("policy_id", {
+          describe: "policy id",
+          type: "string"
+        })
+        .option("okta_domain", {
+          describe: "okta domain url",
+          type: "string"
+        })
+        .option("keep_existing_part", {
+          describe: "do not delete existing oauth_settings part hash",
+          type: "boolean",
+          default: false,
+        })
+        .option("user_group_list", {
+          describe: "users and groups list to store in part",
+          type: "string",
+        });
+    },
+    (argv) => {
+      CmdIssuerOktaSync({argv});
     }
   )
 

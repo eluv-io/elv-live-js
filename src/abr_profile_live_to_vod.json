@@ -1877,12 +1877,19 @@
       "protocol": {
         "type": "ProtoHls"
       }
+    },
+    "dash-clear": {
+      "drm": null,
+      "protocol": {
+        "min_buffer_length": 2,
+        "type": "ProtoDash"
+      }
     }
   },
   "segment_specs": {
     "audio": {
       "segs_per_chunk": 15,
-      "target_dur": 1.984 
+      "target_dur": 1.984
     },
     "video": {
       "segs_per_chunk": 15,
@@ -1890,4 +1897,3 @@
     }
   }
 }
-

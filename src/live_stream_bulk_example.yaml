@@ -1,0 +1,71 @@
+---
+library: ilib...
+# must use one of the following, profile_name OR profile_data
+profile_name: "stream_profile_a"
+profile_data:
+  input_stream_info:
+    format:
+      format_name: mpegts
+    streams:
+    - codec_name: h264
+      codec_type: video
+      display_aspect_ratio: 16/9
+      field_order: progressive
+      frame_rate: '50'
+      height: 1080
+      level: 42
+      stream_id: 256
+      stream_index: 0
+      time_base: 1/90000
+      width: 1920
+    - channel_layout: 3
+      channels: 2
+      codec_name: aac
+      codec_type: audio
+      sample_rate: 48000
+      stream_id: 257
+      stream_index: 1
+      time_base: 1/90000
+  playout_config:
+    ladder_specs:
+      audio:
+      - bit_rate: 96000
+        channels: 2
+        codecs: mp4a.40.2
+      - bit_rate: 96000
+        channels: 6
+        codecs: mp4a.40.2
+      video:
+      - bit_rate: 5000000
+        codecs: avc1.640028,mp4a.40.2
+        height: 1080
+        width: 1920
+      - bit_rate: 3000000
+        codecs: avc1.64001F,mp4a.40.2
+        height: 720
+        width: 1280
+      - bit_rate: 1800000
+        codecs: avc1.64001F,mp4a.40.2
+        height: 576
+        width: 1024
+      - bit_rate: 1000000
+        codecs: avc1.64001F,mp4a.40.2
+        height: 576
+        width: 1024
+      - bit_rate: 500000
+        codecs: avc1.42C01E,mp4a.40.2
+        height: 360
+        width: 640
+    playout_formats:
+    - dash-widevine
+    - hls-aes128
+    - hls-clear
+  recording_params:
+    live_delay_nano: 10000000000
+streams:
+  - name: Stream West Coast
+    url: srt://host-X-X-X-X.contentfabric.io:11004?mode=listener
+  - name: Stream Central
+    url: srt://host-X-X-X-X.contentfabric.io:11005?mode=listener
+  - name: Stream East Coast
+    url: udp://host-X-X-X-X.contentfabric.io:11004

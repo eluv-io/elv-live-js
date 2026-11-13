@@ -14,7 +14,7 @@ class Notifier {
    *
    * @namedParams
    * @param {string} notifUrl - The notification service endpoint (optional)
-   * @return {EluvioLive} - New ElvNotif object connected to the specified endpoint
+   * @return {Notifier} - New Notifier object connected to the specified endpoint
    */
   constructor({ notifUrl }) {
     this.notifUrl = notifUrl || Config.consts[Config.net].notificationService;
@@ -58,8 +58,11 @@ class Notifier {
 
   /**
    * Post a notification
-   * @param {*} param0
-   * @returns
+   *
+   * @namedParams
+   * @param {string} path - Request path relative to the notification service URL
+   * @param {Object} [body] - Request body; defaults to an empty object if omitted
+   * @returns {Promise<Object>} Response from the notification endpoint
    */
   async Post({ path, body }) {
     if (!body) {

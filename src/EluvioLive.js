@@ -1583,7 +1583,7 @@ class EluvioLive {
           for (i = 0; i < nftInfo.tokens.length; i++) {
             const tok = nftInfo.tokens[i];
             const ownerObj = wallets.contents.filter(function (entry) { return entry.addr === tok.owner; });
-            tok.owner_email = ownerObj.length > 0 ? ownerObj[0].ident : "";
+            tok.owner_email = ownerObj.length > 0 ? (ownerObj[0].email || "") : "";
           }
         } else {
           // single token queries do not include the token owner, just contract owner, or we'd fill it too
@@ -1841,8 +1841,8 @@ class EluvioLive {
    * @namedParams
    * @param {string} objectId - The NFT object ID
    * @param {string} policyPath - Path to the policy file (eg. nft_owner_minter.yaml). Note that the policy must contain the minter address
-   * @param {[string]} addresses - Array of addresses to set the policy permissions
-   * @param {bool} clear - Clear
+   * @param {string[]} addresses - Array of addresses to set the policy permissions
+   * @param {boolean} [clearAddresses=false] - Clear existing permissions by writing an empty address list before applying the new ones
    */
   async NftSetPolicyAndPermissions({ objectId, policyPath, addresses=[], clearAddresses=false}) {
     let elvFabric = new ElvFabric({
@@ -1882,45 +1882,274 @@ class EluvioLive {
       console.log("Policy Value To Set: ", policyFormat);
     }
 
-    let res = await elvFabric.SetContractMeta({
+    let res = await elvFabric.SetContractMetaPrewarmed({
       address: objectId,
       key: "_ELV",
       value: JSON.stringify(policyFormat)
     });
 
+    if (this.debug) {
+      console.log("Set Policy response: ", res);
+    }
+
     if (!ElvUtils.isTransactionSuccess(res)) {
-      throw res;
+      throw Object.assign(Error(`Set _ELV failed (tx ${res.transactionHash})`), {receipt: res});
     }
 
     if (!clearAddresses && addresses.length == 0) {
       return;
     }
 
-    if (clearAddresses){
+    if (clearAddresses) {
       addresses = [];
     }
 
-    for (const address of addresses){
-      if (!ethers.utils.isAddress(address)){
+    for (const address of addresses) {
+      if (!ethers.utils.isAddress(address)) {
         throw Error(`"${address}" is not a valid ethereum address.`);
       }
     }
 
     let addressesString = JSON.stringify(addresses);
 
-    let res2 = await elvFabric.SetContractMeta({
+    let res2 = await elvFabric.SetContractMetaPrewarmed({
       address: objectId,
       key: "_NFT_ACCESS",
       value: addressesString
     });
 
-    if (this.debug){
-      console.log("Set Policy response: ", res);
+    if (this.debug) {
+      console.log("Set _NFT_ACCESS response: ", res2);
+    }
+
+    if (!ElvUtils.isTransactionSuccess(res2)) {
+      throw Object.assign(Error(`Set _NFT_ACCESS failed (tx ${res2.transactionHash})`), {receipt: res2});
+    }
+  }
+
+  /**
+   * Sets the NFT permission addresses (_NFT_ACCESS) for a given object,
+   * leaving the existing policy (_ELV) untouched.
+   *
+   * @namedParams
+   * @param {string} objectId - The NFT object ID
+   * @param {string[]} addresses - Array of addresses to set; replaces the existing list unless appendAddresses is set
+   * @param {boolean} [clearAddresses=false] - Clear all existing addresses
+   * @param {boolean} [appendAddresses=false] - Append addresses to the existing list
+   */
+  async NftSetPolicyAddresses({ objectId, addresses=[], clearAddresses=false, appendAddresses=false }) {
+    if (clearAddresses && addresses.length > 0) {
+      throw Error("Specify either addresses or clear, not both.");
+    }
+    if (clearAddresses && appendAddresses) {
+      throw Error("Specify either append or clear, not both.");
+    }
+    if (!clearAddresses && addresses.length == 0) {
+      throw Error("No addresses specified (use clear to remove all addresses).");
+    }
+
+    for (const address of addresses) {
+      if (!ethers.utils.isAddress(address)) {
+        throw Error(`"${address}" is not a valid ethereum address.`);
+      }
+    }
+
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    // Permissions can only be set by object owner
+    const objectOwner = await this.client.authClient.Owner({id: objectId});
+    if (objectOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
+      throw Error("Permissions must be set by object owner " + objectOwner);
+    }
+
+    if (appendAddresses) {
+      const existingString = await elvFabric.GetContractMeta({
+        address: objectId,
+        key: "_NFT_ACCESS"
+      });
+
+      if (this.debug) {
+        console.log("Get _NFT_ACCESS response: ", existingString);
+      }
+
+      // an unparseable existing value is an error here, since treating it as empty would silently overwrite it
+      let existing = [];
+      if (existingString) {
+        try {
+          existing = JSON.parse(existingString);
+        } catch (e) {
+          throw Error(`Couldn't parse existing _NFT_ACCESS value, not appending: ${existingString}`);
+        }
+        if (!Array.isArray(existing)) {
+          throw Error(`Existing _NFT_ACCESS value is not a list, not appending: ${existingString}`);
+        }
+      }
+
+      const seen = new Set(existing.map(a => String(a).toLowerCase()));
+      const added = [];
+      for (const address of addresses) {
+        if (!seen.has(address.toLowerCase())) {
+          seen.add(address.toLowerCase());
+          added.push(address);
+        }
+      }
+
+      if (added.length == 0) {
+        console.log("All addresses already present, nothing to append.");
+        return;
+      }
+
+      console.log(`Appending ${added.length} address(es) to ${existing.length} existing.`);
+      addresses = existing.concat(added);
+    }
+
+    let res = await elvFabric.SetContractMetaPrewarmed({
+      address: objectId,
+      key: "_NFT_ACCESS",
+      value: JSON.stringify(addresses)
+    });
+
+    if (this.debug) {
+      console.log("Set _NFT_ACCESS response: ", res);
     }
 
     if (!ElvUtils.isTransactionSuccess(res)) {
-      throw res2;
+      throw Object.assign(Error(`Set _NFT_ACCESS failed (tx ${res.transactionHash})`), {receipt: res});
     }
+  }
+
+  /**
+   * Batch version of NftSetPolicyAndPermissions.
+   *
+   * Sets the same policy and permissions to a list of objects.
+   * Objects are processed in batches: within a batch all transactions are submitted sequentially (noce safety)
+   *
+   * @namedParams
+   * @param {string[]} objectIds - The NFT object IDs (iq__... or hex address)
+   * @param {string} policyPath - Path to the policy file (eg. nft_owner_minter.yaml). Note that the policy must contain the minter address
+   * @param {string[]} addresses - Array of addresses to set the policy permissions
+   * @param {boolean} [clearAddresses=false] - Clear existing permissions by writing an empty address list before applying the new ones
+   * @returns {object} { succeeded: string[], failed: {objectId, error}[] }
+   */
+  async NftSetPolicyAndPermissionsBatch({ objectIds, policyPath, addresses=[], clearAddresses=false }) {
+
+    const BATCH_SIZE = 100;
+
+    let elvFabric = new ElvFabric({
+      configUrl: this.configUrl,
+      debugLogging: this.debug
+    });
+
+    await elvFabric.Init({
+      privateKey: process.env.PRIVATE_KEY
+    });
+
+    // Prepare the policy once (shared across all objects)
+    const policyString = fs.readFileSync(
+      policyPath
+    ).toString();
+
+    if (!policyString) {
+      throw Error("Policy file contents is empty.");
+    }
+
+    if (this.debug) {
+      console.log("Policy file contents: ", policyString);
+    }
+
+    let account = new ElvAccount({configUrl:this.configUrl, debugLogging: this.debug});
+    account.InitWithClient({elvClient: this.client});
+
+    let policyFormat = await ElvUtils.parseAndSignPolicy({policyString, configUrl:this.configUrl, elvAccount:account});
+
+    if (this.debug) {
+      console.log("Policy Value To Set: ", policyFormat);
+    }
+
+    const policyValue = JSON.stringify(policyFormat);
+
+    // Prepare the permission addresses once (shared across all objects)
+    if (clearAddresses) {
+      addresses = [];
+    }
+
+    for (const address of addresses) {
+      if (!ethers.utils.isAddress(address)) {
+        throw Error(`"${address}" is not a valid ethereum address.`);
+      }
+    }
+
+    // _NFT_ACCESS is only written when clearing or when addresses were provided,
+    const setAccess = clearAddresses || addresses.length > 0;
+    const addressesString = JSON.stringify(addresses);
+
+    const succeeded = [];
+    const failed = [];
+
+    for (let i = 0; i < objectIds.length; i += BATCH_SIZE) {
+      const batch = objectIds.slice(i, i + BATCH_SIZE);
+      console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} objects)...`);
+
+      // Submit every transaction for this batch sequentially (nonce safety)
+      const pending = [];
+      for (const objectId of batch) {
+        try {
+          // Policy can only be set by object owner
+          const objectOwner = await this.client.authClient.Owner({id: objectId});
+          if (objectOwner.toLowerCase() != this.client.signer.address.toLowerCase()) {
+            throw Error("Policy must be set by object owner " + objectOwner);
+          }
+
+          const txs = [];
+          txs.push(await elvFabric.SetContractMetaAsync({
+            address: objectId,
+            key: "_ELV",
+            value: policyValue
+          }));
+
+          if (setAccess) {
+            txs.push(await elvFabric.SetContractMetaAsync({
+              address: objectId,
+              key: "_NFT_ACCESS",
+              value: addressesString
+            }));
+          }
+
+          pending.push({ objectId, txs });
+        } catch (e) {
+          console.error(`Failed to submit transactions for ${objectId}:`, this.debug ? e : (e.message || e));
+          failed.push({ objectId, error: e.message || e });
+        }
+      }
+
+      // Wait for all transactions in this batch
+      await Promise.all(pending.map(async ({ objectId, txs }) => {
+        try {
+          const receipts = await Promise.all(txs.map(tx => tx.wait()));
+          for (const receipt of receipts) {
+            if (!ElvUtils.isTransactionSuccess(receipt)) {
+              throw Object.assign(Error(`Transaction failed (tx ${receipt.transactionHash})`), {receipt});
+            }
+          }
+          succeeded.push(objectId);
+          if (this.debug) {
+            console.log(`Object ${objectId} done.`);
+          }
+        } catch (e) {
+          console.error(`Failed to confirm transactions for ${objectId}:`, this.debug ? e : (e.message || e));
+          failed.push({ objectId, error: e.message || e });
+        }
+      }));
+    }
+
+    return { succeeded, failed };
   }
 
   /**
@@ -2442,10 +2671,12 @@ class EluvioLive {
    * @param {string} nftDir - Directory containing nft json file(s) for building nfts
    * @return {Promise<Object>} - The public/nft or public/nfts JSON
    */
-  async NftBuild({ libraryId, objectId, nftDir }) {
+  async NftBuild({ objectId, nftDir }) {
     var hash = await this.client.LatestVersionHash({
       objectId,
     });
+
+    const libraryId = await this.client.ContentObjectLibraryId({objectId});
 
     var m = await this.client.ContentObjectMetadata({
       libraryId,
@@ -2484,7 +2715,7 @@ class EluvioLive {
     });
 
     if (nftDir && nftDir.length > 0) {
-      // Merge the nft array
+      // Replace the nft array
       await this.client.ReplaceMetadata({
         libraryId,
         objectId,
@@ -2494,7 +2725,7 @@ class EluvioLive {
       });
     } else {
       // Merge the single nft object
-      await this.client.ReplaceMetadata({
+      await this.client.MergeMetadata({
         libraryId,
         objectId,
         writeToken: e.write_token,
@@ -2558,14 +2789,57 @@ class EluvioLive {
   /**
    * Burn the specified NFT token as a proxy owner
    *
+   * Uses the Authority Service to proxy-transfer the token from
+   * fromAddr to 0x...0dead using the tenant's proxy owner key
+   *
    * @namedParams
-   * @param {string} addr - Local NFT contract address
-   * @param {integer} tokenId - External NFT token ID
+   * @param {string} addr - NFT contract address
+   * @param {integer} tokenId - NFT token ID
+   * @param {string} fromAddr - current token owner (optional: looked up via ownerOf if not provided)
+   * @param {string} tenant - The tenant ID (optional: looked up via contract address if not provided)
    * @return {Promise<Object>} - NFT info JSON
    */
-  // eslint-disable-next-line no-unused-vars
-  async NftProxyBurn({ addr, tokenId }) {
-    return "Sorry, not yet implemented.";
+  async NftProxyBurn({ addr, tokenId, fromAddr, tenant }) {
+    if (!tenant) {
+      try {
+        const configRes = await this.client.authClient.MakeAuthServiceRequest({
+          method: "GET",
+          path: urljoin(this.asUrlPath, "config", "nft", addr),
+        });
+        tenant = (await configRes.json()).tenant;
+      } catch (e) {
+        throw Error(`Could not determine tenant for contract ${addr} (${e.status || ""} ${e.message || e}); pass explicitly`);
+      }
+      if (!tenant) {
+        throw Error(`Could not determine tenant for contract ${addr}; pass explicitly`);
+      }
+      console.log("Tenant", tenant);
+    }
+
+    if (!fromAddr) {
+      const abi = fs.readFileSync(
+        path.resolve(__dirname, "../contracts/v3/ElvTradableLocal.abi")
+      );
+      fromAddr = await this.client.CallContractMethod({
+        contractAddress: addr,
+        abi: JSON.parse(abi),
+        methodName: "ownerOf",
+        methodArgs: [tokenId],
+        formatArguments: true,
+      });
+      console.log("Token owner", fromAddr);
+    }
+
+    const res = await this.PostServiceRequest({
+      path: urljoin("tnt", tenant, "entitlement", "revoke"),
+      body: {
+        nft_addr: addr,
+        token_id: tokenId.toString(),
+        from_addr: fromAddr,
+      },
+      useFabricToken: true,
+    });
+    return await res.json();
   }
 
   /**
@@ -3173,13 +3447,11 @@ class EluvioLive {
   async CreateWalletAccount({ email, tenant, callbackUrl, onlyCreateAccount, onlySendEmail, scheduleAt}) {
     let headers = {};
     let res = "";
-    console.log("email", email, "tenant", tenant, "callbackUrl", callbackUrl,
-      "onlyCreateAccount", onlyCreateAccount, "onlySentEmail", onlySendEmail, "scheduleAt", scheduleAt);
 
     // if email is a file, read the file
     if (email.startsWith("@")) {
       let emails = fs.readFileSync(email.slice(1), "utf-8").split(/\r?\n/);
-      let urlPath = "/wlt/ory/create_bulk_accounts";
+      let urlPath = "/adm/ory/create_bulk_accounts";
       res = await this.PostServiceRequest({
         path: urlPath,
         body: {
@@ -3191,9 +3463,10 @@ class EluvioLive {
           "schedule_at": scheduleAt
         },
         headers,
+        useFabricToken: true,
       });
     } else {
-      let urlPath = "/wlt/ory/create_account";
+      let urlPath = "/adm/ory/create_account";
       res = await this.PostServiceRequest({
         path: urlPath,
         body: {
@@ -3205,6 +3478,7 @@ class EluvioLive {
           "schedule_at": scheduleAt
         },
         headers,
+        useFabricToken: true,
       });
     }
 
