@@ -573,8 +573,10 @@ class CatalogService {
       if (!hasDirectThumbs && Object.keys(thumbnailMap).length > 0) {
         const normalize = str => str.toLowerCase().replace(/[_-]/g, " ").replace(/\s+/g, " ").trim();
         // Try label first, then title as fallback (handles prefixed labels)
+        const allThumbPaths = Object.values(thumbnailMap);
         const thumbPath = thumbnailMap[normalize(resolvedItemLabel)] ||
-          (metadata.title && thumbnailMap[normalize(metadata.title)]);
+          (metadata.title && thumbnailMap[normalize(metadata.title)]) ||
+          (allThumbPaths.length === 1 ? allThumbPaths[0] : null);
         if (thumbPath) {
           console.log(`  Uploading thumbnail for "${resolvedItemLabel}": ${path.basename(thumbPath)}`);
           await this.wallet.applyThumbnailLink({
